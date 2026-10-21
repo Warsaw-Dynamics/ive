@@ -12,9 +12,10 @@ use gpui::{App, KeyBinding, Menu, MenuItem};
 use super::Workspace;
 use crate::click_targets::target;
 use crate::prompt;
+use crate::script::quit_countdown::QuitCountdown;
 use crate::theme::Theme;
 
-/// Seconds the prompt waits before IVE quits and leaves the processes running.
+/// Seconds the prompt waits before IVE quits and leaves the processes running, until `ive.rn` has loaded.
 pub const COUNTDOWN_SECONDS: u8 = 10;
 
 #[cfg(target_os = "macos")]
@@ -155,7 +156,8 @@ impl Workspace {
                 }
             }
         });
-        self.quit_prompt = Some(QuitPrompt { seconds: COUNTDOWN_SECONDS, focus, _tick: tick });
+        let seconds = cx.try_global::<QuitCountdown>().map_or(COUNTDOWN_SECONDS, |countdown| countdown.seconds());
+        self.quit_prompt = Some(QuitPrompt { seconds, focus, _tick: tick });
         cx.notify();
     }
 

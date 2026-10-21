@@ -96,13 +96,14 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, quit_countdown, .. } => {
                 apply_theme(theme.as_ref().clone(), cx);
                 if apply_excluded(excluded.clone(), cx) {
                     self.tree_changed(cx);
                 }
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
                 cx.set_global(tab_menus.clone());
+                cx.set_global(*quit_countdown);
                 apply_fonts(fonts.clone(), cx)
             }
             _ => false,

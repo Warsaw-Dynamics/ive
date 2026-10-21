@@ -17,6 +17,7 @@ use super::declare::{self, FontChoice, Functions};
 use super::keymap::Keymap;
 use super::tab_menus::{self, TabMenus};
 use super::excluded::{self, Excluded};
+use super::quit_countdown::{self, QuitCountdown};
 use super::temporary_tabs::{self, TemporaryTabs};
 use crate::api::Call;
 use crate::theme::Fonts;
@@ -39,6 +40,7 @@ pub struct Loaded {
     pub excluded: Excluded,
     pub temporary_tabs: TemporaryTabs,
     pub tab_menus: TabMenus,
+    pub quit_countdown: QuitCountdown,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -79,7 +81,13 @@ impl Engine {
         let mut bound = Vec::new();
         let mut functions = Functions { bound: &mut bound, generation };
         let ive_rn = Script { name: IVE_RN_NAME, text: IVE_RN.to_owned(), path: None };
-        let start = Carried { theme: theme_config::default_value(), excluded: rune::Value::from(()), temporary_tabs: rune::Value::from(()), tab_menus: rune::Value::from(()) };
+        let start = Carried {
+            theme: theme_config::default_value(),
+            excluded: rune::Value::from(()),
+            temporary_tabs: rune::Value::from(()),
+            tab_menus: rune::Value::from(()),
+            quit_countdown: rune::Value::from(()),
+        };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
         let carried_defaults = Carried {
@@ -87,6 +95,7 @@ impl Engine {
             excluded: rune::Value::from(()),
             temporary_tabs: default_carried.temporary_tabs.clone(),
             tab_menus: default_carried.tab_menus.clone(),
+            quit_countdown: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -98,6 +107,7 @@ impl Engine {
                 excluded: checked.excluded,
                 temporary_tabs: checked.temporary_tabs,
                 tab_menus: checked.tab_menus,
+                quit_countdown: checked.quit_countdown,
                 functions: bound,
                 has_init: false,
             });
@@ -113,6 +123,7 @@ impl Engine {
             excluded: checked.excluded,
             temporary_tabs: checked.temporary_tabs,
             tab_menus: checked.tab_menus,
+            quit_countdown: checked.quit_countdown,
             functions: bound,
             has_init: true,
         })
@@ -163,6 +174,7 @@ struct Checked {
     excluded: Excluded,
     temporary_tabs: TemporaryTabs,
     tab_menus: TabMenus,
+    quit_countdown: QuitCountdown,
 }
 
 /// The theme, excluded folders, temporary tabs and tab menus `file` left, checked: keys of `temporary_tabs` and menus of `tab_menus`
@@ -174,7 +186,8 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, file: &str) -
     let temporary_tabs = temporary_tabs::parse(&defaults.temporary_tabs, &carried.temporary_tabs).map_err(named)?;
     let tab_menus = tab_menus::parse(&defaults.tab_menus, &carried.tab_menus).map_err(named)?;
     tab_menus::check_shown(&tab_menus, keymap.tab_menu_names()).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, tab_menus })
+    let quit_countdown = quit_countdown::parse(&carried.quit_countdown).map_err(named)?;
+    Ok(Checked { theme, excluded, temporary_tabs, tab_menus, quit_countdown })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -432,6 +445,39 @@ mod tests {
 
         // then
         assert_eq!(theme.panels.gap, Px(13.));
+    }
+
+    #[test]
+    fn should_count_the_quit_prompt_down_from_ten_seconds_by_default() {
+        // when
+        let quit_countdown = defaults().quit_countdown;
+
+        // then
+        assert_eq!(quit_countdown.seconds(), 10);
+    }
+
+    #[test]
+    fn should_take_the_quit_countdown_from_init() {
+        // given
+        let init = "pub fn init(config) { config.quit_countdown = 3; }";
+
+        // when
+        let quit_countdown = load(init).1.unwrap().quit_countdown;
+
+        // then
+        assert_eq!(quit_countdown.seconds(), 3);
+    }
+
+    #[test]
+    fn should_reject_a_quit_countdown_out_of_range_from_init() {
+        // given
+        let init = "pub fn init(config) { config.quit_countdown = 0; }";
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert_eq!(error, "init.rn: quit_countdown must be whole seconds from 1 to 60, not 0");
     }
 
     #[test]

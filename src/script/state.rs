@@ -136,6 +136,7 @@ mod tests {
             excluded: Default::default(),
             temporary_tabs,
             tab_menus: Default::default(),
+            quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
             has_init: true,
         }
     }

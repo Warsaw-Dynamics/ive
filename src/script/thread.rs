@@ -18,6 +18,7 @@ use rune::alloc::clone::TryClone;
 use super::defaults_file;
 use super::engine::{Engine, Loaded, describe, is_out_of_budget};
 use super::excluded::Excluded;
+use super::quit_countdown::QuitCountdown;
 use super::fingerprint::fingerprint;
 use super::keymap::Keymap;
 use super::tab_menus::TabMenus;
@@ -31,7 +32,16 @@ use crate::api::{self, Call, Request};
 #[derive(Debug)]
 pub enum ScriptEvent {
     /// `ive.rn` and `init.rn` (when `has_init`) loaded; these bindings and fonts replace the previous ones
-    Loaded { keymap: Keymap, fonts: Fonts, theme: Box<ThemeSpec>, excluded: Excluded, temporary_tabs: TemporaryTabs, tab_menus: TabMenus, has_init: bool },
+    Loaded {
+        keymap: Keymap,
+        fonts: Fonts,
+        theme: Box<ThemeSpec>,
+        excluded: Excluded,
+        temporary_tabs: TemporaryTabs,
+        tab_menus: TabMenus,
+        quit_countdown: QuitCountdown,
+        has_init: bool,
+    },
     /// the load failed (the log says why); the previous bindings stay
     LoadFailed { message: String, errors: usize },
     /// a bound function failed; the log says why
@@ -169,6 +179,7 @@ impl Runner {
             excluded: loaded.excluded.clone(),
             temporary_tabs: loaded.temporary_tabs.clone(),
             tab_menus: loaded.tab_menus.clone(),
+            quit_countdown: loaded.quit_countdown,
             has_init: loaded.has_init,
         };
         self.current = Some((self.loads, loaded));

@@ -30,6 +30,9 @@ pub fn init(config) {
                   act::CloseTab, act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight],
     };
 
+    // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
+    config.quit_countdown = 10;
+
     // the terminal keeps ctrl-c / ctrl-v for its programs; macOS has cmd for copy and paste
     let terminal_clipboard = if ive::os() == "macos" { "CMD" } else { "CTRL|SHIFT" };
     // Close: the shown tab goes, a process keeps running (in Processes); Stop: a process tab's process ends for good

@@ -93,7 +93,7 @@ in a tab, with its last output (up to 1 MiB) replayed; Claude Code and other ful
 window (on macOS: Cmd+Q or the Dock's Quit; the window's × only hides the window there, IVE keeps running in the
 Dock and a click on its icon shows the window again), or SIGTERM /
 SIGINT, with terminals running asks **Stop N running processes?**: Keep running (Enter, and what happens when its
-10 s countdown ends), Stop all, or Cancel (Escape). SIGUSR1 quits at once and keeps them
+10 s countdown ends, `config.quit_countdown`), Stop all, or Cancel (Escape). SIGUSR1 quits at once and keeps them
 running, as a [restart](#restart) does. A row's Close, closing a project, or `exit`
 still ends a terminal. Only the first IVE running in a profile keeps terminals this way; a second one's terminals end with it.
 
@@ -416,6 +416,8 @@ async fn restart(context) {
   opens temporary, any of `"Project"`, `"Settings"`, `"Hub"` and `"RunConfigs"` (all four),
   and `marker`, `"Italic"` or `#{ Prefix: "*" }` (1 to 8 characters before the title). A temporary tab closes once
   another tab is shown; a new tab takes its place in the row.
+- `config.quit_countdown` (`10`): the seconds the quit prompt counts down before IVE quits and leaves the running
+  processes running, 1 to 60.
 - `config.tab_menus` (filled in with `ive.rn`'s, per menu name): menus that `act::ShowTabMenu(name)` opens, each a
   list of tab actions (`act::KeepTab`, `act::StopProgram`, `act::KillProgram`, `act::CloseTab`,
   `act::CloseOtherTabs`, `act::CloseTabsToTheLeft`, `act::CloseTabsToTheRight`) and `"Separator"`; at most 32 menus
