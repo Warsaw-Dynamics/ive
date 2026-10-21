@@ -170,6 +170,8 @@ fn delete_old_pastes() {
 fn run(startup: Startup, background: bool) {
     let store = tracing::info_span!("load_settings").in_scope(load_settings);
     let application = tracing::info_span!("start_platform").in_scope(|| gpui_platform::application().with_assets(Assets));
+    #[cfg(target_os = "macos")]
+    application.on_reopen(workspace::show_main_window);
     application.run(move |cx: &mut App| {
         trace::milestone("platform running");
         tracing::info_span!("load_fonts").in_scope(|| assets::load_fonts(cx));

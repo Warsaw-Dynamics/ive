@@ -90,8 +90,10 @@ the window as it was, or centred when that place is no longer on any screen.
 On Linux and macOS, terminals keep running when IVE closes, and come back the next time it starts: each shell runs in a small
 host process of its own (`ive --pty-host`), and IVE reattaches to every one still running, under its worktree, each
 in a tab, with its last output (up to 1 MiB) replayed; Claude Code and other full-screen programs redraw. Closing the
-window, or SIGTERM / SIGINT, with terminals running asks **Stop N running processes?**: Keep running (Enter, and
-what happens when its 4 s countdown ends), Stop all, or Cancel (Escape). SIGUSR1 quits at once and keeps them
+window (on macOS: Cmd+Q or the Dock's Quit; the window's × only hides the window there, IVE keeps running in the
+Dock and a click on its icon shows the window again), or SIGTERM /
+SIGINT, with terminals running asks **Stop N running processes?**: Keep running (Enter, and what happens when its
+10 s countdown ends), Stop all, or Cancel (Escape). SIGUSR1 quits at once and keeps them
 running, as a [restart](#restart) does. A row's Close, closing a project, or `exit`
 still ends a terminal. Only the first IVE running in a profile keeps terminals this way; a second one's terminals end with it.
 

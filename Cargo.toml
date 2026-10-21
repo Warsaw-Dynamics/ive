@@ -21,8 +21,8 @@ getrandom = "0.4.3"
 git2 = { version = "0.21.0", default-features = false }
 # Zed's gpui with our fixes (Warsaw-Dynamics/pgui, branch zed-main: a snapshot of Zed plus one commit each).
 # gpui is Apache-2.0.
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "dcd6e32b90ea517e23b0b26d6b0ff989132bf597" }
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "dcd6e32b90ea517e23b0b26d6b0ff989132bf597", features = ["font-kit", "wayland", "x11"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73" }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["font-kit", "wayland", "x11"] }
 # walks project folders without git, honouring .gitignore-style files (the hub's file list)
 ignore = "0.4.33"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
@@ -126,7 +126,7 @@ signal-hook = "0.4"
 keyring = { version = "3.6.3", features = ["apple-native"] }
 # Metal shaders compiled at startup: building them ahead needs the `metal` tool of a full Xcode, not just the Command
 # Line Tools
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "dcd6e32b90ea517e23b0b26d6b0ff989132bf597", features = ["runtime_shaders"] }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["runtime_shaders"] }
 
 [dev-dependencies]
 tempfile = "3"

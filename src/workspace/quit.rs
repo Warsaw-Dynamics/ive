@@ -15,7 +15,7 @@ use crate::prompt;
 use crate::theme::Theme;
 
 /// Seconds the prompt waits before IVE quits and leaves the processes running.
-pub const COUNTDOWN_SECONDS: u8 = 4;
+pub const COUNTDOWN_SECONDS: u8 = 10;
 
 #[cfg(target_os = "macos")]
 gpui::actions!(ive, [Quit]);
@@ -83,11 +83,22 @@ pub fn add_app_menu(cx: &mut App) {
 
 #[cfg(target_os = "macos")]
 fn request_quit_of_workspace(cx: &mut App) {
-    let workspace = cx.windows().into_iter().find_map(|window| window.downcast::<Workspace>());
-    match workspace {
+    match main_window(cx) {
         Some(workspace) => drop(workspace.update(cx, |workspace, window, cx| workspace.request_quit(window, cx))),
         None => cx.quit(),
     }
+}
+
+#[cfg(target_os = "macos")]
+pub fn show_main_window(cx: &mut App) {
+    if let Some(workspace) = main_window(cx) {
+        drop(workspace.update(cx, |_, window, _| window.activate_window()));
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn main_window(cx: &App) -> Option<gpui::WindowHandle<Workspace>> {
+    cx.windows().into_iter().find_map(|window| window.downcast::<Workspace>())
 }
 
 impl Workspace {
@@ -133,6 +144,7 @@ impl Workspace {
     }
 
     fn show_quit_prompt(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        window.activate_window();
         let focus = cx.focus_handle();
         window.focus(&focus, cx);
         let tick = cx.spawn_in(window, async move |this, cx| {

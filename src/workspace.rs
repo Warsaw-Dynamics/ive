@@ -66,7 +66,7 @@ mod worktree_list;
 
 pub use drag_preview::TabDragArea;
 #[cfg(target_os = "macos")]
-pub use quit::add_app_menu;
+pub use quit::{add_app_menu, show_main_window};
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use tab_menu::{DEFAULT_MENU, MenuLine, label as tab_command_label, target as tab_command_target};
@@ -290,8 +290,14 @@ impl Workspace {
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
         };
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
-        // with IVE.
-        #[cfg(unix)]
+        // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
+        // do; a click on its Dock icon shows the window again.
+        #[cfg(target_os = "macos")]
+        window.on_window_should_close(cx, |window, _| {
+            window.hide_window();
+            false
+        });
+        #[cfg(all(unix, not(target_os = "macos")))]
         {
             let this = cx.entity().downgrade();
             window.on_window_should_close(cx, move |window, cx| this.update(cx, |workspace, cx| workspace.request_quit(window, cx)).is_err());
