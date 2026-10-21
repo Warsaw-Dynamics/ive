@@ -1,6 +1,6 @@
 use super::Row;
 
-/// IVE ids for JSDoc, listed on the JavaScript page.
+/// IVE ids for JSDoc.
 pub const ROWS: &[Row] = &[
     ("JSDOC.TAG", "JSDoc tag", Some("DEFAULT_DOC_COMMENT_TAG")),
     ("JSDOC.TYPE", "JSDoc type", Some("DEFAULT_DOC_COMMENT_TAG_VALUE")),

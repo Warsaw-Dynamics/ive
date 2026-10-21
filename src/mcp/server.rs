@@ -512,7 +512,7 @@ commits-more:<id>/<label> (Load 20 more), \
 entry:<path>, more:<list>, all:<list> (a label two checkouts share is <label>@<path>; a file a worktree inside \
 the main checkout shows twice is entry:<path>@<label> in the main checkout's tree). Tab row: tab-menu:<tab> opens a tab's main menu, then tab-menu:keep, tab-menu:stop (a process tab: ends its process for good), tab-menu:kill (when a menu names it), \
 tab-menu:close, tab-menu:close-others, tab-menu:close-left, tab-menu:close-right. Tabs: settings, \
-theme:<name>, settings-page:<page>, color-key:<KEY>, color-option:<option>, inherit-parent, reset-color. \
+theme:<name>, settings-page:<page>. \
 Project overview: section:<label>, card:<label> (reveals the worktree in the tree). Project Git section and Git log: open-git, log:<sha>, git-log:Log, \
 git-log:Stashes, git-log:Worktrees, git-log:Branches, load-more. Diff and commit tabs: reload-diff, \
 diff-file:<path>. Run configurations tab (<folder> checkout-relative): run-configs-filter, \

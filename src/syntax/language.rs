@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use tree_sitter::Query;
 
 use super::registry::{LANGUAGES, LanguageSpec};
-use crate::colors::{ColorKey, Page};
+use crate::colors::ColorKey;
 
 /// A language IVE highlights: a row of the registry.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -26,6 +26,7 @@ static GRAMMARS: [OnceLock<Result<Grammar, String>>; LANGUAGES.len()] = [const {
 const MAX_SHEBANG_BYTES: usize = 256;
 
 impl Language {
+    #[cfg(test)]
     pub fn all() -> impl Iterator<Item = Self> {
         (0..LANGUAGES.len()).map(|index| Self(index as u16))
     }
@@ -65,12 +66,6 @@ impl Language {
 
     pub fn name(self) -> &'static str {
         self.spec().name
-    }
-
-    /// The Settings page listing this language's keys; the registry is checked by tests, so a missing page is a bug.
-    pub fn page(self) -> Page {
-        let title = self.spec().page;
-        Page::titled(title).unwrap_or_else(|| panic!("language {} names unknown page {title}", self.name()))
     }
 
     /// Compiled on first use. An error names the language and the query problem; it is a bug the tests catch.
@@ -150,7 +145,7 @@ mod tests {
 
     /// Compiling checks every pattern against the grammar's parse tables, which can explode: one KDL pattern took
     /// 105 s. The slowest now, Swift, takes about 0.3 s in a debug test build; one past this limit would hang the
-    /// test run and freeze a Settings page.
+    /// test run and stall highlighting.
     const QUERY_COMPILE_LIMIT: Duration = Duration::from_secs(2);
 
     /// Runs `job` on its own thread; `None` if it has not finished after `limit`. A stuck thread is left behind: it
@@ -227,19 +222,6 @@ mod tests {
 
         // then
         assert_eq!(ids, [Some("Groovy var"), Some("GROOVY_KEYWORD"), None]);
-    }
-
-    #[test]
-    fn should_name_an_existing_page_for_every_language() {
-        // given
-        let languages: Vec<Language> = Language::all().collect();
-
-        // when
-        let missing: Vec<&str> =
-            languages.iter().filter(|language| Page::titled(language.spec().page).is_none()).map(|l| l.name()).collect();
-
-        // then
-        assert!(missing.is_empty(), "languages naming unknown pages: {missing:?}");
     }
 
     #[test]

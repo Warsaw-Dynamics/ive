@@ -4,11 +4,11 @@
 
 use std::time::{Duration, Instant};
 
-use crate::syntax::{Cancel, Language, Syntax, parse, spans};
+use crate::syntax::{Cancel, Language, Syntax, lang, parse, spans};
 
 const TARGET_LINES: usize = 10_000;
 const RUNS: usize = 5;
-/// A line of the long file may cost this many times the same line of the preview, plus `SLACK`, before it counts as
+/// A line of the long file may cost this many times the same line of its sample, plus `SLACK`, before it counts as
 /// growth with file length.
 const ALLOWED_FACTOR: u32 = 8;
 const SLACK: Duration = Duration::from_micros(200);
@@ -16,10 +16,80 @@ const SLACK: Duration = Duration::from_micros(200);
 /// file has. `should_highlight_a_line_of_a_large_nix_attribute_set_as_fast_as_of_a_small_one` covers Nix instead.
 const NOT_REPEATABLE: [&str; 1] = ["Nix"];
 
-/// The language's preview repeated to about `TARGET_LINES` lines.
-fn long_file(preview: &str) -> String {
-    let lines = preview.lines().count().max(1);
-    preview.repeat(TARGET_LINES / lines + 1)
+macro_rules! sample {
+    ($language:literal, $path:literal) => {
+        ($language, include_str!(concat!("../../../assets/previews/", $path)))
+    };
+}
+
+/// A short, typical file per language, by registry name.
+const SAMPLES: &[(&str, &str)] = &[
+    sample!("C", "c.c"),
+    sample!("C#", "csharp.cs"),
+    sample!("C++", "cpp.cpp"),
+    sample!("CMake", "cmake.cmake"),
+    sample!("CSS", "css.css"),
+    sample!("Dart", "dart.dart"),
+    sample!("Diff", "diff.diff"),
+    sample!("Dockerfile", "dockerfile.dockerfile"),
+    sample!("Elixir", "elixir.ex"),
+    sample!("Elm", "elm.elm"),
+    sample!("ERB", "embedded_template.erb"),
+    sample!("Erlang", "erlang.erl"),
+    sample!("F#", "fsharp.fs"),
+    sample!("fish", "fish.fish"),
+    sample!("Gleam", "gleam.gleam"),
+    sample!("GLSL", "glsl.glsl"),
+    sample!("Go", "go.go"),
+    sample!("go.mod", "gomod.mod"),
+    sample!("GraphQL", "graphql.graphql"),
+    sample!("Groovy", "groovy.groovy"),
+    sample!("Haskell", "haskell.hs"),
+    sample!("HCL", "hcl.tf"),
+    sample!("HEEx", "heex.heex"),
+    sample!("HTML", "html.html"),
+    sample!("INI", "ini.ini"),
+    sample!("Java", "java.java"),
+    sample!("JavaScript", "javascript.js"),
+    sample!("JSON", "json.json"),
+    sample!("Julia", "julia.jl"),
+    sample!("KDL", "kdl.kdl"),
+    sample!("Kotlin", "kotlin.kt"),
+    sample!("Lua", "lua.lua"),
+    sample!("Makefile", "make.mk"),
+    sample!("Markdown", "markdown.md"),
+    sample!("Nix", "nix.nix"),
+    sample!("Objective-C", "objc.m"),
+    sample!("OCaml", "ocaml.ml"),
+    sample!("PHP", "php.php"),
+    sample!("PowerShell", "powershell.ps1"),
+    sample!("Properties", "properties.properties"),
+    sample!("Protocol Buffers", "proto.proto"),
+    sample!("Python", "python.py"),
+    sample!("R", "r.r"),
+    sample!("RegExp", "regexp.regexp"),
+    sample!("Ruby", "ruby.rb"),
+    sample!("Rust", "rust.rs"),
+    sample!("Scala", "scala.scala"),
+    sample!("SCSS", "scss.scss"),
+    sample!("Shell", "shell.sh"),
+    sample!("Solidity", "solidity.sol"),
+    sample!("SQL", "sql.sql"),
+    sample!("Starlark", "starlark.bzl"),
+    sample!("Svelte", "svelte.svelte"),
+    sample!("Swift", "swift.swift"),
+    sample!("TOML", "toml.toml"),
+    sample!("TypeScript", "typescript.ts"),
+    sample!("Vue", "vue.vue"),
+    sample!("XML", "xml.xml"),
+    sample!("YAML", "yaml.yaml"),
+    sample!("Zig", "zig.zig"),
+];
+
+/// `sample` repeated to about `TARGET_LINES` lines.
+fn long_file(sample: &str) -> String {
+    let lines = sample.lines().count().max(1);
+    sample.repeat(TARGET_LINES / lines + 1)
 }
 
 /// Byte range of line `index` of `text`.
@@ -53,10 +123,9 @@ fn line_cost_in(language: Language, short: &str, long: &str) -> Option<(Duration
     Some((short?, long?))
 }
 
-/// Cost of highlighting line 20 of `language`'s preview, and of the same line once the preview is grown to a long file.
-fn short_and_long_cost(language: Language) -> Option<(Duration, Duration)> {
-    let preview = language.spec().preview.filter(|_| !NOT_REPEATABLE.contains(&language.name()))?;
-    line_cost_in(language, preview, &long_file(preview))
+/// Cost of highlighting line 20 of `language`'s sample, and of the same line once the sample is grown to a long file.
+fn short_and_long_cost(language: Language, sample: &str) -> Option<(Duration, Duration)> {
+    line_cost_in(language, sample, &long_file(sample))
 }
 
 /// A Nix file in the shape of nixpkgs' `all-packages.nix`: one attribute set with `bindings` packages.
@@ -73,7 +142,7 @@ fn should_highlight_a_line_of_a_large_nix_attribute_set_as_fast_as_of_a_small_on
     let (small, large) = (nix_attribute_set(40), nix_attribute_set(TARGET_LINES));
 
     // when
-    let (short, long) = line_cost_in(crate::syntax::lang("Nix"), &small, &large).unwrap();
+    let (short, long) = line_cost_in(lang("Nix"), &small, &large).unwrap();
 
     // then
     assert!(long <= short * ALLOWED_FACTOR + SLACK, "40 bindings {short:?}, {TARGET_LINES} bindings {long:?}");
@@ -82,14 +151,13 @@ fn should_highlight_a_line_of_a_large_nix_attribute_set_as_fast_as_of_a_small_on
 #[test]
 fn should_highlight_a_line_of_a_long_file_about_as_fast_as_of_a_short_one() {
     // given
-    let languages: Vec<Language> = Language::all().collect();
+    let samples = SAMPLES.iter().filter(|(name, _)| !NOT_REPEATABLE.contains(name)).map(|&(name, sample)| (lang(name), sample));
 
     // when
-    let growing: Vec<String> = languages
-        .into_iter()
-        .filter_map(|language| short_and_long_cost(language).map(|cost| (language, cost)))
+    let growing: Vec<String> = samples
+        .filter_map(|(language, sample)| short_and_long_cost(language, sample).map(|cost| (language, cost)))
         .filter(|(_, (short, long))| *long > *short * ALLOWED_FACTOR + SLACK)
-        .map(|(language, (short, long))| format!("{language:?}: preview {short:?}, {TARGET_LINES}-line file {long:?}"))
+        .map(|(language, (short, long))| format!("{language:?}: sample {short:?}, {TARGET_LINES}-line file {long:?}"))
         .collect();
 
     // then

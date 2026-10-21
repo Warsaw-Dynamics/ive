@@ -9,7 +9,7 @@ mod registry;
 mod tests;
 mod vendored;
 
-pub use highlight::{Capture, Highlight, paint, spans};
+pub use highlight::{Highlight, spans};
 pub use language::{Grammar, Language};
 pub use parse::{Cancel, MAX_HIGHLIGHT_BYTES, PARSE_BUDGET, ParseError, Syntax, parse};
 

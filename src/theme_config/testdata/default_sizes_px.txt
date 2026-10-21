@@ -757,9 +757,6 @@ Sizes {
         text_size: FontPx(
             14.0,
         ),
-        small_text_size: FontPx(
-            12.0,
-        ),
         title_text_size: FontPx(
             20.0,
         ),
@@ -776,13 +773,9 @@ Sizes {
         nav_base_indent: Px(
             12.0,
         ),
-        nav_indent: Px(
-            16.0,
-        ),
         nav_item_padding_y: Px(
             4.0,
         ),
-        nav_heading_weight: Semibold,
         appearance_gap: Px(
             16.0,
         ),
@@ -800,78 +793,6 @@ Sizes {
         ),
         segment_padding_y: Px(
             4.0,
-        ),
-        colors_gap: Px(
-            12.0,
-        ),
-        keys_gap: Px(
-            16.0,
-        ),
-        keys_height: Height(
-            260.0,
-        ),
-        keys_padding_y: Px(
-            4.0,
-        ),
-        keys_radius: Px(
-            6.0,
-        ),
-        keys_border: Px(
-            1.0,
-        ),
-        key_padding_x: Px(
-            12.0,
-        ),
-        key_padding_y: Px(
-            2.0,
-        ),
-        panel_width: Px(
-            300.0,
-        ),
-        color_label_width: Px(
-            110.0,
-        ),
-        color_row_gap: Px(
-            8.0,
-        ),
-        swatch_size: Px(
-            18.0,
-        ),
-        swatch_radius: Px(
-            4.0,
-        ),
-        swatch_border: Px(
-            1.0,
-        ),
-        box_size: Px(
-            14.0,
-        ),
-        box_radius: Px(
-            4.0,
-        ),
-        box_border: Px(
-            1.0,
-        ),
-        checkbox_gap: Px(
-            6.0,
-        ),
-        inherit_gap: Px(
-            4.0,
-        ),
-        preview_line_height: Height(
-            20.0,
-        ),
-        preview_padding: Px(
-            8.0,
-        ),
-        preview_radius: Px(
-            6.0,
-        ),
-        preview_border: Px(
-            1.0,
-        ),
-        preview_underline: Px(
-            2.0,
         ),
         table_gap: Px(
             16.0,

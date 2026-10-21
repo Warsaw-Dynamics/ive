@@ -67,123 +67,80 @@ mod zig;
 /// id, display name, parent id
 pub type Row = (&'static str, &'static str, Option<&'static str>);
 
-/// A Settings page and the key tables it lists.
-struct PageSpec {
-    title: &'static str,
-    rows: &'static [&'static [Row]],
-}
-
-/// `General` comes first, so `TEXT` is key 0. Titles are unique; the registry names its pages by them.
-const PAGES: &[PageSpec] = &[
-    PageSpec { title: "General", rows: &[defaults::HIDDEN] },
-    PageSpec { title: "Language Defaults", rows: &[defaults::LANGUAGE_DEFAULTS] },
-    PageSpec { title: "C", rows: &[c::ROWS] },
-    PageSpec { title: "C#", rows: &[csharp::ROWS] },
-    PageSpec { title: "C++", rows: &[cpp::ROWS] },
-    PageSpec { title: "CMake", rows: &[cmake::ROWS] },
-    PageSpec { title: "CSS", rows: &[css::ROWS] },
-    PageSpec { title: "Dart", rows: &[dart::ROWS] },
-    PageSpec { title: "Diff", rows: &[diff::ROWS] },
-    PageSpec { title: "Dockerfile", rows: &[dockerfile::ROWS] },
-    PageSpec { title: "Elixir", rows: &[elixir::ROWS] },
-    PageSpec { title: "Elm", rows: &[elm::ROWS] },
-    PageSpec { title: "ERB and EJS", rows: &[embedded_template::ROWS] },
-    PageSpec { title: "Erlang", rows: &[erlang::ROWS] },
-    PageSpec { title: "F#", rows: &[fsharp::ROWS] },
-    PageSpec { title: "fish", rows: &[fish::ROWS] },
-    PageSpec { title: "Gleam", rows: &[gleam::ROWS] },
-    PageSpec { title: "GLSL", rows: &[glsl::ROWS] },
-    PageSpec { title: "Go", rows: &[go::ROWS] },
-    PageSpec { title: "go.mod", rows: &[gomod::ROWS] },
-    PageSpec { title: "GraphQL", rows: &[graphql::ROWS] },
-    PageSpec { title: "Groovy", rows: &[groovy::ROWS] },
-    PageSpec { title: "Haskell", rows: &[haskell::ROWS] },
-    PageSpec { title: "HCL", rows: &[hcl::ROWS] },
-    PageSpec { title: "HEEx", rows: &[heex::ROWS] },
-    PageSpec { title: "HTML", rows: &[html::ROWS] },
-    PageSpec { title: "INI", rows: &[ini::ROWS] },
-    PageSpec { title: "Java", rows: &[java::ROWS] },
-    PageSpec { title: "JavaScript", rows: &[javascript::ROWS, jsdoc::ROWS] },
-    PageSpec { title: "JSON", rows: &[json::ROWS] },
-    PageSpec { title: "Julia", rows: &[julia::ROWS] },
-    PageSpec { title: "KDL", rows: &[kdl::ROWS] },
-    PageSpec { title: "Kotlin", rows: &[kotlin::ROWS] },
-    PageSpec { title: "Lua", rows: &[lua::ROWS] },
-    PageSpec { title: "Makefile", rows: &[make::ROWS] },
-    PageSpec { title: "Markdown", rows: &[markdown::ROWS] },
-    PageSpec { title: "Nix", rows: &[nix::ROWS] },
-    PageSpec { title: "Objective-C", rows: &[objc::ROWS] },
-    PageSpec { title: "OCaml", rows: &[ocaml::ROWS] },
-    PageSpec { title: "PHP", rows: &[php::ROWS] },
-    PageSpec { title: "PowerShell", rows: &[powershell::ROWS] },
-    PageSpec { title: "Properties", rows: &[properties::ROWS] },
-    PageSpec { title: "Protocol Buffers", rows: &[proto::ROWS] },
-    PageSpec { title: "Python", rows: &[python::ROWS] },
-    PageSpec { title: "R", rows: &[r::ROWS] },
-    PageSpec { title: "RegExp", rows: &[regexp::ROWS] },
-    PageSpec { title: "Ruby", rows: &[ruby::ROWS] },
-    PageSpec { title: "Rust", rows: &[rust::ROWS] },
-    PageSpec { title: "Scala", rows: &[scala::ROWS] },
-    PageSpec { title: "SCSS", rows: &[scss::ROWS] },
-    PageSpec { title: "Shell Script", rows: &[shell::ROWS] },
-    PageSpec { title: "Solidity", rows: &[solidity::ROWS] },
-    PageSpec { title: "SQL", rows: &[sql::ROWS] },
-    PageSpec { title: "Starlark", rows: &[starlark::ROWS] },
-    PageSpec { title: "Svelte", rows: &[svelte::ROWS] },
-    PageSpec { title: "Swift", rows: &[swift::ROWS] },
-    PageSpec { title: "TOML", rows: &[toml::ROWS] },
-    PageSpec { title: "TypeScript", rows: &[typescript::ROWS] },
-    PageSpec { title: "Vue", rows: &[vue::ROWS] },
-    PageSpec { title: "XML", rows: &[xml::ROWS] },
-    PageSpec { title: "YAML", rows: &[yaml::ROWS] },
-    PageSpec { title: "Zig", rows: &[zig::ROWS] },
+/// Every key table; `defaults::HIDDEN` comes first, so `TEXT` is key 0.
+const TABLES: &[&[Row]] = &[
+    defaults::HIDDEN,
+    defaults::LANGUAGE_DEFAULTS,
+    c::ROWS,
+    csharp::ROWS,
+    cpp::ROWS,
+    cmake::ROWS,
+    css::ROWS,
+    dart::ROWS,
+    diff::ROWS,
+    dockerfile::ROWS,
+    elixir::ROWS,
+    elm::ROWS,
+    embedded_template::ROWS,
+    erlang::ROWS,
+    fsharp::ROWS,
+    fish::ROWS,
+    gleam::ROWS,
+    glsl::ROWS,
+    go::ROWS,
+    gomod::ROWS,
+    graphql::ROWS,
+    groovy::ROWS,
+    haskell::ROWS,
+    hcl::ROWS,
+    heex::ROWS,
+    html::ROWS,
+    ini::ROWS,
+    java::ROWS,
+    javascript::ROWS,
+    jsdoc::ROWS,
+    json::ROWS,
+    julia::ROWS,
+    kdl::ROWS,
+    kotlin::ROWS,
+    lua::ROWS,
+    make::ROWS,
+    markdown::ROWS,
+    nix::ROWS,
+    objc::ROWS,
+    ocaml::ROWS,
+    php::ROWS,
+    powershell::ROWS,
+    properties::ROWS,
+    proto::ROWS,
+    python::ROWS,
+    r::ROWS,
+    regexp::ROWS,
+    ruby::ROWS,
+    rust::ROWS,
+    scala::ROWS,
+    scss::ROWS,
+    shell::ROWS,
+    solidity::ROWS,
+    sql::ROWS,
+    starlark::ROWS,
+    svelte::ROWS,
+    swift::ROWS,
+    toml::ROWS,
+    typescript::ROWS,
+    vue::ROWS,
+    xml::ROWS,
+    yaml::ROWS,
+    zig::ROWS,
 ];
-
-/// The Settings page that lists a key; keys of the first page, `General`, are resolved like the others but listed
-/// nowhere.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Page(u8);
-
-static LISTED: LazyLock<Vec<Page>> = LazyLock::new(|| {
-    let mut languages: Vec<Page> = (2..PAGES.len()).map(|index| Page(index as u8)).collect();
-    languages.sort_by_key(|page| page.title().to_lowercase());
-    std::iter::once(Page::LANGUAGE_DEFAULTS).chain(languages).collect()
-});
-
-impl Page {
-    pub const LANGUAGE_DEFAULTS: Self = Self(1);
-
-    /// In the order the Settings navigation shows them: Language Defaults, then the languages alphabetically.
-    pub fn listed() -> &'static [Self] {
-        &LISTED
-    }
-
-    pub fn titled(title: &str) -> Option<Self> {
-        PAGES.iter().position(|page| page.title == title).map(|index| Self(index as u8))
-    }
-
-    pub fn title(self) -> &'static str {
-        PAGES[usize::from(self.0)].title
-    }
-}
 
 struct KeyInfo {
     id: &'static str,
-    name: &'static str,
     parent: Option<&'static str>,
-    page: Page,
 }
 
-static KEYS: LazyLock<Vec<KeyInfo>> = LazyLock::new(|| {
-    PAGES
-        .iter()
-        .enumerate()
-        .flat_map(|(index, spec)| {
-            let page = Page(index as u8);
-            spec.rows.iter().flat_map(|rows| rows.iter()).map(move |&(id, name, parent)| KeyInfo { id, name, parent, page })
-        })
-        .collect()
-});
+static KEYS: LazyLock<Vec<KeyInfo>> =
+    LazyLock::new(|| TABLES.iter().flat_map(|rows| rows.iter()).map(|&(id, _, parent)| KeyInfo { id, parent }).collect());
 
 static BY_ID: LazyLock<HashMap<&'static str, ColorKey>> =
     LazyLock::new(|| ColorKey::all().map(|key| (key.id(), key)).collect());
@@ -210,27 +167,12 @@ impl ColorKey {
         (0..KEYS.len()).map(|index| Self(index as u16))
     }
 
-    /// The keys `page` lists, sorted by display name as IntelliJ sorts them.
-    pub fn on_page(page: Page) -> Vec<Self> {
-        let mut keys: Vec<Self> = Self::all().filter(|key| key.page() == page).collect();
-        keys.sort_by_key(|key| key.name());
-        keys
-    }
-
     pub fn index(self) -> usize {
         usize::from(self.0)
     }
 
     pub fn id(self) -> &'static str {
         KEYS[self.index()].id
-    }
-
-    pub fn name(self) -> &'static str {
-        KEYS[self.index()].name
-    }
-
-    pub fn page(self) -> Page {
-        KEYS[self.index()].page
     }
 
     /// The key this one inherits from; the tables are checked by tests, so a missing parent is a bug.
@@ -243,6 +185,8 @@ impl ColorKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::colors::Scheme;
+    use crate::theme::Appearance;
     use std::collections::HashSet;
 
     #[test]
@@ -298,16 +242,31 @@ mod tests {
     }
 
     #[test]
-    fn should_list_page_keys_sorted_by_name() {
+    fn should_give_every_intellij_keyed_table_a_colour_from_the_ported_dark_scheme() {
         // given
-        let page = Page::titled("JSON").unwrap();
+        let tables = [
+            ("CSS", css::ROWS),
+            ("Groovy", groovy::ROWS),
+            ("HTML", html::ROWS),
+            ("Kotlin", kotlin::ROWS),
+            ("Markdown", markdown::ROWS),
+            ("Properties", properties::ROWS),
+            ("Python", python::ROWS),
+            ("RegExp", regexp::ROWS),
+            ("SCSS", scss::ROWS),
+            ("Shell Script", shell::ROWS),
+            ("XML", xml::ROWS),
+        ];
+        let dark = Scheme::builtin(Appearance::Dark);
 
         // when
-        let names: Vec<&str> = ColorKey::on_page(page).into_iter().map(ColorKey::name).collect();
+        let uncoloured: Vec<&str> = tables
+            .into_iter()
+            .filter(|(_, rows)| rows.iter().all(|&(id, _, _)| ColorKey::by_id(id).and_then(|key| dark.entry(key)).is_none()))
+            .map(|(table, _)| table)
+            .collect();
 
         // then
-        assert_eq!(names.first(), Some(&"Block comment"));
-        assert!(names.is_sorted(), "{names:?}");
-        assert_eq!(names.len(), json::ROWS.len());
+        assert!(uncoloured.is_empty(), "tables without a ported colour: {uncoloured:?}");
     }
 }

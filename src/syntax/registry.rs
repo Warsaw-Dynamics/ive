@@ -2,7 +2,7 @@
 
 use super::vendored;
 
-/// How IVE recognises, parses, colours and previews one language.
+/// How IVE recognises, parses and colours one language.
 pub struct LanguageSpec {
     pub name: &'static str,
     /// lower-case, without the dot; matched ignoring case
@@ -18,21 +18,11 @@ pub struct LanguageSpec {
     pub highlights: &'static str,
     /// IVE's injection query, with tree-sitter's `@injection.content` / `@injection.language` captures
     pub injections: Option<&'static str>,
-    /// title of the Settings page listing the language's keys
-    pub page: &'static str,
-    /// demo text of that page; one language per page has it
-    pub preview: Option<&'static str>,
 }
 
 macro_rules! query {
     ($($path:literal),+) => {
         concat!($(include_str!(concat!("../../assets/queries/", $path)), "\n"),+)
-    };
-}
-
-macro_rules! preview {
-    ($path:literal) => {
-        Some(include_str!(concat!("../../assets/previews/", $path)))
     };
 }
 
@@ -47,8 +37,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_c::LANGUAGE.into(),
         highlights: query!("c/highlights.scm"),
         injections: Some(query!("c/injections.scm")),
-        page: "C",
-        preview: preview!("c.c"),
     },
     LanguageSpec {
         name: "C#",
@@ -59,8 +47,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_c_sharp::LANGUAGE.into(),
         highlights: query!("csharp/highlights.scm"),
         injections: None,
-        page: "C#",
-        preview: preview!("csharp.cs"),
     },
     LanguageSpec {
         name: "C++",
@@ -71,8 +57,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_cpp::LANGUAGE.into(),
         highlights: query!("cpp/highlights.scm"),
         injections: Some(query!("cpp/injections.scm")),
-        page: "C++",
-        preview: preview!("cpp.cpp"),
     },
     LanguageSpec {
         name: "CMake",
@@ -83,8 +67,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_cmake::LANGUAGE.into(),
         highlights: query!("cmake/highlights.scm"),
         injections: None,
-        page: "CMake",
-        preview: preview!("cmake.cmake"),
     },
     LanguageSpec {
         name: "CSS",
@@ -95,8 +77,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_css::LANGUAGE.into(),
         highlights: query!("css/highlights.scm"),
         injections: None,
-        page: "CSS",
-        preview: preview!("css.css"),
     },
     LanguageSpec {
         name: "Dart",
@@ -107,8 +87,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_dart::LANGUAGE.into(),
         highlights: query!("dart/highlights.scm"),
         injections: None,
-        page: "Dart",
-        preview: preview!("dart.dart"),
     },
     LanguageSpec {
         name: "Diff",
@@ -119,8 +97,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_diff::LANGUAGE.into(),
         highlights: query!("diff/highlights.scm"),
         injections: None,
-        page: "Diff",
-        preview: preview!("diff.diff"),
     },
     LanguageSpec {
         name: "Dockerfile",
@@ -131,8 +107,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::DOCKERFILE.into(),
         highlights: query!("dockerfile/highlights.scm"),
         injections: Some(query!("dockerfile/injections.scm")),
-        page: "Dockerfile",
-        preview: preview!("dockerfile.dockerfile"),
     },
     LanguageSpec {
         name: "DTD",
@@ -143,8 +117,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_xml::LANGUAGE_DTD.into(),
         highlights: query!("dtd/common.scm", "dtd/highlights.scm"),
         injections: None,
-        page: "XML",
-        preview: None,
     },
     LanguageSpec {
         name: "EJS",
@@ -155,8 +127,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_embedded_template::LANGUAGE.into(),
         highlights: query!("embedded_template/highlights.scm"),
         injections: Some(query!("ejs/injections.scm")),
-        page: "ERB and EJS",
-        preview: None,
     },
     LanguageSpec {
         name: "Elixir",
@@ -167,8 +137,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_elixir::LANGUAGE.into(),
         highlights: query!("elixir/highlights.scm"),
         injections: Some(query!("elixir/injections.scm")),
-        page: "Elixir",
-        preview: preview!("elixir.ex"),
     },
     LanguageSpec {
         name: "Elm",
@@ -179,8 +147,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_elm::LANGUAGE.into(),
         highlights: query!("elm/highlights.scm"),
         injections: Some(query!("elm/injections.scm")),
-        page: "Elm",
-        preview: preview!("elm.elm"),
     },
     LanguageSpec {
         name: "ERB",
@@ -191,8 +157,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_embedded_template::LANGUAGE.into(),
         highlights: query!("embedded_template/highlights.scm"),
         injections: Some(query!("erb/injections.scm")),
-        page: "ERB and EJS",
-        preview: preview!("embedded_template.erb"),
     },
     LanguageSpec {
         name: "Erlang",
@@ -203,8 +167,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_erlang::LANGUAGE.into(),
         highlights: query!("erlang/highlights.scm"),
         injections: None,
-        page: "Erlang",
-        preview: preview!("erlang.erl"),
     },
     LanguageSpec {
         name: "F#",
@@ -215,8 +177,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_fsharp::LANGUAGE_FSHARP.into(),
         highlights: query!("fsharp/highlights.scm"),
         injections: None,
-        page: "F#",
-        preview: preview!("fsharp.fs"),
     },
     LanguageSpec {
         name: "F# Signature",
@@ -227,8 +187,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_fsharp::LANGUAGE_SIGNATURE.into(),
         highlights: query!("fsharp_signature/highlights.scm"),
         injections: None,
-        page: "F#",
-        preview: None,
     },
     LanguageSpec {
         name: "fish",
@@ -239,8 +197,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::FISH.into(),
         highlights: query!("fish/highlights.scm"),
         injections: None,
-        page: "fish",
-        preview: preview!("fish.fish"),
     },
     LanguageSpec {
         name: "Gleam",
@@ -251,8 +207,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_gleam::LANGUAGE.into(),
         highlights: query!("gleam/highlights.scm"),
         injections: None,
-        page: "Gleam",
-        preview: preview!("gleam.gleam"),
     },
     LanguageSpec {
         name: "GLSL",
@@ -263,8 +217,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_glsl::LANGUAGE_GLSL.into(),
         highlights: query!("glsl/highlights.scm"),
         injections: None,
-        page: "GLSL",
-        preview: preview!("glsl.glsl"),
     },
     LanguageSpec {
         name: "Go",
@@ -275,8 +227,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_go::LANGUAGE.into(),
         highlights: query!("go/highlights.scm"),
         injections: None,
-        page: "Go",
-        preview: preview!("go.go"),
     },
     LanguageSpec {
         name: "go.mod",
@@ -287,8 +237,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::GOMOD.into(),
         highlights: query!("gomod/highlights.scm"),
         injections: None,
-        page: "go.mod",
-        preview: preview!("gomod.mod"),
     },
     LanguageSpec {
         name: "GraphQL",
@@ -299,8 +247,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_graphql::LANGUAGE.into(),
         highlights: query!("graphql/highlights.scm"),
         injections: None,
-        page: "GraphQL",
-        preview: preview!("graphql.graphql"),
     },
     LanguageSpec {
         name: "Groovy",
@@ -311,8 +257,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_groovy::LANGUAGE.into(),
         highlights: query!("groovy/highlights.scm"),
         injections: None,
-        page: "Groovy",
-        preview: preview!("groovy.groovy"),
     },
     LanguageSpec {
         name: "Haskell",
@@ -323,8 +267,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_haskell::LANGUAGE.into(),
         highlights: query!("haskell/highlights.scm"),
         injections: None,
-        page: "Haskell",
-        preview: preview!("haskell.hs"),
     },
     LanguageSpec {
         name: "HCL",
@@ -335,8 +277,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_hcl::LANGUAGE.into(),
         highlights: query!("hcl/highlights.scm"),
         injections: None,
-        page: "HCL",
-        preview: preview!("hcl.tf"),
     },
     LanguageSpec {
         name: "HEEx",
@@ -347,8 +287,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_heex::LANGUAGE.into(),
         highlights: query!("heex/highlights.scm"),
         injections: Some(query!("heex/injections.scm")),
-        page: "HEEx",
-        preview: preview!("heex.heex"),
     },
     LanguageSpec {
         name: "HTML",
@@ -359,8 +297,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_html::LANGUAGE.into(),
         highlights: query!("html/highlights.scm"),
         injections: Some(query!("html/injections.scm")),
-        page: "HTML",
-        preview: preview!("html.html"),
     },
     LanguageSpec {
         name: "INI",
@@ -371,8 +307,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_ini::LANGUAGE.into(),
         highlights: query!("ini/highlights.scm"),
         injections: None,
-        page: "INI",
-        preview: preview!("ini.ini"),
     },
     LanguageSpec {
         name: "Java",
@@ -383,8 +317,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_java::LANGUAGE.into(),
         highlights: query!("java/highlights.scm"),
         injections: None,
-        page: "Java",
-        preview: preview!("java.java"),
     },
     LanguageSpec {
         name: "JavaScript",
@@ -395,8 +327,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_javascript::LANGUAGE.into(),
         highlights: query!("javascript/common.scm", "javascript/highlights.scm"),
         injections: Some(query!("javascript/injections.scm")),
-        page: "JavaScript",
-        preview: preview!("javascript.js"),
     },
     LanguageSpec {
         name: "JSDoc",
@@ -407,8 +337,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_jsdoc::LANGUAGE.into(),
         highlights: query!("jsdoc/highlights.scm"),
         injections: None,
-        page: "JavaScript",
-        preview: None,
     },
     LanguageSpec {
         name: "JSON",
@@ -419,8 +347,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_json::LANGUAGE.into(),
         highlights: query!("json/highlights.scm"),
         injections: None,
-        page: "JSON",
-        preview: preview!("json.json"),
     },
     LanguageSpec {
         name: "Julia",
@@ -431,8 +357,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_julia::LANGUAGE.into(),
         highlights: query!("julia/highlights.scm"),
         injections: None,
-        page: "Julia",
-        preview: preview!("julia.jl"),
     },
     LanguageSpec {
         name: "KDL",
@@ -443,8 +367,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_kdl::LANGUAGE.into(),
         highlights: query!("kdl/highlights.scm"),
         injections: None,
-        page: "KDL",
-        preview: preview!("kdl.kdl"),
     },
     LanguageSpec {
         name: "Kotlin",
@@ -455,8 +377,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_kotlin_ng::LANGUAGE.into(),
         highlights: query!("kotlin/highlights.scm"),
         injections: None,
-        page: "Kotlin",
-        preview: preview!("kotlin.kt"),
     },
     LanguageSpec {
         name: "Lua",
@@ -467,8 +387,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_lua::LANGUAGE.into(),
         highlights: query!("lua/highlights.scm"),
         injections: None,
-        page: "Lua",
-        preview: preview!("lua.lua"),
     },
     LanguageSpec {
         name: "Makefile",
@@ -479,8 +397,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_make::LANGUAGE.into(),
         highlights: query!("make/highlights.scm"),
         injections: Some(query!("make/injections.scm")),
-        page: "Makefile",
-        preview: preview!("make.mk"),
     },
     LanguageSpec {
         name: "Markdown",
@@ -491,8 +407,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_md::LANGUAGE.into(),
         highlights: query!("markdown/highlights.scm"),
         injections: Some(query!("markdown/injections.scm")),
-        page: "Markdown",
-        preview: preview!("markdown.md"),
     },
     LanguageSpec {
         name: "Markdown Inline",
@@ -503,8 +417,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_md::INLINE_LANGUAGE.into(),
         highlights: query!("markdown_inline/highlights.scm"),
         injections: Some(query!("markdown_inline/injections.scm")),
-        page: "Markdown",
-        preview: None,
     },
     LanguageSpec {
         name: "Nix",
@@ -515,8 +427,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_nix::LANGUAGE.into(),
         highlights: query!("nix/highlights.scm"),
         injections: None,
-        page: "Nix",
-        preview: preview!("nix.nix"),
     },
     LanguageSpec {
         name: "Objective-C",
@@ -527,8 +437,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_objc::LANGUAGE.into(),
         highlights: query!("objc/highlights.scm"),
         injections: Some(query!("objc/injections.scm")),
-        page: "Objective-C",
-        preview: preview!("objc.m"),
     },
     LanguageSpec {
         name: "OCaml",
@@ -539,8 +447,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_ocaml::LANGUAGE_OCAML.into(),
         highlights: query!("ocaml/highlights.scm"),
         injections: None,
-        page: "OCaml",
-        preview: preview!("ocaml.ml"),
     },
     LanguageSpec {
         name: "OCaml Interface",
@@ -551,8 +457,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_ocaml::LANGUAGE_OCAML_INTERFACE.into(),
         highlights: query!("ocaml/highlights.scm", "ocaml_interface/highlights.scm"),
         injections: None,
-        page: "OCaml",
-        preview: None,
     },
     LanguageSpec {
         name: "PHP",
@@ -563,8 +467,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_php::LANGUAGE_PHP.into(),
         highlights: query!("php/highlights.scm"),
         injections: Some(query!("php/injections.scm")),
-        page: "PHP",
-        preview: preview!("php.php"),
     },
     LanguageSpec {
         name: "PowerShell",
@@ -575,8 +477,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_powershell::LANGUAGE.into(),
         highlights: query!("powershell/highlights.scm"),
         injections: None,
-        page: "PowerShell",
-        preview: preview!("powershell.ps1"),
     },
     LanguageSpec {
         name: "Properties",
@@ -587,8 +487,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_properties::LANGUAGE.into(),
         highlights: query!("properties/highlights.scm"),
         injections: None,
-        page: "Properties",
-        preview: preview!("properties.properties"),
     },
     LanguageSpec {
         name: "Protocol Buffers",
@@ -599,8 +497,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_proto::LANGUAGE.into(),
         highlights: query!("proto/highlights.scm"),
         injections: None,
-        page: "Protocol Buffers",
-        preview: preview!("proto.proto"),
     },
     LanguageSpec {
         name: "Python",
@@ -611,8 +507,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_python::LANGUAGE.into(),
         highlights: query!("python/highlights.scm"),
         injections: None,
-        page: "Python",
-        preview: preview!("python.py"),
     },
     LanguageSpec {
         name: "R",
@@ -623,8 +517,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_r::LANGUAGE.into(),
         highlights: query!("r/highlights.scm"),
         injections: None,
-        page: "R",
-        preview: preview!("r.r"),
     },
     LanguageSpec {
         name: "RegExp",
@@ -635,8 +527,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_regex::LANGUAGE.into(),
         highlights: query!("regexp/highlights.scm"),
         injections: None,
-        page: "RegExp",
-        preview: preview!("regexp.regexp"),
     },
     LanguageSpec {
         name: "Ruby",
@@ -647,8 +537,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_ruby::LANGUAGE.into(),
         highlights: query!("ruby/highlights.scm"),
         injections: Some(query!("ruby/injections.scm")),
-        page: "Ruby",
-        preview: preview!("ruby.rb"),
     },
     LanguageSpec {
         name: "Rune",
@@ -659,8 +547,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::RUNE.into(),
         highlights: query!("rust/highlights.scm", "rune/highlights.scm"),
         injections: None,
-        page: "Rust",
-        preview: None,
     },
     LanguageSpec {
         name: "Rust",
@@ -671,8 +557,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_rust::LANGUAGE.into(),
         highlights: query!("rust/highlights.scm"),
         injections: None,
-        page: "Rust",
-        preview: preview!("rust.rs"),
     },
     LanguageSpec {
         name: "Scala",
@@ -683,8 +567,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_scala::LANGUAGE.into(),
         highlights: query!("scala/highlights.scm"),
         injections: None,
-        page: "Scala",
-        preview: preview!("scala.scala"),
     },
     LanguageSpec {
         name: "SCSS",
@@ -695,8 +577,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::SCSS.into(),
         highlights: query!("scss/highlights.scm"),
         injections: None,
-        page: "SCSS",
-        preview: preview!("scss.scss"),
     },
     LanguageSpec {
         name: "Shell",
@@ -707,8 +587,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_bash::LANGUAGE.into(),
         highlights: query!("shell/highlights.scm"),
         injections: None,
-        page: "Shell Script",
-        preview: preview!("shell.sh"),
     },
     LanguageSpec {
         name: "Solidity",
@@ -719,8 +597,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_solidity::LANGUAGE.into(),
         highlights: query!("solidity/highlights.scm"),
         injections: None,
-        page: "Solidity",
-        preview: preview!("solidity.sol"),
     },
     LanguageSpec {
         name: "SQL",
@@ -731,8 +607,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::SQL.into(),
         highlights: query!("sql/highlights.scm"),
         injections: None,
-        page: "SQL",
-        preview: preview!("sql.sql"),
     },
     LanguageSpec {
         name: "Starlark",
@@ -743,8 +617,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_starlark::LANGUAGE.into(),
         highlights: query!("starlark/highlights.scm"),
         injections: None,
-        page: "Starlark",
-        preview: preview!("starlark.bzl"),
     },
     LanguageSpec {
         name: "Svelte",
@@ -755,8 +627,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_svelte_ng::LANGUAGE.into(),
         highlights: query!("svelte/highlights.scm"),
         injections: Some(query!("svelte/injections.scm")),
-        page: "Svelte",
-        preview: preview!("svelte.svelte"),
     },
     LanguageSpec {
         name: "Swift",
@@ -767,8 +637,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_swift::LANGUAGE.into(),
         highlights: query!("swift/highlights.scm"),
         injections: None,
-        page: "Swift",
-        preview: preview!("swift.swift"),
     },
     LanguageSpec {
         name: "TOML",
@@ -779,8 +647,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_toml_ng::LANGUAGE.into(),
         highlights: query!("toml/highlights.scm"),
         injections: None,
-        page: "TOML",
-        preview: preview!("toml.toml"),
     },
     LanguageSpec {
         name: "TSX",
@@ -791,8 +657,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_typescript::LANGUAGE_TSX.into(),
         highlights: query!("javascript/common.scm", "typescript/highlights.scm"),
         injections: Some(query!("javascript/injections.scm")),
-        page: "TypeScript",
-        preview: None,
     },
     LanguageSpec {
         name: "TypeScript",
@@ -803,8 +667,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
         highlights: query!("javascript/common.scm", "typescript/highlights.scm"),
         injections: Some(query!("javascript/injections.scm")),
-        page: "TypeScript",
-        preview: preview!("typescript.ts"),
     },
     LanguageSpec {
         name: "Vue",
@@ -815,8 +677,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || vendored::VUE.into(),
         highlights: query!("vue/highlights.scm"),
         injections: Some(query!("vue/injections.scm")),
-        page: "Vue",
-        preview: preview!("vue.vue"),
     },
     LanguageSpec {
         name: "XML",
@@ -827,8 +687,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_xml::LANGUAGE_XML.into(),
         highlights: query!("dtd/common.scm", "xml/highlights.scm"),
         injections: None,
-        page: "XML",
-        preview: preview!("xml.xml"),
     },
     LanguageSpec {
         name: "YAML",
@@ -839,8 +697,6 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_yaml::LANGUAGE.into(),
         highlights: query!("yaml/highlights.scm"),
         injections: None,
-        page: "YAML",
-        preview: preview!("yaml.yaml"),
     },
     LanguageSpec {
         name: "Zig",
@@ -851,7 +707,5 @@ pub const LANGUAGES: &[LanguageSpec] = &[
         grammar: || tree_sitter_zig::LANGUAGE.into(),
         highlights: query!("zig/highlights.scm"),
         injections: None,
-        page: "Zig",
-        preview: preview!("zig.zig"),
     },
 ];

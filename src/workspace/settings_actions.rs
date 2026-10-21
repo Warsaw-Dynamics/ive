@@ -1,10 +1,9 @@
 use gpui::{Context, Window, prelude::*};
 
 use super::Workspace;
-use crate::colors::ColorKey;
 use crate::editor::Tab;
 use crate::settings::{SettingsError, SettingsStore, ThemePreference};
-use crate::settings_page::{PreviewJob, SettingsPage, SettingsView};
+use crate::settings_page::{SettingsPage, SettingsView};
 use crate::theme;
 
 impl Workspace {
@@ -28,8 +27,9 @@ impl Workspace {
     }
 
     pub fn show_settings_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {
-        let job = self.settings_view().and_then(|view| view.show_page(page));
-        self.highlight_preview(job, cx);
+        if let Some(view) = self.settings_view() {
+            view.show_page(page);
+        }
         cx.notify();
     }
 
@@ -39,32 +39,6 @@ impl Workspace {
             view.show_licence(row);
         }
         cx.notify();
-    }
-
-    pub fn select_color_key(&mut self, key: ColorKey, cx: &mut Context<Self>) {
-        let job = self.settings_view().and_then(|view| view.select(key));
-        self.highlight_preview(job, cx);
-        cx.notify();
-    }
-
-    /// Off the UI thread: a slow query compile must not freeze the window.
-    fn highlight_preview(&mut self, job: Option<PreviewJob>, cx: &mut Context<Self>) {
-        let Some(job) = job else {
-            return;
-        };
-        let highlighting = cx.background_executor().spawn(async move { job.run() });
-        cx.spawn(async move |workspace, cx| {
-            let (page, preview) = highlighting.await;
-            workspace
-                .update(cx, |workspace, cx| {
-                    if let Some(view) = workspace.settings_view() {
-                        view.take_preview(page, preview);
-                    }
-                    cx.notify();
-                })
-                .ok();
-        })
-        .detach();
     }
 
     fn after_settings_change(&mut self, saved: Result<(), SettingsError>, cx: &mut Context<Self>) {

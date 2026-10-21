@@ -76,9 +76,8 @@ Run it again to rebuild and reinstall.
 | Change keys and mouse clicks | `init.rn` next to IVE's `ive.rn`, see [Scripting](#scripting) |
 | Scroll a long tab strip | Shift+wheel, or a touchpad |
 | Colours | files up to 8 MB in about 60 languages (see [Languages](#languages)) are coloured as in IntelliJ's New UI themes, including code embedded in other code; bigger or other files show plain text |
-| See colours | Settings › Editor › Color Scheme › a language: pick a key, or click a word in the preview, to see its Bold, Italic, Foreground, Background and parent |
 
-Colours are changed in `init.rn`, per theme under `config.theme.dark.syntax` and `config.theme.light.syntax` (see [Theme](#theme)); the Settings pages only show them.
+Colours are changed in `init.rn`, per theme under `config.theme.dark.syntax` and `config.theme.light.syntax` (see [Theme](#theme)).
 
 Terminals run your login shell in their checkout's folder (the home folder outside projects), with
 `TERM=xterm-256color`. Typing `exit` ends the process and closes its tab. Typing `claude` turns the terminal into a
@@ -349,9 +348,9 @@ A file's language comes from its exact name (`Makefile`, `Dockerfile`, `.bashrc`
 and JavaScript in HTML, fenced code blocks in Markdown, JSDoc and regular expressions in JavaScript, HEEx in
 Elixir's `~H`, HTML around PHP, ERB and EJS, script and style blocks in Vue and Svelte.
 
-Adding a language: a row in `src/syntax/registry.rs` (matching, grammar, queries, Settings page, preview), a key
-table in `src/colors/keys/`, `assets/queries/<language>/highlights.scm` (capture names are key ids) and optionally
-`injections.scm`, a preview in `assets/previews/`, tests in `src/syntax/tests/`. Grammars without a crate that
+Adding a language: a row in `src/syntax/registry.rs` (matching, grammar, queries), a key
+table in `src/colors/keys/` (listed in its `TABLES`), `assets/queries/<language>/highlights.scm` (capture names are key ids) and optionally
+`injections.scm`, a sample file in `assets/previews/` (listed in `SAMPLES` of `src/syntax/tests/scaling.rs`), tests in `src/syntax/tests/`. Grammars without a crate that
 works with IVE's tree-sitter are vendored in `vendor/grammars/` and compiled by `build.rs`. After adding
 IntelliJ-keyed languages, regenerate the schemes: `tools/port_intellij_schemes.py /path/to/intellij-community`.
 
@@ -694,7 +693,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `color-key:<KEY>`, `inherit-parent` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs | `reload-diff`, `diff-file:<path>` |
@@ -779,7 +778,7 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 | `src/syntax/` | language registry (`registry.rs`), parsing into embedded-code layers (`parse.rs`, `injection.rs`) and highlight spans (`highlight.rs`); queries in `assets/queries/` |
 | `vendor/grammars/` | generated tree-sitter parsers without a usable crate, compiled by `build.rs` |
 | `src/colors/` | colour keys, built-in schemes (`assets/schemes/`, from `tools/port_intellij_schemes.py`), user overrides; checkout colours |
-| `src/settings_page/` | Settings tab: Appearance, Scripts, Third-Party Software and the Color Scheme pages with their preview |
+| `src/settings_page/` | Settings tab: Appearance, Scripts and Third-Party Software |
 | `src/terminal/` | terminal: PTY session (`alacritty_terminal`), foreground program (Claude Code), keyboard and mouse encoding, colours, drawing |
 | `src/api/` | what MCP and scripts may ask of the workspace; `src/workspace/api_requests.rs` answers it on the UI thread |
 | `src/mcp/` | MCP server, a caller of `src/api/` |

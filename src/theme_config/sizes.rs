@@ -79,16 +79,13 @@ pub struct SettingsSizes {
     pub page_gap: Px,
     pub page_padding: Px,
     pub text_size: FontPx,
-    pub small_text_size: FontPx,
     pub title_text_size: FontPx,
     pub title_weight: Weight,
     pub nav_width: Px,
     pub nav_padding_y: Px,
     pub nav_border: Px,
     pub nav_base_indent: Px,
-    pub nav_indent: Px,
     pub nav_item_padding_y: Px,
-    pub nav_heading_weight: Weight,
     /// Appearance
     pub appearance_gap: Px,
     pub appearance_label_width: Px,
@@ -96,31 +93,6 @@ pub struct SettingsSizes {
     pub segmented_border: Px,
     pub segment_padding_x: Px,
     pub segment_padding_y: Px,
-    /// a Color Scheme page: keys, attributes and preview
-    pub colors_gap: Px,
-    pub keys_gap: Px,
-    pub keys_height: Height,
-    pub keys_padding_y: Px,
-    pub keys_radius: Px,
-    pub keys_border: Px,
-    pub key_padding_x: Px,
-    pub key_padding_y: Px,
-    pub panel_width: Px,
-    pub color_label_width: Px,
-    pub color_row_gap: Px,
-    pub swatch_size: Px,
-    pub swatch_radius: Px,
-    pub swatch_border: Px,
-    pub box_size: Px,
-    pub box_radius: Px,
-    pub box_border: Px,
-    pub checkbox_gap: Px,
-    pub inherit_gap: Px,
-    pub preview_line_height: Height,
-    pub preview_padding: Px,
-    pub preview_radius: Px,
-    pub preview_border: Px,
-    pub preview_underline: Px,
     /// Third-Party Software
     pub table_gap: Px,
     pub table_padding_right: Px,
@@ -647,46 +619,19 @@ mod tests {
         assert_eq!(sizes.page_gap, Px(16.0), "page_gap");
         assert_eq!(sizes.page_padding, Px(24.0), "page_padding");
         assert_eq!(sizes.text_size, FontPx(14.0), "text_size");
-        assert_eq!(sizes.small_text_size, FontPx(12.0), "small_text_size");
         assert_eq!(sizes.title_text_size, FontPx(20.0), "title_text_size");
         assert_eq!(sizes.title_weight, Weight::Bold, "title_weight");
         assert_eq!(sizes.nav_width, Px(200.0), "nav_width");
         assert_eq!(sizes.nav_padding_y, Px(8.0), "nav_padding_y");
         assert_eq!(sizes.nav_border, Px(1.0), "nav_border");
         assert_eq!(sizes.nav_base_indent, Px(12.0), "nav_base_indent");
-        assert_eq!(sizes.nav_indent, Px(16.0), "nav_indent");
         assert_eq!(sizes.nav_item_padding_y, Px(4.0), "nav_item_padding_y");
-        assert_eq!(sizes.nav_heading_weight, Weight::Semibold, "nav_heading_weight");
         assert_eq!(sizes.appearance_gap, Px(16.0), "appearance_gap");
         assert_eq!(sizes.appearance_label_width, Px(80.0), "appearance_label_width");
         assert_eq!(sizes.segmented_radius, Px(6.0), "segmented_radius");
         assert_eq!(sizes.segmented_border, Px(1.0), "segmented_border");
         assert_eq!(sizes.segment_padding_x, Px(12.0), "segment_padding_x");
         assert_eq!(sizes.segment_padding_y, Px(4.0), "segment_padding_y");
-        assert_eq!(sizes.colors_gap, Px(12.0), "colors_gap");
-        assert_eq!(sizes.keys_gap, Px(16.0), "keys_gap");
-        assert_eq!(sizes.keys_height, Height(260.0), "keys_height");
-        assert_eq!(sizes.keys_padding_y, Px(4.0), "keys_padding_y");
-        assert_eq!(sizes.keys_radius, Px(6.0), "keys_radius");
-        assert_eq!(sizes.keys_border, Px(1.0), "keys_border");
-        assert_eq!(sizes.key_padding_x, Px(12.0), "key_padding_x");
-        assert_eq!(sizes.key_padding_y, Px(2.0), "key_padding_y");
-        assert_eq!(sizes.panel_width, Px(300.0), "panel_width");
-        assert_eq!(sizes.color_label_width, Px(110.0), "color_label_width");
-        assert_eq!(sizes.color_row_gap, Px(8.0), "color_row_gap");
-        assert_eq!(sizes.swatch_size, Px(18.0), "swatch_size");
-        assert_eq!(sizes.swatch_radius, Px(4.0), "swatch_radius");
-        assert_eq!(sizes.swatch_border, Px(1.0), "swatch_border");
-        assert_eq!(sizes.box_size, Px(14.0), "box_size");
-        assert_eq!(sizes.box_radius, Px(4.0), "box_radius");
-        assert_eq!(sizes.box_border, Px(1.0), "box_border");
-        assert_eq!(sizes.checkbox_gap, Px(6.0), "checkbox_gap");
-        assert_eq!(sizes.inherit_gap, Px(4.0), "inherit_gap");
-        assert_eq!(sizes.preview_line_height, Height(20.0), "preview_line_height");
-        assert_eq!(sizes.preview_padding, Px(8.0), "preview_padding");
-        assert_eq!(sizes.preview_radius, Px(6.0), "preview_radius");
-        assert_eq!(sizes.preview_border, Px(1.0), "preview_border");
-        assert_eq!(sizes.preview_underline, Px(2.0), "preview_underline");
         assert_eq!(sizes.table_gap, Px(16.0), "table_gap");
         assert_eq!(sizes.table_padding_right, Px(16.0), "table_padding_right");
         assert_eq!(sizes.list_gap, Px(8.0), "list_gap");

@@ -111,26 +111,6 @@ mod tests {
     }
 
     #[test]
-    fn should_give_every_intellij_keyed_page_a_colour_from_the_ported_dark_scheme() {
-        // given
-        let pages =
-            ["CSS", "Groovy", "HTML", "Kotlin", "Markdown", "Properties", "Python", "RegExp", "SCSS", "Shell Script", "XML"];
-        let dark = Scheme::parse(DARK, "dark").unwrap();
-
-        // when
-        let uncoloured: Vec<&str> = pages
-            .into_iter()
-            .filter(|title| {
-                let page = crate::colors::Page::titled(title).unwrap();
-                ColorKey::on_page(page).into_iter().all(|key| dark.entry(key).is_none())
-            })
-            .collect();
-
-        // then
-        assert!(uncoloured.is_empty(), "pages without a ported colour: {uncoloured:?}");
-    }
-
-    #[test]
     fn should_parse_both_builtin_schemes_with_intellij_keyword_colours() {
         // given
         let keyword = key("DEFAULT_KEYWORD");

@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use gpui::{App, Context, Window};
 
 use super::Workspace;
-use crate::colors::Page;
 use crate::document::Document;
 use crate::editor::{EditorView, Tab};
 use crate::git::types::Sha;
@@ -192,8 +191,7 @@ fn file_tab(path: &Path, scroll: ScrollPosition) -> Tab {
     }
 }
 
-/// Appearance, Scripts, Third-Party Software, or a colour page by its title; Appearance for a name no page has any
-/// more.
+/// Appearance, Scripts or Third-Party Software by its name; Appearance for a name no page has.
 fn settings_page_named(name: &str) -> SettingsPage {
     if name == "Scripts" {
         return SettingsPage::Scripts;
@@ -201,7 +199,7 @@ fn settings_page_named(name: &str) -> SettingsPage {
     if name == THIRD_PARTY_TITLE {
         return SettingsPage::ThirdParty;
     }
-    Page::titled(name).map_or(SettingsPage::Appearance, SettingsPage::Colors)
+    SettingsPage::Appearance
 }
 
 /// What is open at start, which decides the saved tabs that come back.
@@ -359,13 +357,13 @@ mod tests {
     #[test]
     fn should_save_tabs_in_order_with_the_shown_one() {
         // given
-        let tabs = [(false, Some(settings("Appearance"))), (false, None), (true, Some(settings("Java")))];
+        let tabs = [(false, Some(settings("Appearance"))), (false, None), (true, Some(settings("Scripts")))];
 
         // when
         let saved = saved_tab_list(tabs.into_iter());
 
         // then
-        assert_eq!(saved, SavedTabs { tabs: vec![settings("Appearance"), settings("Java")], active: Some(1) });
+        assert_eq!(saved, SavedTabs { tabs: vec![settings("Appearance"), settings("Scripts")], active: Some(1) });
     }
 
     #[test]

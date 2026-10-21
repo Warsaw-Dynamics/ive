@@ -7,7 +7,7 @@ mod scheme;
 
 pub use attributes::{Entry, RawEntry, TextAttributes};
 pub use checkout::{checkout_colour, fnv1a};
-pub use keys::{ColorKey, Page};
+pub use keys::ColorKey;
 pub use scheme::{Overrides, ResolvedScheme, Scheme};
 
 use gpui::App;
