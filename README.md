@@ -724,8 +724,8 @@ publishes nothing.
 - `ive-linux-x86_64-<commit>.tar.gz`: the `ive` binary, the licence files and the icons. It needs glibc 2.35 or newer
   (Ubuntu 22.04, Debian 12, Fedora 36 and later).
 - `ive-macos-arm64-<commit>.zip`: `IVE.app` (written by `desktop/macos-bundle.sh`) and the licence files. The app is
-  not signed or notarized: at its first start macOS refuses it; System Settings → Privacy & Security → Open Anyway
-  lets it run.
+  signed ad hoc, not by an Apple developer, nor notarized: at its first start macOS refuses it; System Settings →
+  Privacy & Security → Open Anyway lets it run.
 
 ```sh
 git push origin HEAD:release

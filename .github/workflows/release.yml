@@ -58,6 +58,10 @@ jobs:
           name="ive-macos-arm64-${GITHUB_SHA:0:10}"
           mkdir -p "dist/$name"
           desktop/macos-bundle.sh "dist/$name/IVE.app" target/release/ive
+          # the linker's ad-hoc signature covers the binary, not the bundle around it: a downloaded app signed so is
+          # "damaged" to Gatekeeper, one signed as a whole only "unverified" (Open Anyway in System Settings)
+          codesign --force --sign - "dist/$name/IVE.app"
+          codesign --verify --strict --verbose=2 "dist/$name/IVE.app"
           cp LICENSE NOTICE THIRD-PARTY-NOTICES.md "dist/$name/"
           cp -r licenses "dist/$name/"
           ditto -c -k --keepParent "dist/$name" "dist/$name.zip"
