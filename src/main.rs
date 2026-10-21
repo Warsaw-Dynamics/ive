@@ -183,6 +183,8 @@ fn run(startup: Startup, background: bool) {
         cx.set_global(theme_config::defaults());
         theme::apply(cx.window_appearance(), cx);
         text_input::bind_keys(cx);
+        #[cfg(target_os = "macos")]
+        workspace::add_app_menu(cx);
         let saved = startup.saved.window.and_then(|window| window.usable_bounds(&window_state::screens(cx)));
         let bounds = saved.unwrap_or_else(|| Bounds::centered(None, window_state::DEFAULT_SIZE, cx));
         // a first start leaves the place to the window manager, which knows the monitor the user works on

@@ -65,6 +65,8 @@ mod drag_preview;
 mod worktree_list;
 
 pub use drag_preview::TabDragArea;
+#[cfg(target_os = "macos")]
+pub use quit::add_app_menu;
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use tab_menu::{DEFAULT_MENU, MenuLine, label as tab_command_label, target as tab_command_target};
@@ -293,6 +295,15 @@ impl Workspace {
         {
             let this = cx.entity().downgrade();
             window.on_window_should_close(cx, move |window, cx| this.update(cx, |workspace, cx| workspace.request_quit(window, cx)).is_err());
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let this = cx.entity().downgrade();
+            let handle = window.window_handle();
+            cx.on_quit_request(move |cx| {
+                let asked = handle.update(cx, |_, window, cx| this.update(cx, |workspace, cx| workspace.quit_requested_by_system(window, cx)));
+                asked.ok().and_then(Result::ok).unwrap_or(true)
+            });
         }
         tracing::info_span!("restore_projects").in_scope(|| workspace.restore(&startup.saved, cx));
         let tabs = startup.saved.tabs.clone();

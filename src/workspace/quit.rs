@@ -6,6 +6,8 @@ use std::time::Duration;
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{ClickEvent, Context, Div, FocusHandle, KeyDownEvent, Task, Window, div, prelude::*};
+#[cfg(target_os = "macos")]
+use gpui::{App, KeyBinding, Menu, MenuItem};
 
 use super::Workspace;
 use crate::click_targets::target;
@@ -14,6 +16,9 @@ use crate::theme::Theme;
 
 /// Seconds the prompt waits before IVE quits and leaves the processes running.
 pub const COUNTDOWN_SECONDS: u8 = 4;
+
+#[cfg(target_os = "macos")]
+gpui::actions!(ive, [Quit]);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuitEvent {
@@ -69,10 +74,36 @@ pub struct QuitPrompt {
 
 const DETAIL: &str = "They keep running and come back next time IVE starts.";
 
+#[cfg(target_os = "macos")]
+pub fn add_app_menu(cx: &mut App) {
+    cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
+    cx.set_menus([Menu::new("IVE").items([MenuItem::action("Quit IVE", Quit)])]);
+    cx.on_action(|_: &Quit, cx| cx.defer(request_quit_of_workspace));
+}
+
+#[cfg(target_os = "macos")]
+fn request_quit_of_workspace(cx: &mut App) {
+    let workspace = cx.windows().into_iter().find_map(|window| window.downcast::<Workspace>());
+    match workspace {
+        Some(workspace) => drop(workspace.update(cx, |workspace, window, cx| workspace.request_quit(window, cx))),
+        None => cx.quit(),
+    }
+}
+
 impl Workspace {
     /// The window's × or the window manager asked to close: quit, or ask first while hosted processes run.
     pub fn request_quit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.quit_event(QuitEvent::CloseRequested, window, cx);
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn quit_requested_by_system(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        let seconds = self.quit_prompt.as_ref().map(|prompt| prompt.seconds);
+        if next_step(self.hosted_process_count(), seconds, QuitEvent::CloseRequested) == QuitStep::QuitNow {
+            return true;
+        }
+        self.request_quit(window, cx);
+        false
     }
 
     pub(super) fn quit_event(&mut self, event: QuitEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -93,6 +124,7 @@ impl Workspace {
             }
             QuitStep::Dismiss => {
                 self.quit_prompt = None;
+                cx.cancel_quit();
                 window.focus(&self.focus_handle, cx);
                 cx.notify();
             }
