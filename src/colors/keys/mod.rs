@@ -64,8 +64,8 @@ mod xml;
 mod yaml;
 mod zig;
 
-/// id, display name, parent id
-pub type Row = (&'static str, &'static str, Option<&'static str>);
+/// id, parent id
+pub type Row = (&'static str, Option<&'static str>);
 
 /// Every key table; `defaults::HIDDEN` comes first, so `TEXT` is key 0.
 const TABLES: &[&[Row]] = &[
@@ -140,7 +140,7 @@ struct KeyInfo {
 }
 
 static KEYS: LazyLock<Vec<KeyInfo>> =
-    LazyLock::new(|| TABLES.iter().flat_map(|rows| rows.iter()).map(|&(id, _, parent)| KeyInfo { id, parent }).collect());
+    LazyLock::new(|| TABLES.iter().flat_map(|rows| rows.iter()).map(|&(id, parent)| KeyInfo { id, parent }).collect());
 
 static BY_ID: LazyLock<HashMap<&'static str, ColorKey>> =
     LazyLock::new(|| ColorKey::all().map(|key| (key.id(), key)).collect());
@@ -262,7 +262,7 @@ mod tests {
         // when
         let uncoloured: Vec<&str> = tables
             .into_iter()
-            .filter(|(_, rows)| rows.iter().all(|&(id, _, _)| ColorKey::by_id(id).and_then(|key| dark.entry(key)).is_none()))
+            .filter(|(_, rows)| rows.iter().all(|&(id, _)| ColorKey::by_id(id).and_then(|key| dark.entry(key)).is_none()))
             .map(|(table, _)| table)
             .collect();
 
