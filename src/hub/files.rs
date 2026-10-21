@@ -180,7 +180,6 @@ mod tests {
         assert_eq!(ignored.paths, [("tmp/a".to_owned(), Class::Ignored)]);
     }
 
-    #[cfg(unix)]
     // APFS refuses names that are not UTF-8, so only Linux has such paths
     #[cfg(target_os = "linux")]
     #[test]
