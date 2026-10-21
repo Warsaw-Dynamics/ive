@@ -187,7 +187,7 @@ impl Metrics {
         let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
         let sizes = &cx.global::<Theme>().sizes.editor;
         let font_size = sizes.text_size.px();
-        let char_width = text_system.ch_width(font_id, font_size).unwrap_or(font_size * 0.6);
+        let char_width = text_system.ch_advance(font_id, font_size).unwrap_or(font_size * 0.6);
         Self {
             font_size,
             line_height: (font_size * sizes.line_height_factor.0).round(),

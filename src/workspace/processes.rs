@@ -11,15 +11,17 @@ use gpui::{Context, SharedString, Task, Window};
 use super::Workspace;
 use crate::editor::Tab;
 use crate::process::{ProcessId, ProcessKind, RunLife, RunOrigin};
+#[cfg(unix)]
+use crate::process_directory::directory_of;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
 use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView};
 #[cfg(unix)]
-use crate::terminal::{DirectoryReport, DirectoryTracker, Sample, directory_of};
+use crate::terminal::{DirectoryReport, DirectoryTracker, Sample};
 
 /// Which adopted terminals get a tab.
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AdoptedTabs {
     /// every one: no tabs were saved yet
@@ -80,12 +82,12 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> TabId {
         // hosted when this IVE owns the hosted terminals, so the shell outlives IVE
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch: Launch::shell(), labels: [session_labels(checkout.as_ref()), labels].concat() },
             None => Source::InProcess(Launch::shell()),
         };
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(unix))]
         let source = {
             drop(labels);
             Source::InProcess(Launch::shell())
@@ -107,7 +109,7 @@ impl Workspace {
     /// Reattaches every hosted terminal still running, oldest first, under its checkout when its project is open
     /// (its main checkout when the checkout's folder is gone), else as a home terminal. Each gets a tab when no tabs were saved (a first start);
     /// otherwise the saved tabs say which do. Returns the processes by session id.
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
         let mut adopted = HashMap::new();
         let mut orphans = Vec::new();

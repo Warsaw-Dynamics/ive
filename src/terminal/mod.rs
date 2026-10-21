@@ -1,7 +1,7 @@
 mod colors;
 mod directory;
 pub mod env;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 pub mod hosted;
 #[cfg(unix)]
 mod foreground;
@@ -15,7 +15,7 @@ mod text;
 mod view;
 
 #[cfg(unix)]
-pub use foreground::{ForegroundProbe, directory_of};
+pub use foreground::ForegroundProbe;
 pub use directory::{DirectoryReport, DirectoryTracker, Sample};
 pub use launch::Launch;
 pub use mouse::{Button, Gesture, GestureKind, ScreenCell};

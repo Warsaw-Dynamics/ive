@@ -20,13 +20,13 @@ use super::foreground::ForegroundProbe;
 use super::directory::DirectoryReport;
 use super::launch::Launch;
 use super::progress::Progress;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use super::hosted::{Connection, HostedTerminals};
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, unix))]
 use ptyhost::client::Client;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use ptyhost::registry::SessionInfo;
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, unix))]
 use ptyhost::registry::Registry;
 
 const SCROLLBACK_LINES: usize = 10_000;
@@ -98,7 +98,7 @@ impl Dimensions for GridSize {
 }
 
 /// A shell and the terminal state it draws into. The shell runs in a PTY of IVE's own, which dropping the session
-/// hangs up, or in a host (Linux), which dropping the session leaves running; [`Session::hang_up`] ends either.
+/// hangs up, or in a host (Unix), which dropping the session leaves running; [`Session::hang_up`] ends either.
 pub struct Session {
     term: Arc<FairMutex<Term<Listener>>>,
     transport: Transport,
@@ -110,7 +110,7 @@ pub struct Session {
 
 enum Transport {
     InProcess(EventLoopSender),
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     Hosted(Connection),
 }
 
@@ -149,7 +149,7 @@ impl Session {
     }
 
     /// Starts `launch` in a new host, labelled with `labels`.
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub fn spawn_hosted(
         terminals: &HostedTerminals,
         working_directory: &Path,
@@ -161,7 +161,7 @@ impl Session {
     }
 
     /// Attaches to a session already running in a host.
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub fn attach(terminals: &HostedTerminals, session: &SessionInfo) -> io::Result<(Self, UnboundedReceiver<Event>)> {
         let (term, listener, events) = new_term();
         let connection = terminals.connect(&session.id, term.clone(), listener)?;
@@ -169,14 +169,14 @@ impl Session {
     }
 
     /// A hosted session over an already attached client, for tests that play the host.
-    #[cfg(all(test, target_os = "linux"))]
+    #[cfg(all(test, unix))]
     pub fn over_client(id: String, client: Client, registry: Option<Registry>) -> (Self, UnboundedReceiver<Event>) {
         let (term, listener, events) = new_term();
         let connection = Connection::start(id, client, registry, term.clone(), listener);
         (Self::hosted(term, connection), events)
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     fn hosted(term: Arc<FairMutex<Term<Listener>>>, connection: Connection) -> Self {
         let program_pid = Some(connection.program_pid());
         let foreground = Some(ForegroundProbe::of_program(connection.program_pid()));
@@ -199,7 +199,7 @@ impl Session {
     pub fn hosted_id(&self) -> Option<&str> {
         match &self.transport {
             Transport::InProcess(_) => None,
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Transport::Hosted(connection) => Some(connection.id()),
         }
     }
@@ -208,7 +208,7 @@ impl Session {
     pub fn lost(&self) -> bool {
         match &self.transport {
             Transport::InProcess(_) => false,
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Transport::Hosted(connection) => connection.lost(),
         }
     }
@@ -217,7 +217,7 @@ impl Session {
     pub fn progress(&self) -> Progress {
         match &self.transport {
             Transport::InProcess(_) => Progress::None,
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Transport::Hosted(connection) => connection.progress(),
         }
     }
@@ -226,7 +226,7 @@ impl Session {
     pub fn directory(&self) -> Option<DirectoryReport> {
         match &self.transport {
             Transport::InProcess(_) => None,
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Transport::Hosted(connection) => connection.directory(),
         }
     }
@@ -307,7 +307,7 @@ impl Session {
         match &self.transport {
             // fails only after the shell exited and the PTY thread ended; the tab is closing then anyway
             Transport::InProcess(pty) => drop(pty.send(message)),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Transport::Hosted(connection) => match message {
                 Msg::Input(bytes) => connection.input(&bytes),
                 Msg::Resize(_) => connection.resize(self.size.get()),
@@ -335,7 +335,7 @@ fn new_term() -> (Arc<FairMutex<Term<Listener>>>, Listener, UnboundedReceiver<Ev
     (term, listener, events)
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, unix))]
 mod tests {
     use std::os::unix::net::UnixStream;
 

@@ -75,6 +75,7 @@ fn should_keep_program_running_after_detach_and_replay_its_output() {
     let registry = Registry::at(dir.path());
     start(&registry, "cat", "echo ready; cat");
     let mut first = attach(&registry, "cat");
+    read_until(&mut first, "ready");
     first.send(&Frame::Input(b"before detach\n".to_vec())).unwrap();
     read_until(&mut first, "before detach\r\nbefore detach");
     drop(first);
@@ -271,8 +272,19 @@ fn should_not_leak_starter_descriptors_into_host() {
     unsafe { libc::close(fd) };
 
     // then
-    let links: Vec<_> = std::fs::read_dir(format!("/proc/{host}/fd")).unwrap().filter_map(|entry| std::fs::read_link(entry.ok()?.path()).ok()).collect();
-    assert!(!links.iter().any(|link| link.ends_with("marker")), "host holds {links:?}");
+    let files = open_files(host);
+    assert!(!files.iter().any(|file| file.ends_with("marker")), "host holds {files:?}");
+}
+
+#[cfg(target_os = "linux")]
+fn open_files(pid: u32) -> Vec<std::path::PathBuf> {
+    std::fs::read_dir(format!("/proc/{pid}/fd")).unwrap().filter_map(|entry| std::fs::read_link(entry.ok()?.path()).ok()).collect()
+}
+
+#[cfg(target_os = "macos")]
+fn open_files(pid: u32) -> Vec<std::path::PathBuf> {
+    let output = std::process::Command::new("lsof").args(["-a", "-p", &pid.to_string(), "-d", "0-1000", "-Fn"]).output().unwrap();
+    String::from_utf8_lossy(&output.stdout).lines().filter_map(|line| line.strip_prefix('n')).map(std::path::PathBuf::from).collect()
 }
 
 #[test]
@@ -330,13 +342,20 @@ fn should_hang_up_when_its_registry_entry_disappears() {
     wait_for(|| unsafe { libc::kill(host as libc::pid_t, 0) } != 0 || is_zombie(host));
 }
 
+#[cfg(target_os = "linux")]
 fn process_state(pid: u32) -> Option<char> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
     stat.rsplit(')').next()?.trim_start().chars().next()
 }
 
+#[cfg(target_os = "macos")]
+fn process_state(pid: u32) -> Option<char> {
+    let output = std::process::Command::new("ps").args(["-o", "stat=", "-p", &pid.to_string()]).output().ok()?;
+    String::from_utf8_lossy(&output.stdout).trim().chars().next()
+}
+
 fn is_zombie(pid: u32) -> bool {
-    std::fs::read_to_string(format!("/proc/{pid}/stat")).map_or(true, |stat| stat.rsplit(')').next().is_some_and(|rest| rest.trim_start().starts_with('Z')))
+    process_state(pid).is_none_or(|state| state == 'Z')
 }
 
 #[test]

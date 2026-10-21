@@ -79,7 +79,7 @@ impl HostedTerminals {
 
     /// Starts `launch` (the user's shell when it names no program) in a new host.
     pub fn start(&self, cwd: &Path, launch: &Launch, labels: Vec<(String, String)>) -> io::Result<SessionInfo> {
-        let command = if launch.program.is_empty() { vec![login_shell()] } else { launch.program.clone() };
+        let command = if launch.program.is_empty() { shell_command() } else { launch.program.clone() };
         let config = HostConfig {
             id: new_id()?,
             command,
@@ -420,6 +420,14 @@ impl Output {
         self.shared.lost.store(true, Ordering::Relaxed);
         self.listener.send_event(Event::Exit);
     }
+}
+
+/// The user's shell as IVE's own terminals start it: on macOS a login shell, as alacritty's `login -flp` makes it.
+fn shell_command() -> Vec<String> {
+    if cfg!(target_os = "macos") {
+        return vec![login_shell(), "-l".to_owned()];
+    }
+    vec![login_shell()]
 }
 
 /// The host reports 128 + signal for programs killed by a signal, as shells do.

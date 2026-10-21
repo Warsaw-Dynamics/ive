@@ -99,7 +99,7 @@ impl Args {
 }
 
 /// The Restart button runs this script, so it must be a file IVE may execute.
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 pub fn check_restart_script(path: &std::path::Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
     let metadata = std::fs::metadata(path).map_err(|error| format!("--restart script {} cannot be used: {error}", path.display()))?;
@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(args, Err(ArgsError::MissingRestartScript));
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     #[test]
     fn should_accept_only_an_executable_restart_script() {
         // given

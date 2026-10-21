@@ -23,10 +23,15 @@ sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libfontconfig-dev libfree
   libxcb1-dev libpipewire-0.3-dev libclang-dev
 ```
 
-To install IVE for yourself (Linux), run `./install.sh` once from this checkout. It builds IVE, writes the launcher
-`~/.local/bin/ive`, adds an "IVE" entry to the application launcher (GNOME, KDE Plasma and other freedesktop
-desktops) and starts IVE as a profile named after your user, with the [Restart](#restart) button, which rebuilds
-this checkout. Run it again to rebuild and reinstall.
+On macOS the Xcode Command Line Tools are enough (`xcode-select --install`): gpui compiles its Metal shaders at
+startup, so the `metal` tool of a full Xcode is not needed. Settings, state and scratches live in
+`~/Library/Application Support/ive/<profile>` there.
+
+To install IVE for yourself, run `./install.sh` once from this checkout. It builds IVE, writes the launcher
+`~/.local/bin/ive`, adds IVE to the desktop (Linux: an "IVE" entry in the application launcher of GNOME, KDE Plasma
+and other freedesktop desktops; macOS: `~/Applications/IVE.app`, for Finder, Launchpad, Spotlight and the Dock) and
+starts IVE as a profile named after your user, with the [Restart](#restart) button, which rebuilds this checkout.
+Run it again to rebuild and reinstall.
 
 | Flag | Meaning |
 |---|---|
@@ -34,7 +39,7 @@ this checkout. Run it again to rebuild and reinstall.
 | `--mcp PORT` | serve MCP on `127.0.0.1:PORT` (1024-65535) from now on, instead of the remembered port, see [Drive IVE from an agent](#drive-ive-from-an-agent-mcp) |
 | `--no-mcp` | do not serve MCP |
 | `--background` | open the window without taking focus |
-| `--restart SCRIPT` | show a Restart button left of Settings that rebuilds and restarts IVE with SCRIPT, see [Restart](#restart); Linux only |
+| `--restart SCRIPT` | show a Restart button left of Settings that rebuilds and restarts IVE with SCRIPT, see [Restart](#restart); Linux and macOS |
 | `--profile NAME` | run as profile NAME (default `default`): its own projects, tabs, settings, scratches and terminals, see [Profiles](#profiles) |
 
 ## Use
@@ -82,7 +87,7 @@ expansion and Recent are kept in `~/.config/ive/<profile>/state.toml`; a file IV
 So are the window's place and size and whether it is maximized or fullscreen: the next IVE, a restarted one too, opens
 the window as it was, or centred when that place is no longer on any screen.
 
-On Linux, terminals keep running when IVE closes, and come back the next time it starts: each shell runs in a small
+On Linux and macOS, terminals keep running when IVE closes, and come back the next time it starts: each shell runs in a small
 host process of its own (`ive --pty-host`), and IVE reattaches to every one still running, under its worktree, each
 in a tab, with its last output (up to 1 MiB) replayed; Claude Code and other full-screen programs redraw. Closing the
 window, or SIGTERM / SIGINT, with terminals running asks **Stop N running processes?**: Keep running (Enter, and
@@ -90,7 +95,7 @@ what happens when its 4 s countdown ends), Stop all, or Cancel (Escape). SIGUSR1
 running, as a [restart](#restart) does. A row's Close, closing a project, or `exit`
 still ends a terminal. Only the first IVE running in a profile keeps terminals this way; a second one's terminals end with it.
 
-Each terminal's host moves into a systemd scope of its own, `ptyhost-<id>.scope`, before its shell starts. Under
+On Linux, each terminal's host moves into a systemd scope of its own, `ptyhost-<id>.scope`, before its shell starts. Under
 memory pressure systemd-oomd then ends the one terminal that filled memory (a build, a Claude Code session), not
 IVE with every terminal. Without a user systemd the host logs why and the terminal stays in IVE's cgroup.
 
@@ -99,9 +104,9 @@ IVE with every terminal. Without a user systemd the host logs why and the termin
 | List running terminals | `ive --pty-host ls`: id, shell pid, folder, command |
 | Use one in this terminal | `ive --pty-host attach <id>` while IVE is closed (a running IVE takes it straight back); Ctrl+] detaches and leaves it running |
 | End one | `ive --pty-host kill <id>`: hangs it up, and kills it 2 s later if it is still there |
-| Keep them elsewhere | `IVE_PTY_DIR=<dir>`; the default is `$XDG_RUNTIME_DIR/ive-pty/<profile>`, emptied at logout |
+| Keep them elsewhere | `IVE_PTY_DIR=<dir>`; the default is `$XDG_RUNTIME_DIR/ive-pty/<profile>`, emptied at logout; on macOS `~/Library/Application Support/ive-pty/<profile>`, since macOS deletes what sits in `$TMPDIR` for 3 days |
 
-The `--pty-host` commands use the `default` profile; for another one set `IVE_PTY_DIR=$XDG_RUNTIME_DIR/ive-pty/<profile>`.
+The `--pty-host` commands use the `default` profile; for another one set `IVE_PTY_DIR` to that profile's folder.
 
 ### Hub (Ctrl+Shift+E)
 
@@ -189,6 +194,9 @@ SIGUSR1, on which IVE saves its tabs and quits at once, leaving the terminals ru
 program still runs in that tab only shows it. The script decides how to build and which flags IVE gets: copy
 `restart.sh` and add flags such as `--profile` or `--mcp` to its `IVE_FLAGS`.
 
+On macOS the launcher `install.sh` writes starts the new IVE through `IVE.app`, so the Dock shows it
+as IVE; `restart.sh` starts it directly.
+
 ### Desktop icon
 
 On Linux the task bar shows IVE's icon (`desktop/icons/`) once it is installed for your user:
@@ -206,7 +214,7 @@ from other profiles. Without `--profile` IVE runs as `default`.
 | projects, tabs, Recent, window | `~/.config/ive/<profile>/state.toml` |
 | settings | `~/.config/ive/<profile>/settings.toml` |
 | scratches | `~/.config/ive/<profile>/scratches/` |
-| terminals | `$XDG_RUNTIME_DIR/ive-pty/<profile>/` |
+| terminals | `$XDG_RUNTIME_DIR/ive-pty/<profile>/` (macOS: `~/Library/Application Support/ive-pty/<profile>/`) |
 
 The tree, open files and git status follow changes made outside IVE (file notifications on what is shown: open
 folders, open files' folders, each repository's git dir; a project overview's Worktrees list is also re-read every 5 s).
@@ -299,7 +307,7 @@ folder with a `.run.toml` opens it on hover), and a row per configuration with i
 Start there start the run without leaving the list; a click on a row with a run shows its output. The layout and
 folds last while the tab is open.
 
-**Runs** are terminals running one program, and outlive IVE like terminals (Linux). One row per configuration:
+**Runs** are terminals running one program, and outlive IVE like terminals (Linux, macOS). One row per configuration:
 starting one again removes its exited run. Stop sends SIGTERM to the program's process group, SIGKILL 5 s later.
 Restart ends the run and starts it again, `before` steps first; a server waits up to 2 s for its old port, so it
 keeps its link. A run keeps its output after it exits, until removed; quit and Close project count only live runs.

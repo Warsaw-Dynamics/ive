@@ -1134,8 +1134,11 @@ mod tests {
 
     #[test]
     fn should_bind_ctrl_shift_e_to_open_the_hub() {
+        // given
+        let open_hub = if cfg!(target_os = "macos") { "cmd-shift-e" } else { "ctrl-shift-e" };
+
         // when
-        let action = defaults().keymap.find_key(&pressed("ctrl-shift-e"), Place::Elsewhere).cloned();
+        let action = defaults().keymap.find_key(&pressed(open_hub), Place::Elsewhere).cloned();
 
         // then
         assert_eq!(action, builtin(Builtin::OpenHub));
@@ -1143,8 +1146,11 @@ mod tests {
 
     #[test]
     fn should_bind_ctrl_shift_t_to_open_terminal_in() {
+        // given
+        let open_terminal_in = if cfg!(target_os = "macos") { "cmd-shift-t" } else { "ctrl-shift-t" };
+
         // when
-        let action = defaults().keymap.find_key(&pressed("ctrl-shift-t"), Place::Terminal).cloned();
+        let action = defaults().keymap.find_key(&pressed(open_terminal_in), Place::Terminal).cloned();
 
         // then
         assert_eq!(action, builtin(Builtin::OpenTerminalIn));
@@ -1152,8 +1158,11 @@ mod tests {
 
     #[test]
     fn should_toggle_changed_with_ctrl_shift_e_in_the_hub() {
+        // given
+        let toggle_changed = if cfg!(target_os = "macos") { "cmd-shift-e" } else { "ctrl-shift-e" };
+
         // when
-        let action = defaults().keymap.find_key(&pressed("ctrl-shift-e"), Place::Hub).cloned();
+        let action = defaults().keymap.find_key(&pressed(toggle_changed), Place::Hub).cloned();
 
         // then
         assert_eq!(action, builtin(Builtin::HubToggleChanged));

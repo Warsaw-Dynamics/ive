@@ -427,12 +427,12 @@ impl Workspace {
         let origin = RunOrigin { folder: start.request.folder.clone(), key: start.key.to_owned(), name: config.name.clone(), url, life: RunLife::Running };
         let checkout = start.request.checkout.clone();
         self.worktree_use.used(&checkout.path, crate::age::Clock::system().now());
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch, labels: [session_labels(Some(&checkout)), run_labels(&origin)].concat() },
             None => Source::InProcess(launch),
         };
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(unix))]
         let source = Source::InProcess(launch);
         let cwd = prepared.cwd;
         let id = self

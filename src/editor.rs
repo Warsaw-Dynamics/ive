@@ -44,7 +44,7 @@ use crate::text_selection::{TextSelection, whole_line, word_around};
 use crate::theme::{self, Theme};
 use crate::tooltip;
 use crate::watch::Watched;
-use crate::window_controls::window_controls;
+use crate::window_controls::{TRAFFIC_LIGHTS_WIDTH, window_controls};
 use crate::window_drag::WindowDrag;
 use crate::workspace::{TabDragArea, Workspace};
 
@@ -1110,7 +1110,15 @@ pub fn render_detached(workspace: &Workspace, id: TabId, drag: &WindowDrag, wind
         .border_b(sizes.row_border.px())
         .border_color(rgb(theme.border))
         .window_control_area(WindowControlArea::Drag)
-        .child(div().flex().flex_1().min_w_0().px(sizes.strip_padding_x.px()).child(chip))
+        .child(
+            div()
+                .flex()
+                .flex_1()
+                .min_w_0()
+                .px(sizes.strip_padding_x.px())
+                .when(cfg!(target_os = "macos"), |strip| strip.pl(px(TRAFFIC_LIGHTS_WIDTH)))
+                .child(chip),
+        )
         .child(tools);
     let body = tab.render(id, workspace, window, cx);
     Some((title, div().flex().flex_col().flex_1().h_full().min_w_0().child(row).child(body)))

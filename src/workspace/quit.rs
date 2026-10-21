@@ -170,7 +170,7 @@ fn quit_event_of(signal: i32) -> QuitEvent {
     }
 }
 
-/// Signals are caught on Linux only.
+/// Signals are caught on Unix only.
 #[cfg(not(unix))]
 fn quit_event_of(_signal: i32) -> QuitEvent {
     QuitEvent::Signal

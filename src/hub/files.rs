@@ -181,6 +181,8 @@ mod tests {
     }
 
     #[cfg(unix)]
+    // APFS refuses names that are not UTF-8, so only Linux has such paths
+    #[cfg(target_os = "linux")]
     #[test]
     fn should_skip_a_path_that_is_not_utf8() {
         use std::os::unix::ffi::OsStrExt;

@@ -29,6 +29,7 @@ pub fn window_options(bounds: Bounds<Pixels>) -> WindowOptions {
             traffic_light_position: Some(point(px(12.), px(11.))),
         }),
         window_decorations: Some(WindowDecorations::Client),
+        app_owns_titlebar_drag: true,
         ..Default::default()
     }
 }

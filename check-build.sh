@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Checks that IVE can be built here: cargo, and the system libraries GPUI links against on Linux.
+# Checks that IVE can be built here: cargo, and on Linux the system libraries GPUI links against.
 set -euo pipefail
 
 if ! command -v cargo >/dev/null 2>&1; then
     echo "cargo not found: install Rust with 'asdf plugin add rust && asdf install' (version from .tool-versions)" >&2
     exit 1
+fi
+
+# macOS links against system frameworks only
+if [ "$(uname -s)" != Linux ]; then
+    exit 0
 fi
 
 # cargo's linker error does not name the package to install

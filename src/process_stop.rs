@@ -48,10 +48,15 @@ fn runs(pid: libc::pid_t) -> bool {
     !matches!(state, Some('Z' | 'X') | None)
 }
 
-#[cfg(not(target_os = "linux"))]
+// `kill(pid, 0)` succeeds on a zombie too, so the process's status is read instead; a zombie's may not be read at all
+#[cfg(target_os = "macos")]
 fn runs(pid: libc::pid_t) -> bool {
-    // SAFETY: signal 0 only checks the process exists
-    unsafe { libc::kill(pid, 0) == 0 }
+    let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
+    let size = std::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int;
+    // SAFETY: proc_pidinfo writes at most `size` bytes into `info`, which is that large
+    let read = unsafe { libc::proc_pidinfo(pid, libc::PROC_PIDTBSDINFO, 0, info.as_mut_ptr().cast(), size) };
+    // SAFETY: zeroed is a valid proc_bsdinfo, and a full read filled it
+    read == size && unsafe { info.assume_init() }.pbi_status != libc::SZOMB
 }
 
 #[cfg(test)]

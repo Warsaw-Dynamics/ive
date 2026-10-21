@@ -18,7 +18,11 @@ pub const DEFAULT_PROFILE: &str = "default";
 const MAX_ID_LENGTH: usize = 64;
 const MAX_LABEL_KEY_LENGTH: usize = 64;
 /// `sun_path` holds 108 bytes on Linux, its terminating NUL included.
+#[cfg(not(target_os = "macos"))]
 const MAX_SOCKET_PATH: usize = 108;
+/// `sun_path` holds 104 bytes on macOS, its terminating NUL included.
+#[cfg(target_os = "macos")]
+const MAX_SOCKET_PATH: usize = 104;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionInfo {
@@ -59,7 +63,7 @@ impl Registry {
     }
 
     /// `$IVE_PTY_DIR`, else `$XDG_RUNTIME_DIR/ive-pty/<profile>`, which the system empties at logout, as it ends
-    /// the sessions.
+    /// the sessions; else a folder of the user's (see `fallback_dir`).
     pub fn for_profile(profile: &str) -> Registry {
         Registry::for_profile_in(profile, std::env::var_os(DIR_ENV), std::env::var_os("XDG_RUNTIME_DIR"))
     }
@@ -71,9 +75,7 @@ impl Registry {
         if let Some(runtime) = runtime {
             return Registry::at(Path::new(&runtime).join("ive-pty").join(profile));
         }
-        // SAFETY: getuid cannot fail
-        let uid = unsafe { libc::getuid() };
-        Registry::at(std::env::temp_dir().join(format!("ive-pty-{uid}")).join(profile))
+        Registry::at(fallback_dir().join(profile))
     }
 
     pub fn dir(&self) -> &Path {
@@ -182,6 +184,27 @@ impl Registry {
         }
         decode(id, &fs::read_to_string(self.meta(id))?).map(Some)
     }
+}
+
+/// macOS has no runtime dir, and deletes what sits in `$TMPDIR` for 3 days (dirhelper), sockets of live sessions
+/// too; Application Support is never cleaned, and stale sessions are cleaned up by listing anyway.
+#[cfg(target_os = "macos")]
+fn fallback_dir() -> PathBuf {
+    match std::env::var_os("HOME") {
+        Some(home) => Path::new(&home).join("Library/Application Support/ive-pty"),
+        None => temp_fallback_dir(),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn fallback_dir() -> PathBuf {
+    temp_fallback_dir()
+}
+
+fn temp_fallback_dir() -> PathBuf {
+    // SAFETY: getuid cannot fail
+    let uid = unsafe { libc::getuid() };
+    std::env::temp_dir().join(format!("ive-pty-{uid}"))
 }
 
 /// Ids name files, so they are kept to `[A-Za-z0-9_-]{1,64}`.
@@ -329,7 +352,7 @@ mod tests {
 
         // then
         assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
-        assert!(error.to_string().contains("108"), "{error}");
+        assert!(error.to_string().contains(&MAX_SOCKET_PATH.to_string()), "{error}");
     }
 
     #[test]

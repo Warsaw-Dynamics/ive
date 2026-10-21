@@ -28,9 +28,9 @@ use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, Scree
 use super::progress::Progress;
 use super::session::{GridSize, Session};
 use super::text::{ScreenText, output_text, screen_text};
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use super::hosted::HostedTerminals;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
 use crate::clipboard;
@@ -61,12 +61,12 @@ pub enum Source<'a> {
     /// a PTY of IVE's own; the program ends with IVE
     InProcess(Launch),
     /// a new host, labelled with `labels`; the program outlives IVE
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     Hosted { terminals: &'a HostedTerminals, launch: Launch, labels: Vec<(String, String)> },
     /// a host an earlier IVE started
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     Adopt { terminals: &'a HostedTerminals, session: &'a SessionInfo },
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(unix))]
     #[allow(dead_code)]
     Never(std::marker::PhantomData<&'a ()>),
 }
@@ -97,12 +97,12 @@ impl TerminalView {
     pub fn open(process: ProcessId, working_directory: &Path, source: Source, window: &mut Window, cx: &mut Context<Workspace>) -> io::Result<Self> {
         let (start, (session, events)) = match source {
             Source::InProcess(launch) => (Start::New, Session::spawn(working_directory, &launch)?),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Source::Hosted { terminals, launch, labels } => (Start::New, Session::spawn_hosted(terminals, working_directory, &launch, labels)?),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             Source::Adopt { terminals, session } => (Start::Adopted, Session::attach(terminals, session)?),
-            #[cfg(not(target_os = "linux"))]
-            Source::Never(_) => unreachable!("no hosted terminals outside Linux"),
+            #[cfg(not(unix))]
+            Source::Never(_) => unreachable!("no hosted terminals outside Unix"),
         };
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);

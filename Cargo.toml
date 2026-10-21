@@ -21,8 +21,8 @@ getrandom = "0.4.3"
 git2 = { version = "0.21.0", default-features = false }
 # Zed's gpui with our fixes (Warsaw-Dynamics/pgui, branch zed-main: a snapshot of Zed plus one commit each).
 # gpui is Apache-2.0.
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "abbfac9146c3d249985a827470780bd78b47ae33" }
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "abbfac9146c3d249985a827470780bd78b47ae33", features = ["font-kit", "wayland", "x11"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "c9c941b566bb93534c511e0ae00f172138b5c864" }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "c9c941b566bb93534c511e0ae00f172138b5c864", features = ["font-kit", "wayland", "x11"] }
 # walks project folders without git, honouring .gitignore-style files (the hub's file list)
 ignore = "0.4.33"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
@@ -111,16 +111,22 @@ unicode-segmentation = "1.13.3"
 [build-dependencies]
 cc = "1.8.0"
 
-# terminals that outlive IVE (Linux only for now)
 [target.'cfg(target_os = "linux")'.dependencies]
-ptyhost = { path = "ptyhost" }
-signal-hook = "0.4"
 # run configurations' secrets in the Secret Service (KWallet, GNOME Keyring); gpui already builds it with these features
 oo7 = { version = "0.6.0", default-features = false, features = ["async-std", "native_crypto"] }
+
+[target.'cfg(unix)'.dependencies]
+# terminals that outlive IVE
+ptyhost = { path = "ptyhost" }
+# SIGTERM, SIGINT and SIGUSR1 through the quit flow
+signal-hook = "0.4"
 
 # run configurations' secrets in the Keychain
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3.6.3", features = ["apple-native"] }
+# Metal shaders compiled at startup: building them ahead needs the `metal` tool of a full Xcode, not just the Command
+# Line Tools
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "c9c941b566bb93534c511e0ae00f172138b5c864", features = ["runtime_shaders"] }
 
 [dev-dependencies]
 tempfile = "3"

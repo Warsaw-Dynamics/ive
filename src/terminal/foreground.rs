@@ -2,7 +2,7 @@
 
 use std::fs::File;
 use std::os::fd::AsRawFd;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use alacritty_terminal::tty::Pty;
@@ -18,8 +18,7 @@ pub struct ForegroundProbe {
 enum Source {
     /// a duplicate of the PTY master, so the probe works whatever the PTY thread does with its own
     Master(Arc<File>),
-    /// the shell's `/proc/<pid>/stat`, for a terminal whose master another process holds (a host)
-    #[cfg(target_os = "linux")]
+    /// the shell's process status, for a terminal whose master another process holds (a host)
     Proc,
 }
 
@@ -38,8 +37,7 @@ impl ForegroundProbe {
         Some(Self { shell, source: Source::Master(Arc::new(master)) })
     }
 
-    /// A probe for the shell `shell`, read from `/proc`: the terminal belongs to another process.
-    #[cfg(target_os = "linux")]
+    /// A probe for the shell `shell`, read from its process status: the terminal belongs to another process.
     pub fn of_program(shell: u32) -> Self {
         Self { shell: shell as libc::pid_t, source: Source::Proc }
     }
@@ -48,9 +46,13 @@ impl ForegroundProbe {
         match &self.source {
             // SAFETY: reads terminal state of a descriptor `master` keeps open
             Source::Master(master) => unsafe { libc::tcgetpgrp(master.as_raw_fd()) },
-            #[cfg(target_os = "linux")]
-            Source::Proc => std::fs::read_to_string(format!("/proc/{}/stat", self.shell)).ok().as_deref().and_then(tpgid_of).unwrap_or(-1),
+            Source::Proc => terminal_group_of(self.shell).unwrap_or(-1),
         }
+    }
+
+    /// macOS starts an in-process shell through `login`; a host starts the shell itself.
+    fn is_shell(&self, group: libc::pid_t) -> bool {
+        group == self.shell || matches!(self.source, Source::Master(_)) && is_shell_under_login(group, self.shell)
     }
 
     /// The foreground process group while a program other than the shell has the terminal.
@@ -58,7 +60,7 @@ impl ForegroundProbe {
         let group = self.foreground_group();
         match group {
             ..=0 => None,
-            shell if shell == self.shell || is_shell_under_login(shell, self.shell) => None,
+            shell if self.is_shell(shell) => None,
             program => Some(program),
         }
     }
@@ -78,15 +80,27 @@ impl ForegroundProbe {
     }
 }
 
-/// The working directory of process `pid`; `None` once it is gone.
 #[cfg(target_os = "linux")]
-pub fn directory_of(pid: libc::pid_t) -> Option<PathBuf> {
-    std::fs::read_link(format!("/proc/{pid}/cwd")).ok()
+fn terminal_group_of(pid: libc::pid_t) -> Option<libc::pid_t> {
+    std::fs::read_to_string(format!("/proc/{pid}/stat")).ok().as_deref().and_then(tpgid_of)
 }
 
-/// Elsewhere IVE does not read other processes' directories; only `OSC 7` reports count.
-#[cfg(not(target_os = "linux"))]
-pub fn directory_of(_pid: libc::pid_t) -> Option<PathBuf> {
+#[cfg(target_os = "macos")]
+fn terminal_group_of(pid: libc::pid_t) -> Option<libc::pid_t> {
+    let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
+    let size = std::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int;
+    // SAFETY: proc_pidinfo writes at most `size` bytes into `info`, which is that large
+    let read = unsafe { libc::proc_pidinfo(pid, libc::PROC_PIDTBSDINFO, 0, info.as_mut_ptr().cast(), size) };
+    if read != size {
+        return None;
+    }
+    // SAFETY: zeroed is a valid proc_bsdinfo, and a full read filled it
+    let group = unsafe { info.assume_init() }.e_tpgid;
+    libc::pid_t::try_from(group).ok().filter(|group| *group > 0)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn terminal_group_of(_pid: libc::pid_t) -> Option<libc::pid_t> {
     None
 }
 
@@ -182,6 +196,7 @@ mod tests {
         use alacritty_terminal::tty::{self, Options, Shell};
 
         use super::super::*;
+        use crate::process_directory::directory_of;
 
         fn interactive_sh() -> Pty {
             // job control (interactive `sh`) puts each command in its own foreground group, as login shells do

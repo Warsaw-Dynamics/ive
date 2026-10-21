@@ -322,7 +322,7 @@ fn measure_char_width(window: &Window, cx: &App) -> Pixels {
     let text_system = window.text_system();
     let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
     let font_size = cx.global::<Theme>().sizes.diff.text_size.px();
-    text_system.ch_width(font_id, font_size).unwrap_or(font_size * 0.6)
+    text_system.ch_advance(font_id, font_size).unwrap_or(font_size * 0.6)
 }
 
 /// Records where the view was painted, and follows a selection drag over the whole window: an element's own

@@ -31,6 +31,8 @@ mod pasted;
 mod paths;
 mod process;
 #[cfg(unix)]
+mod process_directory;
+#[cfg(unix)]
 mod process_stop;
 mod profile;
 mod progress_bar;
@@ -45,7 +47,7 @@ mod script;
 mod scrollbar;
 mod settings;
 mod settings_page;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod signals;
 mod sidebar;
 mod syntax;
@@ -70,7 +72,7 @@ mod window_drag;
 mod window_state;
 mod workspace;
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use std::ffi::OsString;
 use std::process::ExitCode;
 
@@ -87,7 +89,7 @@ use workspace::{Launch, Startup, Workspace};
 fn main() -> ExitCode {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     cap_malloc_arenas();
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     if let Some(code) = run_pty_host() {
         return code;
     }
@@ -126,7 +128,7 @@ fn main() -> ExitCode {
         state_path,
         api_calls,
         scripts,
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         hosted: tracing::info_span!("claim_terminals").in_scope(|| claim_terminals(args.restart.as_deref())),
         signals: forward_signals(),
         restart_script: args.restart.and_then(|script| std::fs::canonicalize(script).ok()),
@@ -200,7 +202,7 @@ fn run(startup: Startup, background: bool) {
 /// SIGTERM, SIGINT and SIGUSR1 as messages, so IVE asks before quitting; `None` (dying at once, as before) where they cannot
 /// be caught.
 fn forward_signals() -> Option<UnboundedReceiver<i32>> {
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     match signals::forward() {
         Ok(signals) => return Some(signals),
         Err(error) => eprintln!("ive: cannot catch SIGTERM, SIGINT and SIGUSR1: {error}; they end IVE at once"),
@@ -210,7 +212,7 @@ fn forward_signals() -> Option<UnboundedReceiver<i32>> {
 
 /// `ive --pty-host …` runs the terminal host CLI instead of IVE: IVE starts each terminal's host this way, and
 /// people use it to list, attach or end sessions outside IVE. Nothing of IVE itself starts in this process.
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn run_pty_host() -> Option<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     match pty_host_args(&args)? {
@@ -224,7 +226,7 @@ fn run_pty_host() -> Option<ExitCode> {
 
 /// The arguments after `--pty-host`, when IVE runs as the terminal host CLI; `None` leaves every argument, UTF-8
 /// or not, to IVE.
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn pty_host_args(args: &[OsString]) -> Option<Result<Vec<String>, String>> {
     let (first, rest) = args.split_first()?;
     let utf8 = |arg: &OsString| arg.clone().into_string().map_err(|arg| format!("argument {} is not UTF-8", arg.to_string_lossy()));
@@ -237,22 +239,29 @@ pub fn pty_host_launcher() -> ptyhost::host::Launcher {
     ptyhost::host::Launcher { exe: "/proc/self/exe".into(), args: vec![PTY_HOST_FLAG.into()] }
 }
 
-#[cfg(target_os = "linux")]
+/// macOS has no `/proc/self/exe`; the path IVE started from names the same binary until a build replaces it.
+#[cfg(target_os = "macos")]
+pub fn pty_host_launcher() -> ptyhost::host::Launcher {
+    let exe = std::env::current_exe().unwrap_or_else(|_| std::env::args_os().next().unwrap_or_default().into());
+    ptyhost::host::Launcher { exe, args: vec![PTY_HOST_FLAG.into()] }
+}
+
+#[cfg(unix)]
 const PTY_HOST_FLAG: &str = "--pty-host";
 
-/// `--restart` needs hosted terminals, so Linux, and a start script IVE may run.
+/// `--restart` needs SIGUSR1, so Unix, and a start script IVE may run.
 fn check_restart(script: Option<&std::path::Path>) -> Result<(), String> {
     let Some(script) = script else {
         return Ok(());
     };
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     return args::check_restart_script(script);
-    #[cfg(not(target_os = "linux"))]
-    Err(format!("--restart {} needs hosted terminals, which only Linux has", script.display()))
+    #[cfg(not(unix))]
+    Err(format!("--restart {} needs SIGUSR1, which only Unix has", script.display()))
 }
 
 /// With `--restart`, IVE may be the restarted one: it waits for the one it replaces to let go of the terminals.
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn claim_terminals(restart_script: Option<&std::path::Path>) -> Option<terminal::hosted::HostedTerminals> {
     match restart_script {
         Some(_) => terminal::hosted::HostedTerminals::claim_after_restart(profile::current()),
@@ -292,7 +301,7 @@ fn load_settings() -> SettingsStore {
     store
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, unix))]
 mod tests {
     use std::ffi::OsString;
     use std::os::unix::ffi::OsStringExt;

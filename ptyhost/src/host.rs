@@ -136,12 +136,13 @@ pub fn serve(registry: &Registry, config: &HostConfig) -> io::Result<i32> {
     ignore_signal(libc::SIGHUP);
     ignore_signal(libc::SIGPIPE);
     // before the program starts, so it and all it starts are in the scope too
+    #[cfg(target_os = "linux")]
     if let Err(reason) = crate::scope::move_into_own_scope(&config.id, &config.cwd) {
         eprintln!("ptyhost: {reason}; the terminal stays in its starter's cgroup");
     }
     let (master, slave) = open_pty(config.size)?;
     let mut program = spawn_program(slave, config)?;
-    let exited = pidfd_open(program.id())?;
+    let exited = exit_watch(program.id())?;
     registry.create_dir()?;
     let socket = registry.socket(&config.id);
     // left behind by a host that was killed; `start` checked no live host owns the id
@@ -477,9 +478,9 @@ fn signal_groups(groups: &[libc::pid_t], signal: libc::c_int) {
 
 fn open_pty(size: Size) -> io::Result<(File, OwnedFd)> {
     let (mut master, mut slave) = (-1, -1);
-    let window = winsize(size);
+    let mut window = winsize(size);
     // SAFETY: valid out-pointers; name and termios may be null
-    check(unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null(), &window) })?;
+    check(unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &mut window) })?;
     // SAFETY: openpty returned two new descriptors nobody else owns
     let (master, slave) = unsafe { (OwnedFd::from_raw_fd(master), OwnedFd::from_raw_fd(slave)) };
     // the program gets the slave as 0-2 only; it must not inherit either descriptor beyond that
@@ -516,7 +517,7 @@ fn spawn_program(slave: OwnedFd, config: &HostConfig) -> io::Result<Child> {
             // the host ignores hang-ups; ignored signals survive exec, so restore the default
             libc::signal(libc::SIGHUP, libc::SIG_DFL);
             check(libc::setsid())?;
-            check(libc::ioctl(0, libc::TIOCSCTTY, 0))?;
+            check(libc::ioctl(0, libc::TIOCSCTTY as _, 0))?;
             Ok(())
         })
     };
@@ -524,18 +525,67 @@ fn spawn_program(slave: OwnedFd, config: &HostConfig) -> io::Result<Child> {
 }
 
 /// A host lives long; descriptors its starter leaked to it (sockets, watches, GPU handles) would stay open as long.
+#[cfg(target_os = "linux")]
 fn close_inherited_descriptors() {
     // SAFETY: closes descriptors 3 and up, none of which this process uses yet
     unsafe { libc::syscall(libc::SYS_close_range, 3, libc::c_uint::MAX, 0) };
 }
 
+/// A host lives long; descriptors its starter leaked to it (sockets, watches, GPU handles) would stay open as long.
+/// macOS has no close_range; `/dev/fd` lists the open ones, its own listing's descriptor among them.
+#[cfg(target_os = "macos")]
+fn close_inherited_descriptors() {
+    let Ok(entries) = std::fs::read_dir("/dev/fd") else { return };
+    let inherited: Vec<RawFd> = entries.filter_map(|entry| entry.ok()?.file_name().to_str()?.parse().ok()).filter(|fd| *fd > 2).collect();
+    for fd in inherited {
+        // SAFETY: closes descriptors 3 and up, none of which this process uses yet; the listing's is closed already
+        unsafe { libc::close(fd) };
+    }
+}
+
 /// A descriptor that becomes readable when the process exits: the exit hook, no polling.
-fn pidfd_open(pid: u32) -> io::Result<OwnedFd> {
+#[cfg(target_os = "linux")]
+fn exit_watch(pid: u32) -> io::Result<OwnedFd> {
     // SAFETY: plain syscall; works on the zombie too if the program already exited, as nobody reaped it yet
     let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, pid as libc::pid_t, 0) };
     check(fd as i32)?;
     // SAFETY: a new descriptor nobody else owns
     Ok(unsafe { OwnedFd::from_raw_fd(fd as RawFd) })
+}
+
+/// A descriptor that becomes readable when the process exits: a kqueue watching it, which poll takes like any
+/// descriptor.
+#[cfg(target_os = "macos")]
+fn exit_watch(pid: u32) -> io::Result<OwnedFd> {
+    // SAFETY: kqueue takes no arguments; a new descriptor nobody else owns
+    let queue = unsafe { OwnedFd::from_raw_fd(check(libc::kqueue())?) };
+    let watch = libc::kevent {
+        ident: pid as libc::uintptr_t,
+        filter: libc::EVFILT_PROC,
+        flags: libc::EV_ADD,
+        fflags: libc::NOTE_EXIT,
+        data: 0,
+        udata: std::ptr::null_mut(),
+    };
+    // SAFETY: one valid change, no events asked for
+    let added = unsafe { libc::kevent(queue.as_raw_fd(), &watch, 1, std::ptr::null_mut(), 0, std::ptr::null()) };
+    match check(added) {
+        Ok(_) => Ok(queue),
+        // unlike a pidfd, a kqueue refuses a zombie: the program already exited
+        Err(error) if error.raw_os_error() == Some(libc::ESRCH) => already_readable(),
+        Err(error) => Err(error),
+    }
+}
+
+/// The read end of a pipe whose write end is closed: poll reports it at once.
+#[cfg(target_os = "macos")]
+fn already_readable() -> io::Result<OwnedFd> {
+    let mut ends = [-1; 2];
+    // SAFETY: a valid out-array of two descriptors
+    check(unsafe { libc::pipe(ends.as_mut_ptr()) })?;
+    // SAFETY: pipe returned two new descriptors nobody else owns; the write end closes as it drops
+    let (read, _write) = unsafe { (OwnedFd::from_raw_fd(ends[0]), OwnedFd::from_raw_fd(ends[1])) };
+    Ok(read)
 }
 
 fn exit_code(status: ExitStatus) -> i32 {

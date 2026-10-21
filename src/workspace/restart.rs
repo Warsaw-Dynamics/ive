@@ -34,13 +34,13 @@ impl Workspace {
         .detach();
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     fn keeps_terminals(&self) -> bool {
         self.hosted.is_some()
     }
 
-    /// `--restart` is refused outside Linux, so this is never asked there.
-    #[cfg(not(target_os = "linux"))]
+    /// Without Unix, terminals run inside IVE, so a restart ends them.
+    #[cfg(not(unix))]
     fn keeps_terminals(&self) -> bool {
         false
     }
@@ -87,7 +87,7 @@ impl Workspace {
         probe.is_some_and(|probe| probe.program_group().is_some())
     }
 
-    /// Without Unix process groups IVE cannot tell; `--restart` is Linux only anyway.
+    /// Without Unix process groups IVE cannot tell; `--restart` is Unix only anyway.
     #[cfg(not(unix))]
     fn runs_program(&self, _id: ProcessId) -> bool {
         false

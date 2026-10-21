@@ -31,7 +31,7 @@ use crate::sidebar::rows::{self, TreeKey};
 use crate::sidebar::view::{self as sidebar_view, Sidebar, Tree};
 use crate::sidebar::{self, view::badge};
 use crate::state::{RecentProject, SavedState};
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use crate::terminal::hosted::HostedTerminals;
 use crate::tabs::{TabId, Tabs};
 use crate::theme::{self, Theme};
@@ -76,7 +76,7 @@ pub struct Workspace {
     /// closed projects, newest first
     recent: Vec<RecentProject>,
     processes: Processes,
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     hosted: Option<HostedTerminals>,
     tabs: Tabs<Tab>,
     /// the gap between tabs a dragged tab would land in, while it is over one that moves it
@@ -191,7 +191,7 @@ pub struct Startup {
     pub api_calls: UnboundedReceiver<Call>,
     pub scripts: Scripts,
     /// set when this IVE owns the hosted terminals: shells then outlive IVE
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub hosted: Option<HostedTerminals>,
     /// SIGTERM and SIGINT, which go through the quit prompt, and SIGUSR1, the restart script's quit
     pub signals: Option<UnboundedReceiver<i32>>,
@@ -237,7 +237,7 @@ impl Workspace {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
             processes: Processes::default(),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             hosted: startup.hosted,
             tabs: Tabs::default(),
             tab_drop_gap: None,
@@ -287,24 +287,24 @@ impl Workspace {
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
         };
-        // a closing window goes through the quit prompt; IVE quits from there. Linux only: elsewhere terminals end
-        // with IVE, and a macOS app outlives its windows as before.
-        #[cfg(target_os = "linux")]
+        // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
+        // with IVE.
+        #[cfg(unix)]
         {
             let this = cx.entity().downgrade();
             window.on_window_should_close(cx, move |window, cx| this.update(cx, |workspace, cx| workspace.request_quit(window, cx)).is_err());
         }
         tracing::info_span!("restore_projects").in_scope(|| workspace.restore(&startup.saved, cx));
         let tabs = startup.saved.tabs.clone();
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         let sessions = {
             let adopted_tabs = if tabs.is_some() { processes::AdoptedTabs::AsSaved } else { processes::AdoptedTabs::Each };
             tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, window, cx))
         };
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(unix))]
         let sessions = std::collections::HashMap::new();
         // another IVE in this profile keeps the terminals: its tabs are its own
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         if workspace.hosted.is_none() {
             workspace.tab_ownership = tab_state::TabOwnership::Guest(tabs.clone());
         }
