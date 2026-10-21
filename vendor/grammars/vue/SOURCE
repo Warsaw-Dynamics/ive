@@ -1,0 +1,4 @@
+Repository: https://github.com/tree-sitter-grammars/tree-sitter-vue
+Ref: main
+Commit: ce8011a414fdf8091f4e4071752efc376f4afb08
+Copied from: repository main branch (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)

@@ -1,0 +1,7 @@
+<!-- paging.rs more_row: "Show 10 more · N of M" and "Show all"; needs list (all items) and key (its paging key). -->
+<template x-if="list.length > limited(list, key).length">
+  <div class="more">
+    <button class="more__link" type="button" @click="showMore(key)" x-text="moreLabel(list.length, limited(list, key).length)"></button>
+    <button class="more__link" type="button" @click="showAll(key, list.length)">Show all</button>
+  </div>
+</template>

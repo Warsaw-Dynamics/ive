@@ -1,0 +1,8 @@
+Repository: https://github.com/tree-sitter/tree-sitter-rust
+Ref: crate tree-sitter-rust 0.24.2
+Copied from: rust.js is that crate's grammar.js, unchanged; src/scanner.c is its scanner with the functions renamed
+  tree_sitter_rust_external_scanner_* -> tree_sitter_rune_external_scanner_*.
+IVE's own: grammar.js, Rune's syntax on top of rust.js. src/parser.c and the tree_sitter headers are generated from it:
+  echo 'nodejs 22.23.1' > .tool-versions   # or any node the CLI runs on
+  npx tree-sitter-cli@0.25.10 generate     # needs a tree-sitter.json naming the grammar "rune" for ABI 15
+Checked against the 49 .rn scripts of crate rune 0.14.2 (tests/, benches/) and assets/scripts/ive.rn: all parse cleanly.

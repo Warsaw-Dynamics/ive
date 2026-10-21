@@ -1,0 +1,67 @@
+/* The hub (Ctrl+E; hub.js, a proposal): sizes follow the tree and the overview rows. */
+/* theme default.toml rows.excluded */
+:root, :root[data-theme="dark"] { --excluded-text: #d69a6b; --excluded-bg: #291f1c; }
+:root[data-theme="light"] { --excluded-text: #8c4f00; --excluded-bg: #fff5db; }
+.hub { flex: 1; min-height: 0; display: flex; flex-direction: column; font-size: 13px; }
+
+.hub__bar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-bottom: 1px solid var(--border); }
+.hub__input { flex: 1; min-width: 0; height: 30px; padding: 0 4px; border: 0; outline: 0; background: none; color: var(--text); font: 15px var(--mono); }
+.hub__input::placeholder { color: var(--muted); font-family: "Inter", system-ui, sans-serif; font-size: 13px; }
+.hub__scopes { flex: none; display: flex; gap: 2px; padding: 2px; border-radius: 6px; background: var(--hover); }
+.hub__scope { padding: 1px 8px; border-radius: 4px; font-size: 12px; color: var(--muted); }
+.hub__scope--on { background: var(--background); color: var(--text); }
+.hub__scope { display: flex; align-items: center; gap: 4px; }
+.hub__scope-icon { width: 12px; height: 12px; }
+.hub__scope--in { font-family: var(--mono); }
+/* a line the hub jumped to (:42, file:line), in the editor */
+.editor__line--at { background: var(--tab-active); }
+.hub__stats { flex: none; min-width: 120px; text-align: right; font: 12px var(--mono); color: var(--muted); }
+
+.hub__body { flex: 1; min-height: 0; display: flex; }
+.hub__list { flex: 1 1 56%; min-width: 0; overflow: auto; padding: 4px 6px 12px; }
+.hub__preview { flex: 1 1 44%; min-width: 0; overflow: auto; border-left: 1px solid var(--border); background: var(--sidebar); }
+
+.hub__section { display: flex; align-items: baseline; gap: 8px; padding: 10px 8px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.hub__hint { font-weight: 400; }
+.hub__empty, .hub__more { padding: 2px 8px 2px 30px; font-size: 12px; }
+
+.hub__row { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px 0 2px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.hub__row:hover { background: var(--hover); }
+.hub__row--on, .hub__row--on:hover { background: var(--selected); }
+.hub__row--closed .hub__title { color: var(--muted); }
+/* a branch only on a remote: its icon fades, so local and remote differ before the detail is read */
+.hub__row--weak .icon { opacity: 0.45; }
+.hub__num { flex: none; width: 14px; text-align: right; font: 11px var(--mono); color: var(--muted); }
+.hub__title { flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.hub__detail { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--muted); direction: rtl; text-align: left; }
+.hub__detail > span { direction: ltr; unicode-bidi: embed; }
+.hub__hit { color: var(--accent); font-weight: 700; }
+.hub__row--on .hub__hit { color: var(--text); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.hub__state { flex: none; font-size: 12px; color: var(--muted); }
+.hub__state--live { color: var(--mark-added); }
+.hub__co { flex: none; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; border-radius: 4px; font-size: 12px;
+  border-left: 3px solid var(--co); background: var(--hover); }
+.hub__excluded-toggle { display: flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--hover); border-radius: 6px; }
+.hub__excluded-toggle.hub__scope--on { background: var(--excluded-bg); color: var(--excluded-text); box-shadow: inset 0 0 0 1px var(--excluded-text); }
+.hub__excluded { flex: none; padding: 0 5px; border-radius: 4px; font-size: 12px; background: var(--excluded-bg); color: var(--excluded-text); }
+.hub__multi { flex: none; font-size: 12px; color: var(--muted); }
+.hub__crumb { flex: none; display: flex; align-items: center; gap: 6px; max-width: 50%; overflow: hidden; white-space: nowrap; font: 13px var(--mono); }
+.hub__age { flex: none; width: 64px; text-align: right; font-size: 12px; color: var(--muted); }
+
+.hub__preview-in { display: flex; flex-direction: column; min-height: 100%; }
+.hub__preview-head { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--sidebar); }
+.hub__preview-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub__preview-sub { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub__preview-text { padding: 8px 12px; }
+.hub__preview-text--mono { font: 12px/18px var(--mono); }
+.hub__preview-line { display: flex; gap: 12px; white-space: pre; min-height: 18px; }
+.hub__preview-line--at { background: var(--tab-active); }
+.hub__preview-number { flex: none; width: 3ch; text-align: right; color: var(--muted); }
+.hub__preview-diff { font-size: 12px; }
+
+.hub__keys { flex: none; display: flex; align-items: center; gap: 12px; height: 28px; padding: 0 12px; overflow: hidden; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); white-space: nowrap; }
+.hub__key { display: flex; align-items: center; gap: 4px; }
+.hub__key kbd { padding: 0 4px; border: 1px solid var(--border); border-radius: 4px; font: 11px var(--mono); color: var(--text); }
+.hub__note { color: var(--text); }
+.hub__syntax { margin-left: auto; font-family: var(--mono); }

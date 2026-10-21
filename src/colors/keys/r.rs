@@ -1,0 +1,25 @@
+use super::Row;
+
+pub const ROWS: &[Row] = &[
+    ("R.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("R.STRING", "String", Some("DEFAULT_STRING")),
+    ("R.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("R.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("R.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("R.DOC_COMMENT", "Roxygen comment", Some("DEFAULT_DOC_COMMENT")),
+    ("R.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("R.ASSIGNMENT", "Assignment operator", Some("R.OPERATION_SIGN")),
+    ("R.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("R.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("R.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("R.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("R.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+    ("R.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("R.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("R.PREDEFINED", "Base function", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("R.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("R.NAMED_ARGUMENT", "Named argument", Some("DEFAULT_PARAMETER")),
+    ("R.LOCAL_VARIABLE", "Assigned variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("R.FIELD", "Member", Some("DEFAULT_INSTANCE_FIELD")),
+    ("R.NAMESPACE", "Package", Some("DEFAULT_IDENTIFIER")),
+];

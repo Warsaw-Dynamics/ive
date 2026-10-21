@@ -1,0 +1,37 @@
+<!-- A project page Worktrees row, as a hub row: the checkout's colour, icon, label, branch or folder, tags (changes,
+     ↑/↓, ● n running), last use; a branch row: local or only on a remote. Hide / Show (or + Worktree) on hover and
+     while selected. Needs p and row. -->
+<div class="hub__row wtrow" :class="{ 'hub__row--on': isPageSelected(p, row), 'hub__row--weak': row.branch && row.branch.remote !== null, 'wtrow--hidden': row.co && isHidden(row.co) }"
+     @click="selectPageRow(p, row); row.open()" :title="row.co ? row.co.path : worktreePath(p, row.branch)"
+     x-effect="isPageSelected(p, row) && $el.scrollIntoView({ block: 'nearest' })">
+  <span class="wtrow__colour" :style="{ background: row.co ? row.co.colour : 'transparent' }"></span>
+  <template x-if="row.co">
+    <span class="wtrow__main">
+      <img class="icon" :src="icon(row.co.branch === null ? 'project-folder.svg' : 'branch.svg')" alt="" />
+      <span class="hub__title" x-text="row.co.label"></span>
+      <span class="hub__detail"><span x-text="row.co.main ? (row.co.branch === null ? row.co.path : 'main checkout · ' + row.co.path) : (row.co.branch !== row.co.label ? row.co.branch + ' · ' : '') + cardFolder(row.co)"></span></span>
+      <template x-for="t in cardTags(row.co)" :key="t">
+        <span :class="t.startsWith('●') ? 'hub__state hub__state--live' : 'tag'" x-text="t"></span>
+      </template>
+      <span class="hub__age" x-text="lastUsedAge(row.co)"></span>
+    </span>
+  </template>
+  <template x-if="row.branch">
+    <span class="wtrow__main">
+      <img class="icon" :src="icon('branch.svg')" alt="" />
+      <span class="hub__title" x-text="row.branch.name"></span>
+      <span class="hub__detail"><span x-text="row.branch.remote ? 'only on ' + row.branch.remote : 'local'"></span></span>
+      <span class="hub__age" x-text="age(row.branch.modified)"></span>
+    </span>
+  </template>
+  <span class="wtrow__actions">
+    <!-- !== null: Alpine calls an expression that evaluates to a function -->
+    <template x-if="row.co && row.toggle !== null">
+      <button class="linkbutton" type="button" :title="isHidden(row.co) ? 'Back in the tree (Space)' : 'Out of the tree, the hub and New terminal; this page shows it again (Space)'"
+              @click.stop="selectPageRow(p, row); row.toggle()" x-text="isHidden(row.co) ? 'Show' : 'Hide'"></button>
+    </template>
+    <template x-if="row.branch">
+      <button class="linkbutton" type="button" title="Adds its worktree, collapsed in the tree (Space)" @click.stop="row.toggle()">+ Worktree</button>
+    </template>
+  </span>
+</div>

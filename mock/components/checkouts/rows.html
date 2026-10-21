@@ -1,0 +1,56 @@
+<!-- sidebar/view.rs render_row: chevron (or a file's empty slot), badge or icon, name, tags; one action on hover.
+     Virtual folders (@hidden): icon + italic @name on a chip; @hidden's is weaker (muted, faded chip).
+     A worktree's folders (Processes, Uncommitted, Since base, Commits, Files): icon + name, as a folder; an empty
+     folder of changes is muted, with `· 0` or `· no base`.
+     Run rows (a worktree's Processes, and the run configurations tab): the run's state, Restart + Stop or Start + Remove on hover;
+     the tab's folder rows carry ● n (a folder's icon has the run badge in the Files tree, without a count).
+     A changed file: its git mark after its name, a deleted file struck through.
+     A middle click activates the row and keeps the tab it shows. -->
+<template x-for="row in rows" :key="row.node.key">
+  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty }"
+       :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="activateNode(row.node)"
+       @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && activateNodeToKeep(row.node)"
+       :title="row.node.warning || row.node.hint || row.node.label">
+    <template x-if="row.node.children">
+      <img class="icon tree__chevron" :src="icon(isNodeOpen(row.node) ? 'chevron-down.svg' : 'chevron-right.svg')" alt=""
+           @click.stop="toggleNode(row.node)" />
+    </template>
+    <template x-if="row.node.slot"><span class="tree__slot"></span></template>
+    <template x-if="row.node.project"><span class="badge" x-text="initials(row.node.label)"></span></template>
+    <template x-if="row.node.icon"><img class="icon" :src="icon(row.node.icon)" alt="" /></template>
+    <span class="tree__label" :class="{ 'tree__label--strong': row.node.strong, 'tree__label--special': row.node.special, 'tree__label--weak': row.node.weak, 'tree__label--struck': row.node.struck, 'tree__label--link': row.node.link }" x-text="row.node.label"></span>
+    <template x-if="row.node.mark"><span class="mark" :class="'mark--' + row.node.mark" x-text="row.node.mark"></span></template>
+    <template x-if="row.node.warning"><img class="icon" :src="icon('warning.svg')" alt="" /></template>
+    <template x-if="row.node.state"><span class="tree__state" :class="'tree__state--' + row.node.state.tone" x-text="row.node.state.text"></span></template>
+    <template x-if="row.node.runs && row.node.live"><span class="tree__live" x-text="'● ' + row.node.live"></span></template>
+    <template x-if="row.node.pill">
+      <span class="pill"><img class="icon" :src="icon('branch.svg')" alt="" /><span x-text="row.node.pill"></span></span>
+    </template>
+    <template x-if="row.node.count"><span class="count" x-text="row.node.count"></span></template>
+    <!-- a worktree's badges: a folder's icon and count; a click shows or hides the folder -->
+    <template x-if="row.node.badges && row.node.badges.length">
+      <span class="tree__badges">
+        <template x-for="b in row.node.badges" :key="b.key">
+          <button class="tree__badge" :class="{ 'tree__badge--on': b.on }" type="button" :title="b.title" @click.stop="b.toggle()">
+            <img class="icon" :src="icon(b.icon)" alt="" /><template x-if="b.count"><span x-text="b.count"></span></template>
+          </button>
+        </template>
+      </span>
+    </template>
+    <template x-if="row.node.meta"><span class="tree__meta" x-text="row.node.meta"></span></template>
+    <template x-if="row.node.running"><span class="tree__meta" x-text="row.node.running"></span></template>
+    <template x-if="row.node.action">
+      <button class="row-action" type="button" :title="row.node.action.title" @click.stop="row.node.action.run()">
+        <img class="icon" :src="icon(row.node.action.icon)" alt="" />
+      </button>
+    </template>
+    <!-- run rows: ▷ Run is always shown (the tab); a run's Restart + Stop or Start + Remove appear on hover -->
+    <template x-if="row.node.actions">
+      <span class="tree__actions" :class="{ 'tree__actions--pinned': row.node.pinned }">
+        <template x-for="a in row.node.actions" :key="a.title">
+          <button class="tree__action" type="button" :title="a.title" @click.stop="a.run()"><img class="icon" :src="icon(a.icon)" alt="" /></button>
+        </template>
+      </span>
+    </template>
+  </div>
+</template>

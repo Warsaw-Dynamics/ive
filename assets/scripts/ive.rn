@@ -1,0 +1,154 @@
+// THIS FILE IS A READ-ONLY COPY OF IVE'S BUILT-IN ive.rn, FOR VIEWING ONLY. EDITING IT DOES NOT AFFECT THE
+// RUNNING IVE, AND IVE REPLACES IT AT EVERY START. PUT YOUR CHANGES IN init.rn NEXT TO THIS FILE.
+//
+// IVE's default fonts and key and mouse bindings. Override any of it in init.rn: a font set there
+// replaces the one here, an entry there with the same key and mods (or the same mouse event and mods) and the
+// same scope replaces the one here, and act::DisableDefaultAssignment switches it off. Colours and sizes are in
+// config.theme, which init.rn gets filled in with the defaults of theme.toml next to this file. See "Scripting"
+// and "Theme" in IVE's README.
+pub fn init(config) {
+    // IntelliJ's fonts, bundled with IVE; any installed family works too
+    config.font = "JetBrains Mono";
+    config.ui_font = "Inter";
+
+    // folders whose content counts as excluded besides gitignored ones, by name: the tree draws them as excluded
+    config.excluded = ["target", "node_modules"];
+
+    // project, Settings and Run configurations tabs opened by a click, and the hub, close when another tab is shown;
+    // middle click in the tree or double click on the tab keeps them. marker: "Italic" or #{ Prefix: "*" }
+    config.temporary_tabs = #{
+        enabled: true,
+        kinds: ["Project", "Settings", "Hub", "RunConfigs"],
+        marker: "Italic",
+    };
+
+    // menus a mouse binding opens on a tab with act::ShowTabMenu("<name>"); init.rn adds menus or replaces one by name,
+    // e.g. config.tab_menus.close = [act::CloseOtherTabs]; items a tab has no use for are left out (Keep Tab on a
+    // permanent tab, Stop and Kill on a tab that is not a process), and so are separators they leave dangling
+    config.tab_menus = #{
+        main: [act::KeepTab, act::StopProgram, "Separator",
+                  act::CloseTab, act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight],
+    };
+
+    // the terminal keeps ctrl-c / ctrl-v for its programs; macOS has cmd for copy and paste
+    let terminal_clipboard = if ive::os() == "macos" { "CMD" } else { "CTRL|SHIFT" };
+    // Close: the shown tab goes, a process keeps running (in Processes); Stop: a process tab's process ends for good
+    // (SIGTERM, SIGKILL 5 s later) and its tab closes, any other tab just closes. macOS keeps cmd-q and cmd-shift-q.
+    let close_tab = if ive::os() == "macos" { #{ key: "w", mods: "CMD" } } else { #{ key: "w", mods: "CTRL|SHIFT" } };
+    // a hub row's absolute path; the tree's selected files and folders, one per line
+    let copy_full_path = if ive::os() == "macos" { #{ key: "c", mods: "CMD|ALT" } } else { #{ key: "c", mods: "CTRL|SHIFT" } };
+    let stop_tab = if ive::os() == "macos" { #{ key: "w", mods: "CMD|ALT" } } else { #{ key: "q", mods: "CTRL|SHIFT" } };
+
+    config.keys = [
+        #{ key: ",", mods: "SECONDARY", action: act::OpenSettings },
+        #{ key: "F12", mods: "ALT", action: act::OpenTerminal },
+        // a new terminal anywhere: a project, a worktree, or a branch that first gets its worktree
+        #{ key: "t", mods: "SECONDARY|SHIFT", action: act::OpenTerminalIn },
+        // recent tabs, changed files, running processes, and every file of the open projects
+        #{ key: "e", mods: "SECONDARY|SHIFT", action: act::OpenHub },
+        // a tab opened from the hub a moment ago brings the hub back when closed with these keys (functions below);
+        // the mouse and the tab menu close plainly
+        #{ key: close_tab.key, mods: close_tab.mods, action: close_back_to_hub },
+        #{ key: stop_tab.key, mods: stop_tab.mods, action: stop_back_to_hub },
+        // changed files flat or grouped by folder: the tree's git folders and the Git sections
+        #{ key: "g", mods: "ALT|SHIFT", action: act::ToggleChangesLayout },
+        // keys while the sidebar has the keyboard (a click on it gives it)
+        #{ key: copy_full_path.key, mods: copy_full_path.mods, action: act::CopyFullPath, scope: "tree" },
+
+        #{ key: "c", mods: terminal_clipboard, action: act::CopyTo("Clipboard"), scope: "terminal" },
+        #{ key: "v", mods: terminal_clipboard, action: act::PasteFrom("Clipboard"), scope: "terminal" },
+        #{ key: "Insert", mods: "SHIFT", action: act::PasteFrom("Clipboard"), scope: "terminal" },
+        // a clipboard with text and an image (an office app's cells): the text, then the image saved to a file
+        #{ key: "v", mods: `${terminal_clipboard}|ALT`, action: act::PasteTextAndImageFrom("Clipboard"), scope: "terminal" },
+
+        #{ key: "a", mods: "SECONDARY", action: act::SelectAll, scope: "editor" },
+        #{ key: "c", mods: "SECONDARY", action: act::CopyTo("Clipboard"), scope: "editor" },
+        #{ key: "x", mods: "SECONDARY", action: act::Cut, scope: "editor" },
+        #{ key: "v", mods: "SECONDARY", action: act::PasteFrom("Clipboard"), scope: "editor" },
+        #{ key: "z", mods: "SECONDARY", action: act::Undo, scope: "editor" },
+        #{ key: "z", mods: "SECONDARY|SHIFT", action: act::Redo, scope: "editor" },
+
+        // the hub (Ctrl+Shift+E): its query keeps typing, arrows left/right, Home/End and the clipboard
+        #{ key: "DownArrow", action: act::HubDown, scope: "hub" },
+        #{ key: "j", mods: "CTRL", action: act::HubDown, scope: "hub" },
+        #{ key: "n", mods: "CTRL", action: act::HubDown, scope: "hub" },
+        #{ key: "UpArrow", action: act::HubUp, scope: "hub" },
+        #{ key: "k", mods: "CTRL", action: act::HubUp, scope: "hub" },
+        #{ key: "p", mods: "CTRL", action: act::HubUp, scope: "hub" },
+        #{ key: "PageDown", action: act::HubPageDown, scope: "hub" },
+        #{ key: "PageUp", action: act::HubPageUp, scope: "hub" },
+        #{ key: "Enter", action: act::HubOpen, scope: "hub" },
+        // the hub stays, the tab opens right of it
+        #{ key: "Enter", mods: "SHIFT", action: act::HubOpenBehind, scope: "hub" },
+        // the row's path, shell-quoted, into the last terminal
+        #{ key: "Enter", mods: "ALT", action: act::HubTypePath, scope: "hub" },
+        #{ key: "y", mods: "CTRL", action: act::HubCopyPath, scope: "hub" },
+        #{ key: copy_full_path.key, mods: copy_full_path.mods, action: act::CopyFullPath, scope: "hub" },
+        // the Stop key on a process row, or a Recent row of a process tab: its process ends, the hub stays
+        #{ key: stop_tab.key, mods: stop_tab.mods, action: act::HubStop, scope: "hub" },
+        // all projects, the shown tab's project, its worktree
+        #{ key: "Tab", action: act::HubCycleScope, scope: "hub" },
+        // only on an empty query: back to all projects
+        #{ key: "Backspace", action: act::HubWiden, scope: "hub" },
+        #{ key: "i", mods: "ALT", action: act::HubToggleExcluded, scope: "hub" },
+        // Ctrl+Shift+E again: only the changed files
+        #{ key: "e", mods: "SECONDARY|SHIFT", action: act::HubToggleChanged, scope: "hub" },
+        // the worktree question, else the query, else back to the tab shown before
+        #{ key: "Escape", action: act::HubBack, scope: "hub" },
+    ];
+    // Alt+1 … Alt+9 open the numbered rows
+    for row in 1..10 {
+        config.keys.push(#{ key: `${row}`, mods: "ALT", action: act::HubOpenRow(row), scope: "hub" });
+    }
+
+    config.mouse_bindings = [
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, action: act::ActivateTab, scope: "tab" },
+        #{ event: #{ Up: #{ streak: 1, button: "Middle" } }, action: act::CloseTab, scope: "tab" },
+        // a temporary tab (italic title) stays
+        #{ event: #{ Up: #{ streak: 2, button: "Left" } }, action: act::KeepTab, scope: "tab" },
+        // the menu config.tab_menus.main declares
+        #{ event: #{ Down: #{ streak: 1, button: "Right" } }, action: act::ShowTabMenu("main"), scope: "tab" },
+
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, action: act::ActivateRow, scope: "tree" },
+        // opens the row's tab to stay, not temporary
+        #{ event: #{ Up: #{ streak: 1, button: "Middle" } }, action: act::ActivateRowToKeep, scope: "tree" },
+        // files and folders selected together, to drag onto a terminal
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, mods: "SECONDARY", action: act::ToggleRowSelection, scope: "tree" },
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, mods: "SHIFT", action: act::ExtendRowSelection, scope: "tree" },
+
+        // a click selects by character, a double click by word, a triple click by line
+        #{ event: #{ Down: #{ streak: 1, button: "Left" } }, action: act::SelectTextAtMouseCursor("Cell"), scope: "terminal" },
+        #{ event: #{ Down: #{ streak: 2, button: "Left" } }, action: act::SelectTextAtMouseCursor("Word"), scope: "terminal" },
+        #{ event: #{ Down: #{ streak: 3, button: "Left" } }, action: act::SelectTextAtMouseCursor("Line"), scope: "terminal" },
+        #{ event: #{ Drag: #{ streak: 1, button: "Left" } }, action: act::ExtendSelectionToMouseCursor("Cell"), scope: "terminal" },
+        #{ event: #{ Drag: #{ streak: 2, button: "Left" } }, action: act::ExtendSelectionToMouseCursor("Word"), scope: "terminal" },
+        #{ event: #{ Drag: #{ streak: 3, button: "Left" } }, action: act::ExtendSelectionToMouseCursor("Line"), scope: "terminal" },
+        // a finished selection goes to the primary selection, which middle click pastes
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, action: act::CompleteSelection("PrimarySelection"), scope: "terminal" },
+        #{ event: #{ Up: #{ streak: 2, button: "Left" } }, action: act::CompleteSelection("PrimarySelection"), scope: "terminal" },
+        #{ event: #{ Up: #{ streak: 3, button: "Left" } }, action: act::CompleteSelection("PrimarySelection"), scope: "terminal" },
+        #{ event: #{ Up: #{ streak: 1, button: "Middle" } }, action: act::PasteFrom("PrimarySelection"), scope: "terminal" },
+    ];
+}
+
+// a tab opened from the hub a moment ago brings the hub back when closed with the key; init.rn changes the time,
+// drops the rule or extends it by binding its own functions to these keys. A key's context is the shown tab, as
+// ive::active_tab() answers it.
+pub async fn close_back_to_hub(tab) {
+    ive::close_tab(tab.tab).await?;
+    back_to_hub(tab).await
+}
+
+pub async fn stop_back_to_hub(tab) {
+    ive::stop_tab(tab.tab).await?;
+    back_to_hub(tab).await
+}
+
+async fn back_to_hub(tab) {
+    if let Some(from) = tab.get("opened_from_hub") {
+        if from.seconds_ago <= 10.0 {
+            ive::open_hub(from.hub).await?;
+        }
+    }
+    Ok(())
+}

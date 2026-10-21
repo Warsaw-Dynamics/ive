@@ -1,0 +1,30 @@
+use super::Row;
+
+/// No Zig keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("ZIG.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("ZIG.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("ZIG.STRING", "String", Some("DEFAULT_STRING")),
+    ("ZIG.CHAR", "Char", Some("DEFAULT_STRING")),
+    ("ZIG.VALID_STRING_ESCAPE", "Valid escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("ZIG.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("ZIG.DOC_COMMENT", "Doc comment", Some("DEFAULT_DOC_COMMENT")),
+    ("ZIG.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("ZIG.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("ZIG.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("ZIG.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("ZIG.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("ZIG.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("ZIG.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("ZIG.BUILTIN_TYPE", "Builtin type", Some("DEFAULT_KEYWORD")),
+    ("ZIG.BUILTIN_FUNCTION", "Builtin function", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("ZIG.TYPE", "Type", Some("DEFAULT_CLASS_NAME")),
+    ("ZIG.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+    ("ZIG.FIELD", "Field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("ZIG.GLOBAL_VARIABLE", "Container-level variable", Some("DEFAULT_STATIC_FIELD")),
+    ("ZIG.LOCAL_VARIABLE", "Local variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("ZIG.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("ZIG.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("ZIG.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("ZIG.LABEL", "Label", Some("DEFAULT_LABEL")),
+];

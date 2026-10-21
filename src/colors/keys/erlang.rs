@@ -1,0 +1,30 @@
+use super::Row;
+
+/// No Erlang keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("ERLANG.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("ERLANG.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("ERLANG.CHAR", "Character", Some("DEFAULT_NUMBER")),
+    ("ERLANG.STRING", "String", Some("DEFAULT_STRING")),
+    ("ERLANG.LINE_COMMENT", "Comment", Some("DEFAULT_LINE_COMMENT")),
+    ("ERLANG.DOC_COMMENT", "Documentation", Some("DEFAULT_DOC_COMMENT")),
+    ("ERLANG.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("ERLANG.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("ERLANG.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("ERLANG.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("ERLANG.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("ERLANG.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("ERLANG.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("ERLANG.ATTRIBUTE", "Module attribute", Some("DEFAULT_METADATA")),
+    ("ERLANG.MACRO", "Macro", Some("DEFAULT_METADATA")),
+    ("ERLANG.MODULE", "Module", Some("DEFAULT_CLASS_NAME")),
+    ("ERLANG.RECORD", "Record", Some("DEFAULT_CLASS_NAME")),
+    ("ERLANG.RECORD_FIELD", "Record field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("ERLANG.TYPE", "Type", Some("DEFAULT_CLASS_NAME")),
+    ("ERLANG.ATOM", "Atom", Some("DEFAULT_CONSTANT")),
+    ("ERLANG.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("ERLANG.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("ERLANG.REMOTE_CALL", "Remote function call", Some("DEFAULT_STATIC_METHOD")),
+    ("ERLANG.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("ERLANG.VARIABLE", "Variable", Some("DEFAULT_LOCAL_VARIABLE")),
+];

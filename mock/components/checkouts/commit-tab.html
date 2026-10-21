@@ -1,0 +1,25 @@
+<!-- overview/commit_tab.rs: sha, author · date, message, parents; then each file (diff_view.rs file header: chevron,
+     mark, path, line count; a click folds it) and its diff. Needs tab. -->
+<div class="committab" x-data="{ get c() { return commitTab(tab); } }">
+  <div class="committab__head">
+    <div class="committab__sha" x-text="c.sha"></div>
+    <div class="committab__by" x-text="c.author + ' · ' + c.date"></div>
+    <div class="committab__message" x-text="c.message"></div>
+    <div class="committab__parents" x-text="c.parents"></div>
+  </div>
+  <div class="diff">
+    <template x-for="f in c.files" :key="f.path">
+      <div x-data="{ get key() { return tab.key + ':' + f.path; } }">
+        <div class="diff__file" @click="toggleFile(key)">
+          <img class="icon" :src="icon(collapsedFiles.includes(key) ? 'chevron-right.svg' : 'chevron-down.svg')" alt="" />
+          <span class="mark" :class="'mark--' + f.mark" x-text="f.mark"></span>
+          <span x-text="f.path"></span>
+          <span class="muted" x-text="counted(f.diff.filter(l => l.startsWith('@@') === false).length, 'line', 'lines')"></span>
+        </div>
+        <template x-if="collapsedFiles.includes(key) === false">
+          <div x-data="{ get rows() { return diffRows(f.diff); } }" x-include="components/checkouts/diff-lines.html"></div>
+        </template>
+      </div>
+    </template>
+  </div>
+</div>

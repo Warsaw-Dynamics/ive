@@ -1,0 +1,135 @@
+<!-- editor.rs render_pane: the tab row (tabs, then Settings and the window buttons), then the shown tab.
+     A temporary tab's title is italic; double click keeps it. A right press opens the tab menu without showing the tab. -->
+<section class="pane">
+  <div class="tabbar">
+  <div class="tabs">
+    <template x-for="tab in tabs" :key="tab.key">
+      <div class="tabs__tab" :class="{ 'tabs__tab--current': focus === tab.key }"
+           @click="showTab(tab)" @dblclick="keepTab(tab)" @auxclick.prevent="$event.button === 1 && closeTab(tab)" :title="tabTooltip(tab)"
+           @mousedown="if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent
+           x-effect="focus === tab.key && $nextTick(() => $el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))">
+        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template></span>
+        <span class="tabs__title" :class="{ 'tabs__title--temporary': isTemporary(tab) }" x-text="tabTitle(tab)"></span>
+        <button class="tab__close" type="button" title="Close" @click.stop="closeTab(tab)">
+          <img class="icon" :src="icon('close.svg')" alt="" />
+        </button>
+        <template x-if="tabUnderline(tab)"><span class="tabs__underline" :style="{ background: tabUnderline(tab) }"></span></template>
+      </div>
+    </template>
+  </div>
+  <div class="tabbar__tools" x-include="components/checkouts/tab-tools.html"></div>
+  </div>
+
+  <!-- editor.rs tab menu: Keep Tab (temporary tab), Stop and Kill (process tab; greyed with nothing in the foreground),
+       a separator, then the Close items (greyed with nothing to close there). Escape or a press outside closes it. -->
+  <template x-for="tab in (menu === 'tab' && menuTab() ? [menuTab()] : [])" :key="tab.key">
+    <div class="menu menu--at" :style="{ left: tabMenu.x + 'px', top: tabMenu.y + 'px' }" role="menu"
+         x-init="$nextTick(() => keepTabMenuInWindow($el))" @mousedown.outside="menu = null" @contextmenu.prevent>
+      <template x-for="(item, i) in tabMenuItems(tab)" :key="i">
+        <div>
+          <template x-if="item === null"><div class="menu__separator" role="separator"></div></template>
+          <template x-if="item !== null">
+            <button class="menu__item" type="button" role="menuitem" :disabled="item.enabled === false" @click="runTabMenuItem(item)" x-text="item.title"></button>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <template x-if="currentTab() === null">
+    <p class="pane__message muted">Open a file, process or overview from the tree</p>
+  </template>
+
+  <!-- x-for over [x], not x-if: inner bindings must never see the tab vanish mid-teardown. -->
+  <template x-for="c in (currentTab() && currentTab().kind === 'console' ? [consoleOf(currentTab())] : [])" :key="c.id">
+    <div class="terminal" :class="'terminal--' + c.kind" @click="$el.querySelector('input') && $el.querySelector('input').focus()">
+      <template x-for="(line, i) in c.lines" :key="i">
+        <div class="terminal__line">
+          <template x-if="isPromptLine(line)">
+            <span><span class="terminal__user" x-text="line.prompt.user"></span>:<span class="terminal__dir"
+              x-text="line.prompt.dir"></span><template x-if="line.prompt.branch"><span class="terminal__branch"
+              x-text="' (' + line.prompt.branch + ')'"></span></template>$ <span class="terminal__text" x-text="line.command"></span></span>
+          </template>
+          <template x-if="isPromptLine(line) === false"><span class="terminal__text" x-text="line"></span></template>
+        </div>
+      </template>
+
+      <template x-if="c.kind === 'shell'">
+        <div class="terminal__line terminal__line--input">
+          <span class="terminal__user" x-text="prompt(c.co).user"></span>:<span class="terminal__dir"
+            x-text="prompt(c.co).dir"></span><template x-if="prompt(c.co).branch"><span class="terminal__branch"
+            x-text="' (' + prompt(c.co).branch + ')'"></span></template>$&nbsp;<input class="terminal__input"
+            x-model="c.input" @keydown.enter="submit(c)" x-init="$nextTick(() => $el.focus())" spellcheck="false" autocomplete="off" />
+        </div>
+      </template>
+      <!-- a run's tab (planned): output only, no Stop inside; stopped and restarted from its row in Processes -->
+      <template x-if="c.kind === 'run' && c.state === 'running'">
+        <div class="terminal__line muted" x-text="c.serve ? '(serving; live reload on)' : '(running)'"></div>
+      </template>
+      <template x-if="c.kind === 'agent'">
+        <div class="terminal__line terminal__line--input terminal__agent-input">&gt;&nbsp;<input class="terminal__input" x-model="c.input" @keydown.enter="submit(c)" x-init="$nextTick(() => $el.focus())"
+                           placeholder="Ask Claude…" spellcheck="false" autocomplete="off" />
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <template x-for="p in (currentTab() && currentTab().kind === 'projectPage' ? [project(currentTab().project)] : [])" :key="p.name">
+    <div class="fill" x-include="components/checkouts/project-page.html"></div>
+  </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'vars' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/vars-tab.html"></div>
+  </template>  <template x-for="p in (currentTab() && currentTab().kind === 'gitLog' ? [project(currentTab().project)] : [])" :key="p.name">
+    <div class="fill" x-include="components/checkouts/git-log-tab.html"></div>
+  </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'commit' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/commit-tab.html"></div>
+  </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'settings' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/settings.html"></div>
+  </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'runConfigs' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/run-configs-tab.html"></div>
+  </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'hub' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/hub.html"></div>
+  </template>
+
+  <!-- overview/diff_tab.rs: header (mark, path, source, Reload), then the diff. -->
+  <template x-for="tab in (currentTab() && currentTab().kind === 'diff' ? [currentTab()] : [])" :key="tab.key">
+    <div class="difftab" x-data="{ get d() { return diffOfTab(tab); } }">
+      <div class="diffpane__head">
+        <span class="mark" :class="'mark--' + tab.mark" x-text="tab.mark"></span>
+        <span class="diffpane__name diffpane__name--full" x-text="tab.path"></span>
+        <span class="muted diffpane__source" x-text="sourceText(checkout(tab.co), tab.source)"></span>
+        <template x-if="d === null"><span class="muted diffpane__source" x-text="'No changes to ' + tab.path + ' any more.'"></span></template>
+        <button class="toggle" type="button"><img class="icon" :src="icon('history.svg')" alt="" /><span>Reload</span></button>
+      </div>
+      <div class="diff" x-data="{ get rows() { return d ? diffRows(d.diff) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
+    </div>
+  </template>
+
+  <!-- A file (editor.rs EditorView) or a scratch (scratch/tab.rs: a header line, then the text). -->
+  <template x-for="tab in (currentTab() && (currentTab().kind === 'file' || currentTab().kind === 'scratch') ? [currentTab()] : [])" :key="tab.key">
+    <div class="pane__body">
+      <template x-if="tab.kind === 'scratch'">
+        <div class="scratch__header">
+          <span class="scratch__where" x-text="scratchHeader(tab)"></span>
+          <template x-if="isShellScratch(tab.title)">
+            <button class="scratch__run" type="button"><img class="icon" :src="icon('run.svg')" alt="" /><span>Run</span></button>
+          </template>
+        </div>
+      </template>
+      <div class="editor editor--static" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
+        <template x-for="(text, i) in lines(tab)" :key="i">
+          <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->
+          <div class="editor__line" :class="{ 'editor__line--at': tab.line === i + 1 }"
+               x-effect="tab.line === i + 1 && $nextTick(() => $el.scrollIntoView({ block: 'center' }))">
+            <span class="editor__number" x-text="i + 1"></span>
+            <span class="editor__text" x-text="text"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+</section>

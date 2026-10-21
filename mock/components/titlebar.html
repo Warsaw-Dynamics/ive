@@ -1,0 +1,29 @@
+<header class="titlebar" @dblclick.self="maximized = !maximized">
+  <div class="titlebar__side" @dblclick.self="maximized = !maximized">
+    <template x-if="project">
+      <button class="project-widget" type="button" @click="openProject()" title="Open Folder…">
+        <span class="project-widget__badge" x-text="initials(project.name)"></span>
+        <span x-text="project.name"></span>
+        <img class="icon" :src="icon('chevron-down.svg')" alt="" />
+      </button>
+    </template>
+    <template x-if="!project"><span class="titlebar__app">IVE</span></template>
+  </div>
+
+  <div class="titlebar__side">
+    <button class="icon-button" type="button" title="Settings (Ctrl+,)" @click="openSettings()">
+      <img class="icon" :src="icon('settings.svg')" alt="Settings" />
+    </button>
+    <div class="window-controls">
+      <button type="button" title="Minimize" @click="notify('minimize')">
+        <img class="icon" :src="icon('window-minimize.svg')" alt="" />
+      </button>
+      <button type="button" :title="maximized ? 'Restore' : 'Maximize'" @click="maximized = !maximized">
+        <img class="icon" :src="icon(maximized ? 'window-restore.svg' : 'window-maximize.svg')" alt="" />
+      </button>
+      <button class="window-controls__close" type="button" title="Close" @click="notify('close')">
+        <img class="icon" :src="icon('window-close.svg')" alt="" />
+      </button>
+    </div>
+  </div>
+</header>

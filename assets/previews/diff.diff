@@ -1,0 +1,23 @@
+# Rename the highlighter and teach it about embedded layers
+diff --git a/src/highlight.rs b/src/highlight.rs
+similarity index 87%
+rename from src/paint.rs
+rename to src/highlight.rs
+index 3f2a9c1..b7e04d2 100644
+--- a/src/highlight.rs
++++ b/src/highlight.rs
+@@ -12,9 +12,11 @@ pub fn spans(syntax: &Syntax, text: &[u8]) -> Vec<Span> {
+     let mut spans = Vec::new();
+-    for layer in syntax.host() {
++    for layer in syntax.layers() {
+         let query = layer.language.highlights();
+-        paint(&mut spans, query, text);
++        let depth = layer.depth;
++        paint(&mut spans, query, text, depth);
+     }
+     spans
+ }
+diff --git a/assets/logo.png b/assets/logo.png
+new file mode 100644
+index 0000000..e69de29
+Binary files /dev/null and b/assets/logo.png differ

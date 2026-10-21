@@ -1,0 +1,120 @@
+<!-- overview/project.rs: the section row (section_row.rs), then Worktrees, Git (project_git.rs) or Scratches (scratches.rs). -->
+<div class="page" x-data="{ get ot() { return overviewTab('pp:' + p.name, 'worktrees'); } }">
+  <nav class="otabs" style="--co: var(--accent)">
+    <template x-for="t in projectTabs(p)" :key="t.key">
+      <button class="otabs__tab" type="button" :class="{ 'otabs__tab--on': ot === t.key }" @click="setOverviewTab('pp:' + p.name, t.key)" x-text="t.title"></button>
+    </template>
+    <span class="otabs__where muted" :title="p.path" x-text="p.path + (p.git ? '' : ' · no git')"></span>
+  </nav>
+
+  <!-- overview/worktree_list_view.rs (DESIGN.md "Hidden worktrees"): the hub's rows and keys; the filter keeps the keyboard and narrows
+       every group -->
+  <template x-if="ot === 'worktrees'">
+    <section class="page__section wtlist" x-data="{ get sections() { return pageSections(p, query.branch); } }">
+      <input class="field wtlist__search" type="search" :value="query.branch" @input="pageInput(p, $event.target.value)" @keydown="pageKey(p, $event)"
+             x-init="$nextTick(() => $el.focus())" spellcheck="false" autocomplete="off"
+             :placeholder="p.git ? 'Filter worktrees and branches…' : 'Filter…'" />
+      <div class="hub__list wtlist__list">
+        <template x-for="section in sections" :key="section.key">
+          <div class="hub__group">
+            <template x-if="section.key === 'hidden'">
+              <button class="hub__section wtlist__toggle" type="button" @click="toggleGroup('hidden:' + p.name)">
+                <img class="icon" :src="icon(isGroupOpen('hidden:' + p.name, true) ? 'chevron-down.svg' : 'chevron-right.svg')" alt="" />
+                <span x-text="section.title + ' ' + section.rows.length"></span><span class="hub__hint" x-text="section.hint"></span>
+              </button>
+            </template>
+            <template x-if="section.key !== 'hidden'">
+              <div class="hub__section">
+                <span x-text="section.title + (section.found ? ' ' + section.found.length : '')"></span><span class="hub__hint" x-text="section.hint"></span>
+              </div>
+            </template>
+            <template x-if="section.rows.length === 0"><div class="hub__empty muted" x-text="section.empty"></div></template>
+            <template x-if="section.key !== 'hidden' || isGroupOpen('hidden:' + p.name, true)">
+              <div>
+                <template x-for="row in section.rows" :key="row.id">
+                  <div x-include="components/checkouts/worktree-row.html"></div>
+                </template>
+              </div>
+            </template>
+            <template x-if="section.found">
+              <div class="wtlist__more" x-data="{ get list() { return section.found; }, key: 'branches' }" x-include="components/checkouts/more.html"></div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="hub__keys wtlist__keys">
+        <template x-for="k in pageKeys(p)" :key="k[0]">
+          <span class="hub__key"><kbd x-text="k[0]"></kbd><span x-text="k[1]"></span></span>
+        </template>
+      </div>
+    </section>
+  </template>
+
+  <template x-if="ot === 'git'">
+    <section class="page__section gitsummary">
+      <div class="summary">
+        <img class="icon" :src="icon('history.svg')" alt="" />
+        <span class="summary__text" x-text="gitSummary(p)"></span>
+        <button class="toggle" type="button" @click="openGitLog(p)"><img class="icon" :src="icon('branch.svg')" alt="" /><span>Open Git</span></button>
+      </div>
+      <div class="group__title">Log</div>
+      <div class="rows">
+        <template x-for="c in p.log" :key="c.sha">
+          <div x-include="components/checkouts/log-row.html"></div>
+        </template>
+      </div>
+      <template x-if="p.stashes.length">
+        <div>
+          <div class="group__title">Stashes <span class="group__hint">shared by all worktrees</span></div>
+          <div class="rows">
+            <template x-for="s in p.stashes" :key="s.message">
+              <div class="rows__row">
+                <img class="icon" :src="icon('history.svg')" alt="" />
+                <span class="rows__grow" x-text="s.message"></span>
+                <span class="rows__age" x-text="stashAge(s)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </section>
+  </template>
+
+  <template x-if="ot === 'scratches'">
+    <section class="page__section scratches">
+      <div class="scratches__hint" x-text="'Project scratches in ' + '~/.config/ive/default/scratches/' + p.name + ' · outside the repo, kept when worktrees are removed'"></div>
+      <div class="scratches__toolbar">
+        <input class="field scratches__search" type="search" placeholder="Search names and contents..." x-model="query.scratch" />
+        <button class="linkbutton" type="button" @click="newScratch(p)">+ New scratch</button>
+      </div>
+      <template x-if="scratchBuckets(p, query.scratch).length === 0">
+        <div class="muted" x-text="query.scratch ? 'No scratch matches “' + query.scratch + '”' : 'No scratches yet'"></div>
+      </template>
+      <template x-for="b in scratchBuckets(p, query.scratch)" :key="b.key">
+        <div class="scratches__group">
+          <button class="scratches__head" type="button" @click="toggleGroup('sb:' + b.key)">
+            <img class="icon" :src="icon(isGroupOpen('sb:' + b.key, b.key !== 'older') ? 'chevron-down.svg' : 'chevron-right.svg')" alt="" />
+            <span x-text="b.title"></span><span class="scratches__count" x-text="b.items.length"></span>
+          </button>
+          <template x-if="isGroupOpen('sb:' + b.key, b.key !== 'older')">
+            <div>
+              <template x-for="s in limited(b.items, 'sb:' + b.key)" :key="s.name">
+                <div class="scratch-row" @click="openScratch(s)">
+                  <span class="icon-stack"><img class="icon" :src="icon(fileIcon(s.name))" alt="" /><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></span>
+                  <span class="scratch-row__name" x-text="s.name"></span>
+                  <span class="scratch-row__first" x-text="s.text.split('\n')[0]"></span>
+                  <span class="muted" x-text="age(s.modified)"></span>
+                  <span class="scratch-row__actions">
+                    <button class="linkbutton" type="button" @click.stop>Rename</button>
+                    <button class="linkbutton" type="button" @click.stop="deleteScratch(s)">Delete</button>
+                  </span>
+                </div>
+              </template>
+              <div x-data="{ get list() { return b.items; }, get key() { return 'sb:' + b.key; } }" x-include="components/checkouts/more.html"></div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </section>
+  </template>
+</div>

@@ -1,0 +1,26 @@
+use super::Row;
+
+pub const ROWS: &[Row] = &[
+    ("NIX.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("NIX.STRING", "String", Some("DEFAULT_STRING")),
+    ("NIX.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("NIX.INTERPOLATION", "Interpolation braces", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("NIX.PATH", "Path", Some("DEFAULT_STRING")),
+    ("NIX.URI", "URI", Some("DEFAULT_STRING")),
+    ("NIX.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("NIX.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("NIX.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("NIX.DOC_COMMENT", "Doc comment", Some("DEFAULT_DOC_COMMENT")),
+    ("NIX.OPERATOR", "Operator", Some("DEFAULT_OPERATION_SIGN")),
+    ("NIX.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("NIX.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("NIX.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("NIX.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("NIX.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("NIX.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("NIX.ATTRIBUTE_BINDING", "Attribute binding", Some("DEFAULT_INSTANCE_FIELD")),
+    ("NIX.ATTRIBUTE_SELECTION", "Attribute selection", Some("DEFAULT_INSTANCE_FIELD")),
+    ("NIX.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("NIX.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("NIX.BUILTIN", "Builtin", Some("DEFAULT_PREDEFINED_SYMBOL")),
+];

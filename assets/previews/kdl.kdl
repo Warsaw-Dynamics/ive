@@ -1,0 +1,27 @@
+/- kdl-version 2
+// IVE workspace layout, in KDL
+/*
+ * Block comments /* nest */ in KDL.
+ */
+workspace "ive" version=(semver)"0.1.0" {
+    window width=(u16)1280 height=720 maximized=#false
+    font family="JetBrains Mono" size=13.5 ligatures=#true
+    theme #null
+    "quoted node" note="tab\tand \"quote\""
+    terminal shell=#"C:\Program Files\bash.exe"# scrollback=1_000
+    limits (u8)255 0xff 0o17 0b1010 1.5e3 #inf #-inf #nan
+
+    /- sidebar {
+        outline
+    }
+    panel /-hidden=#true position=left
+    tabs /-{
+        recent
+    } {
+        tab "README.md"; tab "main.rs"
+    }
+    description """
+        Multi-line strings
+        keep their indentation.
+        """
+}

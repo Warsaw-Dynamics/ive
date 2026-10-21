@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="IVE — projects and worktrees in one sidebar; project and worktree overviews, git views, scratches and Settings open as tabs." />
+    <title>IVE checkouts</title>
+    <link rel="stylesheet" href="./mock.css" />
+    <link rel="stylesheet" href="./checkouts.css" />
+    <link rel="stylesheet" href="./hub.css" />
+    <!-- Modules run in order before DOMContentLoaded, so the data exists before include.js starts Alpine. -->
+    <script type="module" src="./checkouts-data.js"></script>
+    <script type="module" src="./hub.js"></script>
+    <script type="module" src="./route.js"></script>
+    <script type="module" src="./checkouts.js"></script>
+    <script src="./include.js"></script>
+  </head>
+  <body>
+    <div class="desktop" x-data="checkouts" x-cloak @keydown.window.escape="menu = null"
+         @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
+         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); newTerminalKey($event)">
+      <div class="window" :data-counts="countStyle">
+        <main class="window__content" :style="{ '--project-glow': projectGlow() }">
+          <div class="fill" x-include="components/checkouts/sidebar.html"></div>
+          <div class="fill" x-include="components/checkouts/editor.html"></div>
+        </main>
+        <!-- mock-only: back to the single-project mock -->
+        <a class="mock-back" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file">← index</a>
+        <!-- mock-only: compare looks of the folder counts -->
+        <label class="mock-counts" title="How folder counts look; plain is the app's">counts
+          <select x-model="countStyle"><template x-for="style in COUNT_STYLES" :key="style"><option :value="style" x-text="style" :selected="style === countStyle"></option></template></select>
+        </label>
+      </div>
+    </div>
+  </body>
+</html>

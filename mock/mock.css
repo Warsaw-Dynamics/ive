@@ -1,0 +1,189 @@
+/* Colours from src/theme.rs (IntelliJ New UI Dark / Light). */
+:root,
+:root[data-theme="dark"] {
+  --background: #1e1f22;
+  --sidebar: #2b2d30;
+  /* the projects panel: Islands Dark's tool-window-bg-alt */
+  --tree: #191a1c;
+  --border: #393b40;
+  --text: #dfe1e5;
+  --muted: #868a91;
+  --accent: #3574f0;
+  --accent-hover: #4682fa;
+  --on-accent: #ffffff;
+  --selected: #2e436e;
+  --hover: #393b40;
+  --error: #f75464;
+  --diff-added: #39ac6024;
+  --diff-removed: #dd3c4924;
+  --mark-added: #5fb865;
+  --mark-removed: #f75464;
+  --mark-modified: #548af7;
+  --close-hover: #e81123;
+  --thumb: #ffffff33;
+  --thumb-hover: #ffffff59;
+  --tab-active: #25324d;
+  --tab-active-border: #35538f;
+  --desktop: #101012;
+}
+
+:root[data-theme="light"] {
+  --background: #ffffff;
+  --sidebar: #f7f8fa;
+  --tree: #f7f8fa;
+  --border: #ebecf0;
+  --text: #000000;
+  --muted: #818594;
+  --accent: #3574f0;
+  --accent-hover: #315fbd;
+  --on-accent: #ffffff;
+  --selected: #d5e1ff;
+  --hover: #dfe1e5;
+  --error: #db3b4b;
+  --diff-added: #39ac602e;
+  --diff-removed: #dd3c492e;
+  --mark-added: #067d17;
+  --mark-removed: #c7222d;
+  --mark-modified: #0033b3;
+  --close-hover: #e81123;
+  --thumb: #00000026;
+  --thumb-hover: #00000040;
+  --tab-active: #e3ecfd;
+  --tab-active-border: #a8c3f5;
+  --desktop: #c9ccd3;
+}
+
+* { box-sizing: border-box; }
+[x-cloak] { display: none !important; }
+
+body {
+  margin: 0;
+  font: 16px/1.4 system-ui, "Inter", sans-serif;
+  background: var(--desktop);
+  color: var(--text);
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+.desktop { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px 64px; }
+.fill { display: contents; }
+.muted { color: var(--muted); }
+.error { color: var(--error); }
+.icon { width: 16px; height: 16px; flex: none; display: block; }
+
+/* Window: frame.rs — 1 px border, rounded top corners, shadow; none when maximized. */
+.window {
+  width: min(1000px, 100%);
+  height: min(700px, calc(100vh - 88px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 0 5px rgb(0 0 0 / 0.4);
+}
+.window--maximized { position: fixed; inset: 0; width: auto; height: auto; border: 0; border-radius: 0; box-shadow: none; }
+.window__content { flex: 1; min-height: 0; display: flex; }
+
+/* Title bar: titlebar.rs, 40 px. */
+.titlebar {
+  flex: none;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.titlebar__side { display: flex; align-items: center; height: 100%; padding-left: 8px; }
+.titlebar__app { padding: 0 8px; font-size: 14px; color: var(--muted); }
+
+.project-widget {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; border-radius: 6px;
+  font-size: 14px; font-weight: 600;
+}
+.project-widget:hover { background: var(--hover); }
+.project-widget__badge {
+  width: 20px; height: 20px; border-radius: 4px;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 12px; font-weight: 700;
+}
+
+.icon-button { padding: 4px; margin-right: 8px; border-radius: 6px; }
+.icon-button:hover { background: var(--hover); }
+
+.window-controls { display: flex; height: 100%; }
+.window-controls button { width: 46px; height: 100%; display: grid; place-items: center; }
+.window-controls button:hover { background: var(--hover); }
+.window-controls .window-controls__close:hover { background: var(--close-hover); }
+.window-controls__close:hover .icon { filter: brightness(0) invert(1); }
+
+/* Welcome: workspace.rs render_welcome. */
+.welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.welcome h1 { margin: 0; font-size: 24px; font-weight: 400; }
+.welcome p { margin: 0; }
+.button { padding: 8px 16px; border-radius: 6px; background: var(--accent); color: var(--on-accent); }
+.button:hover { background: var(--accent-hover); }
+
+/* Sidebar + tree: rows 24 px, indent = one icon slot. */
+.sidebar {
+  flex: none; width: 288px; display: flex; flex-direction: column;
+  background: var(--sidebar); border-right: 1px solid var(--border);
+}
+.sidebar__header { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.tree { flex: 1; overflow: auto; }
+.tree__row {
+  height: 24px; display: flex; align-items: center; gap: 4px; padding-right: 8px;
+  font-size: 14px; white-space: nowrap; cursor: pointer; width: max-content; min-width: 100%;
+}
+.tree__row:hover { background: var(--hover); }
+.tree__row--selected, .tree__row--selected:hover { background: var(--selected); }
+
+/* Pane: editor.rs. */
+.pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pane__message { margin: auto; }
+.tab {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; font-size: 14px; border-bottom: 1px solid var(--border);
+}
+.tab__close { border-radius: 4px; }
+.tab__close:hover { background: var(--hover); }
+
+.editor {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  font: 14px/21px "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+.editor__line { display: flex; height: 21px; }
+.editor__number {
+  flex: none; width: calc(var(--gutter-chars) * 1ch); padding-left: 1ch;
+  text-align: right; padding-right: 1ch; color: var(--muted);
+}
+.editor__text { white-space: pre; overflow: hidden; }
+.scrollbar {
+  position: absolute; right: 2px; width: 8px; border-radius: 4px; background: var(--thumb);
+}
+.scrollbar:hover { background: var(--thumb-hover); }
+
+/* Settings: settings_page.rs. */
+.settings { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
+.settings h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.settings p { margin: 0; }
+.settings__row { display: flex; align-items: center; gap: 16px; }
+.segmented { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.segmented button { padding: 4px 12px; }
+.segmented button:hover { background: var(--hover); }
+.segmented button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+/* Mock-only controls, not part of IVE. */
+.mock-bar {
+  position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 4px; padding: 4px 6px;
+  border-radius: 8px; background: #000c; color: #fff; font-size: 12px;
+}
+.mock-bar span { padding: 0 6px; opacity: 0.6; }
+.mock-bar button, .mock-bar a { padding: 4px 8px; border-radius: 4px; color: inherit; text-decoration: none; }
+.mock-bar button:hover, .mock-bar a:hover { background: #fff3; }

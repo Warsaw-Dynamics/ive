@@ -1,0 +1,31 @@
+use super::Row;
+
+/// No GLSL keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("GLSL.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("GLSL.QUALIFIER", "Storage or precision qualifier", Some("DEFAULT_KEYWORD")),
+    ("GLSL.PRIMITIVE_TYPE", "Builtin type", Some("DEFAULT_KEYWORD")),
+    ("GLSL.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("GLSL.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("GLSL.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("GLSL.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("GLSL.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("GLSL.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("GLSL.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("GLSL.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("GLSL.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("GLSL.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("GLSL.PREPROCESSOR_DIRECTIVE", "Preprocessor directive", Some("DEFAULT_KEYWORD")),
+    ("GLSL.MACRO", "Macro", Some("DEFAULT_METADATA")),
+    ("GLSL.LAYOUT_QUALIFIER", "Layout qualifier", Some("DEFAULT_METADATA")),
+    ("GLSL.TYPE", "Struct or block", Some("DEFAULT_CLASS_NAME")),
+    ("GLSL.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+    ("GLSL.FIELD", "Field or swizzle", Some("DEFAULT_INSTANCE_FIELD")),
+    ("GLSL.GLOBAL_VARIABLE", "Global variable", Some("DEFAULT_STATIC_FIELD")),
+    ("GLSL.LOCAL_VARIABLE", "Local variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("GLSL.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("GLSL.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("GLSL.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("GLSL.BUILTIN_FUNCTION", "Builtin function", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("GLSL.BUILTIN_VARIABLE", "Builtin variable", Some("DEFAULT_PREDEFINED_SYMBOL")),
+];

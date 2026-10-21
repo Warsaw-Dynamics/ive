@@ -1,0 +1,9 @@
+<!-- project_git.rs log_row: commit icon, sha, subject, ⎇ names, author, age; needs c (a log commit) and p (its project). -->
+<div class="rows__row rows__row--click" @click="openCommit(p, c)">
+  <img class="icon" :src="icon('commit.svg')" alt="" />
+  <code class="sha" x-text="c.sha"></code>
+  <span class="rows__grow" x-text="c.subject"></span>
+  <template x-for="n in c.names" :key="n"><span class="tag tag--text" x-text="'⎇ ' + n"></span></template>
+  <span class="rows__author" x-text="c.author"></span>
+  <span class="rows__age" x-text="logAge(c)"></span>
+</div>

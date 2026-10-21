@@ -1,0 +1,32 @@
+<!-- sidebar/view.rs: header "Projects" with Select opened file and Open project; then the tree; the resize handle. -->
+<aside class="sidebar" :style="{ width: sidebarWidth + 'px' }">
+  <div class="sidebar__header sidebar__header--bar">
+    <span>Projects</span>
+    <div class="sidebar__tools anchor" @click.outside="menu === 'add' && (menu = null)">
+      <button class="icon-button" type="button" title="Select opened file">
+        <img class="icon" :src="icon('locate.svg')" alt="Select opened file" />
+      </button>
+      <button class="icon-button" type="button" title="Open project" @click="toggleMenu('add')">
+        <img class="icon" :src="icon('add.svg')" alt="Open project" />
+      </button>
+      <div class="menu" x-show="menu === 'add'">
+        <template x-if="recent.length">
+          <div class="menu__section">Recent</div>
+        </template>
+        <template x-for="name in recent" :key="name">
+          <button class="menu__item" type="button" @click="openProject(name)" :title="'~/Projects/' + name">
+            <span class="badge badge--muted" x-text="initials(name)"></span>
+            <span class="menu__grow" x-text="name"></span>
+          </button>
+        </template>
+        <button class="menu__item" type="button" @click="menu = null">
+          <img class="icon" :src="icon('project-folder.svg')" alt="" /><span>Open Folder…</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tree" x-data="{ get rows() { return treeRows(); } }" x-include="components/checkouts/rows.html"></div>
+  <div class="sidebar__resize" title="Drag to resize; double-click for the default width"
+       @mousedown.prevent="startSidebarResize($event)" @dblclick="sidebarWidth = SIDEBAR_DEFAULT_WIDTH"></div>
+</aside>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="IVE — design mock of the current app." />
+    <title>IVE mock</title>
+    <link rel="stylesheet" href="./mock.css" />
+    <script src="./mock.js"></script>
+    <script src="./include.js"></script>
+  </head>
+  <body>
+    <div class="desktop" x-data="ive" x-cloak @keydown.window.ctrl.comma.prevent="openSettings()"
+         @keydown.window.meta.comma.prevent="openSettings()">
+
+      <div class="window" :class="{ 'window--maximized': maximized }">
+        <div x-include="components/titlebar.html"></div>
+
+        <main class="window__content">
+          <template x-if="!project && pane.kind !== 'settings'">
+            <div class="fill" x-include="components/welcome.html"></div>
+          </template>
+          <template x-if="project">
+            <div class="fill" x-include="components/sidebar.html"></div>
+          </template>
+          <template x-if="project || pane.kind === 'settings'">
+            <div class="fill pane-host" x-include="components/pane.html"></div>
+          </template>
+        </main>
+      </div>
+
+      <nav class="mock-bar" aria-label="Mock controls">
+        <span>mock</span>
+        <button type="button" @click="closeProject()">welcome</button>
+        <button type="button" @click="openProject()">project</button>
+        <button type="button" @click="open(findEntry('ten-million.log'))">10M lines</button>
+        <button type="button" @click="openFailed()">binary file</button>
+        <a href="checkouts.html">checkouts →</a>
+      </nav>
+    </div>
+  </body>
+</html>

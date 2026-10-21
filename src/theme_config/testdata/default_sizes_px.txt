@@ -1,0 +1,1007 @@
+Sizes {
+    rem: RootPx(
+        16.0,
+    ),
+    icon: Px(
+        16.0,
+    ),
+    tree: TreeSizes {
+        header_height: Height(
+            36.0,
+        ),
+        header_padding_left: Px(
+            12.0,
+        ),
+        header_padding_right: Px(
+            4.0,
+        ),
+        header_title_size: FontPx(
+            14.0,
+        ),
+        header_title_weight: Semibold,
+        header_tools_gap: Px(
+            4.0,
+        ),
+        header_button_padding: Px(
+            4.0,
+        ),
+        header_button_radius: Px(
+            6.0,
+        ),
+        border: Px(
+            1.0,
+        ),
+        menu_offset: Px(
+            4.0,
+        ),
+        menu_width: Px(
+            260.0,
+        ),
+        menu_padding: Px(
+            4.0,
+        ),
+        menu_radius: Px(
+            8.0,
+        ),
+        menu_text_size: FontPx(
+            14.0,
+        ),
+        menu_weight: Normal,
+        menu_section_padding_x: Px(
+            8.0,
+        ),
+        menu_section_padding_top: Px(
+            6.0,
+        ),
+        menu_section_padding_bottom: Px(
+            2.0,
+        ),
+        menu_section_text_size: FontPx(
+            12.0,
+        ),
+        menu_item_height: Height(
+            28.0,
+        ),
+        menu_item_gap: Px(
+            8.0,
+        ),
+        menu_item_padding_x: Px(
+            8.0,
+        ),
+        menu_item_radius: Px(
+            4.0,
+        ),
+        badge_size: Px(
+            18.0,
+        ),
+        badge_radius: Px(
+            4.0,
+        ),
+        badge_text_size: FontPx(
+            12.0,
+        ),
+        badge_weight: Bold,
+        row_height: Height(
+            24.0,
+        ),
+        text_size: FontPx(
+            13.0,
+        ),
+        icon_gap: Px(
+            4.0,
+        ),
+        padding_left: Px(
+            8.0,
+        ),
+        padding_right: Px(
+            8.0,
+        ),
+        project_name_weight: Semibold,
+        tag_gap: Px(
+            4.0,
+        ),
+        tag_padding_x: Px(
+            6.0,
+        ),
+        tag_radius: Px(
+            4.0,
+        ),
+        tag_text_size: FontPx(
+            12.0,
+        ),
+        chevron_radius: Px(
+            4.0,
+        ),
+        chip_padding_x: Px(
+            6.0,
+        ),
+        chip_radius: Px(
+            4.0,
+        ),
+        count_padding_x: Px(
+            6.0,
+        ),
+        count_radius: Px(
+            8.0,
+        ),
+        count_text_size: FontPx(
+            12.0,
+        ),
+        folder_count_padding_x: Px(
+            2.0,
+        ),
+        folder_count_text_size: FontPx(
+            11.0,
+        ),
+        action_padding: Px(
+            2.0,
+        ),
+        action_radius: Px(
+            4.0,
+        ),
+        resize_handle_width: Px(
+            6.0,
+        ),
+        default_width: Px(
+            288.0,
+        ),
+        selection_radius: Px(
+            0.0,
+        ),
+        selection_inset: Px(
+            0.0,
+        ),
+    },
+    tabs: TabsSizes {
+        row_height: Height(
+            36.0,
+        ),
+        row_border: Px(
+            1.0,
+        ),
+        strip_padding_x: Px(
+            4.0,
+        ),
+        gap: Px(
+            2.0,
+        ),
+        tools_gap: Px(
+            4.0,
+        ),
+        tools_padding_left: Px(
+            8.0,
+        ),
+        tab_height: Height(
+            28.0,
+        ),
+        tab_padding_left: Px(
+            10.0,
+        ),
+        tab_padding_right: Px(
+            6.0,
+        ),
+        tab_radius: Px(
+            6.0,
+        ),
+        tab_border: Px(
+            1.0,
+        ),
+        tab_text_size: FontPx(
+            14.0,
+        ),
+        tab_inner_gap: Px(
+            6.0,
+        ),
+        tab_icon_size: Px(
+            16.0,
+        ),
+        title_max_width: Px(
+            220.0,
+        ),
+        close_radius: Px(
+            4.0,
+        ),
+        underline_inset: Px(
+            6.0,
+        ),
+        underline_height: Px(
+            2.0,
+        ),
+        underline_radius: Px(
+            4.0,
+        ),
+        drop_marker_width: Px(
+            2.0,
+        ),
+        drop_marker_inset: Px(
+            2.0,
+        ),
+        drop_marker_radius: Px(
+            4.0,
+        ),
+        drag_chip_opacity: Fraction(
+            0.85,
+        ),
+        toolbar_button_padding: Px(
+            4.0,
+        ),
+        toolbar_button_radius: Px(
+            6.0,
+        ),
+        toolbar_icon_size: Px(
+            20.0,
+        ),
+        preview_header_height: Height(
+            24.0,
+        ),
+        preview_padding_x: Px(
+            8.0,
+        ),
+        preview_border: Px(
+            1.0,
+        ),
+        preview_text_size: FontPx(
+            12.0,
+        ),
+        preview_radius: Px(
+            6.0,
+        ),
+        preview_opacity: Fraction(
+            0.9,
+        ),
+    },
+    window: WindowSizes {
+        corner_radius: Px(
+            8.0,
+        ),
+        border: Px(
+            1.0,
+        ),
+        control_width: Px(
+            46.0,
+        ),
+        control_icon_size: Px(
+            16.0,
+        ),
+        welcome_gap: Px(
+            16.0,
+        ),
+        welcome_title_size: FontPx(
+            24.0,
+        ),
+        welcome_recent_gap: Px(
+            8.0,
+        ),
+        welcome_recent_padding_x: Px(
+            12.0,
+        ),
+        welcome_recent_padding_y: Px(
+            4.0,
+        ),
+        welcome_recent_radius: Px(
+            6.0,
+        ),
+        button_padding_x: Px(
+            16.0,
+        ),
+        button_padding_y: Px(
+            8.0,
+        ),
+        button_radius: Px(
+            6.0,
+        ),
+    },
+    editor: EditorSizes {
+        text_size: FontPx(
+            14.0,
+        ),
+        line_height_factor: Factor(
+            1.5,
+        ),
+        caret_width: Px(
+            2.0,
+        ),
+        notice_padding_x: Px(
+            12.0,
+        ),
+        notice_padding_y: Px(
+            4.0,
+        ),
+        notice_text_size: FontPx(
+            14.0,
+        ),
+        scratch_strip_padding_x: Px(
+            12.0,
+        ),
+        scratch_strip_padding_y: Px(
+            4.0,
+        ),
+        scratch_strip_text_size: FontPx(
+            12.0,
+        ),
+        scratch_header_gap: Px(
+            8.0,
+        ),
+        scratch_header_border: Px(
+            1.0,
+        ),
+        scratch_bar_gap: Px(
+            12.0,
+        ),
+        scratch_error_padding: Px(
+            12.0,
+        ),
+        scratch_button_gap: Px(
+            4.0,
+        ),
+        scratch_button_padding_x: Px(
+            8.0,
+        ),
+        scratch_button_radius: Px(
+            4.0,
+        ),
+        scratch_button_border: Px(
+            1.0,
+        ),
+    },
+    diff: DiffSizes {
+        row_height: Height(
+            20.0,
+        ),
+        text_size: FontPx(
+            13.0,
+        ),
+        line_padding: Px(
+            4.0,
+        ),
+        hunk_padding_left: Px(
+            8.0,
+        ),
+        header_gap: Px(
+            6.0,
+        ),
+        header_padding_x: Px(
+            4.0,
+        ),
+        header_weight: Medium,
+        number_padding_right: Px(
+            4.0,
+        ),
+    },
+    terminal: TerminalSizes {
+        text_size: FontPx(
+            14.0,
+        ),
+        line_height_factor: Factor(
+            1.3,
+        ),
+        padding: Px(
+            6.0,
+        ),
+        cursor_thickness: Px(
+            2.0,
+        ),
+        line_thickness: Px(
+            1.0,
+        ),
+        normal_weight: Normal,
+        bold_weight: Bold,
+    },
+    overview: OverviewSizes {
+        page_padding_x: Px(
+            24.0,
+        ),
+        page_padding_top: Px(
+            6.0,
+        ),
+        page_padding_bottom: Px(
+            32.0,
+        ),
+        page_body_gap: Px(
+            18.0,
+        ),
+        page_message_padding: Px(
+            24.0,
+        ),
+        section_height: Height(
+            34.0,
+        ),
+        section_padding_x: Px(
+            12.0,
+        ),
+        section_text_size: FontPx(
+            14.0,
+        ),
+        section_radius: Px(
+            4.0,
+        ),
+        section_underline: Px(
+            2.0,
+        ),
+        section_selected_weight: Semibold,
+        section_gap: Px(
+            2.0,
+        ),
+        section_row_border: Px(
+            1.0,
+        ),
+        location_padding_left: Px(
+            16.0,
+        ),
+        location_text_size: FontPx(
+            12.0,
+        ),
+        tag_margin_left: Px(
+            8.0,
+        ),
+        tag_padding_x: Px(
+            5.0,
+        ),
+        tag_radius: Px(
+            4.0,
+        ),
+        tag_text_size: FontPx(
+            12.0,
+        ),
+        cards_gap: Px(
+            10.0,
+        ),
+        card_gap: Px(
+            6.0,
+        ),
+        card_padding_x: Px(
+            12.0,
+        ),
+        card_padding_y: Px(
+            10.0,
+        ),
+        card_title_gap: Px(
+            6.0,
+        ),
+        card_title_weight: Semibold,
+        card_detail_text_size: FontPx(
+            12.0,
+        ),
+        card_tags_gap: Px(
+            4.0,
+        ),
+        card_min_width: Px(
+            220.0,
+        ),
+        card_radius: Px(
+            8.0,
+        ),
+        card_border: Px(
+            1.0,
+        ),
+        card_stripe_width: Px(
+            3.0,
+        ),
+        scratches_gap: Px(
+            8.0,
+        ),
+        scratches_toolbar_gap: Px(
+            12.0,
+        ),
+        scratches_hint_text_size: FontPx(
+            12.0,
+        ),
+        scratches_search_width: Px(
+            420.0,
+        ),
+        scratches_text_size: FontPx(
+            14.0,
+        ),
+        scratches_row_height: Height(
+            24.0,
+        ),
+        scratches_row_padding_x: Px(
+            8.0,
+        ),
+        scratches_row_radius: Px(
+            4.0,
+        ),
+        scratches_group_gap: Px(
+            4.0,
+        ),
+        scratches_group_weight: Semibold,
+        scratches_count_weight: Normal,
+        scratches_input_row_height: Height(
+            28.0,
+        ),
+        scratches_name_input_width: Px(
+            260.0,
+        ),
+        scratches_error_text_size: FontPx(
+            12.0,
+        ),
+        link_padding_x: Px(
+            4.0,
+        ),
+        link_radius: Px(
+            4.0,
+        ),
+        new_card_width: Px(
+            260.0,
+        ),
+        new_card_gap: Px(
+            6.0,
+        ),
+        new_card_padding: Px(
+            12.0,
+        ),
+        new_card_radius: Px(
+            8.0,
+        ),
+        new_card_border: Px(
+            1.0,
+        ),
+        new_card_title_gap: Px(
+            6.0,
+        ),
+        new_card_title_weight: Semibold,
+        new_card_status_text_size: FontPx(
+            12.0,
+        ),
+        branch_menu_max_height: Height(
+            360.0,
+        ),
+        branch_menu_padding: Px(
+            4.0,
+        ),
+        branch_menu_radius: Px(
+            8.0,
+        ),
+        branch_menu_border: Px(
+            1.0,
+        ),
+        branch_menu_message_padding: Px(
+            8.0,
+        ),
+        branch_item_height: Height(
+            28.0,
+        ),
+        branch_item_gap: Px(
+            8.0,
+        ),
+        branch_item_padding_x: Px(
+            8.0,
+        ),
+        branch_item_radius: Px(
+            4.0,
+        ),
+        branch_item_text_size: FontPx(
+            14.0,
+        ),
+    },
+    git: GitSizes {
+        row_gap: Px(
+            8.0,
+        ),
+        row_height: Height(
+            30.0,
+        ),
+        row_padding_x: Px(
+            10.0,
+        ),
+        row_border: Px(
+            1.0,
+        ),
+        text_size: FontPx(
+            14.0,
+        ),
+        detail_text_size: FontPx(
+            12.0,
+        ),
+        body_weight: Normal,
+        author_max_width: Px(
+            160.0,
+        ),
+        mark_width: Px(
+            12.0,
+        ),
+        mark_text_size: FontPx(
+            12.0,
+        ),
+        mark_weight: Bold,
+        tag_padding_x: Px(
+            4.0,
+        ),
+        tag_radius: Px(
+            4.0,
+        ),
+        tag_text_size: FontPx(
+            12.0,
+        ),
+        segment_gap: Px(
+            6.0,
+        ),
+        segment_padding_x: Px(
+            10.0,
+        ),
+        segment_padding_y: Px(
+            4.0,
+        ),
+        segment_radius: Px(
+            6.0,
+        ),
+        segment_border: Px(
+            1.0,
+        ),
+        segment_text_size: FontPx(
+            14.0,
+        ),
+        toggle_gap: Px(
+            6.0,
+        ),
+        toggle_padding_x: Px(
+            8.0,
+        ),
+        toggle_padding_y: Px(
+            2.0,
+        ),
+        toggle_radius: Px(
+            6.0,
+        ),
+        toggle_border: Px(
+            1.0,
+        ),
+        toggle_text_size: FontPx(
+            14.0,
+        ),
+        group_title_gap: Px(
+            6.0,
+        ),
+        group_title_padding_top: Px(
+            12.0,
+        ),
+        group_title_padding_bottom: Px(
+            4.0,
+        ),
+        group_title_text_size: FontPx(
+            14.0,
+        ),
+        group_title_weight: Semibold,
+        group_hint_text_size: FontPx(
+            12.0,
+        ),
+        group_hint_weight: Normal,
+        error_gap: Px(
+            8.0,
+        ),
+        error_padding_y: Px(
+            8.0,
+        ),
+        box_radius: Px(
+            8.0,
+        ),
+        box_border: Px(
+            1.0,
+        ),
+        message_padding: Px(
+            8.0,
+        ),
+        section_gap: Px(
+            4.0,
+        ),
+        summary_gap: Px(
+            8.0,
+        ),
+        summary_padding_x: Px(
+            10.0,
+        ),
+        summary_padding_y: Px(
+            6.0,
+        ),
+        log_toolbar_gap: Px(
+            10.0,
+        ),
+        log_toolbar_padding_x: Px(
+            24.0,
+        ),
+        log_toolbar_padding_top: Px(
+            12.0,
+        ),
+        log_buttons_gap: Px(
+            4.0,
+        ),
+        log_padding_bottom: Px(
+            32.0,
+        ),
+        log_margin_bottom: Px(
+            24.0,
+        ),
+        log_more_padding_x: Px(
+            8.0,
+        ),
+        commit_message_padding: Px(
+            16.0,
+        ),
+        commit_header_gap: Px(
+            4.0,
+        ),
+        commit_header_padding_x: Px(
+            16.0,
+        ),
+        commit_header_padding_y: Px(
+            12.0,
+        ),
+        commit_header_border: Px(
+            1.0,
+        ),
+        commit_subject_padding_top: Px(
+            4.0,
+        ),
+        commit_subject_weight: Medium,
+        diff_header_gap: Px(
+            8.0,
+        ),
+        diff_header_padding_x: Px(
+            10.0,
+        ),
+        diff_header_padding_y: Px(
+            6.0,
+        ),
+        diff_header_border: Px(
+            1.0,
+        ),
+        diff_header_weight: Medium,
+    },
+    settings: SettingsSizes {
+        page_gap: Px(
+            16.0,
+        ),
+        page_padding: Px(
+            24.0,
+        ),
+        text_size: FontPx(
+            14.0,
+        ),
+        small_text_size: FontPx(
+            12.0,
+        ),
+        title_text_size: FontPx(
+            20.0,
+        ),
+        title_weight: Bold,
+        nav_width: Px(
+            200.0,
+        ),
+        nav_padding_y: Px(
+            8.0,
+        ),
+        nav_border: Px(
+            1.0,
+        ),
+        nav_base_indent: Px(
+            12.0,
+        ),
+        nav_indent: Px(
+            16.0,
+        ),
+        nav_item_padding_y: Px(
+            4.0,
+        ),
+        nav_heading_weight: Semibold,
+        appearance_gap: Px(
+            16.0,
+        ),
+        appearance_label_width: Px(
+            80.0,
+        ),
+        segmented_radius: Px(
+            6.0,
+        ),
+        segmented_border: Px(
+            1.0,
+        ),
+        segment_padding_x: Px(
+            12.0,
+        ),
+        segment_padding_y: Px(
+            4.0,
+        ),
+        colors_gap: Px(
+            12.0,
+        ),
+        keys_gap: Px(
+            16.0,
+        ),
+        keys_height: Height(
+            260.0,
+        ),
+        keys_padding_y: Px(
+            4.0,
+        ),
+        keys_radius: Px(
+            6.0,
+        ),
+        keys_border: Px(
+            1.0,
+        ),
+        key_padding_x: Px(
+            12.0,
+        ),
+        key_padding_y: Px(
+            2.0,
+        ),
+        panel_width: Px(
+            300.0,
+        ),
+        color_label_width: Px(
+            110.0,
+        ),
+        color_row_gap: Px(
+            8.0,
+        ),
+        swatch_size: Px(
+            18.0,
+        ),
+        swatch_radius: Px(
+            4.0,
+        ),
+        swatch_border: Px(
+            1.0,
+        ),
+        box_size: Px(
+            14.0,
+        ),
+        box_radius: Px(
+            4.0,
+        ),
+        box_border: Px(
+            1.0,
+        ),
+        checkbox_gap: Px(
+            6.0,
+        ),
+        inherit_gap: Px(
+            4.0,
+        ),
+        preview_line_height: Height(
+            20.0,
+        ),
+        preview_padding: Px(
+            8.0,
+        ),
+        preview_radius: Px(
+            6.0,
+        ),
+        preview_border: Px(
+            1.0,
+        ),
+        preview_underline: Px(
+            2.0,
+        ),
+        table_gap: Px(
+            16.0,
+        ),
+        table_padding_right: Px(
+            16.0,
+        ),
+        list_gap: Px(
+            8.0,
+        ),
+        row_padding_y: Px(
+            4.0,
+        ),
+        licence_width: Px(
+            240.0,
+        ),
+        table_header_weight: Semibold,
+        licence_text_padding_bottom: Px(
+            16.0,
+        ),
+        licence_text_margin_bottom: Px(
+            16.0,
+        ),
+        licence_text_border: Px(
+            1.0,
+        ),
+    },
+    controls: ControlsSizes {
+        prompt_width: Px(
+            360.0,
+        ),
+        prompt_gap: Px(
+            8.0,
+        ),
+        prompt_padding: Px(
+            16.0,
+        ),
+        prompt_radius: Px(
+            8.0,
+        ),
+        prompt_border: Px(
+            1.0,
+        ),
+        prompt_title_weight: Semibold,
+        prompt_detail_text_size: FontPx(
+            14.0,
+        ),
+        prompt_buttons_gap: Px(
+            8.0,
+        ),
+        prompt_buttons_margin_top: Px(
+            8.0,
+        ),
+        prompt_button_padding_x: Px(
+            12.0,
+        ),
+        prompt_button_padding_y: Px(
+            4.0,
+        ),
+        prompt_button_radius: Px(
+            6.0,
+        ),
+        prompt_button_text_size: FontPx(
+            14.0,
+        ),
+        prompt_button_border: Px(
+            1.0,
+        ),
+        tooltip_padding_x: Px(
+            8.0,
+        ),
+        tooltip_padding_y: Px(
+            4.0,
+        ),
+        tooltip_radius: Px(
+            6.0,
+        ),
+        tooltip_border: Px(
+            1.0,
+        ),
+        tooltip_text_size: FontPx(
+            12.0,
+        ),
+        paging_gap: Px(
+            12.0,
+        ),
+        paging_text_size: FontPx(
+            12.0,
+        ),
+        input_height: Height(
+            28.0,
+        ),
+        input_caret_width: Px(
+            2.0,
+        ),
+        input_padding_x: Px(
+            8.0,
+        ),
+        input_radius: Px(
+            6.0,
+        ),
+        input_border: Px(
+            1.0,
+        ),
+        input_text_size: FontPx(
+            14.0,
+        ),
+        input_disabled_opacity: Fraction(
+            0.6,
+        ),
+        input_marked_underline: Px(
+            1.0,
+        ),
+        progress_width: Px(
+            16.0,
+        ),
+        progress_height: Height(
+            4.0,
+        ),
+        progress_segment: Px(
+            6.0,
+        ),
+        scrollbar_thickness: Px(
+            10.0,
+        ),
+        scrollbar_min_thumb: Px(
+            24.0,
+        ),
+        scrollbar_inset: Px(
+            2.0,
+        ),
+    },
+}

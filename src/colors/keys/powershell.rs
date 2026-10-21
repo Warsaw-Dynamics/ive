@@ -1,0 +1,32 @@
+use super::Row;
+
+/// No PowerShell keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("PS.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("PS.STRING", "String", Some("DEFAULT_STRING")),
+    ("PS.INTERPOLATION", "Subexpression in string", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("PS.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("PS.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("PS.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("PS.DOC_COMMENT", "Comment-based help", Some("DEFAULT_DOC_COMMENT")),
+    ("PS.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("PS.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("PS.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("PS.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("PS.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("PS.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("PS.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("PS.TYPE", "Type", Some("DEFAULT_CLASS_NAME")),
+    ("PS.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("PS.COMMAND", "Command", Some("DEFAULT_FUNCTION_CALL")),
+    ("PS.COMMAND_PARAMETER", "Command parameter", Some("DEFAULT_PARAMETER")),
+    ("PS.METHOD_CALL", "Method call", Some("DEFAULT_INSTANCE_METHOD")),
+    ("PS.PROPERTY", "Property", Some("DEFAULT_INSTANCE_FIELD")),
+    ("PS.VARIABLE", "Variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("PS.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("PS.PREDEFINED", "Automatic variable", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("PS.ENVIRONMENT_VARIABLE", "Environment variable", Some("DEFAULT_STATIC_FIELD")),
+    ("PS.CONSTANT", "Enum member", Some("DEFAULT_CONSTANT")),
+    ("PS.LABEL", "Label", Some("DEFAULT_LABEL")),
+    ("PS.ATTRIBUTE", "Attribute", Some("DEFAULT_METADATA")),
+];

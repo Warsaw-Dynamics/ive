@@ -1,0 +1,4 @@
+Repository: https://github.com/camdencheek/tree-sitter-dockerfile
+Ref: v0.2.0
+Commit: 868e44ce378deb68aac902a9db68ff82d2299dd0
+Copied from: crate tree-sitter-dockerfile 0.2.0 (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)

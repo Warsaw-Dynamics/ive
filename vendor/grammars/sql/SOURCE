@@ -1,0 +1,4 @@
+Repository: https://github.com/DerekStride/tree-sitter-sql
+Ref: v0.3.11
+Commit: 7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8
+Copied from: crate tree-sitter-sequel 0.3.11 (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)

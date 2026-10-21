@@ -1,0 +1,20 @@
+<!-- Planned (run configurations spec): Run with variables that have no value opens this tab, "Run <name>"; Run saves
+     the values (plain ones to vars.toml, secrets to the OS wallet), closes the tab and starts the run. -->
+<div class="page">
+  <form class="varsform" @submit.prevent="submitVars(tab)">
+    <div class="varsform__title" x-text="config(tab.request.folder, tab.request.key).name + ' needs ' + counted(tab.names.length, 'value', 'values')"></div>
+    <div class="muted varsform__hint" x-text="'from ' + tab.request.folder.slice(1) + '/.run.toml; asked once, then remembered'"></div>
+    <template x-for="name in tab.names" :key="name">
+      <label class="varsform__field">
+        <span class="varsform__label"><span x-text="runFile(tab.request.folder).vars[name].description"></span> <code class="muted" x-text="name"></code></span>
+        <input class="field" :type="runFile(tab.request.folder).vars[name].secret ? 'password' : 'text'" x-model="tab.values[name]"
+               x-init="$nextTick(() => $el.focus())" spellcheck="false" autocomplete="off" />
+        <span class="varsform__hint muted" x-text="runFile(tab.request.folder).vars[name].secret ? 'stored in the OS wallet; vars.toml keeps a reference' : 'saved to ~/.config/ive/default/vars.toml'"></span>
+      </label>
+    </template>
+    <div class="varsform__buttons">
+      <button class="button button--small" type="submit">Run</button>
+      <button class="toggle" type="button" @click="closeTab(tab)">Cancel</button>
+    </div>
+  </form>
+</div>

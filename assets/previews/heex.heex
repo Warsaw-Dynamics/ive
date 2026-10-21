@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<%!-- HEEx comment --%>
+<!-- HTML comment -->
+<section id="shapes" class={["list", @active && "active"]}>
+  <h1>Shapes &amp; areas</h1>
+  <MyApp.Card title="Total" {@rest}>
+    <:header :let={card}>
+      <span><%= card.title %></span>
+    </:header>
+    <%= for shape <- @shapes do %>
+      <.shape_row shape={shape} phx-click="select" />
+    <% end %>
+  </MyApp.Card>
+  <.button :if={@editable} disabled>Edit</.button>
+  <p>{length(@shapes)} shapes</p>
+  <%# old comment %>
+</section>

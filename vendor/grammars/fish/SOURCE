@@ -1,0 +1,4 @@
+Repository: https://github.com/ram02z/tree-sitter-fish
+Ref: 3.6.0
+Commit: aa074a0bacde8b5823c592574d7138f156a95776
+Copied from: crate tree-sitter-fish 3.6.0 (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)

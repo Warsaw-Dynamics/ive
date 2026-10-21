@@ -1,0 +1,115 @@
+<!-- The hub (Ctrl+E; hub.js, a proposal): query row, then the list and a preview of its selected row, then the keys.
+     The query keeps the keyboard; Ctrl+E again toggles "changed only", Escape goes back. Ctrl+Shift+T opens it asking
+     only where a new terminal goes (projects, worktrees, branches without a worktree). -->
+<div class="hub" x-data="{ v: { sections: [], items: [] } }" x-effect="v = hubView()"
+     @mouseup="$event.target.closest('button, .hub__row') === null && $refs.query.focus()">
+  <div class="hub__bar">
+    <img class="icon" :src="icon('locate.svg')" alt="" />
+    <!-- while asking for a worktree: the row asked about, then the box filters the worktrees -->
+    <template x-if="hub.pick">
+      <span class="hub__crumb"><span x-text="hub.pick.item.title"></span><span class="muted">›</span></span>
+    </template>
+    <input class="hub__input" x-ref="query" :value="hubInputValue()" @input="hubInput($event.target.value)" @keydown="hubKey($event)"
+           x-init="$nextTick(() => $el.focus())" x-effect="focus === 'hub' && $nextTick(() => $el.focus())"
+           :placeholder="hub.pick ? 'Worktree…' : hub.newTerminal ? 'New terminal in… type a project, worktree or branch' : 'Recent, changes and every file of every project. Type to search; > actions, @ processes, # branches, : scope, :42 line'"
+           spellcheck="false" autocomplete="off" />
+    <!-- scope: Tab cycles the chips (all, the back tab's project, its worktree, a scope picked with :); :… lists any -->
+    <template x-if="v.mode === 'files' || v.mode === 'changed' || v.mode === 'scope'">
+      <div class="hub__scopes" title="Tab switches; Backspace on an empty query goes back to All projects">
+        <template x-for="s in hubScopeStops()" :key="s">
+          <button class="hub__scope" type="button" :class="{ 'hub__scope--on': hubScope() === s }" @click="setHubScope(s)">
+            <template x-if="s.startsWith('w:')"><img class="icon hub__scope-icon" :src="icon('branch.svg')" alt="" /></template>
+            <span x-text="hubScopeLabel(s)"></span>
+          </button>
+        </template>
+        <button class="hub__scope hub__scope--in" type="button" title="Search in any project or worktree" @click="hubInput(':'); $refs.query.focus()">:…</button>
+      </div>
+    </template>
+    <!-- excluded folders (init.rn's config.excluded) and gitignored files: left out unless switched on -->
+    <template x-if="v.mode === 'files'">
+      <button class="hub__scope hub__excluded-toggle" type="button" :class="{ 'hub__scope--on': hub.withExcluded }" @click="toggleExcluded()"
+              :title="hub.withExcluded ? 'Searching excluded and gitignored files too (Alt+I)' : 'Alt+I: search excluded and gitignored files too'">
+        <img class="icon" :src="icon('folder-excluded.svg')" alt="" /><span>Excluded</span>
+      </button>
+    </template>
+    <span class="hub__stats" x-text="hubStats()"></span>
+  </div>
+
+  <div class="hub__body">
+    <div class="hub__list">
+      <template x-for="section in v.sections" :key="section.key">
+        <div class="hub__group">
+          <div class="hub__section"><span x-text="section.title"></span><span class="hub__hint" x-text="section.hint || ''"></span></div>
+          <template x-if="section.items.length === 0"><div class="hub__empty muted" x-text="section.empty"></div></template>
+          <!-- the key holds the position: Alpine reuses a row by key and would keep its old highlight when rows reorder -->
+          <template x-for="item in section.items" :key="item.id + '#' + item.index">
+            <div class="hub__row" :style="item.indent ? { paddingLeft: '24px' } : {}" :class="{ 'hub__row--on': item.index === Math.min(hubSelectedIndex(), v.items.length - 1), 'hub__row--closed': item.state === 'closed', 'hub__row--weak': item.weak }"
+                 @click="hubSelect(item.index); hubOpen(item, $event)"
+                 x-effect="item.index === hubSelectedIndex() && $el.scrollIntoView({ block: 'nearest' })">
+              <span class="hub__num" x-text="item.index < 9 ? item.index + 1 : ''"></span>
+              <span class="icon-stack"><img class="icon" :src="icon(item.icon)" alt="" /><template x-if="item.badge"><img class="icon icon-stack__badge" :src="icon(item.badge)" alt="" /></template></span>
+              <template x-if="item.mark"><span class="mark" :class="'mark--' + item.mark" x-text="item.mark"></span></template>
+              <span class="hub__title"><template x-for="(s, i) in item.titleSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
+              <span class="hub__detail"><template x-for="(s, i) in item.detailSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
+              <template x-if="item.excluded">
+                <span class="hub__excluded" :title="item.excluded === 'ignored' ? 'gitignored' : 'in a folder named in config.excluded'" x-text="item.excluded"></span>
+              </template>
+              <template x-if="item.state && item.state !== 'closed'">
+                <span class="hub__state" :class="{ 'hub__state--live': item.state === 'running' || item.state.startsWith('running') }" x-text="item.state === 'open' ? '● open' : item.state"></span>
+              </template>
+              <!-- in one worktree: marked with it; in several: how many, and Enter asks -->
+              <template x-if="item.co">
+                <span class="hub__co" :style="{ '--co': checkout(item.co).colour }" x-text="label(item.co)"></span>
+              </template>
+              <template x-if="item.co === null && item.choices && item.choices.length > 1">
+                <span class="hub__multi" :title="'In ' + item.choices.length + ' worktrees: Enter asks which'" x-text="item.choices.length + ' worktrees'"></span>
+              </template>
+              <span class="hub__age" x-text="item.age"></span>
+            </div>
+          </template>
+          <template x-if="section.more">
+            <div class="hub__more muted" x-text="'… ' + section.more.toLocaleString('en') + ' more' + (section.moreText ? ' ' + section.moreText : '; type more to narrow')"></div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- fzf --preview: the selected row's text, diff or output -->
+    <div class="hub__preview" x-data="{ get p() { return hubPreview(); } }">
+      <template x-if="p">
+        <div class="hub__preview-in">
+          <div class="hub__preview-head">
+            <span class="hub__preview-title" x-text="p.title"></span>
+            <span class="muted hub__preview-sub" x-text="p.sub"></span>
+          </div>
+          <template x-if="p.diff">
+            <div class="diff hub__preview-diff" x-data="{ get rows() { return p.diff; } }" x-include="components/checkouts/diff-lines.html"></div>
+          </template>
+          <template x-if="p.lines">
+            <div class="hub__preview-text" :class="{ 'hub__preview-text--mono': p.mono || p.numbered }">
+              <template x-for="(text, i) in p.lines.slice(0, 60)" :key="i">
+                <div class="hub__preview-line" :class="{ 'hub__preview-line--at': p.line === i + 1 }">
+                  <template x-if="p.numbered"><span class="hub__preview-number" x-text="i + 1"></span></template>
+                  <span x-text="text"></span>
+                </div>
+              </template>
+              <template x-if="p.line">
+                <div class="hub__preview-line muted" x-text="'Enter opens at line ' + p.line"></div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <div class="hub__keys">
+    <template x-for="k in hubKeys(v.mode)" :key="k[0]">
+      <span class="hub__key"><kbd x-text="k[0]"></kbd><span x-text="k[1]"></span></span>
+    </template>
+    <span class="hub__note" x-text="hub.note || hubHiddenNote()"></span>
+    <template x-if="hub.query === ''">
+      <span class="hub__syntax muted" title="fzf's extended search">'exact ^start end$ !not a | b · file:line</span>
+    </template>
+  </div>
+</div>

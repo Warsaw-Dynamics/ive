@@ -1,0 +1,623 @@
+# THIS FILE IS A READ-ONLY COPY OF IVE'S BUILT-IN theme.toml, FOR VIEWING ONLY. EDITING IT DOES NOT AFFECT THE
+# RUNNING IVE, AND IVE REPLACES IT AT EVERY START. PUT YOUR CHANGES IN init.rn NEXT TO THIS FILE.
+#
+# Sizes written in rem follow sizes.rem (16 px by default): change it to zoom the whole UI.
+#
+# IVE's default theme. Override any value in init.rn, in `init(config)`, under `config.theme`, e.g.
+#
+#     config.theme.dark.tree = "#202124";
+#     config.theme.sizes.rem = 18.0;
+#
+# Colours are "#RRGGBB" ("#RRGGBBAA" where a field is translucent) and set per appearance (`dark`, `light`);
+# sizes are pixels and shared by both. See "Theme" in IVE's README.
+
+[sizes]
+# px; what "1rem" is in every size written in rem below: change it to zoom the UI
+rem = 16.0
+# every icon: file types, tools, chevrons, actions
+icon = "1rem"
+
+# The projects panel.
+[sizes.tree]
+header_height = "2.25rem"
+header_padding_left = "0.75rem"
+header_padding_right = "0.25rem"
+header_title_size = "0.875rem"
+header_title_weight = "semibold"
+header_tools_gap = "0.25rem"
+header_button_padding = "0.25rem"
+header_button_radius = 6.0
+# the panel's right edge and the header's bottom edge
+border = 1.0
+# the Open project menu: its distance below the header and from the panel's right edge, then its parts
+menu_offset = 4.0
+menu_width = "16.25rem"
+menu_padding = "0.25rem"
+menu_radius = 8.0
+menu_text_size = "0.875rem"
+menu_weight = "normal"
+menu_section_padding_x = "0.5rem"
+menu_section_padding_top = "0.375rem"
+menu_section_padding_bottom = "0.125rem"
+menu_section_text_size = "0.75rem"
+menu_item_height = "1.75rem"
+menu_item_gap = "0.5rem"
+menu_item_padding_x = "0.5rem"
+menu_item_radius = 4.0
+# a project's initials
+badge_size = "1.125rem"
+badge_radius = 4.0
+badge_text_size = "0.75rem"
+badge_weight = "bold"
+row_height = "1.5rem"
+text_size = "0.8125rem"
+icon_gap = "0.25rem"
+# before a top-level row; each level below adds one icon and gap
+padding_left = "0.5rem"
+padding_right = "0.5rem"
+project_name_weight = "semibold"
+# a project's branch, "no git" or "missing"
+tag_gap = "0.25rem"
+tag_padding_x = "0.375rem"
+tag_radius = 4.0
+tag_text_size = "0.75rem"
+chevron_radius = 4.0
+# a virtual folder's @name (@hidden, @run); its colours are in dark/light.virtual_folders
+chip_padding_x = "0.375rem"
+chip_radius = 4.0
+# a worktree row's folder badges
+count_padding_x = "0.375rem"
+count_radius = 8.0
+count_text_size = "0.75rem"
+# a folder's count after its label: plain digits in the secondary colour
+folder_count_padding_x = "0.125rem"
+folder_count_text_size = "0.6875rem"
+# a row's button at its right end
+action_padding = "0.125rem"
+action_radius = 4.0
+resize_handle_width = 6.0
+# the panel's width until the user resizes it
+default_width = "18rem"
+# a highlighted row's background: its corner radius and its distance from the panel's sides; 0 and 0 fill the row
+# from edge to edge, IntelliJ draws 8 and 12
+selection_radius = 0.0
+selection_inset = 0.0
+
+# The tab row: its tabs, the tools at its right end, a dragged tab and the preview of a tab being detached.
+[sizes.tabs]
+row_height = "2.25rem"
+row_border = 1.0
+strip_padding_x = "0.25rem"
+# between tabs
+gap = "0.125rem"
+tools_gap = "0.25rem"
+tools_padding_left = "0.5rem"
+tab_height = "1.75rem"
+# a tab's padding, the right one beside its close button
+tab_padding_left = "0.625rem"
+tab_padding_right = "0.375rem"
+tab_radius = 6.0
+tab_border = 1.0
+tab_text_size = "0.875rem"
+# between a tab's icon, title and close button
+tab_inner_gap = "0.375rem"
+tab_icon_size = "1rem"
+title_max_width = "13.75rem"
+close_radius = 4.0
+# the checkout colour bar under a tab
+underline_inset = 6.0
+underline_height = 2.0
+underline_radius = 4.0
+# where a dragged tab would land
+drop_marker_width = 2.0
+drop_marker_inset = 2.0
+drop_marker_radius = 4.0
+drag_chip_opacity = 0.85
+# Restart and Settings
+toolbar_button_padding = "0.25rem"
+toolbar_button_radius = 6.0
+toolbar_icon_size = "1.25rem"
+# the window a dragged tab would detach into
+preview_header_height = "1.5rem"
+preview_padding_x = "0.5rem"
+preview_border = 1.0
+preview_text_size = "0.75rem"
+preview_radius = 6.0
+preview_opacity = 0.9
+
+# The window's own frame and buttons, and the welcome screen.
+[sizes.window]
+corner_radius = 8.0
+border = 1.0
+# minimise, maximise and close
+control_width = "2.875rem"
+control_icon_size = "1rem"
+welcome_gap = "1rem"
+welcome_title_size = "1.5rem"
+welcome_recent_gap = "0.5rem"
+welcome_recent_padding_x = "0.75rem"
+welcome_recent_padding_y = "0.25rem"
+welcome_recent_radius = 6.0
+# Open Folder… on the welcome screen
+button_padding_x = "1rem"
+button_padding_y = "0.5rem"
+button_radius = 6.0
+
+# A file or scratch tab: its text, and the scratch's header, bar and notes.
+[sizes.editor]
+text_size = 14.0
+# lines are this many font sizes apart
+line_height_factor = 1.5
+caret_width = 2.0
+# a file that cannot be shown or saved
+notice_padding_x = "0.75rem"
+notice_padding_y = "0.25rem"
+notice_text_size = "0.875rem"
+# a scratch's header, its bar and its notes
+scratch_strip_padding_x = "0.75rem"
+scratch_strip_padding_y = "0.25rem"
+scratch_strip_text_size = "0.75rem"
+scratch_header_gap = "0.5rem"
+scratch_header_border = 1.0
+scratch_bar_gap = "0.75rem"
+scratch_error_padding = "0.75rem"
+# Run, and the bar's buttons
+scratch_button_gap = "0.25rem"
+scratch_button_padding_x = "0.5rem"
+scratch_button_radius = 4.0
+scratch_button_border = 1.0
+
+# Diffs in the git views, diff tabs and commit tabs.
+[sizes.diff]
+row_height = 20.0
+text_size = 13.0
+# before a code line's line numbers
+line_padding = 4.0
+# before a hunk header or a note
+hunk_padding_left = 8.0
+# a commit tab's file header
+header_gap = "0.375rem"
+header_padding_x = "0.25rem"
+header_weight = "medium"
+# after each line number
+number_padding_right = 4.0
+
+# Terminal and Claude Code tabs.
+[sizes.terminal]
+text_size = 14.0
+# lines are this many font sizes apart
+line_height_factor = 1.3
+# around the grid of cells
+padding = 6.0
+cursor_thickness = 2.0
+# underlines and strike-throughs
+line_thickness = 1.0
+normal_weight = "normal"
+bold_weight = "bold"
+
+# The project overview tab: its pages, section row, cards, scratches and git views.
+[sizes.overview]
+# the page around a section
+page_padding_x = "1.5rem"
+page_padding_top = "0.375rem"
+page_padding_bottom = "2rem"
+page_body_gap = "1.125rem"
+page_message_padding = "1.5rem"
+# the section buttons and the location at the right
+section_height = "2.125rem"
+section_padding_x = "0.75rem"
+section_text_size = "0.875rem"
+section_radius = 4.0
+section_underline = 2.0
+section_selected_weight = "semibold"
+section_gap = "0.125rem"
+section_row_border = 1.0
+location_padding_left = "1rem"
+location_text_size = "0.75rem"
+# small tags: ahead/behind, a card's state
+tag_margin_left = "0.5rem"
+tag_padding_x = "0.3125rem"
+tag_radius = 4.0
+tag_text_size = "0.75rem"
+# a project's worktree cards
+cards_gap = "0.625rem"
+card_gap = "0.375rem"
+card_padding_x = "0.75rem"
+card_padding_y = "0.625rem"
+card_title_gap = "0.375rem"
+card_title_weight = "semibold"
+card_detail_text_size = "0.75rem"
+card_tags_gap = "0.25rem"
+card_min_width = "13.75rem"
+card_radius = 8.0
+card_border = 1.0
+card_stripe_width = 3.0
+# a project's scratches
+scratches_gap = "0.5rem"
+scratches_toolbar_gap = "0.75rem"
+scratches_hint_text_size = "0.75rem"
+scratches_search_width = "26.25rem"
+scratches_text_size = "0.875rem"
+scratches_row_height = "1.5rem"
+scratches_row_padding_x = "0.5rem"
+scratches_row_radius = 4.0
+scratches_group_gap = "0.25rem"
+scratches_group_weight = "semibold"
+scratches_count_weight = "normal"
+scratches_input_row_height = "1.75rem"
+scratches_name_input_width = "16.25rem"
+scratches_error_text_size = "0.75rem"
+link_padding_x = "0.25rem"
+link_radius = 4.0
+# the New worktree card and its branch menu
+new_card_width = "16.25rem"
+new_card_gap = "0.375rem"
+new_card_padding = "0.75rem"
+new_card_radius = 8.0
+new_card_border = 1.0
+new_card_title_gap = "0.375rem"
+new_card_title_weight = "semibold"
+new_card_status_text_size = "0.75rem"
+branch_menu_max_height = "22.5rem"
+branch_menu_padding = "0.25rem"
+branch_menu_radius = 8.0
+branch_menu_border = 1.0
+branch_menu_message_padding = "0.5rem"
+branch_item_height = "1.75rem"
+branch_item_gap = "0.5rem"
+branch_item_padding_x = "0.5rem"
+branch_item_radius = 4.0
+branch_item_text_size = "0.875rem"
+
+# Git views: a project's log and stashes, commit and diff tabs.
+[sizes.git]
+# list rows: changed files, commits, stashes
+row_gap = "0.5rem"
+row_height = "1.875rem"
+row_padding_x = "0.625rem"
+row_border = 1.0
+text_size = "0.875rem"
+detail_text_size = "0.75rem"
+body_weight = "normal"
+author_max_width = "10rem"
+# a file's change mark: M, A, D …
+mark_width = "0.75rem"
+mark_text_size = "0.75rem"
+mark_weight = "bold"
+# small tags
+tag_padding_x = "0.25rem"
+tag_radius = 4.0
+tag_text_size = "0.75rem"
+# Uncommitted / Since / Commits
+segment_gap = "0.375rem"
+segment_padding_x = "0.625rem"
+segment_padding_y = "0.25rem"
+segment_radius = 6.0
+segment_border = 1.0
+segment_text_size = "0.875rem"
+# Name / Modified, Flat / Tree
+toggle_gap = "0.375rem"
+toggle_padding_x = "0.5rem"
+toggle_padding_y = "0.125rem"
+toggle_radius = 6.0
+toggle_border = 1.0
+toggle_text_size = "0.875rem"
+# a group's title, such as Log
+group_title_gap = "0.375rem"
+group_title_padding_top = "0.75rem"
+group_title_padding_bottom = "0.25rem"
+group_title_text_size = "0.875rem"
+group_title_weight = "semibold"
+group_hint_text_size = "0.75rem"
+group_hint_weight = "normal"
+# an error with Retry
+error_gap = "0.5rem"
+error_padding_y = "0.5rem"
+# bordered boxes: lists, panes, the summary
+box_radius = 8.0
+box_border = 1.0
+message_padding = "0.5rem"
+# a project's Git section
+section_gap = "0.25rem"
+summary_gap = "0.5rem"
+summary_padding_x = "0.625rem"
+summary_padding_y = "0.375rem"
+# the Git log tab
+log_toolbar_gap = "0.625rem"
+log_toolbar_padding_x = "1.5rem"
+log_toolbar_padding_top = "0.75rem"
+log_buttons_gap = "0.25rem"
+log_padding_bottom = "2rem"
+log_margin_bottom = "1.5rem"
+log_more_padding_x = "0.5rem"
+# a commit tab's header
+commit_message_padding = "1rem"
+commit_header_gap = "0.25rem"
+commit_header_padding_x = "1rem"
+commit_header_padding_y = "0.75rem"
+commit_header_border = 1.0
+commit_subject_padding_top = "0.25rem"
+commit_subject_weight = "medium"
+# a diff's header: file name and source
+diff_header_gap = "0.5rem"
+diff_header_padding_x = "0.625rem"
+diff_header_padding_y = "0.375rem"
+diff_header_border = 1.0
+diff_header_weight = "medium"
+
+# The Settings tab: its page list and its pages.
+[sizes.settings]
+# the page and its list of pages
+page_gap = "1rem"
+page_padding = "1.5rem"
+text_size = "0.875rem"
+small_text_size = "0.75rem"
+title_text_size = "1.25rem"
+title_weight = "bold"
+nav_width = "12.5rem"
+nav_padding_y = "0.5rem"
+nav_border = 1.0
+nav_base_indent = "0.75rem"
+nav_indent = "1rem"
+nav_item_padding_y = "0.25rem"
+nav_heading_weight = "semibold"
+# Appearance
+appearance_gap = "1rem"
+appearance_label_width = "5rem"
+segmented_radius = 6.0
+segmented_border = 1.0
+segment_padding_x = "0.75rem"
+segment_padding_y = "0.25rem"
+# a Color Scheme page: keys, attributes and preview
+colors_gap = "0.75rem"
+keys_gap = "1rem"
+keys_height = "16.25rem"
+keys_padding_y = "0.25rem"
+keys_radius = 6.0
+keys_border = 1.0
+key_padding_x = "0.75rem"
+key_padding_y = "0.125rem"
+panel_width = "18.75rem"
+color_label_width = "6.875rem"
+color_row_gap = "0.5rem"
+swatch_size = "1.125rem"
+swatch_radius = 4.0
+swatch_border = 1.0
+box_size = "0.875rem"
+box_radius = 4.0
+box_border = 1.0
+checkbox_gap = "0.375rem"
+inherit_gap = "0.25rem"
+preview_line_height = "1.25rem"
+preview_padding = "0.5rem"
+preview_radius = 6.0
+preview_border = 1.0
+preview_underline = 2.0
+# Third-Party Software
+table_gap = "1rem"
+table_padding_right = "1rem"
+list_gap = "0.5rem"
+row_padding_y = "0.25rem"
+licence_width = "15rem"
+table_header_weight = "semibold"
+licence_text_padding_bottom = "1rem"
+licence_text_margin_bottom = "1rem"
+licence_text_border = 1.0
+
+# Controls used everywhere: prompts, tooltips, text fields, paging, progress bars and scrollbars.
+[sizes.controls]
+# prompts, such as the quit prompt
+prompt_width = "22.5rem"
+prompt_gap = "0.5rem"
+prompt_padding = "1rem"
+prompt_radius = 8.0
+prompt_border = 1.0
+prompt_title_weight = "semibold"
+prompt_detail_text_size = "0.875rem"
+prompt_buttons_gap = "0.5rem"
+prompt_buttons_margin_top = "0.5rem"
+prompt_button_padding_x = "0.75rem"
+prompt_button_padding_y = "0.25rem"
+prompt_button_radius = 6.0
+prompt_button_text_size = "0.875rem"
+prompt_button_border = 1.0
+# tooltips
+tooltip_padding_x = "0.5rem"
+tooltip_padding_y = "0.25rem"
+tooltip_radius = 6.0
+tooltip_border = 1.0
+tooltip_text_size = "0.75rem"
+# Show 10 more · Show all
+paging_gap = "0.75rem"
+paging_text_size = "0.75rem"
+# text fields
+input_height = "1.75rem"
+input_caret_width = 2.0
+input_padding_x = "0.5rem"
+input_radius = 6.0
+input_border = 1.0
+input_text_size = "0.875rem"
+input_disabled_opacity = 0.6
+input_marked_underline = 1.0
+# a running process's progress
+progress_width = "1rem"
+progress_height = "0.25rem"
+progress_segment = "0.375rem"
+# scrollbars
+scrollbar_thickness = 10.0
+scrollbar_min_thumb = 24.0
+scrollbar_inset = 2.0
+
+# The tree and the editor as separate rounded panels on the frame colour, with the project glow behind the header
+# rows, as IntelliJ's Islands theme; 0 and 0 is the flat layout.
+[panels]
+gap = 5.0
+radius = 8.0
+# the project glow (IntelliJ Islands): brightest this far from the left, back to the frame colour `glow_width`
+# further right, faded out over the top `glow_height`; the project colour is blended in by `glow_blend`
+glow_peak = 100.0
+glow_width = 700.0
+glow_height = 200.0
+glow_blend = 0.85
+
+# IntelliJ New UI Dark, with Islands Dark's tree and frame.
+[dark]
+background = "#1E1F22"
+sidebar = "#2B2D30"
+tree = "#191A1C"
+border = "#393B40"
+text = "#DFE1E5"
+muted = "#868A91"
+# one-colour icons drawn as masks (the projects panel's header buttons), as the icon files' own colour
+icon = "#CED0D6"
+accent = "#3574F0"
+accent_hover = "#4682FA"
+on_accent = "#FFFFFF"
+selected = "#2E436E"
+hover = "#393B40"
+error = "#F75464"
+# backgrounds of added and removed diff lines
+diff_added = "#39AC6024"
+diff_removed = "#DD3C4924"
+# change marks: A and ?, D and U, the rest
+mark_added = "#5FB865"
+mark_removed = "#F75464"
+mark_modified = "#548AF7"
+# the window close button under the mouse
+close_hover = "#E81123"
+scrollbar_thumb = "#FFFFFF33"
+scrollbar_thumb_hover = "#FFFFFF59"
+# the shown editor tab: fill and 1 px outline
+tab_active = "#25324D"
+tab_active_border = "#35538F"
+# behind prompts, and the window's shadow
+scrim = "#00000080"
+shadow = "#00000066"
+# behind rounded panels
+frame = "#26282C"
+# checkout colours (card stripes, tab underlines), picked by a hash of the checkout's path
+checkout_hues = ["#498FDF", "#49DF8F", "#DF9949", "#B249DF", "#DF495D", "#49D0DF", "#DFDF49", "#DF49AD"]
+# project glow colours (IntelliJ's RecentProject MainToolbarGradientStart), picked by a hash of the project name
+glow = ["#654B40", "#534C33", "#455038", "#31515F", "#344C7D", "#5D354A", "#4F3E65", "#1D4744", "#3E5540"]
+
+[dark.terminal]
+# black, red, green, yellow, blue, magenta, cyan, white, then the same eight bright
+ansi = [
+    "#2B2D30", "#F75464", "#5FB865", "#E0BB65", "#548AF7", "#C77DBB", "#2AACB8", "#DFE1E5",
+    "#6F737A", "#FF7B85", "#89D18F", "#F2C55C", "#7AA2FF", "#D99DDB", "#56C7D4", "#FFFFFF",
+]
+foreground = "#DFE1E5"
+background = "#1E1F22"
+cursor = "#CED0D6"
+selection = "#214283"
+
+# File name colours in the tree by git status (IntelliJ Islands Dark).
+[dark.git]
+modified = "#70AEFF"
+added = "#73BD79"
+deleted = "#6F737A"
+unversioned = "#E88F89"
+renamed = "#70AEFF"
+conflicted = "#DE6A66"
+
+# Tree row styles: `text`, `background` ("#RRGGBBAA"), `weight` ("normal", "medium", "semibold", "bold") and `italic`
+# (true or false), each optional; a later state wins: hover, then excluded or ignored, then active, then selected.
+[dark.tree_states]
+hover = { background = "#393B40FF" }
+excluded = { text = "#D69A6B", background = "#291F1CFF" }
+ignored = { text = "#D69A6B" }
+# the active tab's file while the selection is elsewhere; plain by default, as before the theme existed
+active = {}
+selected = { background = "#2E436EFF" }
+# grey extra text, such as a project's tags
+secondary = { text = "#868A91" }
+
+# The chip behind the name of a tree row that is not on disk, as a row style: `chip` for @run,
+# `hidden` for @hidden, weaker since it holds real files.
+[dark.virtual_folders]
+chip = { background = "#393B40FF", italic = true }
+hidden = { text = "#868A91", background = "#393B4080", italic = true }
+
+# What a panel (the sidebar, or the tabs and what they show) draws with while it does not have the keyboard, or the
+# window is not active: any key of this palette, over its value above. IntelliJ Islands Dark's unfocused greys.
+[dark.unfocused]
+selected = "#33353B"
+tab_active = "#26282C"
+tab_active_border = "#40434A"
+
+[dark.unfocused.tree_states]
+selected = { background = "#33353BFF" }
+
+# IntelliJ New UI Light.
+[light]
+background = "#FFFFFF"
+sidebar = "#F7F8FA"
+tree = "#F7F8FA"
+border = "#EBECF0"
+text = "#000000"
+muted = "#818594"
+icon = "#6C707E"
+accent = "#3574F0"
+accent_hover = "#315FBD"
+on_accent = "#FFFFFF"
+selected = "#D5E1FF"
+hover = "#DFE1E5"
+error = "#DB3B4B"
+diff_added = "#39AC602E"
+diff_removed = "#DD3C492E"
+mark_added = "#067D17"
+mark_removed = "#C7222D"
+mark_modified = "#0033B3"
+close_hover = "#E81123"
+scrollbar_thumb = "#00000026"
+scrollbar_thumb_hover = "#00000040"
+tab_active = "#E3ECFD"
+tab_active_border = "#A8C3F5"
+scrim = "#00000080"
+shadow = "#00000066"
+frame = "#E8E8EB"
+checkout_hues = ["#226DC3", "#22C36D", "#C37822", "#9322C3", "#C32238", "#22B3C3", "#C3C322", "#C3228E"]
+glow = ["#F7D7CB", "#F5E6B8", "#E2F2C9", "#CBE4F7", "#D4D2FC", "#ECD3F5", "#E4D3F5", "#CEF0E9", "#CEEDD4"]
+
+[light.terminal]
+ansi = [
+    "#000000", "#C7222D", "#067D17", "#9E880D", "#0033B3", "#871094", "#00627A", "#C9CCD6",
+    "#818594", "#E55765", "#3E8F4A", "#C29E00", "#4A86E8", "#B05FB5", "#1F9CAD", "#FFFFFF",
+]
+foreground = "#000000"
+background = "#FFFFFF"
+cursor = "#000000"
+selection = "#A6D2FF"
+
+[light.git]
+modified = "#0033B3"
+added = "#067D17"
+deleted = "#6C707E"
+unversioned = "#B23247"
+renamed = "#0033B3"
+conflicted = "#DE1B2E"
+
+[light.tree_states]
+hover = { background = "#DFE1E5FF" }
+excluded = { text = "#8C4F00", background = "#FFF5DBFF" }
+ignored = { text = "#8C4F00" }
+active = {}
+selected = { background = "#D5E1FFFF" }
+secondary = { text = "#818594" }
+
+[light.virtual_folders]
+chip = { background = "#DFE1E5FF", italic = true }
+hidden = { text = "#818594", background = "#DFE1E580", italic = true }
+
+# IntelliJ Islands Light's unfocused greys.
+[light.unfocused]
+selected = "#E9EAEE"
+tab_active = "#E9EAEE"
+tab_active_border = "#D1D3D9"
+
+[light.unfocused.tree_states]
+selected = { background = "#E9EAEEFF" }
+
+# Syntax and diff colours by colour key (`dark.syntax`, `light.syntax`) follow, from IVE's built-in schemes (IntelliJ
+# New UI Dark and Light): `foreground`, `background` ("RRGGBB", no "#"), `bold`, `italic`, or `inherit = true` to
+# take the key's parent's look.

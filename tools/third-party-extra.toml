@@ -1,0 +1,75 @@
+# Third-party software in IVE that is not a Rust crate, for the Settings page Third-Party Software
+# (tools/third-party-notices.sh merges it into assets/licenses/third-party.json). `text` is the licence file,
+# relative to the repository root. Keep it in step with NOTICE.
+
+[[software]]
+name = "Inter"
+url = "https://github.com/rsms/inter"
+license = "OFL-1.1"
+text = "assets/fonts/Inter-OFL.txt"
+
+[[software]]
+name = "JetBrains Mono"
+url = "https://github.com/JetBrains/JetBrainsMono"
+license = "OFL-1.1"
+text = "assets/fonts/JetBrainsMono-OFL.txt"
+
+[[software]]
+name = "IntelliJ Platform icons"
+url = "https://github.com/JetBrains/intellij-community/tree/master/platform/icons/src/expui"
+license = "Apache-2.0"
+text = "assets/icons/LICENSE"
+
+[[software]]
+name = "IntelliJ IDEA colour schemes"
+url = "https://github.com/JetBrains/intellij-community"
+license = "Apache-2.0"
+text = "assets/icons/LICENSE"
+
+[[software]]
+name = "libgit2"
+version = "1.9.7"
+url = "https://github.com/libgit2/libgit2"
+license = "GPL-2.0 WITH linking exception"
+text = "licenses/libgit2-COPYING"
+
+[[software]]
+name = "tree-sitter-dockerfile"
+version = "0.2.0"
+url = "https://github.com/camdencheek/tree-sitter-dockerfile"
+license = "MIT"
+text = "vendor/grammars/dockerfile/LICENSE"
+
+[[software]]
+name = "tree-sitter-fish"
+version = "3.6.0"
+url = "https://github.com/ram02z/tree-sitter-fish"
+license = "Unlicense"
+text = "vendor/grammars/fish/LICENSE"
+
+[[software]]
+name = "tree-sitter-go-mod"
+version = "1.0.1"
+url = "https://github.com/camdencheek/tree-sitter-go-mod"
+license = "MIT"
+text = "vendor/grammars/gomod/LICENSE"
+
+[[software]]
+name = "tree-sitter-scss"
+version = "1.0.0"
+url = "https://github.com/tree-sitter-grammars/tree-sitter-scss"
+license = "MIT"
+text = "vendor/grammars/scss/LICENSE"
+
+[[software]]
+name = "tree-sitter-sql"
+version = "0.3.11"
+url = "https://github.com/DerekStride/tree-sitter-sql"
+license = "MIT"
+text = "vendor/grammars/sql/LICENSE"
+
+[[software]]
+name = "tree-sitter-vue"
+url = "https://github.com/tree-sitter-grammars/tree-sitter-vue"
+license = "MIT"
+text = "vendor/grammars/vue/LICENSE"

@@ -1,0 +1,94 @@
+<!-- settings_page/mod.rs: the nav (200 px, scrolls), then the page and "Saved to …". -->
+<div class="settings-page">
+  <nav class="settings-nav">
+    <template x-for="item in ['Appearance', 'Scripts', 'Third-Party Software']" :key="item">
+      <button class="settings-nav__item" type="button" :class="{ 'settings-nav__item--on': settingsPage === item }" @click="settingsPage = item" x-text="item"></button>
+    </template>
+    <div class="settings-nav__heading">Editor</div>
+    <div class="settings-nav__heading settings-nav__heading--1">Color Scheme</div>
+    <template x-for="item in languages" :key="item">
+      <button class="settings-nav__item settings-nav__item--2" type="button" :class="{ 'settings-nav__item--on': settingsPage === item }" @click="settingsPage = item" x-text="item"></button>
+    </template>
+  </nav>
+
+  <div class="settings-body">
+    <!-- appearance.rs: the theme picker -->
+    <template x-if="settingsPage === 'Appearance'">
+      <div class="settings-body__page">
+        <h2 class="settings-body__title">Appearance</h2>
+        <div class="settings-body__row">
+          <span class="settings-body__label">Theme</span>
+          <div class="segmented">
+            <template x-for="option in [['system', 'Same as OS'], ['dark', 'Dark'], ['light', 'Light']]" :key="option[0]">
+              <button type="button" :aria-pressed="themePreference === option[0]" @click="themePreference = option[0]" x-text="option[1]"></button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- scripts.rs -->
+    <template x-if="settingsPage === 'Scripts'">
+      <div class="settings-body__page">
+        <h2 class="settings-body__title">Scripts</h2>
+        <div>Your bindings and functions go in /home/me/.config/ive/default/init.rn</div>
+        <button class="settings-body__link" type="button">IVE's default bindings (ive.rn, read-only)</button>
+      </div>
+    </template>
+
+    <!-- third_party.rs: the list; a row opens its licence -->
+    <template x-if="settingsPage === 'Third-Party Software'">
+      <div class="settings-body__page">
+        <h2 class="settings-body__title">Third-Party Software</h2>
+        <div class="rows">
+          <template x-for="s in thirdParty" :key="s.name">
+            <div class="rows__row rows__row--click"><span class="rows__grow" x-text="s.name"></span><span class="rows__age" x-text="s.license"></span></div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- color_page.rs: keys (260 px tall), the key's Bold, Italic, Foreground, Background and inheritance; the preview below. -->
+    <template x-if="languages.includes(settingsPage)">
+      <div class="settings-body__page settings-body__page--colors">
+        <div class="colors__top">
+          <div class="colors__title" x-text="'Editor › Color Scheme › ' + settingsPage"></div>
+          <div class="muted colors__scheme" x-text="appearance === 'dark' ? 'Dark scheme' : 'Light scheme'"></div>
+        </div>
+        <div class="colors__main">
+          <div class="colors__keys">
+            <template x-for="k in colorKeys" :key="k">
+              <button class="colors__key" type="button" :class="{ 'colors__key--on': colorKey === k }" @click="colorKey = k" x-text="k"></button>
+            </template>
+          </div>
+          <div class="colors__panel">
+            <div class="colors__flags">
+              <label class="checkbox checkbox--muted"><input type="checkbox" /><span class="checkbox__tick"></span>Bold</label>
+              <label class="checkbox checkbox--muted"><input type="checkbox" /><span class="checkbox__tick"></span>Italic</label>
+            </div>
+            <div class="colors__channel">
+              <label class="checkbox checkbox--muted colors__label"><input type="checkbox" checked /><span class="checkbox__tick"></span>Foreground</label>
+              <span class="hexfield">B3AE60</span><span class="swatch" style="background: #b3ae60"></span>
+            </div>
+            <div class="colors__channel">
+              <label class="checkbox checkbox--muted colors__label"><input type="checkbox" /><span class="checkbox__tick"></span>Background</label>
+              <span class="hexfield"></span><span class="swatch"></span>
+            </div>
+            <label class="checkbox"><input type="checkbox" checked /><span class="checkbox__tick"></span>Inherit values from:</label>
+            <button class="settings-body__link colors__parent" type="button">Metadata (Language Defaults)</button>
+          </div>
+        </div>
+        <pre class="colors__preview">//! Module doc comment
+use std::collections::HashMap;
+
+/// A point in 2D space.
+#[derive(Debug, Clone, Copy)]
+pub struct Point&lt;'a, T&gt; {
+    pub x: T,
+    label: &amp;'a str,
+}</pre>
+      </div>
+    </template>
+    <div class="settings-body__saved">Saved to /home/me/.config/ive/default/settings.toml</div>
+  </div>
+</div>

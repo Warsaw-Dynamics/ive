@@ -1,0 +1,11 @@
+<!-- editor.rs render_tab_row: right end of the tab row; there is no title bar. Restart (only with run's
+     --restart, not mocked), Settings (20 px icon), then window_controls.rs: 46 px buttons, icons drawn in the text colour (white over the
+     red close hover). -->
+  <button class="icon-button tabbar__settings" type="button" title="Settings" @click="openSettings()">
+    <img class="icon icon--20" :src="icon('settings-20.svg')" alt="Settings" />
+  </button>
+  <div class="window-controls">
+    <button type="button" title="Minimize"><span class="window-controls__icon" :style="{ '--mask': 'url(' + icon('window-minimize.svg') + ')' }"></span></button>
+    <button type="button" title="Maximize"><span class="window-controls__icon" :style="{ '--mask': 'url(' + icon('window-maximize.svg') + ')' }"></span></button>
+    <button class="window-controls__close" type="button" title="Close"><span class="window-controls__icon" :style="{ '--mask': 'url(' + icon('window-close.svg') + ')' }"></span></button>
+  </div>

@@ -1,0 +1,22 @@
+Icons in this folder are copied, renamed and unmodified, from the IntelliJ Platform
+New UI icon set (dark/ and light/ variants):
+https://github.com/JetBrains/intellij-community/tree/master/platform/icons/src/expui
+
+Copyright 2000-2022 JetBrains s.r.o. and contributors.
+Licensed under the Apache License, Version 2.0 (see LICENSE in this folder).
+
+Some icons (file-bazel, file-c, file-cpp, file-Csharp, file-h, file-jupyter, file-swiftLang)
+carry no per-file header; they come from the same Apache 2.0 source tree.
+
+Brand logos among them (Docker, Terraform, GraphQL, Groovy, Jupyter, Microsoft Windows, Perl,
+Swift, C#, Bazel) are trademarks of their respective owners. The Apache 2.0 license grants
+no trademark rights (section 6); review their use before distributing IVE publicly.
+
+terminal.svg, warning.svg and locate.svg (dark/ and light/) are not from the IntelliJ set: they were
+drawn for IVE in the same style.
+
+restart.svg (dark/ and light/) is modified: the arrow of run/widget/restart.svg, cut at the bottom right
+and coloured like the other icons, with the run triangle of run/rerun.svg (Apache 2.0, section 4(b)).
+
+folder-run.svg (dark/ and light/) is modified: the folder of nodes/module.svg, its corner badge replaced by a
+small run triangle coloured as run/run.svg (Apache 2.0, section 4(b)).

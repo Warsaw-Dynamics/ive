@@ -1,0 +1,21 @@
+<!-- Planned: a click on a worktree's Processes row opens this tab, temporary: every run configuration in the worktree's
+     .run.toml files, drawn as the tree draws its rows (rows.html: 24 px, 13 px). Bar: filter (name, folder, command),
+     Flat | Tree, the worktree on the right. Flat: by name, the folder after it; Tree: folders as the Files tree nests
+     them (a folder folds; its .run.toml opens on hover). A row: as a run in Processes, its command in the tooltip.
+     Runs started here keep the list shown; a click on a row with a run shows its output. -->
+<div class="page runlist" x-data="{ get co() { return checkout(tab.co); } }">
+  <div class="runlist__bar">
+    <input class="field runlist__filter" type="search" x-model="query.run" placeholder="Filter by name, folder or command" />
+    <div class="segmented runlist__layout" role="group" aria-label="Layout">
+      <template x-for="option in [['flat', 'Flat'], ['tree', 'Tree']]" :key="option[0]">
+        <button type="button" :aria-pressed="runLayout === option[0]" @click="runLayout = option[0]" x-text="option[1]"></button>
+      </template>
+    </div>
+    <span class="otabs__where muted" :title="co.path" x-text="co.label + ' · ' + cardFolder(co)"></span>
+  </div>
+  <div class="runlist__summary muted" x-text="runConfigSummary(co)"></div>
+  <div class="tree runlist__tree" x-data="{ get rows() { return runConfigRows(co); } }" x-include="components/checkouts/rows.html"></div>
+  <template x-if="runConfigRows(co).length === 0">
+    <div class="runlist__empty muted">No configuration matches</div>
+  </template>
+</div>

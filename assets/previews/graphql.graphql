@@ -1,0 +1,36 @@
+# Issues the board shows, with their assignee
+"""
+A person who can be assigned work.
+"""
+interface Assignable {
+  id: ID!
+  name: String
+}
+
+type User implements Assignable @key(fields: "id") {
+  id: ID!
+  name: String
+  issues(first: Int = 10, status: Status): [Issue!]!
+}
+
+enum Status { OPEN, IN_PROGRESS, DONE }
+
+directive @deprecatedSince(version: String!) on FIELD_DEFINITION | ENUM_VALUE
+
+query BoardIssues($project: String!, $limit: Int = 50, $withUser: Boolean = false) {
+  board(project: $project, filter: { status: OPEN, archived: null }) {
+    total: issueCount
+    issues(first: $limit, weight: 1.5) {
+      ...IssueCard
+      assignee @include(if: $withUser) {
+        ... on User { name }
+      }
+    }
+  }
+}
+
+fragment IssueCard on Issue {
+  key
+  summary
+  labels
+}

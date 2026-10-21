@@ -1,0 +1,26 @@
+use super::Row;
+
+pub const ROWS: &[Row] = &[
+    ("STARLARK.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("STARLARK.STRING", "String", Some("DEFAULT_STRING")),
+    ("STARLARK.LABEL", "Label string", Some("STARLARK.STRING")),
+    ("STARLARK.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("STARLARK.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("STARLARK.LINE_COMMENT", "Comment", Some("DEFAULT_LINE_COMMENT")),
+    ("STARLARK.DOC_STRING", "Docstring", Some("DEFAULT_DOC_COMMENT")),
+    ("STARLARK.OPERATOR", "Operator", Some("DEFAULT_OPERATION_SIGN")),
+    ("STARLARK.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("STARLARK.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("STARLARK.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("STARLARK.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("STARLARK.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("STARLARK.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("STARLARK.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("STARLARK.RULE_CALL", "Rule or macro call", Some("DEFAULT_FUNCTION_CALL")),
+    ("STARLARK.METHOD_CALL", "Method call", Some("DEFAULT_INSTANCE_METHOD")),
+    ("STARLARK.BUILTIN", "Builtin", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("STARLARK.FIELD", "Field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("STARLARK.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("STARLARK.KEYWORD_ARGUMENT", "Keyword argument", Some("DEFAULT_PARAMETER")),
+    ("STARLARK.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+];

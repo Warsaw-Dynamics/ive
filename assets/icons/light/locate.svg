@@ -1,0 +1,6 @@
+<!-- Drawn for IVE in the style of the IntelliJ New UI icons; not from the IntelliJ icon set. -->
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="8" cy="8" r="5" stroke="#6C707E"/>
+<circle cx="8" cy="8" r="1.5" fill="#6C707E"/>
+<path d="M8 1V4M8 12V15M1 8H4M12 8H15" stroke="#6C707E" stroke-linecap="round"/>
+</svg>

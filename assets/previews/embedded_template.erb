@@ -1,0 +1,23 @@
+<%# Lists the open orders of a customer %>
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= @customer.name %> - orders</title>
+</head>
+<body>
+  <h1 class="title">Orders of <%= @customer.name %></h1>
+  <% if @orders.empty? %>
+    <p>No open orders.</p>
+  <% else %>
+    <ul>
+      <% @orders.each do |order| -%>
+        <li id="order-<%= order.id %>">
+          <%= link_to order.number, order_path(order) %>
+          <span>&euro; <%= format("%.2f", order.total) %></span>
+        </li>
+      <% end -%>
+    </ul>
+  <% end %>
+  <%== render partial: "footer" %>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!-- overview/git_log_tab.rs: segments Log, Stashes, Worktrees, Branches with counts, then the bordered list. Needs p. -->
+<div class="gitlog">
+  <div class="seg">
+    <template x-for="s in gitLogSections(p)" :key="s.key">
+      <button class="seg__item" type="button" :class="{ 'seg__item--on': gitLogSection === s.key }" @click="gitLogSection = s.key" x-text="s.title + ' (' + s.count + ')'"></button>
+    </template>
+  </div>
+  <div class="gitlog__body">
+    <template x-if="gitLogSection === 'log'">
+      <div class="rows">
+        <template x-for="c in p.log" :key="c.sha"><div x-include="components/checkouts/log-row.html"></div></template>
+      </div>
+    </template>
+    <template x-if="gitLogSection === 'stashes'">
+      <div>
+        <template x-if="p.stashes.length === 0"><div class="gitlog__empty muted">No stashes.</div></template>
+        <template x-if="p.stashes.length">
+          <div class="rows">
+            <template x-for="s in p.stashes" :key="s.message">
+              <div class="rows__row">
+                <img class="icon" :src="icon('history.svg')" alt="" />
+                <span class="rows__grow" x-text="s.message"></span>
+                <span class="rows__age" x-text="stashAge(s)"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </template>
+    <template x-if="gitLogSection === 'worktrees'">
+      <div class="rows">
+        <template x-for="co in p.checkouts" :key="co.id">
+          <div class="rows__row">
+            <img class="icon" :src="icon('branch.svg')" alt="" />
+            <span class="rows__name rows__name--normal" x-text="co.label"></span>
+            <span class="rows__age" x-text="co.branch || 'detached'"></span>
+            <span class="rows__folder" x-text="co.path"></span>
+          </div>
+        </template>
+      </div>
+    </template>
+    <template x-if="gitLogSection === 'branches'">
+      <div>
+        <template x-if="p.branches.length === 0"><div class="gitlog__empty muted">Every branch has a worktree.</div></template>
+        <template x-if="p.branches.length">
+          <div class="rows">
+            <template x-for="b in p.branches" :key="b.name">
+              <div class="rows__row">
+                <img class="icon" :src="icon('branch.svg')" alt="" />
+                <span class="rows__grow" x-text="b.name"></span>
+                <span class="rows__age" x-text="age(b.modified)"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
+</div>

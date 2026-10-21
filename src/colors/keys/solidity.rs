@@ -1,0 +1,33 @@
+use super::Row;
+
+/// No Solidity keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("SOL.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("SOL.PRIMITIVE_TYPE", "Elementary type", Some("DEFAULT_KEYWORD")),
+    ("SOL.STRING", "String", Some("DEFAULT_STRING")),
+    ("SOL.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("SOL.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("SOL.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("SOL.DOC_COMMENT", "NatSpec comment", Some("DEFAULT_DOC_COMMENT")),
+    ("SOL.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("SOL.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("SOL.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("SOL.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("SOL.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("SOL.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("SOL.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("SOL.PRAGMA", "Pragma", Some("DEFAULT_METADATA")),
+    ("SOL.TYPE", "Contract, library, struct or enum", Some("DEFAULT_CLASS_NAME")),
+    ("SOL.INTERFACE", "Interface", Some("DEFAULT_INTERFACE_NAME")),
+    ("SOL.EVENT", "Event or error", Some("DEFAULT_CLASS_NAME")),
+    ("SOL.MODIFIER", "Modifier", Some("DEFAULT_METADATA")),
+    ("SOL.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("SOL.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("SOL.METHOD_CALL", "Member function call", Some("DEFAULT_INSTANCE_METHOD")),
+    ("SOL.STATE_VARIABLE", "State variable", Some("DEFAULT_INSTANCE_FIELD")),
+    ("SOL.FIELD", "Struct member or property", Some("DEFAULT_INSTANCE_FIELD")),
+    ("SOL.LOCAL_VARIABLE", "Local variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("SOL.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("SOL.CONSTANT", "Constant or enum value", Some("DEFAULT_CONSTANT")),
+    ("SOL.BUILTIN", "Global variable or function", Some("DEFAULT_PREDEFINED_SYMBOL")),
+];

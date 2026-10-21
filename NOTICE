@@ -1,0 +1,42 @@
+IVE - Integrated Vibe Editor
+
+The colour values in assets/schemes/ and the Java, JSON, YAML, TOML, HTML, XML, Markdown, Shell Script, Python,
+Kotlin, Groovy, Properties and RegExp texts in assets/previews/ are ported from IntelliJ IDEA Community Edition
+(https://github.com/JetBrains/intellij-community), Copyright 2000-2026 JetBrains s.r.o. and contributors, licensed
+under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+The highlight and injection queries in assets/queries/ started from the queries of the tree-sitter grammars they
+are written for (MIT License, except tree-sitter-fish: The Unlicense).
+
+vendor/grammars/ holds the generated parsers of six tree-sitter grammars, unchanged; each folder has the upstream
+LICENSE and a SOURCE file naming the repository and commit:
+- dockerfile: https://github.com/camdencheek/tree-sitter-dockerfile (MIT License)
+- fish: https://github.com/ram02z/tree-sitter-fish (The Unlicense)
+- gomod: https://github.com/camdencheek/tree-sitter-go-mod (MIT License)
+- scss: https://github.com/tree-sitter-grammars/tree-sitter-scss (MIT License)
+- sql: https://github.com/DerekStride/tree-sitter-sql (MIT License)
+- vue: https://github.com/tree-sitter-grammars/tree-sitter-vue (MIT License)
+
+vendor/grammars/rune is IVE's Rune grammar: its grammar.js extends tree-sitter-rust's
+(https://github.com/tree-sitter/tree-sitter-rust, MIT License), copied unchanged as rust.js with that grammar's
+LICENSE; src/scanner.c is tree-sitter-rust's scanner with its functions renamed, src/parser.c is generated.
+
+The icons in assets/icons/ are from the IntelliJ Platform New UI icon set, Copyright 2000-2022 JetBrains s.r.o. and
+contributors, licensed under the Apache License, Version 2.0; assets/icons/NOTICE says which are modified or drawn
+for IVE, and assets/icons/LICENSE holds the licence.
+
+assets/fonts/ bundles Inter (Copyright 2020 The Inter Project Authors, https://github.com/rsms/inter) and
+JetBrains Mono (Copyright 2020 The JetBrains Mono Project Authors, https://github.com/JetBrains/JetBrainsMono),
+both under the SIL Open Font License, Version 1.1 (assets/fonts/*-OFL.txt).
+
+gpui and its crates come from Zed (https://github.com/zed-industries/zed), Copyright Zed Industries, Inc., licensed
+under the Apache License, Version 2.0, through https://github.com/Warsaw-Dynamics/pgui (branch zed-main), which
+modifies crates/gpui/src/text_system.rs and crates/gpui_wgpu/src/cosmic_text_system.rs so a colour emoji font can be
+a font fallback on Linux.
+
+libgit2 (built into the git2 crate) is licensed under the GNU General Public License, Version 2, with a linking
+exception that allows linking it unmodified into programs under any licence: licenses/libgit2-COPYING, which also
+holds the notices of the code bundled with libgit2. Source: https://github.com/libgit2/libgit2.
+
+The Rust crates IVE is built from, with their licence texts, are listed in THIRD-PARTY-NOTICES.md
+(tools/third-party-notices.sh); deny.toml lists the licences they may use.

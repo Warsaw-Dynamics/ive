@@ -1,0 +1,33 @@
+use super::Row;
+
+/// No OCaml keys in intellij-community; ids in IntelliJ's style. Shared by OCaml and OCaml Interface.
+pub const ROWS: &[Row] = &[
+    ("OCAML.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("OCAML.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("OCAML.STRING", "String", Some("DEFAULT_STRING")),
+    ("OCAML.CHAR", "Char", Some("DEFAULT_STRING")),
+    ("OCAML.VALID_STRING_ESCAPE", "Valid escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("OCAML.FORMAT_SPECIFIER", "Format specifier", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("OCAML.BLOCK_COMMENT", "Comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("OCAML.DOC_COMMENT", "Doc comment", Some("DEFAULT_DOC_COMMENT")),
+    ("OCAML.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("OCAML.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("OCAML.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("OCAML.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("OCAML.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("OCAML.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("OCAML.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("OCAML.MODULE", "Module", Some("DEFAULT_IDENTIFIER")),
+    ("OCAML.TYPE", "Type", Some("DEFAULT_CLASS_NAME")),
+    ("OCAML.PRIMITIVE_TYPE", "Primitive type", Some("DEFAULT_KEYWORD")),
+    ("OCAML.TYPE_VARIABLE", "Type variable", Some("DEFAULT_PARAMETER")),
+    ("OCAML.CONSTRUCTOR", "Constructor", Some("DEFAULT_STATIC_FIELD")),
+    ("OCAML.FIELD", "Record field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("OCAML.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("OCAML.VALUE_DECLARATION", "Value declaration", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("OCAML.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("OCAML.BUILTIN", "Predefined function", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("OCAML.PARAMETER", "Parameter or pattern variable", Some("DEFAULT_PARAMETER")),
+    ("OCAML.LABEL", "Label", Some("DEFAULT_LABEL")),
+    ("OCAML.ATTRIBUTE", "Attribute or extension", Some("DEFAULT_METADATA")),
+];

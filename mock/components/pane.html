@@ -1,0 +1,47 @@
+<section class="pane">
+  <template x-if="pane.kind === 'empty'">
+    <p class="pane__message muted">Select a file in the sidebar</p>
+  </template>
+
+  <template x-if="pane.kind === 'failed'">
+    <p class="pane__message error" x-text="pane.error"></p>
+  </template>
+
+  <template x-if="pane.kind === 'document' || pane.kind === 'settings'">
+    <div class="tab">
+      <span x-text="pane.kind === 'settings' ? 'Settings' : pane.entry.name"></span>
+      <button class="tab__close" type="button" title="Close" @click="closePane()">
+        <img class="icon" :src="icon('close.svg')" alt="" />
+      </button>
+    </div>
+  </template>
+
+  <template x-if="pane.kind === 'document'">
+    <div class="editor" @wheel.prevent="scroll($event)"
+         :style="{ '--gutter-chars': String(pane.lineCount).length + 2 }">
+      <template x-for="line in visibleLines()" :key="line.number">
+        <div class="editor__line">
+          <span class="editor__number" x-text="line.number"></span>
+          <span class="editor__text" x-text="line.text"></span>
+        </div>
+      </template>
+      <div class="scrollbar" :style="thumbStyle()"></div>
+    </div>
+  </template>
+
+  <template x-if="pane.kind === 'settings'">
+    <div class="settings">
+      <h2>Appearance</h2>
+      <div class="settings__row">
+        <span>Theme</span>
+        <div class="segmented" role="group" aria-label="Theme">
+          <template x-for="option in themeOptions" :key="option.value">
+            <button type="button" :aria-pressed="String(themePreference === option.value)"
+                    @click="setTheme(option.value)" x-text="option.label"></button>
+          </template>
+        </div>
+      </div>
+      <p class="muted">Saved to ~/.config/ive/settings.toml</p>
+    </div>
+  </template>
+</section>

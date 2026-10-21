@@ -1,0 +1,12 @@
+/* Comment */
+@import url("theme.css") screen;
+@media screen and (min-width: 600px) {
+  :root { --accent: #2675bf; }
+  body > .header, #main::before, a:hover, input[type="text"] {
+    color: var(--accent) !important;
+    margin: 0 4px calc(1em + 2px);
+    background: url(images/bg.png) no-repeat;
+    font-family: "JetBrains Mono", monospace;
+  }
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1.0; } }

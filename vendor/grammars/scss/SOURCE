@@ -1,0 +1,5 @@
+Repository: https://github.com/tree-sitter-grammars/tree-sitter-scss
+Ref: v1.0.0
+Commit: eb69c8f55ecc17235f43358c65ec644578554f92
+Copied from: crate tree-sitter-scss 1.0.0 (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)
+LICENSE from: master branch (the tagged commit has none)

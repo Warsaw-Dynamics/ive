@@ -1,0 +1,32 @@
+use super::Row;
+
+/// No Elixir keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("ELIXIR.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("ELIXIR.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("ELIXIR.CHAR", "Character code", Some("DEFAULT_NUMBER")),
+    ("ELIXIR.STRING", "String", Some("DEFAULT_STRING")),
+    ("ELIXIR.CHARLIST", "Charlist", Some("ELIXIR.STRING")),
+    ("ELIXIR.SIGIL", "Sigil", Some("DEFAULT_STRING")),
+    ("ELIXIR.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("ELIXIR.INTERPOLATION", "Interpolation", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("ELIXIR.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("ELIXIR.DOC_COMMENT", "Documentation", Some("DEFAULT_DOC_COMMENT")),
+    ("ELIXIR.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("ELIXIR.PIPE", "Pipe operator", Some("ELIXIR.OPERATION_SIGN")),
+    ("ELIXIR.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("ELIXIR.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("ELIXIR.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("ELIXIR.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("ELIXIR.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("ELIXIR.MODULE", "Module", Some("DEFAULT_CLASS_NAME")),
+    ("ELIXIR.ATOM", "Atom", Some("DEFAULT_CONSTANT")),
+    ("ELIXIR.PREDEFINED", "Predefined symbol", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("ELIXIR.MODULE_ATTRIBUTE", "Module attribute", Some("DEFAULT_METADATA")),
+    ("ELIXIR.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("ELIXIR.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("ELIXIR.REMOTE_CALL", "Remote function call", Some("DEFAULT_STATIC_METHOD")),
+    ("ELIXIR.FIELD", "Map field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("ELIXIR.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("ELIXIR.VARIABLE", "Variable", Some("DEFAULT_LOCAL_VARIABLE")),
+];

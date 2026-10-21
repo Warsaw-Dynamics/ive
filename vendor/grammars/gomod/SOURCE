@@ -1,0 +1,4 @@
+Repository: https://github.com/camdencheek/tree-sitter-go-mod
+Ref: v1.0.1
+Commit: 9b86399ab733fbd548ba0e817e732cb3351082d2
+Copied from: crate tree-sitter-gomod 1.0.1 (src/parser.c, src/scanner.c and the tree_sitter headers, unchanged)

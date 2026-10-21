@@ -1,0 +1,28 @@
+use super::Row;
+
+pub const ROWS: &[Row] = &[
+    ("LUA.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("LUA.STRING", "String", Some("DEFAULT_STRING")),
+    ("LUA.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("LUA.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("LUA.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("LUA.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("LUA.DOC_COMMENT", "Doc comment", Some("DEFAULT_DOC_COMMENT")),
+    ("LUA.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("LUA.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("LUA.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("LUA.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("LUA.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("LUA.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("LUA.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("LUA.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("LUA.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("LUA.METHOD_CALL", "Method call", Some("DEFAULT_INSTANCE_METHOD")),
+    ("LUA.FIELD", "Field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("LUA.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("LUA.LOCAL_VARIABLE", "Local variable", Some("DEFAULT_LOCAL_VARIABLE")),
+    ("LUA.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+    ("LUA.PREDEFINED", "Predefined symbol", Some("DEFAULT_PREDEFINED_SYMBOL")),
+    ("LUA.ATTRIBUTE", "Attribute", Some("DEFAULT_METADATA")),
+    ("LUA.LABEL", "Label", Some("DEFAULT_LABEL")),
+];

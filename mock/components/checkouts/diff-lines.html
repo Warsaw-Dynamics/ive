@@ -1,0 +1,9 @@
+<!-- diff_view.rs: hunk headers, then lines with old and new numbers and a sign; needs rows (diffRows of a diff). -->
+<template x-for="(r, i) in rows" :key="i">
+  <div class="diff__row" :class="'diff__row--' + r.kind">
+    <template x-if="r.kind === 'hunk'"><span class="diff__hunk" x-text="r.text"></span></template>
+    <template x-if="r.kind !== 'hunk'">
+      <span class="diff__line"><span class="diff__number" x-text="r.old"></span><span class="diff__number" x-text="r.now"></span><span class="diff__sign" x-text="r.sign"></span><span x-text="r.text"></span></span>
+    </template>
+  </div>
+</template>

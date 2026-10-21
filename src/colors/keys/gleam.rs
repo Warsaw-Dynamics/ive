@@ -1,0 +1,30 @@
+use super::Row;
+
+/// No Gleam keys in intellij-community; ids in IntelliJ's style.
+pub const ROWS: &[Row] = &[
+    ("GLEAM.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("GLEAM.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("GLEAM.STRING", "String", Some("DEFAULT_STRING")),
+    ("GLEAM.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("GLEAM.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("GLEAM.DOC_COMMENT", "Doc comment", Some("DEFAULT_DOC_COMMENT")),
+    ("GLEAM.MODULE_COMMENT", "Module doc comment", Some("GLEAM.DOC_COMMENT")),
+    ("GLEAM.OPERATION_SIGN", "Operator sign", Some("DEFAULT_OPERATION_SIGN")),
+    ("GLEAM.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("GLEAM.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("GLEAM.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("GLEAM.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("GLEAM.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("GLEAM.MODULE", "Module", Some("DEFAULT_IDENTIFIER")),
+    ("GLEAM.TYPE", "Type", Some("DEFAULT_CLASS_NAME")),
+    ("GLEAM.TYPE_VARIABLE", "Type variable", Some("DEFAULT_PARAMETER")),
+    ("GLEAM.CONSTRUCTOR", "Record constructor", Some("DEFAULT_STATIC_FIELD")),
+    ("GLEAM.FIELD", "Record field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("GLEAM.CONSTANT", "Constant", Some("DEFAULT_CONSTANT")),
+    ("GLEAM.ATTRIBUTE", "Attribute", Some("DEFAULT_METADATA")),
+    ("GLEAM.FUNCTION_DECLARATION", "Function declaration", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("GLEAM.FUNCTION_CALL", "Function call", Some("DEFAULT_FUNCTION_CALL")),
+    ("GLEAM.LABEL", "Argument label", Some("DEFAULT_PARAMETER")),
+    ("GLEAM.PARAMETER", "Parameter", Some("DEFAULT_PARAMETER")),
+    ("GLEAM.VARIABLE", "Variable", Some("DEFAULT_LOCAL_VARIABLE")),
+];

@@ -1,0 +1,53 @@
+# `cargo deny check` (https://github.com/EmbarkStudios/cargo-deny): keeps IVE's dependencies on licences that let
+# it ship as closed source, and on sources we know. A new licence or source fails the check until it is reviewed
+# here; THIRD-PARTY-NOTICES.md (tools/third-party-notices.sh) must then be regenerated.
+
+[graph]
+# every OS IVE builds for, so a Windows- or macOS-only dependency is checked too
+targets = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-pc-windows-msvc"]
+
+[licenses]
+# permissive licences: shipping needs only their texts and copyright lines (THIRD-PARTY-NOTICES.md)
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    # file-level copyleft: only changes to the crate's own files would have to be published; used unmodified
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.93
+
+# IVE and ptyhost are our own, not published
+[licenses.private]
+ignore = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# Zed's gpui with our fixes (see Cargo.toml), and the forks it pins by commit
+allow-git = [
+    "https://github.com/Warsaw-Dynamics/pgui.git",
+    "https://github.com/zed-industries/font-kit",
+    "https://github.com/zed-industries/xim-rs.git",
+    "https://github.com/gfx-rs/wgpu",
+]
+
+[bans]
+# gpui and the grammars pull several versions of some crates; that is size, not licence
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[advisories]
+# RustSec advisories are reported; unmaintained crates deep in gpui's tree are only warned about
+unmaintained = "workspace"

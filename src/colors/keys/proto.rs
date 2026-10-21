@@ -1,0 +1,28 @@
+use super::Row;
+
+pub const ROWS: &[Row] = &[
+    ("PROTO.KEYWORD", "Keyword", Some("DEFAULT_KEYWORD")),
+    ("PROTO.SCALAR_TYPE", "Scalar type", Some("DEFAULT_KEYWORD")),
+    ("PROTO.STRING", "String", Some("DEFAULT_STRING")),
+    ("PROTO.ESCAPE", "Escape sequence", Some("DEFAULT_VALID_STRING_ESCAPE")),
+    ("PROTO.NUMBER", "Number", Some("DEFAULT_NUMBER")),
+    ("PROTO.FIELD_NUMBER", "Field number", Some("DEFAULT_NUMBER")),
+    ("PROTO.LINE_COMMENT", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("PROTO.BLOCK_COMMENT", "Block comment", Some("DEFAULT_BLOCK_COMMENT")),
+    ("PROTO.OPERATOR", "Operator", Some("DEFAULT_OPERATION_SIGN")),
+    ("PROTO.PARENTHESES", "Parentheses", Some("DEFAULT_PARENTHS")),
+    ("PROTO.BRACKETS", "Brackets", Some("DEFAULT_BRACKETS")),
+    ("PROTO.BRACES", "Braces", Some("DEFAULT_BRACES")),
+    ("PROTO.COMMA", "Comma", Some("DEFAULT_COMMA")),
+    ("PROTO.DOT", "Dot", Some("DEFAULT_DOT")),
+    ("PROTO.SEMICOLON", "Semicolon", Some("DEFAULT_SEMICOLON")),
+    ("PROTO.PACKAGE", "Package", Some("DEFAULT_IDENTIFIER")),
+    ("PROTO.MESSAGE", "Message declaration", Some("DEFAULT_CLASS_NAME")),
+    ("PROTO.ENUM", "Enum declaration", Some("DEFAULT_CLASS_NAME")),
+    ("PROTO.SERVICE", "Service declaration", Some("DEFAULT_INTERFACE_NAME")),
+    ("PROTO.TYPE", "Type reference", Some("DEFAULT_CLASS_NAME")),
+    ("PROTO.FIELD", "Field", Some("DEFAULT_INSTANCE_FIELD")),
+    ("PROTO.ENUM_VALUE", "Enum value", Some("DEFAULT_CONSTANT")),
+    ("PROTO.RPC", "RPC method", Some("DEFAULT_FUNCTION_DECLARATION")),
+    ("PROTO.OPTION", "Option name", Some("DEFAULT_METADATA")),
+];

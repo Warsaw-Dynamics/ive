@@ -1,0 +1,15 @@
+<aside class="sidebar">
+  <div class="sidebar__header">Project</div>
+  <div class="tree">
+    <template x-for="row in rows()" :key="row.entry.path">
+      <div class="tree__row" :class="{ 'tree__row--selected': selected === row.entry.path }"
+           :style="{ paddingLeft: indent(row.depth) }" @click="activate(row.entry)">
+        <template x-if="row.entry.children">
+          <img class="icon" :src="icon(expanded.includes(row.entry.path) ? 'chevron-down.svg' : 'chevron-right.svg')" alt="" />
+        </template>
+        <img class="icon" :src="icon(fileIcon(row.entry))" alt="" />
+        <span x-text="row.entry.name"></span>
+      </div>
+    </template>
+  </div>
+</aside>

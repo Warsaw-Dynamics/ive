@@ -1,0 +1,40 @@
+// IVE workspace service
+syntax = "proto3";
+
+package ive.workspace.v1;
+import "google/protobuf/timestamp.proto";
+option java_package = "com.example.ive";
+option optimize_for = SPEED;
+
+/* A file opened in an editor tab. */
+message OpenFile {
+  reserved 4, 8 to 10, 100 to max;
+  reserved "legacy_path";
+
+  string path = 1 [deprecated = true, (ive.ui).label = "Path\t(relative)"];
+  optional int64 size = 2;
+  repeated Cursor cursors = 3;
+  map<string, double> scroll = 5;
+  google.protobuf.Timestamp opened_at = 6;
+  oneof origin {
+    bool from_disk = 7;
+    Language language = 11;
+  }
+  float ratio = 12 [default = -1.5e3];
+}
+
+message Cursor {
+  uint32 line = 1;
+  uint32 column = 2;
+}
+
+enum Language {
+  LANGUAGE_UNSPECIFIED = 0;
+  LANGUAGE_RUST = 1 [(ive.ui).icon = "rust"];
+}
+
+service Workspace {
+  rpc Open(OpenFile) returns (stream OpenFile) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

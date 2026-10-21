@@ -1,0 +1,42 @@
+use super::Row;
+
+/// Ids and parents from IntelliJ's `GroovySyntaxHighlighter` (ids with spaces, as IntelliJ registers them), names from
+/// `GroovyColorSettingsPage`; the semantic ones (reassigned variables, unresolved references, literal conversions) and
+/// those the grammar cannot show (Groovydoc tags, traits, invalid escapes) are left out.
+pub const ROWS: &[Row] = &[
+    ("GROOVY_KEYWORD", "Keyword", Some("JAVA_KEYWORD")),
+    ("Number", "Number", Some("JAVA_NUMBER")),
+    ("String", "String", Some("JAVA_STRING")),
+    ("GString", "GString", Some("JAVA_STRING")),
+    ("Valid string escape", "Valid string escape", Some("JAVA_VALID_STRING_ESCAPE")),
+    ("Line comment", "Line comment", Some("DEFAULT_LINE_COMMENT")),
+    ("Block comment", "Block comment", Some("JAVA_BLOCK_COMMENT")),
+    ("Groovydoc comment", "Groovydoc text", Some("JAVA_DOC_COMMENT")),
+    ("Braces", "Braces", Some("JAVA_BRACES")),
+    ("Closure braces", "Closure expression braces and arrow", Some("Braces")),
+    ("Lambda braces", "Lambda expression braces and arrow", Some("Braces")),
+    ("Brackets", "Brackets", Some("JAVA_BRACKETS")),
+    ("Parentheses", "Parentheses", Some("JAVA_PARENTH")),
+    ("Operation sign", "Operator sign", Some("JAVA_OPERATION_SIGN")),
+    ("Annotation", "Annotation name", Some("ANNOTATION_NAME_ATTRIBUTES")),
+    ("Anotation attribute name", "Annotation attribute name", Some("ANNOTATION_ATTRIBUTE_NAME_ATTRIBUTES")),
+    ("Class", "Class", Some("CLASS_NAME_ATTRIBUTES")),
+    ("Abstract class name", "Abstract class", Some("Class")),
+    ("Anonymous class name", "Anonymous class", Some("Class")),
+    ("Interface name", "Interface", Some("INTERFACE_NAME_ATTRIBUTES")),
+    ("Enum name", "Enum", Some("Class")),
+    ("Type parameter", "Type parameter", Some("TYPE_PARAMETER_NAME_ATTRIBUTES")),
+    ("Groovy method declaration", "Method declaration", Some("METHOD_DECLARATION_ATTRIBUTES")),
+    ("Groovy constructor declaration", "Constructor declaration", Some("CONSTRUCTOR_DECLARATION_ATTRIBUTES")),
+    ("Method call", "Instance method call", Some("METHOD_CALL_ATTRIBUTES")),
+    ("Static method access", "Static method call", Some("STATIC_METHOD_ATTRIBUTES")),
+    ("Groovy constructor call", "Constructor call", Some("CONSTRUCTOR_CALL_ATTRIBUTES")),
+    ("Instance field", "Instance field", Some("INSTANCE_FIELD_ATTRIBUTES")),
+    ("Static field", "Static field", Some("STATIC_FINAL_FIELD_ATTRIBUTES")),
+    ("Groovy var", "Local variable", Some("LOCAL_VARIABLE_ATTRIBUTES")),
+    ("Groovy parameter", "Parameter", Some("PARAMETER_ATTRIBUTES")),
+    ("Instance property reference ID", "Instance property reference", Some("INSTANCE_FIELD_ATTRIBUTES")),
+    ("Static property reference ID", "Static property reference", Some("STATIC_FINAL_FIELD_ATTRIBUTES")),
+    ("Map key", "Map key/Named argument", Some("JAVA_STRING")),
+    ("Label", "Label", Some("DEFAULT_LABEL")),
+];
