@@ -135,13 +135,19 @@ pub fn init(config) {
 // drops the rule or extends it by binding its own functions to these keys. A key's context is the shown tab, as
 // ive::active_tab() answers it.
 pub async fn close_back_to_hub(tab) {
-    ive::close_tab(tab.tab).await?;
-    back_to_hub(tab).await
+    if tab.tab is i64 {
+        ive::close_tab(tab.tab).await?;
+        back_to_hub(tab).await?;
+    }
+    Ok(())
 }
 
 pub async fn stop_back_to_hub(tab) {
-    ive::stop_tab(tab.tab).await?;
-    back_to_hub(tab).await
+    if tab.tab is i64 {
+        ive::stop_tab(tab.tab).await?;
+        back_to_hub(tab).await?;
+    }
+    Ok(())
 }
 
 async fn back_to_hub(tab) {

@@ -767,4 +767,21 @@ mod tests {
         assert!(wait_for(&seen, "OpenHub"));
         assert!(seen.lock().unwrap().iter().any(|request| request.starts_with("StopTab")));
     }
+
+    #[test]
+    fn should_close_or_stop_nothing_when_no_tab_is_shown() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (mut scripts, seen, _) = start_with(dir.path(), "pub fn init(config) {}", answer_no_tab);
+
+        // when
+        invoke_function(&scripts, 1, CLOSE_BACK_TO_HUB);
+        invoke_function(&scripts, 1, CLOSE_BACK_TO_HUB + 1);
+
+        // then
+        assert!(next_event(&mut scripts, Duration::from_millis(300)).is_none());
+        let requests = seen.lock().unwrap().clone();
+        assert_eq!(requests.iter().filter(|request| request.starts_with("ActiveTab")).count(), 2, "{requests:?}");
+        assert!(!requests.iter().any(|request| request.starts_with("CloseTab") || request.starts_with("StopTab")), "{requests:?}");
+    }
 }
