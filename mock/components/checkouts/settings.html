@@ -4,11 +4,6 @@
     <template x-for="item in ['Appearance', 'Scripts', 'Third-Party Software']" :key="item">
       <button class="settings-nav__item" type="button" :class="{ 'settings-nav__item--on': settingsPage === item }" @click="settingsPage = item" x-text="item"></button>
     </template>
-    <div class="settings-nav__heading">Editor</div>
-    <div class="settings-nav__heading settings-nav__heading--1">Color Scheme</div>
-    <template x-for="item in languages" :key="item">
-      <button class="settings-nav__item settings-nav__item--2" type="button" :class="{ 'settings-nav__item--on': settingsPage === item }" @click="settingsPage = item" x-text="item"></button>
-    </template>
   </nav>
 
   <div class="settings-body">
@@ -27,12 +22,159 @@
       </div>
     </template>
 
-    <!-- scripts.rs -->
+    <!-- scripts.rs (a proposal, DESIGN.md "Scripts page"): a prompt for a coding agent, the files, and a quick reference;
+         every text selectable, every block with Copy. Paths are the profile's (here: default). -->
     <template x-if="settingsPage === 'Scripts'">
-      <div class="settings-body__page">
+      <div class="settings-body__page scripts">
         <h2 class="settings-body__title">Scripts</h2>
-        <div>Your bindings and functions go in /home/me/.config/ive/default/init.rn</div>
-        <button class="settings-body__link" type="button">IVE's default bindings (ive.rn, read-only)</button>
+        <p class="scripts__lead">IVE's keys, mouse, menus, fonts, colours and sizes are Rune scripts. Copy the prompt into a
+          coding agent (Claude Code in a terminal tab), put what you want on its last line, and let it edit
+          <code>init.rn</code>. IVE reloads on save; no restart.</p>
+
+        <section class="block block--prompt">
+          <header class="block__head">
+            <span class="block__title">Prompt for a coding agent</span>
+            <button class="block__copy" type="button" @click="copyBlock('prompt', $refs.prompt)" x-text="copied === 'prompt' ? 'Copied' : 'Copy'"></button>
+          </header>
+          <pre class="block__text" x-ref="prompt">Customise IVE (Integrated Vibe Editor) for me. IVE is configured by Rune scripts (https://rune-rs.github.io).
+
+Files, in /home/me/.config/ive/default/:
+- init.rn       mine, the only file to edit. Runs after ive.rn; IVE reloads it on every save.
+- ive.rn        IVE's defaults: every key and mouse binding, menu and font. Read-only; edits are ignored.
+- theme.toml    every colour and size IVE draws with. Read-only; override under config.theme in init.rn.
+- scripting.md  the reference: config keys, actions, the ive:: functions, theme rules. Read it first.
+Log: /home/me/.local/state/ive/default/scripts.log (load results; errors with file:line:column).
+
+Rules:
+- init.rn defines `pub fn init(config)` and sets only what changes; the rest keeps ive.rn's defaults.
+- An init.rn binding with the same scope, key and mods as one in ive.rn replaces it;
+  act::DisableDefaultAssignment removes it.
+- Keep what init.rn already has; add to it.
+- After saving, check the load: IVE's MCP tool script_status (server at $IVE_MCP_URL), or the log's
+  last lines. A failed load keeps the previous config, so fix it until the load is clean.
+
+Task: <span class="block__task" x-text="scriptTask"></span></pre>
+          <div class="block__starters">
+            <span class="muted">Starters:</span>
+            <template x-for="t in scriptTasks" :key="t[0]">
+              <button class="chip" type="button" :class="{ 'chip--on': scriptTask === t[1] }" @click="scriptTask = t[1]" x-text="t[0]"></button>
+            </template>
+          </div>
+        </section>
+
+        <section class="scripts__files">
+          <h3 class="scripts__heading">Files</h3>
+          <div class="files">
+            <template x-for="f in [
+              ['init.rn', '/home/me/.config/ive/default/init.rn', 'yours; reloaded on save'],
+              ['ive.rn', '/home/me/.config/ive/default/ive.rn', 'defaults, read-only'],
+              ['theme.toml', '/home/me/.config/ive/default/theme.toml', 'default theme, read-only'],
+              ['scripting.md', '/home/me/.config/ive/default/scripting.md', 'reference, read-only'],
+              ['scripts.log', '/home/me/.local/state/ive/default/scripts.log', 'what scripts report'],
+              ['settings.toml', '/home/me/.config/ive/default/settings.toml', 'what these pages save']]" :key="f[0]">
+              <div class="files__row">
+                <button class="settings-body__link files__name" type="button" x-text="f[0]"></button>
+                <span class="files__path" x-text="f[1]"></span>
+                <span class="muted files__role" x-text="f[2]"></span>
+                <button class="block__copy" type="button" @click="copyBlock('path-' + f[0], $el.parentElement.querySelector('.files__path'))" x-text="copied === 'path-' + f[0] ? 'Copied' : 'Copy path'"></button>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <h3 class="scripts__heading">Quick reference</h3>
+        <p class="muted scripts__note">The whole reference is scripting.md; these are its most used parts.</p>
+
+        <details class="block" open>
+          <summary class="block__head">
+            <span class="block__title">Keys and mouse</span>
+            <button class="block__copy" type="button" @click.prevent="copyBlock('keys', $refs.keys)" x-text="copied === 'keys' ? 'Copied' : 'Copy'"></button>
+          </summary>
+          <pre class="block__text" x-ref="keys">pub fn init(config) {
+    config.keys = [
+        // key: one character, "F1".."F24", "Enter", "Tab", "Escape", "UpArrow", "PageDown", "Space", ...
+        // mods: "NONE" or |-joined CTRL, SHIFT, ALT, SUPER, SECONDARY (Cmd on macOS, Ctrl elsewhere)
+        // scope: "window" (default), "terminal", "editor", "tree", "hub"
+        #{ key: "Enter", mods: "SHIFT", action: act::SendString("\x1b\r"), scope: "terminal" },
+        #{ key: "r", mods: "CTRL|ALT", action: restart },
+    ];
+    config.mouse_bindings = [
+        // event: #{ Down | Up | Drag: #{ streak: 1..3, button: "Left" | "Middle" | "Right" } }; scope required
+        #{ event: #{ Up: #{ streak: 1, button: "Middle" } }, action: act::DisableDefaultAssignment, scope: "tab" },
+        #{ event: #{ Up: #{ streak: 1, button: "Left" } }, mods: "CTRL", action: act::CloseTab, scope: "tab" },
+    ];
+}</pre>
+        </details>
+
+        <details class="block">
+          <summary class="block__head">
+            <span class="block__title">Actions</span>
+            <button class="block__copy" type="button" @click.prevent="copyBlock('actions', $refs.actions)" x-text="copied === 'actions' ? 'Copied' : 'Copy'"></button>
+          </summary>
+          <pre class="block__text" x-ref="actions">act::SendString(text)                  window, terminal  types text into the shown terminal
+act::CopyTo(target), PasteFrom(source) terminal, editor  "Clipboard" | "PrimarySelection"
+act::PasteImageFrom(source)            terminal          the clipboard's image, as a saved file's path
+act::OpenSettings, OpenTerminal        window            Settings; a terminal in the tab's checkout
+act::OpenHub, OpenTerminalIn           window            the hub (Ctrl+E); where a new terminal goes
+act::CloseTab, KeepTab                 tab, window       close; keep a temporary tab
+act::StopProgram, KillProgram          tab, window       SIGTERM / SIGKILL to a process tab's program
+act::ShowTabMenu(name)                 tab               a menu of config.tab_menus
+act::ActivateRow, ToggleRow            tree              a row's click; expand or collapse it
+act::ToggleChangesLayout               window            changed files flat or by folder
+act::Nop                               any               takes the trigger, does nothing
+act::DisableDefaultAssignment          any               removes ive.rn's binding for the trigger
+a function                             any               runs on the script thread with context</pre>
+        </details>
+
+        <details class="block">
+          <summary class="block__head">
+            <span class="block__title">Functions</span>
+            <button class="block__copy" type="button" @click.prevent="copyBlock('functions', $refs.functions)" x-text="copied === 'functions' ? 'Copied' : 'Copy'"></button>
+          </summary>
+          <pre class="block__text" x-ref="functions">// a function bound to a key gets the shown tab: #{ tab, kind, checkout }; its Err goes to the log
+async fn restart(context) {
+    ive::click("restart").await?;
+    Ok(())
+}
+
+// ive:: (async, Ok(answer) or Err(reason); the MCP tools' names and arguments):
+//   list_tabs, list_projects, active_tab, open_file(path), open_terminal(#{ command, directory }),
+//   activate_tab(tab), close_tab(tab), stop_tab(tab), send_text(tab, text), send_keys(tab, keys),
+//   read_screen(tab), read_output(tab, lines), open_project(path), show_process(process),
+//   list_targets, click(name), window_keys(keys), window_text(text), open_hub(hub), send_to_active(text)
+// also: ive::os(), ive::profile(), ive::config_dir(); http::get / http::request; toml; Rune's fs, process, json</pre>
+        </details>
+
+        <details class="block">
+          <summary class="block__head">
+            <span class="block__title">Theme</span>
+            <button class="block__copy" type="button" @click.prevent="copyBlock('theme', $refs.theme)" x-text="copied === 'theme' ? 'Copied' : 'Copy'"></button>
+          </summary>
+          <pre class="block__text" x-ref="theme">pub fn init(config) {
+    // colours per theme: config.theme.dark / .light, "#RRGGBB" or "#RRGGBBAA"; names as in theme.toml
+    config.theme.dark.tree = "#202124";
+    // syntax by colour key: foreground / background ("RRGGBB"), bold, italic, inherit
+    config.theme.dark.syntax["RUST.STRING"] = #{ foreground: "CE9178" };
+    // sizes shared by both themes; px (26.0 or "26px") or rem ("1.625rem" = 1.625 × sizes.rem)
+    config.theme.sizes.rem = 18.0;
+    config.theme.sizes.editor.text_size = 15.0;
+    config.theme.panels.gap = 0.0;   // flat layout: gap 0, radius 0
+}</pre>
+        </details>
+
+        <details class="block">
+          <summary class="block__head">
+            <span class="block__title">Fonts, excluded folders, tabs</span>
+            <button class="block__copy" type="button" @click.prevent="copyBlock('other', $refs.other)" x-text="copied === 'other' ? 'Copied' : 'Copy'"></button>
+          </summary>
+          <pre class="block__text" x-ref="other">pub fn init(config) {
+    config.font = "JetBrains Mono";            // code, diffs, terminals
+    config.ui_font = "Inter";                  // everything else
+    config.excluded.push("dist");              // folder names drawn as excluded, besides gitignored
+    config.temporary_tabs.enabled = false;     // kinds: "Project", "Settings", "Hub", "RunConfigs"
+    config.tab_menus.close = [act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight];
+}</pre>
+        </details>
       </div>
     </template>
 
@@ -45,48 +187,6 @@
             <div class="rows__row rows__row--click"><span class="rows__grow" x-text="s.name"></span><span class="rows__age" x-text="s.license"></span></div>
           </template>
         </div>
-      </div>
-    </template>
-
-    <!-- color_page.rs: keys (260 px tall), the key's Bold, Italic, Foreground, Background and inheritance; the preview below. -->
-    <template x-if="languages.includes(settingsPage)">
-      <div class="settings-body__page settings-body__page--colors">
-        <div class="colors__top">
-          <div class="colors__title" x-text="'Editor › Color Scheme › ' + settingsPage"></div>
-          <div class="muted colors__scheme" x-text="appearance === 'dark' ? 'Dark scheme' : 'Light scheme'"></div>
-        </div>
-        <div class="colors__main">
-          <div class="colors__keys">
-            <template x-for="k in colorKeys" :key="k">
-              <button class="colors__key" type="button" :class="{ 'colors__key--on': colorKey === k }" @click="colorKey = k" x-text="k"></button>
-            </template>
-          </div>
-          <div class="colors__panel">
-            <div class="colors__flags">
-              <label class="checkbox checkbox--muted"><input type="checkbox" /><span class="checkbox__tick"></span>Bold</label>
-              <label class="checkbox checkbox--muted"><input type="checkbox" /><span class="checkbox__tick"></span>Italic</label>
-            </div>
-            <div class="colors__channel">
-              <label class="checkbox checkbox--muted colors__label"><input type="checkbox" checked /><span class="checkbox__tick"></span>Foreground</label>
-              <span class="hexfield">B3AE60</span><span class="swatch" style="background: #b3ae60"></span>
-            </div>
-            <div class="colors__channel">
-              <label class="checkbox checkbox--muted colors__label"><input type="checkbox" /><span class="checkbox__tick"></span>Background</label>
-              <span class="hexfield"></span><span class="swatch"></span>
-            </div>
-            <label class="checkbox"><input type="checkbox" checked /><span class="checkbox__tick"></span>Inherit values from:</label>
-            <button class="settings-body__link colors__parent" type="button">Metadata (Language Defaults)</button>
-          </div>
-        </div>
-        <pre class="colors__preview">//! Module doc comment
-use std::collections::HashMap;
-
-/// A point in 2D space.
-#[derive(Debug, Clone, Copy)]
-pub struct Point&lt;'a, T&gt; {
-    pub x: T,
-    label: &amp;'a str,
-}</pre>
       </div>
     </template>
     <div class="settings-body__saved">Saved to /home/me/.config/ive/default/settings.toml</div>

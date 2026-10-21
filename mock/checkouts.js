@@ -277,11 +277,15 @@
     { name: 'git2', license: 'MIT OR Apache-2.0' }, { name: 'rune', license: 'MIT OR Apache-2.0' }, { name: 'Inter', license: 'OFL-1.1' },
     { name: 'JetBrains Mono', license: 'OFL-1.1' }
   ];
-  // settings_page: Color Scheme pages (syntax/registry.rs lists about 60; a few here)
-  var LANGUAGES = ['Language Defaults', 'C', 'C#', 'C++', 'CSS', 'Diff', 'Dockerfile', 'Elixir', 'Go', 'HTML', 'Java', 'JavaScript', 'JSON',
-    'Kotlin', 'Markdown', 'Python', 'Rust', 'Shell Script', 'SQL', 'TOML', 'TypeScript', 'XML', 'YAML'];
-  var COLOR_KEYS = ['Attribute', 'Block comment', 'Braces', 'Brackets', 'Char', 'Comma', 'Constant or static', 'Doc comment', 'Dot',
-    'Function call', 'Identifier', 'Keyword', 'Lifetime', 'Line comment', 'Macro', 'Number', 'Semicolon', 'String', 'Type'];
+  // Settings › Scripts (a proposal): starters fill the prompt's Task line.
+  var SCRIPT_TASKS = [
+    ['Bind a key', 'Bind Ctrl+Alt+R to restart IVE (click the "restart" target).'],
+    ['Mouse binding', 'Make Ctrl + left click on a tab close it, and middle click do nothing.'],
+    ['Colours', 'Make the dark tree background #202124 and strings in Rust orange.'],
+    ['Bigger UI', 'Make the whole UI an eighth bigger and the code font 15 px.'],
+    ['Function', 'Bind Ctrl+Alt+D to a function that runs `git diff --stat` in a new terminal in the shown tab\'s checkout.'],
+    ['Terminal keys', 'Make Shift+Enter in terminals send ESC CR (Claude Code\'s new line).']
+  ];
 
   function withPaths(entry, parent) {
     entry.path = parent + '/' + entry.name;
@@ -428,8 +432,7 @@
       return Object.assign({
         projects: prepare(PROJECTS),
         scratches: SCRATCHES,
-        languages: LANGUAGES,
-        colorKeys: COLOR_KEYS,
+        scriptTasks: SCRIPT_TASKS,
         thirdParty: THIRD_PARTY,
         open: ['atlassian', 'forge-installer', 'platform', 'notes'],
         recent: ['paas-ownhq', 'forge-ari'],
@@ -458,10 +461,12 @@
         countStyle: 'dot',
         COUNT_STYLES: ['dot', 'plain', 'pill', 'faint', 'outline'],
         gitLogSection: 'log',
-        // Settings: theme preference (settings.rs ThemePreference), the shown page and colour key.
+        // Settings: theme preference (settings.rs ThemePreference) and the shown page.
         themePreference: 'system',
         settingsPage: 'Appearance',
-        colorKey: 'Attribute',
+        // Settings › Scripts: the prompt's Task line, and which block's Copy just said Copied.
+        scriptTask: '<what you want changed>',
+        copied: null,
         // Last focused checkout per project: where project-level things run when no worktree tab is focused.
         lastCheckout: {},
         // Hidden worktrees (a proposal, DESIGN.md "Hidden worktrees"), by checkout id: out of the tree, the hub and New
@@ -830,6 +835,14 @@
         },
         findFile: function (id, path) { return find(this.checkout(id).tree, path); },
         openSettings: function () { this.openTab({ key: 'settings', kind: 'settings', title: 'Settings', co: null, project: null }); },
+        // Settings › Scripts: a block's text as shown (its <pre>), so what is copied is what is read.
+        copyBlock: function (id, el) {
+          var self = this;
+          try { navigator.clipboard.writeText(el.textContent); } catch (e) { /* mock: clipboard may be blocked */ }
+          this.copied = id;
+          clearTimeout(this.copiedTimer);
+          this.copiedTimer = setTimeout(function () { self.copied = null; }, 1500);
+        },
 
         // ---- scratches ----
         scratch: function (name) { return this.scratches.find(function (s) { return s.name === name; }); },

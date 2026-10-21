@@ -364,6 +364,25 @@ checkout cannot be hidden. Hide is on the worktree's tree row (on hover) and on 
 main checkout are hidden the project drops its worktree level, as with a single checkout. Kept per profile (in the app:
 saved state); the mock starts with GEN-811 hidden and does not keep changes on refresh.
 
+## Settings › Scripts (proposal)
+
+Settings has Appearance, Scripts and Third-Party Software; the Editor › Color Scheme pages are gone (colours are set
+in `init.rn`, the defaults are in `theme.toml`). Scripts is a reference to hand to a coding agent, which then
+customises IVE by editing `init.rn`:
+
+- **Prompt for a coding agent**: one block, the profile's real paths filled in: what IVE's script files are and
+  which one to edit, the override rules, and how to check a load (MCP `script_status`, or `scripts.log`). Its last
+  line is `Task: …`; starter chips (Bind a key, Mouse binding, Colours, Bigger UI, Function, Terminal keys) fill it
+  with an example. Copy takes the block as shown.
+- **Files**: `init.rn`, `ive.rn`, `theme.toml`, `scripting.md`, `scripts.log`, `settings.toml`: name (opens it),
+  absolute path, role, Copy path.
+- **Quick reference**: folding blocks (Keys and mouse open, Actions, Functions, Theme, Fonts/excluded/tabs), each
+  Rune or a plain table, each with Copy.
+- All text on the page is selectable (drag, double click a word) and Ctrl+C copies the selection.
+- New: IVE writes `scripting.md` next to `ive.rn` at each start, read-only, as it does `ive.rn` and `theme.toml`:
+  the README's Scripting, Excluded folders and Theme sections, so an agent has the reference of the running version
+  without the repo.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon
@@ -377,7 +396,8 @@ here"): replaced by one `.run.toml` per folder and its `@run` in the tree (dropp
 run-configuration folder's right end: the run badge on its icon instead · the missing-values form inside the folder
 overview, and as a prompt over the window: a values tab instead · `@processes` under `@run` and run rows apart from
 their configurations (definitions with their command, runs with their status, one step left): one row per
-configuration carrying its run instead · `@hidden` chip variants (the same chip, an outline, text only).
+configuration carrying its run instead · `@hidden` chip variants (the same chip, an outline, text only) · Settings'
+Editor › Color Scheme pages (read-only once colours moved to `init.rn`).
 
 ## Open points
 
