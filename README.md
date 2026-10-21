@@ -717,10 +717,15 @@ browser `Origin`, so web pages cannot reach it. Anyone holding the token can run
 
 ## Releases
 
-A push to the `release` branch builds IVE for Linux (x86_64) and publishes it as a
-[GitHub Release](https://github.com/Warsaw-Dynamics/ive/releases) (`.github/workflows/release.yml`):
-`ive-linux-x86_64-<commit>.tar.gz` holds the `ive` binary, the licence files and the icons. The binary needs glibc
-2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 and later).
+A push to the `release` branch builds IVE for Linux (x86_64) and macOS (Apple Silicon) and publishes both as one
+[GitHub Release](https://github.com/Warsaw-Dynamics/ive/releases) (`.github/workflows/release.yml`); a failed build
+publishes nothing.
+
+- `ive-linux-x86_64-<commit>.tar.gz`: the `ive` binary, the licence files and the icons. It needs glibc 2.35 or newer
+  (Ubuntu 22.04, Debian 12, Fedora 36 and later).
+- `ive-macos-arm64-<commit>.zip`: `IVE.app` (written by `desktop/macos-bundle.sh`) and the licence files. The app is
+  not signed or notarized: at its first start macOS refuses it; System Settings → Privacy & Security → Open Anyway
+  lets it run.
 
 ```sh
 git push origin HEAD:release
