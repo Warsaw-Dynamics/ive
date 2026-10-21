@@ -106,7 +106,7 @@ IVE with every terminal. Without a user systemd the host logs why and the termin
 | List running terminals | `ive --pty-host ls`: id, shell pid, folder, command |
 | Use one in this terminal | `ive --pty-host attach <id>` while IVE is closed (a running IVE takes it straight back); Ctrl+] detaches and leaves it running |
 | End one | `ive --pty-host kill <id>`: hangs it up, and kills it 2 s later if it is still there |
-| Keep them elsewhere | `IVE_PTY_DIR=<dir>`; the default is `$XDG_RUNTIME_DIR/ive-pty/<profile>`, emptied at logout; on macOS `~/Library/Application Support/ive-pty/<profile>`, since macOS deletes what sits in `$TMPDIR` for 3 days |
+| Keep them elsewhere | `IVE_PTY_DIR=<dir>`; the default is `$XDG_RUNTIME_DIR/ive-pty/<profile>`, emptied at logout; on macOS `~/.ive-pty/<profile>`, since macOS deletes what sits in `$TMPDIR` for 3 days and socket paths must stay under 104 bytes |
 
 The `--pty-host` commands use the `default` profile; for another one set `IVE_PTY_DIR` to that profile's folder.
 
@@ -216,7 +216,7 @@ from other profiles. Without `--profile` IVE runs as `default`.
 | projects, tabs, Recent, window | `~/.config/ive/<profile>/state.toml` |
 | settings | `~/.config/ive/<profile>/settings.toml` |
 | scratches | `~/.config/ive/<profile>/scratches/` |
-| terminals | `$XDG_RUNTIME_DIR/ive-pty/<profile>/` (macOS: `~/Library/Application Support/ive-pty/<profile>/`) |
+| terminals | `$XDG_RUNTIME_DIR/ive-pty/<profile>/` (macOS: `~/.ive-pty/<profile>/`) |
 
 The tree, open files and git status follow changes made outside IVE (file notifications on what is shown: open
 folders, open files' folders, each repository's git dir; a project overview's Worktrees list is also re-read every 5 s).

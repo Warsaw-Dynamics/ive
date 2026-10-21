@@ -16,5 +16,5 @@ Read [README.md](README.md) first: how to run IVE, use it, and drive it over MCP
   user's running terminals and overwrites their saved tabs.
 - Stop the IVE instances you start when done; a leftover one holds its MCP port. Its terminals keep running: end
   them with `IVE_PTY_DIR=$XDG_RUNTIME_DIR/ive-pty/<profile> ive --pty-host kill <id>` (macOS:
-  `IVE_PTY_DIR="$HOME/Library/Application Support/ive-pty/<profile>"`), or answer the quit prompt with `prompt:Stop all`.
+  `IVE_PTY_DIR="$HOME/.ive-pty/<profile>"`), or answer the quit prompt with `prompt:Stop all`.
 - Tests follow `should_…` names with `// given`, `// when`, `// then` sections, like the existing ones.

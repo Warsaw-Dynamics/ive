@@ -187,11 +187,13 @@ impl Registry {
 }
 
 /// macOS has no runtime dir, and deletes what sits in `$TMPDIR` for 3 days (dirhelper), sockets of live sessions
-/// too; Application Support is never cleaned, and stale sessions are cleaned up by listing anyway.
+/// too; nothing cleans the home folder, and stale sessions are cleaned up by listing anyway. A short path there keeps
+/// the sockets under the 104 bytes macOS allows (Application Support left a user name of 20 characters, used as the
+/// profile too, a single byte).
 #[cfg(target_os = "macos")]
 fn fallback_dir() -> PathBuf {
     match std::env::var_os("HOME") {
-        Some(home) => Path::new(&home).join("Library/Application Support/ive-pty"),
+        Some(home) => Path::new(&home).join(".ive-pty"),
         None => temp_fallback_dir(),
     }
 }
