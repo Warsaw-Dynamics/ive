@@ -27,6 +27,11 @@ pub struct ScriptState {
     commands: UnboundedSender<ScriptCommand>,
 }
 
+/// How long a menu condition may take before its item counts as hidden.
+// used by the menu view (plan task 7)
+#[allow(dead_code)]
+pub const TEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 impl Global for ScriptState {}
 
 impl ScriptState {
@@ -41,8 +46,8 @@ impl ScriptState {
                 self.keymap = keymap;
             }
             ScriptEvent::LoadFailed { message, errors } => self.load = LoadStatus::Failed { message, errors },
-            // the workspace shows the log; nothing to keep
-            ScriptEvent::RunFailed => {}
+            // the workspace shows the log, or hands the answer to the open menu; nothing to keep
+            ScriptEvent::RunFailed | ScriptEvent::Tested { .. } => {}
         }
     }
 
@@ -52,6 +57,15 @@ impl ScriptState {
 
     pub fn find_mouse(&self, scope: Scope, trigger: &MouseTrigger) -> Option<Action> {
         self.keymap.find_mouse(scope, trigger).cloned()
+    }
+
+    /// Asks the script thread whether menu condition `function` holds on `context`; the answer comes back as
+    /// `ScriptEvent::Tested` for `request`.
+    #[allow(dead_code)] // used by the menu view (plan task 7)
+    pub fn test(&self, generation: u64, function: usize, context: serde_json::Value, request: u64) {
+        let command = ScriptCommand::Test { generation, function, context, request, timeout: TEST_TIMEOUT };
+        // the script thread is gone only when it could not start; the menu's item then stays pending until it closes
+        let _ = self.commands.unbounded_send(command);
     }
 
     /// Asks the script thread to run a bound function on `context` (the shown tab when `None`).
