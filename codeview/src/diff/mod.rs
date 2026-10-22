@@ -7,6 +7,7 @@ mod patch;
 pub mod rows;
 pub mod selection;
 pub mod side_by_side;
+mod split;
 pub mod texts;
 
 use std::cell::Cell;
@@ -37,6 +38,7 @@ pub use rows::{Headers, Shape};
 use rows::{COLLAPSE_LINES, DiffRow, diff_rows};
 use selection::{DiffPosition, DiffSelection, word_around};
 use side_by_side::{DiffLineRef, Side};
+use split::Split;
 use editing::{EditMarks, Editing};
 use texts::{DiffTexts, Parsed, Placed};
 
@@ -52,6 +54,8 @@ pub fn counted(count: usize, one: &str, many: &str) -> String {
 const HEADER_SLOTS: usize = 6;
 /// Width of the `+`/`-` column, in characters.
 const SIGN_CHARS: f32 = 2.;
+/// Width of the divider between side-by-side panels that the mouse can grab, in pixels.
+const DIVIDER_GRAB: f32 = 6.;
 
 pub enum DiffEvent {
     /// a file showed lines on screen for the first time since its diff was read: the host answers with its texts
@@ -73,6 +77,8 @@ pub struct DiffView {
     scrollbars: ScrollState,
     /// side by side, each panel's own sideways scroll
     panels: Panels,
+    /// side by side, how the width is shared between the panels
+    split: Split,
     focus_handle: FocusHandle,
     /// what the mouse or Select All marked; dropped when the rows change
     selection: Option<DiffSelection>,
@@ -98,11 +104,13 @@ pub struct DiffView {
     reveal_caret: bool,
 }
 
-/// What a left-button drag selects.
+/// What a left-button drag selects, or moves.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Pressed {
     Rows,
     Text,
+    /// the divider between the side-by-side panels
+    Divider,
 }
 
 /// A side-by-side panel's sideways scroll and the scrollbar that moves it.
@@ -147,6 +155,7 @@ impl DiffView {
             list,
             scrollbars,
             panels: Panels { old: PanelScroll::new(), new: PanelScroll::new() },
+            split: Split::default(),
             focus_handle: cx.focus_handle(),
             selection: None,
             side: Side::New,
@@ -363,11 +372,9 @@ impl DiffView {
 
     /// The window's horizontal range of the text the selection is in: the view's inline, its panel's side by side.
     fn text_span(&self, bounds: Bounds<Pixels>) -> Range<Pixels> {
-        let half = bounds.size.width / 2.;
-        match (self.shape.layout, self.side) {
-            (DiffLayout::Inline, _) => bounds.left()..bounds.right(),
-            (DiffLayout::SideBySide, Side::Old) => bounds.left()..bounds.left() + half,
-            (DiffLayout::SideBySide, Side::New) => bounds.left() + half..bounds.right(),
+        match self.shape.layout {
+            DiffLayout::Inline => bounds.left()..bounds.right(),
+            DiffLayout::SideBySide => self.split.span(self.side, bounds),
         }
     }
 
@@ -381,7 +388,18 @@ impl DiffView {
 
     /// The side-by-side panel under window x `x`.
     fn side_at(&self, x: Pixels, bounds: Bounds<Pixels>) -> Side {
-        if x < bounds.left() + bounds.size.width / 2. { Side::Old } else { Side::New }
+        self.split.side_at(x, bounds)
+    }
+
+    /// A press on the divider between the panels: a drag moves it, a double-click puts it back in the middle.
+    pub(crate) fn on_divider_down(&mut self, event: &MouseDownEvent, cx: &mut Context<Self>) {
+        cx.stop_propagation();
+        self.dragging = true;
+        self.pressed = Pressed::Divider;
+        if event.click_count == 2 {
+            self.split = Split::default();
+        }
+        cx.notify();
     }
 
     /// The row under window point `point` (the first or last one above or below the rows) and the column boundary
@@ -437,6 +455,10 @@ impl DiffView {
     /// selection follows the pointer to rows and columns out of view, which scrolls them in.
     pub(crate) fn on_window_mouse_move(&mut self, event: &MouseMoveEvent, cx: &mut Context<Self>) {
         let held = self.dragging && event.pressed_button == Some(MouseButton::Left);
+        if let (true, Pressed::Divider, Some(bounds)) = (held, self.pressed, self.bounds.get()) {
+            self.split = Split::at(event.position.x, bounds);
+            return cx.notify();
+        }
         if let (true, Pressed::Text, Some(bounds)) = (held, self.pressed, self.bounds.get()) {
             self.scroll_towards(event.position, bounds);
             self.drag_text(event);
@@ -561,9 +583,9 @@ impl DiffView {
         let Some(bounds) = self.bounds.get() else {
             return;
         };
-        let viewport = f64::from(f32::from(bounds.size.width / 2. - self.text_start()));
         let shown = self.list.visible_rows(self.rows.len());
         for side in [Side::Old, Side::New] {
+            let viewport = f64::from(f32::from(bounds.size.width * self.split.share(side) - self.text_start()));
             let chars = shown.clone().map(|row| self.cell_chars(row, side)).max().unwrap_or(0);
             // one column more for a selection that goes on past the end
             let content = f64::from(f32::from(self.char_width)) * (chars + 1) as f64;
@@ -587,8 +609,7 @@ impl DiffView {
             }
             DiffRow::Pair { file, row: pair } => {
                 let cell = |side: Side| PanelCell { index, side, line: pair.on(side).map(|at| self.line(*file, at)) };
-                let new = self.render_cell(cell(Side::New), theme, cx).border_l_1().border_color(rgb(theme.border));
-                row.child(self.render_cell(cell(Side::Old), theme, cx)).child(new)
+                row.child(self.render_cell(cell(Side::Old), theme, cx)).child(self.render_cell(cell(Side::New), theme, cx))
             }
             DiffRow::Note { note, .. } => row.pl(px(self.sizes.hunk_padding_left)).italic().text_color(rgb(theme.muted)).child(note.text()),
         }
@@ -648,9 +669,9 @@ impl DiffView {
     /// One panel of a side-by-side row: its side's line number and text, scrolled sideways on its own; a filler when
     /// the side has no line there.
     fn render_cell(&self, cell: PanelCell<'_>, theme: &ViewStyle, cx: &App) -> Div {
-        // a basis of 0 px, not flex_1's 0 %: the row's width is not definite, and the panels must be halves whatever
-        // they hold
-        let panel = div().flex().flex_grow(1.).flex_basis(px(0.)).min_w_0().h_full().items_center().overflow_hidden().pl(px(self.sizes.line_padding));
+        // a basis of 0 px, not flex_1's 0 %: the row's width is not definite, and the panels must take their shares of
+        // it whatever they hold; the padding is a child, as the panel's own would be added to its share
+        let panel = div().flex().flex_grow(self.split.share(cell.side)).flex_basis(px(0.)).min_w_0().h_full().items_center().overflow_hidden();
         let Some(line) = cell.line else {
             // the muted text colour, faint
             return panel.bg(rgba((theme.muted << 8) | 0x1a));
@@ -676,6 +697,7 @@ impl DiffView {
             .child(self.styled_text(line, self.cell_colours(cell.index, cell.side), cx))
             .children(self.caret_bar(&marks, theme));
         tinted(panel, line.kind, theme)
+            .child(div().flex_none().w(px(self.sizes.line_padding)))
             .child(self.line_number(number, theme))
             .child(div().relative().flex_1().min_w_0().h_full().overflow_hidden().child(text))
     }
@@ -730,11 +752,34 @@ impl DiffView {
 
     /// The horizontal scrollbars: the list's inline, each panel's side by side.
     fn horizontal_scrollbars(&self, theme: &ViewStyle) -> Vec<AnyElement> {
-        let under = |bar: &ScrollState| div().absolute().top_0().bottom_0().w(relative(0.5)).child(horizontal_scrollbar(bar, theme));
+        let under = |side: Side| {
+            let bar = horizontal_scrollbar(&self.panels.on(side).bar, theme);
+            div().absolute().top_0().bottom_0().w(relative(self.split.share(side))).child(bar)
+        };
         match self.shape.layout {
             DiffLayout::Inline => vec![horizontal_scrollbar(&self.scrollbars, theme).into_any_element()],
-            DiffLayout::SideBySide => vec![under(&self.panels.old.bar).left_0().into_any_element(), under(&self.panels.new.bar).right_0().into_any_element()],
+            DiffLayout::SideBySide => vec![under(Side::Old).left_0().into_any_element(), under(Side::New).right_0().into_any_element()],
         }
+    }
+
+    /// Side by side, the line between the panels down the whole view, and the strip around it that drags it.
+    fn render_divider(&self, theme: &ViewStyle, cx: &mut Context<Self>) -> Option<Div> {
+        if self.shape.layout == DiffLayout::Inline {
+            return None;
+        }
+        let moving = self.dragging && self.pressed == Pressed::Divider;
+        let line = div().absolute().top_0().bottom_0().left(px(DIVIDER_GRAB / 2.)).w(px(1.)).bg(rgb(if moving { theme.accent } else { theme.border }));
+        let grab = div()
+            .group("diff-divider")
+            .absolute()
+            .top_0()
+            .bottom_0()
+            .left(px(-DIVIDER_GRAB / 2.))
+            .w(px(DIVIDER_GRAB))
+            .cursor(CursorStyle::ResizeLeftRight)
+            .on_mouse_down(MouseButton::Left, cx.listener(|view, event, _window, cx| view.on_divider_down(event, cx)))
+            .child(line.group_hover("diff-divider", |line| line.bg(rgb(theme.accent))));
+        Some(div().absolute().top_0().bottom_0().left(relative(self.split.share(Side::Old))).w(px(0.)).child(grab))
     }
 }
 
@@ -836,7 +881,7 @@ impl Render for DiffView {
             .font_family(theme.mono_font.clone())
             .text_size(px(self.sizes.text_size))
             .track_focus(&self.focus_handle)
-            .cursor(CursorStyle::IBeam)
+            .cursor(if self.dragging && self.pressed == Pressed::Divider { CursorStyle::ResizeLeftRight } else { CursorStyle::IBeam })
             .on_key_down(cx.listener(Self::on_key_down))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
@@ -844,6 +889,7 @@ impl Render for DiffView {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .child(follow_mouse(self.bounds.clone(), cx.entity()))
             .child(self.render_list(&theme, cx))
+            .children(self.render_divider(&theme, cx))
             .child(vertical_scrollbar(&self.scrollbars, &theme))
             .children(self.horizontal_scrollbars(&theme))
     }

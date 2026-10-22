@@ -261,3 +261,66 @@ fn should_copy_only_the_left_side(cx: &mut TestAppContext) {
     // then
     assert_eq!(*copied.borrow(), ["keep\nold a\nold b\nend", "keep\nnew a\nend"]);
 }
+
+/// Presses the divider between the side-by-side panels, as the `clicks`th click in a row.
+fn press_divider(panel: &Entity<Panel>, clicks: usize, cx: &mut VisualTestContext) {
+    let Body::Diff(diff) = panel.read_with(cx, |panel, _| panel.body.clone()) else { panic!("not a diff") };
+    let press = MouseDownEvent { button: MouseButton::Left, position: point(px(400.), px(30.)), modifiers: Modifiers::default(), click_count: clicks, first_mouse: false };
+    diff.update(cx, |diff, cx| diff.on_divider_down(&press, cx));
+}
+
+/// Moves the held mouse to window x `to` over the panel's diff.
+fn move_held(panel: &Entity<Panel>, to: Pixels, cx: &mut VisualTestContext) {
+    let Body::Diff(diff) = panel.read_with(cx, |panel, _| panel.body.clone()) else { panic!("not a diff") };
+    let moved = MouseMoveEvent { position: point(to, px(30.)), pressed_button: Some(MouseButton::Left), modifiers: Modifiers::default() };
+    diff.update(cx, |diff, cx| diff.on_window_mouse_move(&moved, cx));
+}
+
+/// A side-by-side diff of one removed line, `old`, and one added, `new`, drawn 800 px wide; row 1 is at y 30.
+fn side_by_side(cx: &mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Vec<String>>>, &mut VisualTestContext) {
+    let (panel, _asked, cx) = window(cx);
+    let copied = clipboard(cx);
+    let lines = vec![line(LineKind::Removed, Some(1), None, "old"), line(LineKind::Added, None, Some(1), "new")];
+    show(&panel, DiffInput { files: vec![file("a.rs", lines)], headers: Headers::Hidden, layout: DiffLayout::SideBySide, editable: Editable::No }, cx);
+    draw(&panel, 10., cx);
+    (panel, copied, cx)
+}
+
+/// Selects row 1 from window x `from`, past the end of its text, back to window x `to` and copies it.
+fn copy_between(panel: &Entity<Panel>, from: Pixels, to: Pixels, cx: &mut VisualTestContext) {
+    drag(panel, point(from, px(30.)), point(to, px(30.)), cx);
+    panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Copy(ClipboardTarget::Both)), cx));
+}
+
+#[gpui::test]
+fn should_select_in_the_right_panel_left_of_the_middle_once_the_divider_is_dragged_left(cx: &mut TestAppContext) {
+    // given
+    let (panel, copied, cx) = side_by_side(cx);
+
+    // when
+    // the divider at x 240 leaves the old panel 30 % of the 800 px
+    press_divider(&panel, 1, cx);
+    move_held(&panel, px(240.), cx);
+    draw(&panel, 10., cx);
+    copy_between(&panel, px(300.), px(241.), cx);
+
+    // then
+    assert_eq!(*copied.borrow(), ["new"]);
+}
+
+#[gpui::test]
+fn should_put_the_divider_back_in_the_middle_on_a_double_click(cx: &mut TestAppContext) {
+    // given
+    let (panel, copied, cx) = side_by_side(cx);
+    press_divider(&panel, 1, cx);
+    move_held(&panel, px(240.), cx);
+    draw(&panel, 10., cx);
+
+    // when
+    press_divider(&panel, 2, cx);
+    draw(&panel, 10., cx);
+    copy_between(&panel, px(300.), px(1.), cx);
+
+    // then
+    assert_eq!(*copied.borrow(), ["old"]);
+}

@@ -593,7 +593,7 @@ impl DiffView {
         let top = bounds.top() + px(self.sizes.row_height * row as f32 - self.list.extent(Axis::Vertical).scrolled as f32);
         let panel_left = match self.shape.layout {
             DiffLayout::Inline => bounds.left(),
-            DiffLayout::SideBySide => bounds.left() + bounds.size.width / 2.,
+            DiffLayout::SideBySide => self.split.span(Side::New, bounds).start,
         };
         let (sideways, _) = self.edit_scroll();
         let left = panel_left + self.text_start() - px(sideways.extent(Axis::Horizontal).scrolled as f32);
