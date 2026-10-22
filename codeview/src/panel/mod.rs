@@ -319,8 +319,10 @@ impl Panel {
     }
 
     fn reveal_line(&self, line: usize, cx: &mut Context<Self>) {
-        if let Body::View(view) = &self.body {
-            view.update(cx, |view, cx| view.reveal_line(line, cx));
+        match &self.body {
+            Body::View(view) => view.update(cx, |view, cx| view.reveal_line(line, cx)),
+            Body::Edit(editor) => editor.update(cx, |editor, cx| editor.reveal_line(line, cx)),
+            Body::Empty | Body::Diff(_) => {}
         }
     }
 

@@ -92,11 +92,14 @@ impl Workspace {
             return;
         }
         self.pending.resolving.insert(resolving.clone());
+        // what runs is what the editors show
+        self.flush_edits(cx);
         let inputs = self.run_inputs(&request);
         let profile = profile::current().name().to_owned();
         let read = cx.background_executor().spawn(async move { read_run_values(&inputs, &OsWallet::new(&profile)) });
         cx.spawn_in(window, async move |workspace, cx| {
             let read = read.await;
+            super::saves::saves_landed(&workspace, cx).await;
             let _ = workspace.update_in(cx, |workspace, window, cx| {
                 workspace.pending.resolving.remove(&resolving);
                 workspace.continue_run(request, read, window, cx);

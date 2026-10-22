@@ -164,6 +164,11 @@ impl ScratchTab {
         self.view.update(cx, |view, cx| view.restore(state, cx));
     }
 
+    /// The panel editing the scratch; `None` while it is read-only.
+    pub fn editing_panel(&self, cx: &App) -> Option<Entity<Panel>> {
+        self.view.read(cx).editor()
+    }
+
     pub fn focus_handle(&self, cx: &App) -> Option<FocusHandle> {
         self.view.read(cx).editor().map(|editor| editor.focus_handle(cx))
     }

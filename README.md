@@ -58,6 +58,7 @@ Run it again to rebuild and reinstall.
 | Edit a scratch | type in its tab; it saves itself half a second after you stop, and when the tab closes or IVE quits; a change made outside IVE reloads it, or asks (Reload / Overwrite) when you have unsaved edits |
 | Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh` |
 | Open a file | click it in the tree; an open file shows its existing tab; or Ctrl+Shift+E (see [Hub](#hub-ctrlshifte)) |
+| Edit a file | type in its tab; there is no save: edits reach the disk half a second after you stop (longer for files over 8 MiB), and when you switch tabs or windows, run something or quit. A change made outside IVE reloads the tab, unless it holds edits: then the save stops with a bar (Reload / Overwrite) |
 | Hub | Ctrl+Shift+E (Cmd+Shift+E on macOS): recent tabs, uncommitted changes, running processes, and a search over every file of every open project; see [Hub](#hub-ctrlshifte) |
 | Select and copy in a file or a diff | drag, double-click (a word), triple-click (a line) or Shift+click (extend); Ctrl+A selects all, Ctrl+C copies (Cmd on macOS); a diff copies its code lines, without line numbers and +/- |
 | Copy full paths | Ctrl+Shift+C (Cmd+Alt+C on macOS) in the tree copies the absolute paths of its selected files and folders (a click, Ctrl+click, Shift+click), one per line; in the hub, the selected row's |
@@ -658,7 +659,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `stop_tab` | as Ctrl+Shift+Q: a process tab's process ends for good and the tab closes; another tab just closes |
 | `open_hub` | show the hub, optionally in the state (`hub`) of a tab's `opened_from_hub`; answers `{ tab }` |
 | `detach_tab`, `attach_tab` | open a tab in a window of its own, or put it back into the tab row |
-| `send_text` | type text into a process tab or a scratch tab; end with `\r` to press Enter (a line break in a scratch) |
+| `send_text` | type text into a process, file or scratch tab; end with `\r` to press Enter (a line break in a file or scratch) |
 | `send_keys` | press keys in a process tab, written like key bindings: `["ctrl-c"]`, `["up", "enter"]` |
 | `tab_mouse` | use the mouse on a tab of the tab row (`click`, `double_click`, `press`, `release`; button and Shift/Alt/Ctrl) through the tab mouse bindings, as a real click: a right click opens the tab's menu, a Shift+right click the one `init.rn` binds to it |
 | `send_mouse` | use the mouse in a process tab on a screen cell: `click`, `double_click`, `triple_click`, `press`, `release`, `move`, `scroll`; says whether it went to the program or to IVE |
@@ -702,6 +703,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | scratch row | `scratch:<name>` (open it), `rename-scratch:<name>`, `delete-scratch:<name>` (its hover actions; Delete asks: `prompt:Delete`) |
 | scratch groups | `scratch-group:<group>` (expand or collapse Today / This week / This month / Older), `scratch-more:<group>` (Show 10 more), `scratch-all:<group>` (Show all) |
 | scratch tab (shown) | `run-scratch`, and its "changed on disk" / "deleted on disk" bar: `scratch-reload`, `scratch-overwrite`, `scratch-save-again`, `scratch-close` |
+| file or scratch tab (shown) whose save found the file changed on disk | `save-reload` (drop the edits, show the file), `save-overwrite` (write the edits over it) |
 | prompt | `prompt:<button label>`; the quit prompt's are `prompt:Keep running`, `prompt:Stop all`, `prompt:Cancel` |
 | window | `window:close` (the ×; with terminals running it shows the quit prompt) |
 
@@ -764,7 +766,8 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 |---|---|
 | `src/workspace.rs`, `src/workspace/` | main window: projects, processes, tabs, saved state, actions |
 | `src/sidebar/` | the tree: rows (pure), drawing, width |
-| `src/editor.rs` | tab kinds, tab row, detached tabs' windows; a file tab's view is `codeview/src/code_view.rs` |
+| `src/editor.rs` | tab kinds, tab row, detached tabs' windows |
+| `src/file_tab.rs`, `src/file_write.rs` | a file tab: edited in `codeview`'s panel, its edits written in place or through a temporary file |
 | `src/line_view.rs` | scrolling and metrics shared by the document view and the editor |
 | `src/overview/` | the project overview tab, its Worktrees list, its Git section, the Git log, commit and diff tabs |
 | `src/git/` | reading repositories with git2 (libgit2): checkouts, status, changes, diffs, log, branches; New worktree, the one write |

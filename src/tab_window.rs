@@ -30,9 +30,12 @@ impl TabWindow {
         let subscriptions = vec![cx.observe_window_activation(window, |tab_window, window, cx| {
             // the tab chip shows whether this window is active
             cx.notify();
-            if window.is_window_active() {
-                let _ = tab_window.workspace.update(cx, |workspace, cx| workspace.refresh_on_activation(cx));
-            }
+            let active = window.is_window_active();
+            let _ = tab_window.workspace.update(cx, |workspace, cx| match active {
+                true => workspace.refresh_on_activation(cx),
+                // edits in the tab reach the disk when the user turns to another window
+                false => workspace.flush_edits(cx),
+            });
         })];
         let closing = workspace.clone();
         // closing the window closes the tab, as its × in the row would

@@ -167,6 +167,10 @@ impl Workspace {
     pub fn send_text_to_tab(&mut self, tab: TabId, text: &str, cx: &mut Context<Self>) -> Result<(), String> {
         match self.tabs.get(tab) {
             Some(Tab::Scratch(scratch)) => scratch.type_text(text, cx),
+            Some(Tab::Document(file)) => {
+                file.cast(codeview::panel::Cast::Type(text.to_owned()), cx);
+                Ok(())
+            }
             _ => self.send_text_to_process(tab, text),
         }
     }

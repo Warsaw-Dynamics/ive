@@ -108,6 +108,13 @@ impl TextEditor {
         cx.notify();
     }
 
+    /// Puts the caret at the start of line `line` (from 1, clamped) and scrolls it into view.
+    pub fn reveal_line(&mut self, line: usize, cx: &mut Context<Self>) {
+        self.model.set_caret(Position::new(line.saturating_sub(1), 0), Selecting::Move);
+        self.reveal_caret = true;
+        cx.notify();
+    }
+
     /// Replaces the text after a reload: the history and the colours are dropped, the caret stays where it still
     /// fits.
     pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {

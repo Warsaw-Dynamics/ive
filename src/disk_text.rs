@@ -12,7 +12,7 @@ use crate::theme::Theme;
 
 /// What IVE knows of a file after its last read or re-read.
 #[derive(Debug, PartialEq)]
-enum Disk {
+pub(crate) enum Disk {
     /// read, with its size and modification time then
     Read(Stamp),
     /// read, but its stamp could not be taken, so the next change reads it again
@@ -24,7 +24,7 @@ enum Disk {
 
 impl Disk {
     /// What `reread` makes of the file's state; `None` when it found nothing new.
-    fn after(reread: &Reread) -> Option<Self> {
+    pub(crate) fn after(reread: &Reread) -> Option<Self> {
         match reread {
             Reread::Unchanged => None,
             Reread::Changed(_, stamp) => Some(stamp.map_or(Self::Unstamped, Self::Read)),
@@ -33,7 +33,7 @@ impl Disk {
         }
     }
 
-    fn stamp(&self) -> Option<Stamp> {
+    pub(crate) fn stamp(&self) -> Option<Stamp> {
         match self {
             Self::Read(stamp) => Some(*stamp),
             Self::Unstamped | Self::Gone | Self::Failed(_) => None,
@@ -41,7 +41,7 @@ impl Disk {
     }
 
     /// The note about a failed re-read, shown until a re-read finds something else.
-    fn failure(&self) -> Option<&SharedString> {
+    pub(crate) fn failure(&self) -> Option<&SharedString> {
         match self {
             Self::Failed(note) => Some(note),
             Self::Read(_) | Self::Unstamped | Self::Gone => None,
@@ -99,7 +99,7 @@ fn viewed(document: Document) -> Content {
 }
 
 /// Drawn as the panel draws its "deleted on disk" note.
-fn failure_note(failure: SharedString, theme: Theme) -> Div {
+pub(crate) fn failure_note(failure: SharedString, theme: Theme) -> Div {
     let sizes = &theme.sizes.editor;
     div()
         .flex_none()

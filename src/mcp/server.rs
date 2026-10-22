@@ -522,7 +522,8 @@ run-configs-stop:<n>, run-configs-start:<n>, run-configs-remove:<n>. Hub: hub-qu
 question), hub-scope:<all|project id|checkout path>, hub-scope-picker, hub-excluded. New worktree card: new-worktree, branch:<name>, branch-more, branch-all. Scratches section: \
 new-scratch, scratch-search, scratch-name (the open name input), scratch:<name>, rename-scratch:<name>, \
 delete-scratch:<name>, scratch-group:<group>, scratch-more:<group>, scratch-all:<group>. Scratch tabs: \
-run-scratch, scratch-reload, scratch-overwrite, scratch-save-again, scratch-close. Prompts: prompt:<button>. \
+run-scratch, scratch-reload, scratch-overwrite, scratch-save-again, scratch-close. File and scratch tabs whose save found the \
+file changed on disk: save-reload, save-overwrite. Prompts: prompt:<button>. \
 <sha> is the 7-character short sha. Every tree row is listed, also those scrolled out of view; the rest only \
 while on screen.")]
     async fn list_targets(&self) -> Result<CallToolResult, ErrorData> {

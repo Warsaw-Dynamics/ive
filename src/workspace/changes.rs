@@ -224,7 +224,7 @@ impl Workspace {
     /// Re-reads the open documents at `paths` on the background executor; one whose size and modification time
     /// are unchanged is not read.
     fn reread_documents(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
-        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path).map(|stamp| (path, stamp))).collect();
+        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path, cx).map(|stamp| (path, stamp))).collect();
         if known.is_empty() {
             return;
         }
@@ -248,9 +248,9 @@ impl Workspace {
     }
 
     /// The stamp of the document `path` shows, while a tab shows it.
-    fn document_stamp(&self, path: &Path) -> Option<Option<Stamp>> {
+    fn document_stamp(&self, path: &Path, cx: &App) -> Option<Option<Stamp>> {
         match self.tabs.get(self.tabs.find(|tab| tab.shows(path))?) {
-            Some(Tab::Document(file)) => Some(file.stamp()),
+            Some(Tab::Document(file)) => Some(file.stamp(cx)),
             _ => None,
         }
     }

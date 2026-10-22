@@ -10,6 +10,8 @@ mod colors;
 mod disk_text;
 mod dragged_files;
 mod editor;
+mod file_tab;
+mod file_write;
 mod file_tree;
 mod frame;
 mod glow;

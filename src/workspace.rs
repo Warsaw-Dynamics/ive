@@ -53,6 +53,7 @@ mod projects;
 mod quit;
 mod restart;
 mod runs;
+mod saves;
 mod scratches;
 mod scripts;
 mod settings_actions;
@@ -215,8 +216,9 @@ impl Workspace {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
                 if window.is_window_active() {
-                    workspace.refresh_on_activation(cx);
+                    return workspace.refresh_on_activation(cx);
                 }
+                workspace.flush_edits(cx);
             }),
             cx.observe_window_visibility(window, |workspace, visibility, window, _cx| {
                 if visibility.is_visible() {
@@ -524,6 +526,8 @@ impl Workspace {
     /// of an overview, and the windows of detached tabs. `window` may be a detached tab's, whose content opened a
     /// tab: the main window then comes to the front.
     fn tab_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // the tab left behind saves now; a closed one saved as it went
+        self.flush_edits(cx);
         self.close_stale_tab_windows(cx);
         if window.window_handle() == self.main_window {
             self.focus_active_tab(window, cx);

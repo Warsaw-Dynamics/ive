@@ -1,20 +1,16 @@
 use std::cell::Cell;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 
-use codeview::document::{Reread, Stamp};
-use codeview::panel::{Cast, Panel};
 use gpui::{
-    AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, Entity, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
+    AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
     Stateful, Window, WindowControlArea, div, img, prelude::*, px, rgb, size, transparent_black,
 };
 
 use crate::click_targets::target;
-use crate::codeview_host;
 use crate::colors::checkout_colour;
-use crate::disk_text::DiskText;
-use crate::document::Document;
+pub use crate::file_tab::FileTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
 use crate::icons;
@@ -385,12 +381,12 @@ impl Tab {
         match self {
             Self::Process(id) => workspace.processes().get(*id).map(|process| process.view.focus_handle()),
             Self::Scratch(scratch) => scratch.focus_handle(cx),
+            Self::Document(file) => Some(file.panel.focus_handle(cx)),
             Self::RunValues(tab) => tab.fields.first().map(|field| field.input.focus_handle(cx)),
             Self::Hub(hub) => Some(hub.focus_handle(cx)),
             // the Worktrees list's filter keeps the keyboard
             Self::ProjectOverview(ProjectOverview { section: ProjectSection::Worktrees, git: Some(views), .. }) => Some(views.list.focus_handle(cx)),
-            Self::Document(_)
-            | Self::ProjectOverview(_)
+            Self::ProjectOverview(_)
             | Self::Diff(_)
             | Self::Commit(_)
             | Self::GitLog(_)
@@ -415,7 +411,7 @@ impl Tab {
     fn render(&self, id: TabId, workspace: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> AnyElement {
         let theme = crate::theme::tabs(cx);
         match self {
-            Self::Document(file) => file.disk.render(&file.panel, theme),
+            Self::Document(file) => file.render(theme, cx),
             Self::Process(process) => match workspace.processes().get(*process) {
                 Some(process) => match process.link() {
                     Some(url) => div()
@@ -510,44 +506,6 @@ pub fn render_pane(workspace: &Workspace, window: &mut Window, cx: &mut Context<
             true => pane.child(div().flex().flex_col().flex_1().min_h_0().bg(rgb(theme.background)).rounded_b(theme.panels.radius.px()).overflow_hidden().child(body)),
             false => pane.child(body),
         })
-}
-
-/// A file's tab: the file's path, which stays as the tab opened, its panel, and what IVE knows of the file on disk.
-pub struct FileTab {
-    path: PathBuf,
-    pub panel: Entity<Panel>,
-    disk: DiskText,
-}
-
-impl FileTab {
-    pub fn new(document: Document, cx: &mut App) -> Self {
-        let path = document.path().to_path_buf();
-        let panel = cx.new(Panel::new);
-        codeview_host::serve(&panel, path.display().to_string(), cx);
-        let disk = DiskText::show(document, &panel, cx);
-        Self { path, panel, disk }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-
-    /// What a re-read compares the file with.
-    pub fn stamp(&self) -> Option<Stamp> {
-        self.disk.stamp()
-    }
-
-    pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
-        self.disk.take(reread, &self.panel, cx);
-    }
-
-    pub fn cast(&self, cast: Cast, cx: &mut App) {
-        self.panel.update(cx, |panel, cx| panel.handle(cast, cx));
-    }
-
-    fn file_name(&self) -> String {
-        self.path.file_name().map_or_else(|| self.path.display().to_string(), |name| name.to_string_lossy().into_owned())
-    }
 }
 
 /// The top of the right column: tabs (scrolling sideways when they do not fit: Shift+wheel or a touchpad),
