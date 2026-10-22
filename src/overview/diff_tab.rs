@@ -388,7 +388,8 @@ impl DiffTabBody {
     }
 
     /// Reload: an edited new side with nothing unsaved is read again to edit, rows and all (with unsaved edits the
-    /// rows keep showing them); one that could not be read is tried again; any other diff is read again.
+    /// rows keep showing them); one that could not be read is tried again, its rows read again; any other diff is read
+    /// again.
     fn reload(&mut self, cx: &mut Context<Self>) {
         let panel = self.panel.read(cx);
         let edited = panel.edits_new_side(cx);
@@ -397,9 +398,11 @@ impl DiffTabBody {
             // the rows keep showing the edits; the next save meets the change
             (NewSide::Edited { .. }, true) if unsaved => {}
             (NewSide::Edited { file, .. }, true) => file.clone().update(cx, |file, cx| file.read_again(cx)),
+            // the read-only rows are read again too, in case the file still cannot be read to edit
             (NewSide::Unreadable(_), _) => {
                 self.new_side = NewSide::Unread;
                 self.panel.update(cx, |panel, cx| panel.handle(Cast::SetEditable(Editable::NewSide { policy: FIRST_POLICY }), cx));
+                self.reload_diff(cx);
             }
             _ => self.reload_diff(cx),
         }
@@ -918,6 +921,37 @@ mod editing_tests {
         // then
         assert!(tab.body.read_with(cx, |body, _| matches!(body.state, BodyState::Shown)));
         assert_eq!(new_lines(&panel, cx), ["one", "TWO", "three"]);
+    }
+
+    #[gpui::test]
+    fn should_read_the_rows_again_on_reload_when_the_file_still_cannot_be_read_to_edit(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        // a symbolic link: its diff is of the paths it points to, and it is no regular file to edit
+        let repo = TestRepo::init();
+        std::os::unix::fs::symlink("one", repo.path().join("a.txt")).unwrap();
+        repo.commit("a link");
+        let relink = |target: &str| {
+            std::fs::remove_file(repo.path().join("a.txt")).unwrap();
+            std::os::unix::fs::symlink(target, repo.path().join("a.txt")).unwrap();
+        };
+        relink("two");
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        let unreadable = panel.read_with(cx, |panel, cx| !panel.is_editable_diff(cx));
+
+        // when
+        relink("three");
+        tab.body.update(cx, |body, cx| body.reload(cx));
+        cx.run_until_parked();
+        draw(&panel, cx);
+
+        // then
+        assert!(unreadable);
+        let shown = new_lines(&panel, cx);
+        assert!(shown.contains(&"three".to_owned()) && !shown.contains(&"two".to_owned()), "{shown:?}");
     }
 
     #[gpui::test]
