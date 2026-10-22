@@ -35,7 +35,6 @@ use crate::scratch::search::Generations;
 use crate::script::keymap::{Action, Builtin, Place as KeyPlace, Scope};
 use crate::script::state::{invoke, keymap};
 use crate::settings::ThemePreference;
-use crate::process::ProcessKind;
 use super::processes::ProgramEnding;
 use crate::run::values_tab::{RunRequest, ShowRun};
 use crate::saved_tabs::SavedTab;
@@ -1061,13 +1060,14 @@ impl Workspace {
         self.activate_tab(back, window, cx);
     }
 
-    /// Alt+Enter: the path, shell-quoted, typed into the last terminal (that of the most recently used worktree),
-    /// without Enter.
+    /// Alt+Enter: the path pasted into the most recently used terminal, relative to its directory when it works in
+    /// the path's checkout, without Enter.
     fn type_path_into_terminal(&self, path: &str) {
-        let terminals = self.processes.iter().filter(|process| process.kind != ProcessKind::Run && process.is_live());
-        let last_used = |process: &&crate::process::Process| process.checkout.as_ref().and_then(|checkout| self.worktree_use.last_used(&checkout.path, &self.history));
-        if let Some(terminal) = terminals.max_by_key(last_used) {
-            terminal.view.send_text(&format!("{} ", shell_quoted(path)));
+        let Some(terminal) = self.last_terminal() else {
+            return;
+        };
+        if let Some(process) = self.processes.get(terminal) {
+            process.view.paste(&self.typed_for_process(&[std::path::PathBuf::from(path)], terminal));
         }
     }
 }
@@ -1167,11 +1167,6 @@ fn child_index(list: &List, row: usize) -> usize {
     row + headers + mores + usize::from(list.message.is_some())
 }
 
-/// `path` for a POSIX shell: in single quotes, a quote in it as `'\\''`.
-fn shell_quoted(path: &str) -> String {
-    format!("'{}'", path.replace('\'', "'\\''"))
-}
-
 /// `untitled-<n>`, the first `n` from 1 no scratch has.
 fn free_scratch_name(existing: &[String]) -> String {
     (1..).map(|number| format!("untitled-{number}")).find(|name| !existing.contains(name)).unwrap_or_default()
@@ -1227,15 +1222,6 @@ mod tests {
 
         // then
         assert_eq!(grouped, ["0", "999", "1,000", "381,877", "1,234,567"]);
-    }
-
-    #[test]
-    fn should_quote_a_path_for_the_shell() {
-        // when
-        let quoted = shell_quoted("/a b/it's");
-
-        // then
-        assert_eq!(quoted, "'/a b/it'\\''s'");
     }
 
     #[test]

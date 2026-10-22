@@ -62,6 +62,7 @@ mod tabs;
 mod third_party;
 mod trace;
 mod terminal;
+mod terminal_use;
 mod text_editor;
 mod text_input;
 mod text_selection;

@@ -32,7 +32,7 @@ pub fn path_applies(builtin: Builtin, subject: &Subject) -> Option<Applies> {
 
 /// Whether `builtin` is a path action, which runs on a subject.
 pub fn is_path_action(builtin: Builtin) -> bool {
-    path_applies(builtin, &Subject::empty()).is_some()
+    builtin == Builtin::SendPathsToTerminal || path_applies(builtin, &Subject::empty()).is_some()
 }
 
 /// What a Copy action puts on the clipboard: one path per line, in the subject's order.

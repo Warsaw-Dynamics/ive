@@ -164,6 +164,18 @@ impl Workspace {
         subject_of(rows.iter().filter_map(|key| self.row_path(key)).collect(), &self.all_checkouts())
     }
 
+    /// Send to Terminal from a binding: its list of terminals alone, as a menu at the pointer.
+    pub(super) fn open_terminal_list(&mut self, subject: Subject, on: MenuOn, window: &mut Window, cx: &mut Context<Self>) {
+        let Applies::Choices(choices) = self.terminal_choices(&subject) else {
+            return;
+        };
+        let lines = resolve::choice_lines(Builtin::SendPathsToTerminal, choices, &[]);
+        let position = window.mouse_position();
+        self.menu = Some(OpenMenu { on, kind: MenuKind::Tree, name: String::new(), position, subject, lines, nav: Nav::new(), waiting: Vec::new(), changed_at: Instant::now() - MOVED_GUARD });
+        window.focus(&self.focus_handle, cx);
+        cx.notify();
+    }
+
     /// Runs path action `builtin` from a mouse binding on the row of `pressed`; a row outside the selection becomes
     /// the selection first.
     pub fn run_row_path_action(&mut self, pressed: TreeKey, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
@@ -171,17 +183,23 @@ impl Workspace {
             self.tree.selection.select_only(pressed.clone());
         }
         let subject = self.tree_subject(&pressed);
+        if builtin == Builtin::SendPathsToTerminal {
+            return self.open_terminal_list(subject, MenuOn::Tree { row: "selection".to_owned() }, window, cx);
+        }
         self.run_path_action(builtin, &subject, window, cx);
     }
 
     /// Runs path action `builtin` from a binding: on the selection when the tree has the keyboard, else on the shown
     /// tab's file.
     pub(super) fn run_bound_path_action(&mut self, builtin: Builtin, in_tree: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let subject = match (in_tree, self.tree.selection.anchor().cloned(), self.tabs.active_id()) {
-            (true, Some(anchor), _) => self.tree_subject(&anchor),
-            (false, _, Some(shown)) => self.tab_subject(shown),
+        let (subject, on) = match (in_tree, self.tree.selection.anchor().cloned(), self.tabs.active_id()) {
+            (true, Some(anchor), _) => (self.tree_subject(&anchor), MenuOn::Tree { row: "selection".to_owned() }),
+            (false, _, Some(shown)) => (self.tab_subject(shown), MenuOn::Tab(shown)),
             _ => return,
         };
+        if builtin == Builtin::SendPathsToTerminal {
+            return self.open_terminal_list(subject, on, window, cx);
+        }
         self.run_path_action(builtin, &subject, window, cx);
     }
 
@@ -310,6 +328,7 @@ impl Workspace {
             (LineAction::Script(ItemAction::Invoke { generation, function }), on) => invoke(generation, function, Some(self.menu_context(&menu.name, on, &menu.subject)), cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tab(tab)) if builtin.is_tab_command() => self.run_tab_command(builtin, *tab, window, cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), _) => self.run_menu_builtin(builtin, &menu.subject, window, cx),
+            (LineAction::Choice { builtin: Builtin::SendPathsToTerminal, choice }, _) => self.send_paths_to(&choice, &menu.subject, window, cx),
             (LineAction::Choice { .. }, _) => {}
         }
     }
@@ -331,6 +350,7 @@ impl Workspace {
                 tab_applies(tab_action, facts, |which| self.tabs.has_beside(*tab, which))
             }
             (Builtin::OpenHub | Builtin::OpenSettings | Builtin::OpenTerminal | Builtin::OpenTerminalIn | Builtin::ToggleChangesLayout, _) => Applies::Shown { enabled: true },
+            (Builtin::SendPathsToTerminal, _) => self.terminal_choices(subject),
             (path_action, _) => super::path_actions::path_applies(path_action, subject).unwrap_or(Applies::Hidden),
         }
     }

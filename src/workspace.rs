@@ -58,6 +58,7 @@ mod scripts;
 mod settings_actions;
 mod menu;
 mod path_actions;
+mod send_paths;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -143,6 +144,8 @@ pub struct Workspace {
     history: History,
     /// the last input or run start per checkout, for the hub's worktree order
     worktree_use: WorktreeUse,
+    /// which terminals were used last, for Send to Terminal and the hub's Alt+Enter
+    terminal_use: crate::terminal_use::TerminalUse,
     hub_index: HubIndex,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
@@ -286,6 +289,7 @@ impl Workspace {
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
+            terminal_use: Default::default(),
             hub_index: HubIndex::default(),
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
@@ -616,6 +620,9 @@ impl Workspace {
         let Some(identity) = tab.identity(self) else {
             return;
         };
+        if let Tab::Process(id) = tab {
+            self.terminal_use.used(*id);
+        }
         let checkout = tab.checkout(self).map(|checkout| checkout.path);
         let shown = Shown { identity, saved: tab.saved(self, cx), checkout, title: tab.title(self), shown_at: Clock::system().now() };
         self.history.shown(shown);
@@ -624,6 +631,7 @@ impl Workspace {
 
     /// Input was submitted to process `id` (Enter in its terminal): its checkout counts as used now.
     pub fn process_input(&mut self, id: ProcessId, cx: &mut Context<Self>) {
+        self.terminal_use.used(id);
         if let Some(checkout) = self.processes.get(id).and_then(|process| process.checkout.clone()) {
             self.worktree_use.used(&checkout.path, Clock::system().now());
             self.schedule_save(cx);

@@ -1,9 +1,6 @@
 //! Paths typed into a terminal: relative to the terminal's directory when the terminal works in the checkout of
 //! every path, else absolute; quoted for the shell.
 
-// used once Send to Terminal lands (plan task 9)
-#![allow(dead_code)]
-
 use std::path::{Component, Path, PathBuf};
 
 use crate::pasted::shell_word;
@@ -48,6 +45,13 @@ pub fn relative(path: &Path, base: &Path) -> PathBuf {
         return PathBuf::from(".");
     }
     relative
+}
+
+/// `paths` as [`typed_paths`] types them into a terminal of `terminal` (its checkout, its directory when known),
+/// against the open `checkouts`.
+pub fn typed_into(paths: &[PathBuf], checkouts: &[PathBuf], terminal: (Option<&Path>, Option<&Path>)) -> String {
+    let home = checkout_of(paths, checkouts.iter().map(PathBuf::as_path));
+    typed_paths(paths, base_for(home.as_deref(), terminal.0, terminal.1))
 }
 
 /// The innermost of `checkouts` that holds every one of `paths`; `None` when there are no paths or no one checkout
@@ -156,6 +160,19 @@ mod tests {
 
         // then
         assert_eq!((inner, mixed), (Some(PathBuf::from("/w/.worktree/b")), None));
+    }
+
+    #[test]
+    fn should_type_a_dropped_tree_selection_relative_to_the_terminal() {
+        // given
+        let checkouts = [PathBuf::from("/w"), PathBuf::from("/x")];
+        let dropped = paths(&["/w/src/a.rs", "/w/docs"]);
+
+        // when
+        let text = typed_into(&dropped, &checkouts, (Some(Path::new("/w")), Some(Path::new("/w/src"))));
+
+        // then
+        assert_eq!(text, "a.rs ../docs ");
     }
 
     #[test]
