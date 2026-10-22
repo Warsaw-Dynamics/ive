@@ -4,6 +4,7 @@
 // used once the menu view lands (plan task 7)
 #![allow(dead_code)]
 
+pub mod nav;
 pub mod resolve;
 pub mod when;
 
