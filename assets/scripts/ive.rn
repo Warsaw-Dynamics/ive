@@ -37,7 +37,9 @@ pub fn init(config) {
                   act::CloseTab, act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight],
     };
     config.tree_menus = #{
-        main: [act::SendPathsToTerminal, act::OpenTerminalHere, act::RunFile, "Separator",
+        // New Terminal on a Processes folder, Stop on a process or a running run
+        main: [act::NewTerminal, act::StopProgram, "Separator",
+                  act::SendPathsToTerminal, act::OpenTerminalHere, act::RunFile, "Separator",
                   act::FindInFiles, "Separator",
                   copy_path, open_in, "Separator",
                   #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory, "Separator", act::GitIgnore] },

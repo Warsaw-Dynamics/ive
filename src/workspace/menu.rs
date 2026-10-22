@@ -19,6 +19,8 @@ use crate::path_text::checkout_of;
 use crate::script::keymap::Builtin;
 use crate::script::menus::{ItemAction, MenuKind, Menus};
 use crate::script::state::{ScriptState, invoke};
+use crate::process::RunId;
+use crate::sidebar::folders::FolderKind;
 use crate::sidebar::rows::{TreeItem, TreeKey};
 use crate::sidebar::selection;
 use crate::tabs::{Beside, TabId};
@@ -32,8 +34,8 @@ const MOVED_GUARD: Duration = Duration::from_millis(300);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MenuOn {
     Tab(TabId),
-    /// a tree row, by its `list_targets` name
-    Tree { row: String },
+    /// a tree row, by its `list_targets` name, and its key
+    Tree { row: String, pressed: TreeKey },
 }
 
 /// The open menu.
@@ -120,6 +122,20 @@ pub fn tab_applies(builtin: Builtin, facts: TabFacts, beside: impl Fn(Beside) ->
     }
 }
 
+/// Whether a process item applies to the tree row of `pressed`: New Terminal on a Processes folder, Stop and Kill on
+/// a process, Stop on a run that `live` says is running; `None` for the other actions.
+pub fn row_applies(builtin: Builtin, pressed: &TreeKey, live: impl Fn(RunId) -> bool) -> Option<Applies> {
+    let shown = Applies::Shown { enabled: true };
+    let applies = match (builtin, pressed) {
+        (Builtin::NewTerminal, TreeKey::Folder(_, FolderKind::Processes)) => shown,
+        (Builtin::StopProgram | Builtin::KillProgram, TreeKey::Process(_)) => shown,
+        (Builtin::StopProgram, TreeKey::LiveRun(run)) if live(*run) => shown,
+        (Builtin::NewTerminal | Builtin::StopProgram | Builtin::KillProgram, _) => Applies::Hidden,
+        _ => return None,
+    };
+    Some(applies)
+}
+
 /// Today's names of the tab actions' lines, kept for MCP besides the label paths.
 pub fn tab_action_target(builtin: Builtin) -> Option<&'static str> {
     Some(match builtin {
@@ -195,7 +211,7 @@ impl Workspace {
             self.tree.selection.select_only(pressed.clone());
         }
         let subject = self.tree_subject(&pressed);
-        self.open_menu(MenuKind::Tree, name, MenuOn::Tree { row }, subject, window, cx);
+        self.open_menu(MenuKind::Tree, name, MenuOn::Tree { row, pressed }, subject, window, cx);
     }
 
     /// What a menu or action on the row of `pressed` applies to, see [`menu_rows`].
@@ -225,7 +241,7 @@ impl Workspace {
         }
         let subject = self.tree_subject(&pressed);
         if builtin == Builtin::SendPathsToTerminal {
-            return self.open_terminal_list(subject, MenuOn::Tree { row: "selection".to_owned() }, window, cx);
+            return self.open_terminal_list(subject, MenuOn::Tree { row: "selection".to_owned(), pressed }, window, cx);
         }
         self.run_path_action(builtin, &subject, window, cx);
     }
@@ -234,7 +250,7 @@ impl Workspace {
     /// tab's file.
     pub(super) fn run_bound_path_action(&mut self, builtin: Builtin, in_tree: bool, window: &mut Window, cx: &mut Context<Self>) {
         let (subject, on) = match (in_tree, self.tree.selection.anchor().cloned(), self.tabs.active_id()) {
-            (true, Some(anchor), _) => (self.tree_subject(&anchor), MenuOn::Tree { row: "selection".to_owned() }),
+            (true, Some(anchor), _) => (self.tree_subject(&anchor), MenuOn::Tree { row: "selection".to_owned(), pressed: anchor }),
             (false, _, Some(shown)) => (self.tab_subject(shown), MenuOn::Tab(shown)),
             _ => return,
         };
@@ -366,11 +382,39 @@ impl Workspace {
         match (action, &menu.on) {
             (LineAction::Script(ItemAction::Invoke { generation, function }), on) => invoke(generation, function, Some(self.menu_context(&menu.name, on, &menu.subject)), cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tab(tab)) if builtin.is_tab_command() => self.run_tab_command(builtin, *tab, window, cx),
+            (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| true).is_some() => {
+                self.run_row_command(builtin, pressed, window, cx)
+            }
             (LineAction::Script(ItemAction::Builtin(builtin)), _) => self.run_menu_builtin(builtin, &menu.subject, window, cx),
             (LineAction::Choice { builtin: Builtin::SendPathsToTerminal, choice }, _) => self.send_paths_to(&choice, &menu.subject, window, cx),
             (LineAction::Choice { builtin: Builtin::RunFile, choice }, _) => self.run_from_menu(Some(&choice), &menu.subject, window, cx),
             (LineAction::Choice { .. }, _) => {}
         }
+    }
+
+    /// A process item chosen from the menu of the tree row of `pressed`, see [`row_applies`].
+    fn run_row_command(&mut self, builtin: Builtin, pressed: &TreeKey, window: &mut Window, cx: &mut Context<Self>) {
+        let ending = match builtin {
+            Builtin::KillProgram => ProgramEnding::Kill,
+            _ => ProgramEnding::Stop,
+        };
+        match pressed {
+            TreeKey::Process(id) => self.stop_process(*id, ending, window, cx),
+            TreeKey::LiveRun(run) => self.stop_run(*run, cx),
+            TreeKey::Folder(..) => {
+                let checkout = self.tree.rows.iter().find(|row| row.key() == *pressed).and_then(|row| match &row.item {
+                    TreeItem::Folder(folder) => Some(folder.checkout.clone()),
+                    _ => None,
+                });
+                self.open_terminal_in(checkout, window, cx);
+            }
+            _ => {}
+        }
+    }
+
+    /// Whether the tree shows run `run` running.
+    fn is_live_run(&self, run: RunId) -> bool {
+        self.tree.rows.iter().any(|row| matches!(&row.item, TreeItem::LiveRun(live) if live.id == run && live.live))
     }
 
     /// A built-in chosen from a menu, on the menu's subject.
@@ -390,6 +434,9 @@ impl Workspace {
                 let process = matches!(self.tabs.get(*tab), Some(Tab::Process(_)));
                 let facts = TabFacts { temporary: self.tabs.is_temporary(*tab), process };
                 tab_applies(tab_action, facts, |which| self.tabs.has_beside(*tab, which))
+            }
+            (_, MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| false).is_some() => {
+                row_applies(builtin, pressed, |run| self.is_live_run(run)).unwrap_or(Applies::Hidden)
             }
             (Builtin::OpenHub | Builtin::OpenSettings | Builtin::OpenTerminal | Builtin::OpenTerminalIn | Builtin::ToggleChangesLayout, _) => Applies::Shown { enabled: true },
             (Builtin::SendPathsToTerminal, _) => self.terminal_choices(subject),
@@ -445,7 +492,7 @@ impl Workspace {
         let mut context = json!({ "menu": name, "paths": paths, "items": items, "checkout": checkout });
         match on {
             MenuOn::Tab(tab) => context["tab"] = json!(tab.value()),
-            MenuOn::Tree { row } => context["row"] = json!(row),
+            MenuOn::Tree { row, .. } => context["row"] = json!(row),
         }
         context
     }
@@ -496,6 +543,7 @@ mod tests {
     use super::*;
     use crate::menu::resolve::resolve;
     use crate::script::menus::{Label, MenuItem, When};
+    use crate::process::ProcessId;
     use crate::sidebar::selection::Listed;
 
     fn item(builtin: Builtin) -> MenuItem {
@@ -587,6 +635,53 @@ mod tests {
         assert!(lines.is_empty());
     }
 
+    fn row_lines(pressed: &TreeKey) -> Vec<Option<Applies>> {
+        let items = [Builtin::NewTerminal, Builtin::StopProgram, Builtin::KillProgram, Builtin::CopyFileName];
+        items.iter().map(|builtin| row_applies(*builtin, pressed, |run| run == RunId::Pending(1))).collect()
+    }
+
+    const SHOWN: Option<Applies> = Some(Applies::Shown { enabled: true });
+    const HIDDEN: Option<Applies> = Some(Applies::Hidden);
+
+    #[test]
+    fn should_offer_stop_and_kill_on_a_process_row() {
+        // when
+        let lines = row_lines(&TreeKey::Process(ProcessId::for_tests(4)));
+
+        // then
+        assert_eq!(lines, [HIDDEN, SHOWN, SHOWN, None]);
+    }
+
+    #[test]
+    fn should_offer_only_stop_on_a_running_run() {
+        // when
+        let lines = [RunId::Pending(1), RunId::Pending(2)].map(|run| row_lines(&TreeKey::LiveRun(run)));
+
+        // then
+        assert_eq!(lines, [vec![HIDDEN, SHOWN, HIDDEN, None], vec![HIDDEN, HIDDEN, HIDDEN, None]]);
+    }
+
+    #[test]
+    fn should_offer_new_terminal_on_the_processes_folder() {
+        // given
+        let folders = [FolderKind::Processes, FolderKind::Files].map(|kind| TreeKey::Folder(PathBuf::from("/w"), kind));
+
+        // when
+        let lines = folders.map(|folder| row_lines(&folder));
+
+        // then
+        assert_eq!(lines, [vec![SHOWN, HIDDEN, HIDDEN, None], vec![HIDDEN, HIDDEN, HIDDEN, None]]);
+    }
+
+    #[test]
+    fn should_hide_process_items_on_a_file_row() {
+        // when
+        let lines = row_lines(&entry("/w/a.txt"));
+
+        // then
+        assert_eq!(lines, [HIDDEN, HIDDEN, HIDDEN, None]);
+    }
+
     fn entry(path: &str) -> TreeKey {
         TreeKey::Entry(PathBuf::from(path))
     }
@@ -644,7 +739,7 @@ mod tests {
     #[test]
     fn should_tell_when_the_last_pending_line_goes() {
         // given
-        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned() });
+        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned(), pressed: entry("/w") });
 
         // when
         let unknown = menu.answer(8, false);
@@ -657,7 +752,7 @@ mod tests {
     #[test]
     fn should_keep_a_menu_whose_line_turned_ready() {
         // given
-        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned() });
+        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned(), pressed: entry("/w") });
 
         // when
         let answered = menu.answer(7, true);

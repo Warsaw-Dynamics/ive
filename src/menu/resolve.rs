@@ -107,6 +107,7 @@ pub fn label(builtin: Builtin) -> &'static str {
         Builtin::FindInFiles => "Find in Files…",
         Builtin::OpenFindInFiles => "Find in Files…",
         Builtin::OpenTerminalHere => "Open in Terminal",
+        Builtin::NewTerminal => "New Terminal",
         Builtin::RevealInFileManager if cfg!(target_os = "macos") => "Reveal in Finder",
         Builtin::RevealInFileManager => "Reveal in Files",
         Builtin::OpenWithDefaultApp => "Open in Default App",

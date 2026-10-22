@@ -217,6 +217,8 @@ pub enum Builtin {
     OpenFindInFiles,
     /// a new terminal in the folder, or a file's folder
     OpenTerminalHere,
+    /// a new terminal in the worktree of the Processes folder a tree menu opened on
+    NewTerminal,
     RevealInFileManager,
     OpenWithDefaultApp,
     OpenInBrowser,
@@ -288,7 +290,8 @@ impl Builtin {
             | Self::GitCompareWithBase
             | Self::GitHistory
             | Self::GitIgnore
-            | Self::CompareFiles => false,
+            | Self::CompareFiles
+            | Self::NewTerminal => false,
         }
     }
 
@@ -326,6 +329,9 @@ impl Builtin {
             | Self::CompareFiles
             | Self::OpenInNewWindow => BOTH,
             Self::OpenHub | Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::OpenFindInFiles | Self::ToggleChangesLayout => BOTH,
+            // a tree menu's Stop and Kill end the process of its row
+            Self::StopProgram | Self::KillProgram => BOTH,
+            Self::NewTerminal => &[MenuKind::Tree],
             tab if tab.is_tab_command() => &[MenuKind::Tab],
             _ => &[],
         }

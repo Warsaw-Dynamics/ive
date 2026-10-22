@@ -1131,8 +1131,9 @@ mod tests {
 
         // then
         let tree = loaded.menus.get(MenuKind::Tree, "main").expect("tree menu");
+        assert_eq!(tree[..3], [item(Builtin::NewTerminal), item(Builtin::StopProgram), MenuItem::Separator]);
+        assert!(tree.contains(&item(Builtin::SendPathsToTerminal)));
         let tab = loaded.menus.get(MenuKind::Tab, "main").expect("tab menu");
-        assert_eq!(tree[0], item(Builtin::SendPathsToTerminal));
         assert_eq!(tab[..2], [item(Builtin::KeepTab), item(Builtin::StopProgram)]);
         assert!(tab.contains(&item(Builtin::CloseTabsToTheRight)));
         let right_press = loaded.keymap.find_mouse(Scope::Tree, &mouse(MouseKind::Down, MouseButton::Right, 1)).cloned();
