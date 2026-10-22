@@ -71,6 +71,102 @@ fn should_reject_rich_text_variants_in_every_label_bearing_path() {
 }
 
 #[test]
+fn should_reject_url_adjacent_markup_in_every_label_bearing_path() {
+    // given
+    for markup in [
+        "<s>strike</s>",
+        "<b>bold</b>",
+        "<STRIKE:red>x</STRIKE>",
+        "<DEL>x</DEL>",
+        "<FoNt:serif>x</FoNt>",
+        "<color red>x</color>",
+        "<IMG:asset>",
+        "<$sprite>",
+        "<&icon>",
+        "<math>x</math>",
+        "[[target]]",
+        "**bold**",
+        "__underline__",
+        "--strike--",
+        "~~wave~~",
+    ] {
+        let label = format!("https://example.test/{markup}");
+        for body in label_bodies(&label) {
+            // when
+            let result = render(&diagram(&body), &options());
+            // then
+            assert!(
+                matches!(result, Err(RenderError::UnsupportedFeature(_))),
+                "accepted URL-adjacent markup: {body}"
+            );
+        }
+    }
+}
+
+fn label_bodies(label: &str) -> [String; 8] {
+    let quoted = label.replace('"', "\\\"");
+    [
+        format!("A -> B : {label}"),
+        format!("participant \"{quoted}\" as A"),
+        format!("class A {{\n{label}\n}}"),
+        format!("class A\nnote \"{quoted}\" as N"),
+        format!("\"{quoted}\" -> B : hi"),
+        format!("class A\nA --> \"{quoted}\""),
+        format!("class A\nclass B\nA --> \"{quoted}\" B"),
+        format!("A -> B : hi\nnote over B : {label}"),
+    ]
+}
+
+#[test]
+fn should_normalize_url_adjacent_escapes_without_changing_literal_paths() {
+    // given
+    for (label, expected) in [
+        (
+            "https://example.test/a//b//c?x=1&y=2#part",
+            "https://example.test/a//b//c?x=1&y=2#part",
+        ),
+        (
+            "http://example.test/a--b/file_name.ext",
+            "http://example.test/a--b/file_name.ext",
+        ),
+        (
+            "ftp://example.test/a//b/<value>",
+            "ftp://example.test/a//b/<value>",
+        ),
+        ("file:///tmp/a//b", "file:///tmp/a//b"),
+        (
+            "https://example.test/~<s>literal~</s>",
+            "https://example.test/<s>literal</s>",
+        ),
+        (
+            "https://example.test/~<B>literal~</B>",
+            "https://example.test/<B>literal</B>",
+        ),
+        (
+            "https://example.test/~<$sprite>",
+            "https://example.test/<$sprite>",
+        ),
+        (
+            "https://example.test/~**plain~**/~#part",
+            "https://example.test/**plain**/#part",
+        ),
+    ] {
+        for body in label_bodies(label) {
+            // when
+            let result = render(&diagram(&body), &options()).unwrap();
+            let xml = roxmltree::Document::parse(&result.svg).unwrap();
+            // then
+            assert!(
+                xml.descendants()
+                    .filter_map(|node| node.text())
+                    .any(|text| text == expected),
+                "changed literal URL: {body}"
+            );
+        }
+    }
+}
+
+#[test]
 fn should_preserve_literal_angles_urls_and_escaped_markup() {
     // given
     let source = diagram(

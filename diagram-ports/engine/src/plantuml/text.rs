@@ -105,14 +105,18 @@ fn literal_label(text: &str, line: usize) -> Result<String, RenderError> {
     let mut literal = String::with_capacity(text.len());
     let mut rest = text;
     let mut delimiters = [false; 6];
+    let mut url = false;
     while let Some(ch) = rest.chars().next() {
-        if ["https://", "http://", "ftp://", "file://"]
+        if ch.is_whitespace() {
+            url = false;
+        }
+        if let Some(scheme) = ["https://", "http://", "ftp://", "file://"]
             .iter()
-            .any(|scheme| rest.starts_with(scheme))
+            .find(|scheme| rest.starts_with(**scheme))
         {
-            let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
-            literal.push_str(&rest[..end]);
-            rest = &rest[end..];
+            literal.push_str(scheme);
+            rest = &rest[scheme.len()..];
+            url = true;
             continue;
         }
         if rest.starts_with("\\~") {
@@ -132,7 +136,7 @@ fn literal_label(text: &str, line: usize) -> Result<String, RenderError> {
                 continue;
             }
         }
-        let url_slashes = rest.starts_with("//") && literal.ends_with(':');
+        let url_slashes = rest.starts_with("//") && (url || literal.ends_with(':'));
         if url_slashes {
             literal.push_str("//");
             rest = &rest[2..];
