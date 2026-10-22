@@ -76,6 +76,8 @@ pub enum Target {
     Scope(HubScope),
     /// a line of the tab shown before the hub
     Line(u32),
+    /// a contents search's line: an absolute path, and its line from 1
+    Hit { path: PathBuf, line: u32 },
 }
 
 /// The `>` list.

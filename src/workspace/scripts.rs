@@ -230,6 +230,10 @@ impl Workspace {
                 self.open_terminal_picker(window, cx);
             }
             Builtin::CopyFullPath => self.copy_selected_paths(cx),
+            Builtin::OpenFindInFiles => {
+                let scope = self.hub_scope.clone();
+                self.open_hub(Some(crate::hub::model::HubState { content: true, scope, ..Default::default() }), window, cx);
+            }
             tab_command if tab_command.is_tab_command() => {
                 if let Some(shown) = self.tabs.active_id() {
                     self.run_tab_command(tab_command, shown, window, cx);

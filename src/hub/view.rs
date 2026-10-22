@@ -9,6 +9,7 @@ use gpui::{
     Stateful, StyledText, Subscription, Task, div, img, prelude::*, px, relative, rgb,
 };
 
+use super::content::ContentFound;
 use super::corpus::Corpus;
 use super::files::Class;
 use super::model::{HubState, mode, Mode};
@@ -42,6 +43,8 @@ pub struct HubTab {
     pub input: Entity<TextInput>,
     /// the last search's result, over `searched`
     pub found: Option<Found>,
+    /// the last contents search's lines
+    pub content: Option<ContentFound>,
     pub searched: Arc<Corpus>,
     /// the running search; a new one replaces it
     pub search: Option<Task<()>>,

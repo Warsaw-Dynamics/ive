@@ -12,7 +12,8 @@ use crate::editor::{Tab, saved_icon};
 use crate::hub::history::{History, Shown, TabIdentity};
 use crate::hub::matcher::Query;
 use crate::hub::model::{Effect, HubState, Mode, mode};
-use crate::hub::rows::{List, list, thousands};
+use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Root, Search};
+use crate::hub::rows::{List, Located, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use crate::diff_view::rows::Headers;
@@ -31,7 +32,8 @@ use crate::icons;
 use crate::overview::{ProjectSection, project_card_tags};
 use crate::process::ProcessId;
 use crate::project::{CheckoutRef, ProjectId, ProjectKind};
-use crate::scratch::search::Generations;
+use crate::scratch::search::{Generations, Ticket};
+use crate::script::excluded::Excluded;
 use crate::script::keymap::{Action, Builtin, Place as KeyPlace, Scope};
 use crate::script::state::{invoke, keymap};
 use crate::settings::ThemePreference;
@@ -196,6 +198,7 @@ impl Workspace {
             back,
             input,
             found: None,
+            content: None,
             searched: self.corpus.clone(),
             search: None,
             generations: Generations::default(),
@@ -395,6 +398,7 @@ impl Workspace {
             Target::Action(_) | Target::Scope(_) | Target::Branch { .. } => message(format!("{} · {}", item.title, item.detail)),
             Target::NewTerminal(checkout) => self.new_terminal_preview(checkout),
             Target::NewWorktreeTerminal { project, branch, remote } => self.new_worktree_preview(project, branch, remote.as_deref()),
+            Target::Hit { path, line } => text(path.clone(), usize::try_from(*line).ok()),
         }
     }
 
@@ -612,6 +616,14 @@ impl Workspace {
             return;
         };
         let ticket = hub.generations.next();
+        if let Some(query) = hub.state.content_query() {
+            let roots = self.content_roots(id);
+            return self.start_content_search(id, ContentSearch { roots, query, ticket }, cx);
+        }
+        let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
+            return;
+        };
+        hub.content = None;
         let Some(text) = hub.state.search_text() else {
             hub.found = None;
             hub.search = None;
@@ -638,6 +650,81 @@ impl Workspace {
         }));
     }
 
+    /// Runs a contents search for the hub, its lines arriving as they are found; a newer query stops it.
+    fn start_content_search(&mut self, id: TabId, search: ContentSearch, cx: &mut Context<Self>) {
+        let excluded = cx.try_global::<Excluded>().cloned().unwrap_or_default();
+        let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
+            return;
+        };
+        hub.found = None;
+        let ignored = if hub.state.excluded { Ignored::Searched } else { Ignored::Skipped };
+        let ContentSearch { roots, query, ticket } = search;
+        let (sender, mut found) = futures::channel::mpsc::unbounded::<ContentFound>();
+        let scanned = ticket.clone();
+        let scan = cx.background_executor().spawn(async move {
+            let search = Search { roots: &roots, query: &query, ignored, excluded: &excluded };
+            let sending = std::sync::Mutex::new(sender.clone());
+            let done = content::search(&search, &scanned, |partial| drop(sending.lock().map(|sender| sender.unbounded_send(partial.clone()))));
+            if let Some(done) = done {
+                drop(sender.unbounded_send(done));
+            }
+        });
+        hub.search = Some(cx.spawn(async move |this, cx| {
+            let _scan = scan;
+            while let Some(result) = found.next().await {
+                if ticket.is_stale() {
+                    return;
+                }
+                if this.update(cx, |workspace, cx| workspace.hub_content_found(id, result, cx)).is_err() {
+                    return;
+                }
+            }
+        }));
+        cx.notify();
+    }
+
+    fn hub_content_found(&mut self, id: TabId, found: ContentFound, cx: &mut Context<Self>) {
+        if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) {
+            hub.content = Some(found);
+        }
+        self.settle_hub(id, cx);
+    }
+
+    /// Where a contents search looks: the files and folders picked in the tree, else the checkouts of the hub's scope
+    /// and, for a project or all of them, their scratches.
+    fn content_roots(&self, id: TabId) -> Vec<Root> {
+        let Some(Tab::Hub(hub)) = self.tabs.get(id) else {
+            return Vec::new();
+        };
+        if !hub.state.paths.is_empty() {
+            return hub.state.paths.iter().map(|path| Root { path: path.clone(), picked: Picked::FromTree }).collect();
+        }
+        let in_scope = |open: &&crate::open_project::OpenProject| match &hub.state.scope {
+            HubScope::All => true,
+            HubScope::Project(project) => open.project.id == *project,
+            HubScope::Worktree(checkout) => open.project.id == checkout.project,
+        };
+        let mut roots = Vec::new();
+        for open in self.projects.iter().filter(in_scope) {
+            let checkouts = open.listed_checkouts().filter(|checkout| !matches!(&hub.state.scope, HubScope::Worktree(only) if only.path != checkout.path));
+            roots.extend(checkouts.map(|checkout| Root { path: checkout.path.clone(), picked: Picked::Scope }));
+            let scratches = (!matches!(hub.state.scope, HubScope::Worktree(_))).then(|| scratch::store_of(&open.project.id).ok()).flatten();
+            roots.extend(scratches.map(|store| Root { path: store.dir().to_path_buf(), picked: Picked::Scope }));
+        }
+        roots
+    }
+
+    /// A contents search's file in its checkout, for its row.
+    fn locate_hit(&self, path: &Path) -> Located {
+        match self.checkout_ref_of(path) {
+            Some(checkout) => {
+                let relative = path.strip_prefix(&checkout.path).map_or_else(|_| path.display().to_string(), |relative| relative.display().to_string());
+                Located { project: Some(checkout.project.clone()), place: Place::One(checkout), path: relative }
+            }
+            None => Located { place: Place::Nowhere, project: None, path: path.display().to_string() },
+        }
+    }
+
     fn hub_found(&mut self, id: TabId, found: Found, corpus: Arc<Corpus>, cx: &mut Context<Self>) {
         if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) {
             hub.found = Some(found);
@@ -647,7 +734,10 @@ impl Workspace {
     }
 
     pub(super) fn hub_list(&self, hub: &HubTab, sources: &Sources) -> List {
-        let mut list = list(&hub.state, sources, hub.found.as_ref().map(|found| (&*hub.searched, found)), &WorkspaceStates(self));
+        let mut list = match mode(&hub.state) {
+            Mode::Content => content_list(&hub.state, hub.content.as_ref(), &|path| self.locate_hit(path)),
+            _ => list(&hub.state, sources, hub.found.as_ref().map(|found| (&*hub.searched, found)), &WorkspaceStates(self)),
+        };
         if hub.notice.is_some() {
             list.message.clone_from(&hub.notice);
         }
@@ -682,7 +772,19 @@ impl Workspace {
         let key = |builtin: Builtin| keymap.keys_for(Scope::Hub, &Action::Builtin(builtin)).first().map(|keystroke| key_label::label(keystroke));
         let moves = key(Builtin::HubUp).zip(key(Builtin::HubDown)).map(|(up, down)| format!("{up}{down}"));
         let mut strip: Vec<(Option<String>, &'static str)> = vec![(moves, "move")];
-        if mode(state) == Mode::Pick {
+        if mode(state) == Mode::Content {
+            strip.extend([
+                (key(Builtin::HubOpen), "open"),
+                (key(Builtin::HubOpenBehind), "behind"),
+                (key(Builtin::HubTypePath), "to terminal"),
+                (key(Builtin::HubCopyPath), "copy path"),
+                (key(Builtin::HubToggleRegex), if state.matching.is_regex() { "regex on" } else { "regex" }),
+                (key(Builtin::HubToggleWholeWord), if state.matching.is_whole_word() { "words on" } else { "words" }),
+                (key(Builtin::HubToggleExcluded), if state.excluded { "excluded on" } else { "excluded" }),
+                (key(Builtin::HubToggleContent), "names"),
+                (key(Builtin::HubBack), escape_does(state)),
+            ]);
+        } else if mode(state) == Mode::Pick {
             strip.extend([(key(Builtin::HubOpen), "open there"), (key(Builtin::HubOpenBehind), "behind"), (key(Builtin::HubBack), "back")]);
         } else if mode(state) == Mode::NewTerminal {
             strip.extend([(key(Builtin::HubOpen), "new terminal there"), (key(Builtin::HubBack), escape_does(state)), (key(Builtin::HubToggleChanged), "hub")]);
@@ -934,6 +1036,7 @@ impl Workspace {
             }
             // the hub adds the worktree first (`add_worktree_from_hub`)
             Target::NewWorktreeTerminal { .. } => {}
+            Target::Hit { path, line } => self.open_document_at(&path, usize::try_from(line).ok(), window, cx),
         }
     }
 
@@ -1070,6 +1173,13 @@ impl Workspace {
             process.view.paste(&self.typed_for_process(&[std::path::PathBuf::from(path)], terminal));
         }
     }
+}
+
+/// A contents search to start: where, what, and its ticket.
+struct ContentSearch {
+    roots: Vec<Root>,
+    query: ContentQuery,
+    ticket: Ticket,
 }
 
 /// The rows of a worktree question in that worktree: `● open` for a file open there.

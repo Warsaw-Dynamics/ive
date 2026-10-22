@@ -1,9 +1,6 @@
 //! Find in files: the lines of files under some roots that match a query, off the UI thread, a newer search's
 //! ticket stopping an older one.
 
-// used once the hub has its content mode (plan task 14)
-#![allow(dead_code)]
-
 use std::fs::File;
 use std::io::Read as _;
 use std::ops::Range;
@@ -214,7 +211,7 @@ impl Shared {
 fn walker(root: &Root, search: &Search) -> WalkBuilder {
     let honour = search.ignored == Ignored::Skipped;
     let mut builder = WalkBuilder::new(&root.path);
-    builder.standard_filters(false).git_ignore(honour).ignore(honour).require_git(false).parents(honour && root.picked == Picked::Scope);
+    builder.standard_filters(false).git_ignore(honour).git_exclude(honour).ignore(honour).require_git(false).parents(honour && root.picked == Picked::Scope);
     let excluded: Vec<String> = if honour { search.excluded.names().to_vec() } else { Vec::new() };
     builder.filter_entry(move |entry| {
         let name = entry.file_name().to_string_lossy();

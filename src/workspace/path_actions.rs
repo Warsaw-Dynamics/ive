@@ -20,7 +20,7 @@ pub fn path_applies(builtin: Builtin, subject: &Subject) -> Option<Applies> {
     let paths = &subject.paths;
     let one = |accept: fn(&SubjectPath) -> bool| matches!(&paths[..], [only] if accept(only));
     let shown = match builtin {
-        Builtin::CopyFullPath | Builtin::CopyRelativePath | Builtin::CopyFileName => !paths.is_empty(),
+        Builtin::CopyFullPath | Builtin::CopyRelativePath | Builtin::CopyFileName | Builtin::FindInFiles => !paths.is_empty(),
         Builtin::OpenTerminalHere | Builtin::RevealInFileManager => one(|_| true),
         Builtin::OpenInNewWindow => one(|path| path.kind == PathKind::File),
         Builtin::OpenInBrowser => one(is_web_file),
@@ -77,6 +77,10 @@ impl Workspace {
             Builtin::OpenWithDefaultApp => subject.paths.iter().for_each(|path| os_open::start(vec![os_open::default_app(&path.path)])),
             Builtin::OpenInBrowser => os_open::start(vec![os_open::browser(&first.path)]),
             Builtin::OpenInNewWindow => self.open_in_new_window(&first.path, window, cx),
+            Builtin::FindInFiles => {
+                let paths = subject.paths.iter().map(|path| path.path.clone()).collect();
+                self.open_hub(Some(crate::hub::model::HubState { content: true, paths, ..Default::default() }), window, cx);
+            }
             _ => {}
         }
     }
