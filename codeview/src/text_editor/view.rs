@@ -296,6 +296,14 @@ impl TextEditor {
         self.set_committing(Committing::Failed(sent.clone(), reason), cx);
     }
 
+    /// The change sent to be committed is not, and the host shows why elsewhere: the popup stays as it is, with the
+    /// message, ready to send again.
+    pub fn change_not_committed(&mut self, cx: &mut Context<Self>) {
+        if self.committing.is_in_flight() {
+            self.set_committing(Committing::Idle, cx);
+        }
+    }
+
     /// The field takes typing unless the commit is in flight.
     fn set_committing(&mut self, committing: Committing, cx: &mut Context<Self>) {
         let state = if committing.is_in_flight() { FieldState::Busy } else { FieldState::Editable };

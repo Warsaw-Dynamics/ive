@@ -69,10 +69,23 @@ pub enum Cast {
     /// the answer to [`Event::CommitChange`]: nothing was committed, for the reason given (for the user); the popup
     /// shows it and keeps the message
     ChangeCommitFailed(String),
+    /// the answer to [`Event::CommitChange`] when committing went wrong in a way the user must see whatever HEAD does
+    /// next: a bar above the text says `report` until dismissed or a commit goes through; with [`CommitLeft::Commit`]
+    /// the popup closes as on [`Cast::ChangeCommitted`], with [`CommitLeft::Nothing`] it stays with the message
+    ChangeCommitTrouble { report: String, left: CommitLeft },
     /// a diff's: [`Editable::NewSide`] edits the new side once its text comes, asked for with
     /// [`TextPurpose::Editing`]; [`Editable::No`] makes it read-only, dropping the edited text and its history (the
     /// host sends it only while nothing is unsaved)
     SetEditable(Editable),
+}
+
+/// What a troubled commit left in the repository.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommitLeft {
+    /// a commit was made and stays
+    Commit,
+    /// nothing is committed
+    Nothing,
 }
 
 /// A diff's new side to edit, read for an ask with [`TextPurpose::Editing`].

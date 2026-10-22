@@ -435,6 +435,59 @@ fn should_show_why_a_commit_failed_and_close_once_one_is_done(cx: &mut TestAppCo
     assert_eq!(text_of(&panel, cx), "!one\nTWO\nthree\nfour\nfive\nsix\nseven\n", "the text has the keyboard again");
 }
 
+/// What the bar of a troubled commit says, if shown.
+fn commit_report(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Option<String> {
+    panel.read_with(cx, |panel, _| panel.commit_report().map(str::to_owned))
+}
+
+#[gpui::test]
+fn should_keep_the_report_of_a_commit_left_where_it_was_not_asked_for_until_dismissed(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix");
+    click("change-popup:commit", &seen, cx);
+
+    // when
+    cast(&panel, Cast::ChangeCommitTrouble { report: "commit c went on top of p".to_owned(), left: CommitLeft::Commit }, cx);
+    let moved = Source::from_vec(b"one\nTWO\nthree\nfour\nfive\nsix\nseven\n".to_vec());
+    cast(&panel, Cast::SetChangeBase { base: ChangeBase::Tracked { head: moved, head_id: "moved".to_owned() } }, cx);
+    land(&panel, &seen, cx);
+    let after_head_moved = (in_popup(&panel, cx), commit_state(&panel, cx), commit_report(&panel, cx));
+    click("commit-report-dismiss", &seen, cx);
+
+    // then
+    let shown = Some("commit c went on top of p".to_owned());
+    assert_eq!(after_head_moved, (None, (String::new(), None), shown), "the popup closes as on a commit; the report stays");
+    assert_eq!(commit_report(&panel, cx), None);
+}
+
+#[gpui::test]
+fn should_keep_the_report_of_a_commit_taken_off_again_until_one_goes_through(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix");
+    click("change-popup:commit", &seen, cx);
+
+    // when
+    cast(&panel, Cast::ChangeCommitTrouble { report: "taken off again".to_owned(), left: CommitLeft::Nothing }, cx);
+    draw(cx);
+    cx.simulate_input("!");
+    let taken_off = (in_popup(&panel, cx), commit_state(&panel, cx), commit_report(&panel, cx));
+    cx.simulate_keystrokes("enter");
+    cast(&panel, Cast::ChangeCommitted, cx);
+    draw(cx);
+
+    // then
+    let shown = Some("taken off again".to_owned());
+    assert_eq!(taken_off, (Some(hunk(1..2, 1..2)), ("fix!".to_owned(), None), shown), "the popup stays, the field takes typing");
+    assert_eq!(seen.borrow().commits.len(), 2);
+    assert_eq!(commit_report(&panel, cx), None, "a commit that goes through ends the report");
+}
+
 #[gpui::test]
 fn should_send_a_change_once_while_its_commit_is_in_flight_after_reopening(cx: &mut TestAppContext) {
     // given

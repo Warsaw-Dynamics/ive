@@ -3,6 +3,7 @@
 
 #[cfg(test)]
 mod change_popup_tests;
+mod commit_report;
 #[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
@@ -20,7 +21,7 @@ use gpui::{
 };
 
 pub use protocol::{
-    Cast, Content, DiffInput, DiffLayout, Edit, EditBase, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
+    Cast, CommitLeft, Content, DiffInput, DiffLayout, Edit, EditBase, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
     SaveFailure, SaveKind, SaveRequest, TextPurpose, TextsRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
@@ -35,6 +36,7 @@ use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
+use commit_report::CommitReport;
 use saving::{Answer, BarActions, Blur, Discarded, Next, Saving, Then};
 
 /// The pause after the last edit before the change markers are diffed again.
@@ -53,6 +55,8 @@ pub struct Panel {
     revision: u64,
     /// Edit mode's saves
     saving: Saving,
+    /// what went wrong while committing a change, while it must stay in sight
+    commit_report: CommitReport,
     blur: Blur,
     /// the pause after the last edit before the change markers are diffed again
     change_pause: Task<()>,
@@ -93,6 +97,7 @@ impl Panel {
             pending: Pending::Nothing,
             revision: 0,
             saving: Saving::new(Duration::ZERO, 0),
+            commit_report: CommitReport::Nothing,
             blur: Blur::Unwatched,
             change_pause: Task::ready(()),
             _body_events: Vec::new(),
@@ -127,8 +132,9 @@ impl Panel {
             Cast::SetBaseDiff { base, diff } => self.set_base_diff(&base, diff, cx),
             Cast::SetChangeBase { base } => self.set_change_base(base, cx),
             Cast::ChangeDiff { revision, hunks } => self.change_diffed(revision, hunks, cx),
-            Cast::ChangeCommitted => self.with_editor(cx, TextEditor::change_committed),
+            Cast::ChangeCommitted => self.change_committed(cx),
             Cast::ChangeCommitFailed(reason) => self.with_editor(cx, |editor, cx| editor.change_commit_failed(reason, cx)),
+            Cast::ChangeCommitTrouble { report, left } => self.change_commit_troubled(report, left, cx),
         }
         self.notice_state(cx);
         cx.notify();
@@ -371,6 +377,30 @@ impl Panel {
                 self.request_save(SaveKind::Checked, cx);
                 cx.emit(Event::OpenDiff { line: *line });
             }
+        }
+    }
+
+    /// A commit went through: the editor hears it, and the report of an earlier troubled one goes.
+    fn change_committed(&mut self, cx: &mut Context<Self>) {
+        self.commit_report = CommitReport::Nothing;
+        self.with_editor(cx, TextEditor::change_committed);
+    }
+
+    /// Committing went wrong in a way the bar keeps in sight; the editor hears whether a commit stays.
+    fn change_commit_troubled(&mut self, report: String, left: CommitLeft, cx: &mut Context<Self>) {
+        self.commit_report = CommitReport::Shown(report);
+        match left {
+            CommitLeft::Commit => self.with_editor(cx, TextEditor::change_committed),
+            CommitLeft::Nothing => self.with_editor(cx, TextEditor::change_not_committed),
+        }
+    }
+
+    /// What the bar of a troubled commit says, while shown.
+    #[cfg(test)]
+    pub(crate) fn commit_report(&self) -> Option<&str> {
+        match &self.commit_report {
+            CommitReport::Shown(report) => Some(report),
+            CommitReport::Nothing => None,
         }
     }
 
@@ -657,10 +687,18 @@ impl Panel {
             overwrite: Box::new(move |_window, cx| drop(other.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx)))),
             discard: Box::new(move |_window, cx| drop(last.update(cx, |panel, cx| panel.discard_edits(cx)))),
         };
-        let Some(bar) = saving::bar(&self.saving, actions, cx) else {
+        let dismissing = cx.weak_entity();
+        let dismiss = Box::new(move |_: &mut Window, cx: &mut App| drop(dismissing.update(cx, |panel, cx| panel.dismiss_commit_report(cx))));
+        let bars: Vec<_> = [commit_report::bar(&self.commit_report, dismiss, cx), saving::bar(&self.saving, actions, cx)].into_iter().flatten().collect();
+        if bars.is_empty() {
             return editor.into_any_element();
-        };
-        div().flex().flex_col().flex_1().min_h_0().child(bar).child(editor).into_any_element()
+        }
+        div().flex().flex_col().flex_1().min_h_0().children(bars).child(editor).into_any_element()
+    }
+
+    fn dismiss_commit_report(&mut self, cx: &mut Context<Self>) {
+        self.commit_report = CommitReport::Nothing;
+        cx.notify();
     }
 }
 

@@ -241,16 +241,7 @@ pub(super) struct BarActions {
 /// `save-reload` and `save-overwrite`, and while a close waits, `save-discard`.
 pub(super) fn bar(saving: &Saving, actions: BarActions, cx: &App) -> Option<Div> {
     let style = ViewStyle::drawing(cx);
-    let row = div()
-        .flex()
-        .flex_none()
-        .items_center()
-        .gap(px(style.editor_notice_padding_x))
-        .px(px(style.editor_notice_padding_x))
-        .py(px(style.editor_notice_padding_y))
-        .bg(rgb(style.hover))
-        .text_size(px(style.editor_notice_text_size))
-        .text_color(rgb(style.error));
+    let row = bar_row(style);
     let row = match saving.problem() {
         Problem::Nothing => return None,
         Problem::Failed(reason) => row.child(format!("not saved: {reason}")),
@@ -270,14 +261,28 @@ pub(super) fn bar(saving: &Saving, actions: BarActions, cx: &App) -> Option<Div>
     Some(row)
 }
 
-/// A button of the bar; `name` is its element id and its click target.
-struct Button {
-    name: &'static str,
-    label: &'static str,
-    action: Action,
+/// An empty bar above the text, saying something went wrong.
+pub(super) fn bar_row(style: &ViewStyle) -> Div {
+    div()
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(style.editor_notice_padding_x))
+        .px(px(style.editor_notice_padding_x))
+        .py(px(style.editor_notice_padding_y))
+        .bg(rgb(style.hover))
+        .text_size(px(style.editor_notice_text_size))
+        .text_color(rgb(style.error))
 }
 
-fn button(button: Button, style: &ViewStyle, cx: &App) -> Stateful<Div> {
+/// A button of the bar; `name` is its element id and its click target.
+pub(super) struct Button {
+    pub(super) name: &'static str,
+    pub(super) label: &'static str,
+    pub(super) action: Action,
+}
+
+pub(super) fn button(button: Button, style: &ViewStyle, cx: &App) -> Stateful<Div> {
     let Button { name, label, action } = button;
     let click = Host::click_target(name.to_owned(), move |_: &ClickEvent, window, cx| action(window, cx), cx);
     div()

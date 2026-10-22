@@ -55,14 +55,25 @@ Commits only this block, nothing else:
   `git hash-object -w --path=<path> --stdin` (clean filters run), a temporary index built from the HEAD checked
   (`GIT_INDEX_FILE`, `git read-tree <head_id>`), the one entry updated (`git update-index --cacheinfo`), then
   `git commit -m <message>` with that index (reflog action `commit (ive <run>)`, so IVE finds its commit in HEAD's
-  reflog). Afterwards the real index entry for the file is set to the file's entry in the new commit (as hooks left
-  it) only if it equalled the old HEAD blob (the file had nothing staged). The `GIT_DIR`-like variables IVE was
-  started with are not passed on.
+  reflog: the oldest entry that reads `commit (ive <run>): <the commit's first line>`, whitespace squeezed as git
+  does, and is not the HEAD checked; hooks inherit the action, and a pre-commit hook's `git reset` or `git checkout`
+  writes `commit (ive <run>): updating HEAD` or the like on the HEAD checked). HEAD keeping no reflog at all: HEAD and
+  its parent are taken. A reflog without IVE's entry: nothing is undone; HEAD is taken as IVE's commit only if it
+  holds the tree and subject committed, and either way a bar says the commit was made, and how to find it.
+  Afterwards the real index entry for the file is set to the file's entry in the new commit (as hooks left it) only
+  if it equalled the old HEAD blob (the file had nothing staged); not when the commit was not identified. The
+  variables IVE was started with that pick another repository or config are not passed on (`GIT_DIR`,
+  `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_COMMON_DIR`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_COUNT` and
+  `GIT_CONFIG_KEY_<n>`/`VALUE_<n>`, `GIT_NAMESPACE`, `GIT_CEILING_DIRECTORIES` and the like).
 - IVE's commits run one at a time (process-wide lock). HEAD is checked before, and the new commit's parent after:
   when another commit landed in between (git put ours on top of it), ours is taken off with a compare-and-swap
-  `git update-ref -m "ive: undo commit on moved HEAD" HEAD <parent> <ours>` and the commit is refused as HEAD
-  moved. Should that fail too (HEAD moved on again), the reason says so loudly: our commit, the commit it went on,
-  and `git reset --soft <parent>` to undo it while HEAD is still ours. The work tree is never touched.
+  `git update-ref -m "ive: undo commit on moved HEAD" HEAD <parent> <ours>`, and a bar says so (ours, the commit it
+  went on, nothing committed). Should that fail too (HEAD moved on again), the bar says so: our commit, the commit
+  it went on, `git reset --soft <parent>` to undo it while HEAD is still ours, `git revert <ours>` once another commit
+  is on top of it. The work tree is never touched.
+- These (taken off, not taken off, made but not identified) show in a bar above the file's text, apart from the
+  popup and whatever HEAD does next, until dismissed (✕, click target `commit-report-dismiss`) or a commit goes
+  through; a commit that stays closes the popup as a success does, one taken off leaves it open with the message.
 - Refused, with the reason shown in the popup: an empty message; the file has staged changes that differ from HEAD;
   a merge, rebase, cherry-pick or revert in progress; no HEAD (empty repository); a `filter` or
   `working-tree-encoding` attribute on the file (git's form of the text may differ from the one IVE compared); the
@@ -85,7 +96,8 @@ Commits only this block, nothing else:
   (`Event::NeedChangeDiff(job)` → IVE runs it → `Cast::ChangeDiff { revision, hunks }`), so the text never crosses
   to IVE. A diff library may be added to `codeview` (e.g. `imara-diff`, histogram) — builder's choice, pinned.
 - `Event::CommitChange { head_id, block: Range<usize> (base lines), text: Vec<u8>, message }` →
-  IVE answers `Cast::ChangeCommitted` or `Cast::ChangeCommitFailed(reason)`. No `path`: the host knows the panel's
+  IVE answers `Cast::ChangeCommitted`, `Cast::ChangeCommitFailed(reason)` (a refusal, in the popup) or
+  `Cast::ChangeCommitTrouble { report, left: CommitLeft::{Commit, Nothing} }` (the bar). No `path`: the host knows the panel's
   file. `text` is the whole file to commit (HEAD's text, from IVE, with only the block replaced), which
   `git hash-object` needs; of the edited text only the block's lines cross.
 - Rollback, copy, navigation and show-diff stay inside the panel (show diff as `Event::OpenDiff { path, line }`).

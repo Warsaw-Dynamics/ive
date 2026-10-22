@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use codeview::changes::ChangeBase;
 use codeview::document::{self, DocumentError, Reread, Stamp};
-use codeview::panel::{Cast, Content, EditPolicy, Edit, Editable, Event, Panel, Resolve, SaveFailure, SaveKind, SaveRequest};
+use codeview::panel::{Cast, CommitLeft, Content, EditPolicy, Edit, Editable, Event, Panel, Resolve, SaveFailure, SaveKind, SaveRequest};
 use gpui::{
     AnyElement, App, AppContext, Context, Div, Entity, EntityId, EventEmitter, Global, SharedString, Subscription, WeakEntity, div, prelude::*,
     rgb,
@@ -20,7 +20,7 @@ use gpui::{
 
 use crate::codeview_host;
 use crate::git;
-use crate::git::commit_block::{BlockCommit, Git, commit_block};
+use crate::git::commit_block::{BlockCommit, Git, Refusal, commit_block};
 use crate::git::diff::BaseRead;
 use crate::disk_text::{Disk, failure_note};
 use crate::document::Document;
@@ -98,6 +98,19 @@ impl FileTab {
             (None, None) => return self.panel.clone().into_any_element(),
         };
         div().flex().flex_col().flex_1().min_h_0().child(note).child(self.panel.clone()).into_any_element()
+    }
+}
+
+/// The panel's answer to a commit of one change: a refusal shows in the change's popup, trouble while committing in
+/// a bar that stays whatever HEAD does next.
+fn answer_to(committed: Result<(), Refusal>) -> Cast {
+    match committed {
+        Ok(()) => Cast::ChangeCommitted,
+        Err(refusal) if refusal.is_trouble() => {
+            let left = if refusal.left_a_commit() { CommitLeft::Commit } else { CommitLeft::Nothing };
+            Cast::ChangeCommitTrouble { report: refusal.to_string(), left }
+        }
+        Err(refusal) => Cast::ChangeCommitFailed(refusal.to_string()),
     }
 }
 
@@ -476,11 +489,7 @@ impl EditedFile {
         cx.spawn(async move |file, cx| {
             let committed = committing.await;
             file.update(cx, |file, cx| {
-                let answer = match committed {
-                    Ok(()) => Cast::ChangeCommitted,
-                    Err(refusal) => Cast::ChangeCommitFailed(refusal.to_string()),
-                };
-                file.answer(answer, cx);
+                file.answer(answer_to(committed), cx);
                 // HEAD moved with a commit, and may have with a refusal (another commit landed)
                 file.send_change_base(None, cx);
             })
@@ -730,6 +739,30 @@ mod tests {
         let panel = cx.new(Panel::new);
         let file = cx.new(|cx| EditedFile::new(opened, Shown { panel, shows: Shows::File }, cx));
         (dir, path, file)
+    }
+
+    #[test]
+    fn should_answer_trouble_while_committing_with_the_bar_and_a_refusal_in_the_popup() {
+        // given
+        let taken_off = Refusal::TakenOff { commit: "c".to_owned(), parent: "p".to_owned() };
+        let stranded = Refusal::UndoFailed { commit: "c".to_owned(), parent: "p".to_owned(), stderr: "locked".to_owned() };
+        let unconfirmed = Refusal::MadeUnconfirmed { commit: "c".to_owned() };
+
+        // when
+        let answers = [taken_off, stranded, unconfirmed, Refusal::MadeUnknown, Refusal::HeadMoved].map(|refusal| answer_to(Err(refusal)));
+
+        // then
+        let lefts: Vec<Option<CommitLeft>> = answers
+            .iter()
+            .map(|answer| match answer {
+                Cast::ChangeCommitTrouble { left, .. } => Some(*left),
+                _ => None,
+            })
+            .collect();
+        let (made, nothing) = (Some(CommitLeft::Commit), Some(CommitLeft::Nothing));
+        assert_eq!(lefts, [nothing, made, made, made, None]);
+        assert!(matches!(&answers[4], Cast::ChangeCommitFailed(_)), "a refusal before committing shows in the popup");
+        assert!(matches!(&answers[1], Cast::ChangeCommitTrouble { report, .. } if report.contains("git revert c")));
     }
 
     fn base_of(file: &Entity<EditedFile>, cx: &mut TestAppContext) -> Vec<u8> {

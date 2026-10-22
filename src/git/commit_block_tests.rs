@@ -253,7 +253,9 @@ fn should_undo_its_commit_when_another_lands_before_it() {
     let committed = repo.commit(&seen, "a\nB\nc\nd\n", "change b");
 
     // then
-    assert_eq!(committed, Err(Refusal::HeadMoved));
+    let Err(Refusal::TakenOff { commit, parent }) = &committed else { panic!("not taken off: {committed:?}") };
+    assert_eq!(parent, &repo.head());
+    assert!(committed.as_ref().unwrap_err().to_string().contains(commit.as_str()), "names the commit taken off");
     assert_eq!(log(&repo, "%s"), ["concurrent", "first"], "the other commit stays, ours goes");
     assert_eq!(repo.run(&["show", "HEAD:g"]), "concurrent\n");
     assert_eq!(repo.run(&["show", "HEAD:f"]), HEAD_TEXT);
@@ -283,7 +285,7 @@ fn should_say_how_to_undo_its_commit_when_head_moves_on_again() {
     let Err(Refusal::UndoFailed { commit, parent, .. }) = &committed else { panic!("not refused as stranded: {committed:?}") };
     assert_eq!((commit, parent), (ours, before));
     let said = committed.unwrap_err().to_string();
-    assert!(said.contains(ours.as_str()) && said.contains(&format!("git reset --soft {before}")), "says what happened and how to undo it: {said}");
+    assert!(said.contains(ours.as_str()) && said.contains(&format!("git reset --soft {before}")) && said.contains(&format!("git revert {ours}")), "says what happened and how to undo it: {said}");
 }
 
 #[test]
@@ -380,4 +382,112 @@ fn should_commit_in_a_linked_worktree_on_its_branch() {
     assert_eq!(repo.head(), head, "the main work tree's branch stays");
     assert_eq!(repo.run(&["status", "--porcelain"]), "");
     assert_eq!(repo.git.text(&place, Call::of(&["status", "--porcelain"]), "read the linked status").unwrap(), "", "the linked index follows");
+}
+
+/// Commits `g` on HEAD, so HEAD has a parent; HEAD's id.
+fn second_commit(repo: &Repo) -> String {
+    repo.write("g", "g\n");
+    repo.run(&["add", "g"]);
+    repo.run(&["commit", "-q", "-m", "second"]);
+    repo.head()
+}
+
+#[test]
+fn should_find_its_commit_when_a_pre_commit_hook_resets_head() {
+    // given
+    let Some(repo) = repo_with(HEAD_TEXT) else { return };
+    let before = second_commit(&repo);
+    hook(&repo, "pre-commit", "git reset -q --soft HEAD");
+    repo.write("f", "a\nB\nc\nd\n");
+
+    // when
+    let committed = commit_b(&repo);
+
+    // then
+    assert_eq!(committed, Ok(()));
+    assert_eq!(log(&repo, "%s %P")[..2], [format!("change b {before}"), format!("second {}", log(&repo, "%H")[2])]);
+    assert_eq!(repo.run(&["show", "HEAD:f"]), "a\nB\nc\nd\n");
+    assert_eq!(repo.run(&["status", "--porcelain"]), "", "the index follows the commit");
+}
+
+#[test]
+fn should_find_its_commit_when_a_pre_commit_hook_checks_out_the_branch() {
+    // given
+    let Some(repo) = repo_with(HEAD_TEXT) else { return };
+    let before = second_commit(&repo);
+    hook(&repo, "pre-commit", "git checkout -q main");
+    repo.write("f", "a\nB\nc\nd\n");
+
+    // when
+    let committed = commit_b(&repo);
+
+    // then
+    assert_eq!(committed, Ok(()));
+    assert_eq!(log(&repo, "%s %P")[0], format!("change b {before}"));
+    assert_eq!(repo.run(&["status", "--porcelain"]), "", "the index follows the commit");
+}
+
+#[test]
+fn should_find_its_commit_by_the_reflogs_first_line_of_a_message_with_odd_spacing() {
+    // given
+    let Some(repo) = repo_with(HEAD_TEXT) else { return };
+    let before = repo.head();
+
+    // when
+    let committed = repo.commit(&before, "a\nB\nc\nd\n", "\n  change \t  b \nwrapped\n\nbody\n");
+
+    // then
+    assert_eq!(committed, Ok(()));
+    assert_eq!(log(&repo, "%P")[0], before);
+}
+
+#[test]
+fn should_say_it_committed_head_when_the_reflog_lost_its_entry() {
+    // given
+    let Some(repo) = repo_with(HEAD_TEXT) else { return };
+    let before = repo.head();
+    hook(&repo, "post-commit", "git reflog delete HEAD@{0}");
+    repo.write("f", "a\nB\nc\nd\n");
+
+    // when
+    let committed = commit_b(&repo);
+
+    // then
+    let head = repo.head();
+    assert_eq!(committed, Err(Refusal::MadeUnconfirmed { commit: head.clone() }));
+    assert_eq!(log(&repo, "%s %P")[0], format!("change b {before}"), "nothing is undone");
+    assert_eq!(repo.run(&["status", "--porcelain"]), "", "the index follows the commit");
+    assert!(committed.unwrap_err().to_string().contains(&head));
+}
+
+#[test]
+fn should_undo_nothing_when_it_cannot_identify_its_commit() {
+    // given
+    let Some(repo) = repo_with(HEAD_TEXT) else { return };
+    let after = "git reflog delete HEAD@{0}\nunset GIT_INDEX_FILE\nGIT_REFLOG_ACTION=other git -c core.hooksPath=/dev/null commit -q --allow-empty -m after";
+    hook(&repo, "post-commit", after);
+
+    // when
+    let committed = commit_b(&repo);
+
+    // then
+    assert_eq!(committed, Err(Refusal::MadeUnknown));
+    assert_eq!(log(&repo, "%s"), ["after", "change b", "first"], "nothing is undone");
+    assert!(committed.unwrap_err().to_string().contains("git reflog"));
+}
+
+#[test]
+fn should_not_pass_on_config_or_repository_limits_ive_was_started_with() {
+    // given
+    let names = ["PATH", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_KEY_12", "GIT_CONFIG_GLOBAL"].map(str::to_owned);
+
+    // when
+    let removed = inherited(names.into_iter());
+
+    // then
+    let expected = ["GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT", "GIT_NAMESPACE", "GIT_CEILING_DIRECTORIES", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_KEY_12"];
+    for name in expected {
+        assert!(removed.iter().any(|removed| removed == name), "{name} is not removed: {removed:?}");
+    }
+    assert!(!removed.iter().any(|removed| removed == "PATH" || removed == "GIT_CONFIG_GLOBAL"), "{removed:?}");
 }
