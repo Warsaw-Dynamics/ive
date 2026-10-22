@@ -8,6 +8,7 @@ pub mod install;
 pub mod release;
 pub mod restart;
 pub mod staging;
+pub mod updater;
 
 /// The release this build is, `ive-<version>-<commit>`; set by the release workflow, absent in builds from source.
 pub const RELEASE_TAG: Option<&str> = option_env!("IVE_RELEASE_TAG");

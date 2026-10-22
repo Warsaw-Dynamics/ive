@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::install::Install;
 
-const STAGED_NAME: &str = "staged.toml";
+pub(super) const STAGED_NAME: &str = "staged.toml";
 const LOCK_NAME: &str = "lock";
 const RUNNING_DIR: &str = "running";
 /// `staged.toml` is a few lines; anything bigger is not ours.
