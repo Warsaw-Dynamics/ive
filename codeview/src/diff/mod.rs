@@ -236,6 +236,17 @@ impl DiffView {
         cx.notify();
     }
 
+    /// Scrolls the hunk showing new-side line `line` (from 1) of the first file to the top; see
+    /// [`FileDiff::hunk_at_new_line`].
+    pub fn reveal_hunk_at(&mut self, line: usize, cx: &mut Context<Self>) {
+        let Some(hunk) = self.files.first().and_then(|file| file.hunk_at_new_line(line)) else {
+            return;
+        };
+        if let Some(row) = self.rows.iter().position(|row| *row == DiffRow::Hunk { file: 0, hunk }) {
+            self.restore_scroll(ScrollPosition { top_line: row as f64, left: 0. }, cx);
+        }
+    }
+
     /// The collapsed files, by path.
     pub fn collapsed_paths(&self) -> Vec<String> {
         let mut paths: Vec<String> = self.collapsed.iter().map(|file| self.files[*file].path.display()).collect();

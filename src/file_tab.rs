@@ -407,14 +407,16 @@ impl EditedFile {
             Event::NeedChangeBase => self.send_change_base(None, cx),
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
-            // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged
+            // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged and opens the
+            // diff on OpenDiff
             Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)
             | Event::NeedParse(_)
             | Event::NeedTexts(_)
             | Event::NeedChangeDiff(_)
-            | Event::OpenAt { .. } => {}
+            | Event::OpenAt { .. }
+            | Event::OpenDiff { .. } => {}
         }
         self.notice_holding(cx);
     }

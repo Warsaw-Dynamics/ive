@@ -1,5 +1,6 @@
 //! A small multi-line plain-text editor.
 
+mod change_popup;
 mod colours;
 mod history;
 pub(crate) mod keys;

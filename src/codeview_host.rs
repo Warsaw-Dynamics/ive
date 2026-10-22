@@ -29,6 +29,7 @@ pub fn install(cx: &mut App) {
                 targets.register(name, listener);
             }
         }),
+        tooltip: Rc::new(|text, window, cx| crate::tooltip::text_tooltip(text)(window, cx)),
     });
 }
 

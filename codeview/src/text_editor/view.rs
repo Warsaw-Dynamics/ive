@@ -8,20 +8,21 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, App, Bounds, ClickEvent, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
     EntityInputHandler, EventEmitter, FocusHandle, Focusable, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, TextRun, UTF16Selection, Window, canvas, div,
-    fill, point, prelude::*, px, rgb, size,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, TextRun, UTF16Selection, WeakEntity, Window, canvas,
+    div, fill, point, prelude::*, px, rgb, size,
 };
 
+use super::change_popup::{Anchor, ChangePopup, Popup, PopupActions, popup_element};
 use super::colours::Colours;
 use super::keys::command;
 use super::layout::{Area, Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
-use crate::changes::{BaseChange, ChangeBase, ChangeDiffJob, ChangeHunk, ChangeHunks, ChangeMarkers, Marker};
+use crate::changes::{BaseChange, ChangeBase, ChangeDiffJob, ChangeHunk, ChangeHunks, ChangeMarkers, Marker, Toward};
 use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::line_view::{self, LineScroll, Metrics};
 use crate::panel::{Edit, LineSource, ParseJob};
 use crate::piece_table::{PieceTable, WrongBase};
-use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
+use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
@@ -40,6 +41,8 @@ pub enum TextEditorEvent {
     Edited,
     /// an edit was refused; the reason is for the user
     Refused(String),
+    /// the user asked for the file's diff at line `line` (from 1), from a change's popup
+    OpenDiff { line: usize },
 }
 
 /// What an editor is opened with: a scratch's size limit (files have none), and the language colouring the text.
@@ -52,6 +55,7 @@ pub struct TextEditor {
     model: EditorModel,
     colours: Colours,
     markers: ChangeMarkers,
+    popup: Popup,
     focus_handle: FocusHandle,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
@@ -75,6 +79,7 @@ impl TextEditor {
             model,
             colours: Colours::new(setup.language),
             markers: ChangeMarkers::new(),
+            popup: Popup::Closed,
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
             dragging: false,
@@ -99,6 +104,12 @@ impl TextEditor {
     pub fn caret_position(&self) -> CaretPosition {
         let caret = self.model.caret();
         CaretPosition { line: caret.line, column: caret.column }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn text(&self) -> String {
+        let table = self.model.table();
+        String::from_utf8_lossy(&table.bytes(0..table.byte_len())).into_owned()
     }
 
     pub fn scroll_position(&self) -> ScrollPosition {
@@ -129,13 +140,16 @@ impl TextEditor {
         self.model.set_caret(caret, Selecting::Move);
         self.colours = Colours::new(setup.language);
         self.markers.reset();
+        self.popup = Popup::Closed;
         cx.notify();
     }
 
     /// What the change markers compare the text with from now on; see [`ChangeMarkers::set_base`].
     pub fn set_change_base(&mut self, base: ChangeBase, cx: &mut Context<Self>) -> BaseChange {
         cx.notify();
-        self.markers.set_base(base)
+        let change = self.markers.set_base(base);
+        self.follow_changes();
+        change
     }
 
     /// The diff of the current text with the markers' base; see [`ChangeMarkers::job`].
@@ -146,6 +160,81 @@ impl TextEditor {
     /// A diff of the text at `revision` landed; see [`ChangeMarkers::landed`].
     pub fn change_diffed(&mut self, revision: u64, hunks: ChangeHunks, cx: &mut Context<Self>) {
         self.markers.landed(revision, hunks);
+        self.follow_changes();
+        cx.notify();
+    }
+
+    /// The popup stays on its change, wherever the markers put it, and closes when it is gone.
+    fn follow_changes(&mut self) {
+        self.popup = std::mem::replace(&mut self.popup, Popup::Closed).followed(&self.markers);
+    }
+
+    /// Opens the popup of the change whose marker starts on line `line` (from 0) and takes the keyboard.
+    pub fn open_change_popup(&mut self, line: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(hunk) = self.markers.starting_at(line) else {
+            return;
+        };
+        self.popup = Popup::Open(ChangePopup::of(hunk, &self.markers));
+        window.focus(&self.focus_handle, cx);
+        cx.notify();
+    }
+
+    pub fn close_change_popup(&mut self, cx: &mut Context<Self>) {
+        self.popup = Popup::Closed;
+        cx.notify();
+    }
+
+    /// The change the popup shows, in the current text's lines.
+    pub fn change_in_popup(&self) -> Option<&ChangeHunk> {
+        match &self.popup {
+            Popup::Open(popup) => Some(popup.block()),
+            Popup::Closed => None,
+        }
+    }
+
+    /// Moves the caret and the popup to the first line of the change before or after the one shown, going round
+    /// from the last change to the first.
+    pub fn step_change(&mut self, toward: Toward, cx: &mut Context<Self>) {
+        let Some(hunk) = self.change_in_popup().and_then(|shown| self.markers.beside(shown.current.start, toward)) else {
+            return;
+        };
+        let line = hunk.current.start;
+        self.popup = Popup::Open(ChangePopup::of(hunk, &self.markers));
+        self.model.set_caret(Position::new(line, 0), Selecting::Move);
+        self.reveal_caret = true;
+        cx.notify();
+    }
+
+    /// Replaces the lines of the change shown with the base's, as one edit (one undo step), and closes the popup.
+    pub fn roll_back_change(&mut self, cx: &mut Context<Self>) {
+        let Popup::Open(popup) = std::mem::replace(&mut self.popup, Popup::Closed) else {
+            return;
+        };
+        let block = popup.block().clone();
+        let text = self.markers.base_text(&block);
+        // the marker goes at once instead of moving onto the restored lines until the next diff lands
+        self.markers.drop_starting_at(block.current.start);
+        // a refused edit was already reported through TextEditorEvent::Refused
+        let _ = self.edit(|model| model.replace_lines(block.current.clone(), &text), cx);
+    }
+
+    /// Puts the previous text of the change shown on the clipboard; added lines have none.
+    pub fn copy_previous_text(&mut self, cx: &mut Context<Self>) {
+        let Popup::Open(popup) = &self.popup else {
+            return;
+        };
+        if popup.previous().is_empty() {
+            return;
+        }
+        Host::write_clipboard(ClipboardTarget::Clipboard, popup.previous().to_owned(), cx);
+    }
+
+    /// Asks for the file's diff at the change shown and closes the popup.
+    pub fn show_change_diff(&mut self, cx: &mut Context<Self>) {
+        let Popup::Open(popup) = std::mem::replace(&mut self.popup, Popup::Closed) else {
+            return;
+        };
+        cx.emit(TextEditorEvent::OpenDiff { line: popup.block().current.start + 1 });
         cx.notify();
     }
 
@@ -175,6 +264,7 @@ impl TextEditor {
         let result = edit(&mut self.model);
         let replacements = self.model.take_replacements();
         self.markers.edited(&replacements);
+        self.popup = std::mem::replace(&mut self.popup, Popup::Closed).edited(&replacements, &self.markers);
         self.colours.edited(self.model.revision(), replacements);
         match &result {
             Err(error) => cx.emit(TextEditorEvent::Refused(error.to_string())),
@@ -254,6 +344,13 @@ impl TextEditor {
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if let Popup::Open(_) = self.popup
+            && event.keystroke.key == "escape"
+            && !event.keystroke.modifiers.modified()
+        {
+            cx.stop_propagation();
+            return self.close_change_popup(cx);
+        }
         match Host::key_outcome(event, KeyScope::Editor, cx) {
             KeyOutcome::Command(command) => {
                 cx.stop_propagation();
@@ -365,9 +462,14 @@ impl Focusable for TextEditor {
 
 impl Render for TextEditor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // the keyboard went elsewhere
+        if !self.focus_handle.contains_focused(window, cx) {
+            self.popup = Popup::Closed;
+        }
         let style = ViewStyle::drawing(cx).clone();
         let metrics = Metrics::measure(window, cx, self.model.line_count());
         let frame = self.frame(metrics, style.clone(), window);
+        let popup = self.popup_element(&frame, cx);
         let (wheel, line_height) = (self.scroll.clone(), metrics.line_height);
         div()
             .id("text-editor")
@@ -384,10 +486,48 @@ impl Render for TextEditor {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_scroll_wheel(move |event, window, _cx| wheel.scroll_by_wheel(event, line_height, window))
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
-            .children(change_targets(&frame, cx))
+            .children(change_targets(&frame, cx.weak_entity(), cx))
             .child(text_canvas(frame, cx.entity()))
             .child(vertical_scrollbar(&self.scrollbars, &style))
             .child(horizontal_scrollbar(&self.scrollbars, &style))
+            .children(popup)
+    }
+}
+
+impl TextEditor {
+    /// The open popup under (or over) its change; `None` while closed.
+    fn popup_element(&self, frame: &Frame, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let Popup::Open(popup) = &self.popup else {
+            return None;
+        };
+        let (lines, metrics) = (&popup.block().current, frame.metrics);
+        let anchor = Anchor {
+            top: frame.line_top(px(0.), lines.start),
+            bottom: frame.line_top(px(0.), lines.end),
+            left: metrics.gutter_width(),
+            width: px(self.scroll.viewport_width() as f32),
+            height: metrics.line_height * self.scroll.viewport_lines() as f32,
+            line_height: metrics.line_height,
+            font_size: metrics.font_size,
+        };
+        Some(popup_element(popup, anchor, popup_actions(cx.weak_entity()), cx))
+    }
+}
+
+/// The popup's buttons, each running an editor method.
+fn popup_actions(editor: WeakEntity<TextEditor>) -> PopupActions {
+    let on = |run: fn(&mut TextEditor, &mut Context<TextEditor>)| -> ClickListener {
+        let editor = editor.clone();
+        Rc::new(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| drop(editor.update(cx, run)))
+    };
+    let closing = editor.clone();
+    PopupActions {
+        previous: on(|editor, cx| editor.step_change(Toward::Previous, cx)),
+        next: on(|editor, cx| editor.step_change(Toward::Next, cx)),
+        rollback: on(TextEditor::roll_back_change),
+        diff: on(TextEditor::show_change_diff),
+        copy: on(TextEditor::copy_previous_text),
+        close: Rc::new(move |_window: &mut Window, cx: &mut App| drop(closing.update(cx, TextEditor::close_change_popup))),
     }
 }
 
@@ -527,8 +667,8 @@ fn paint_triangle(at: Point<Pixels>, colour: gpui::Rgba, window: &mut Window) {
 }
 
 /// An element over each change marker shown, registered as click target `change-marker:<line>` (its first line,
-/// from 1), where the change popup will open.
-fn change_targets(frame: &Frame, cx: &App) -> Vec<AnyElement> {
+/// from 1), that opens the change's popup; the caret stays where it is.
+fn change_targets(frame: &Frame, editor: WeakEntity<TextEditor>, cx: &App) -> Vec<AnyElement> {
     let (line_height, x) = (frame.metrics.line_height, frame.marker_x(px(0.)) - frame.metrics.char_width / 4.);
     let width = px(CHANGE_BAR_WIDTH) + frame.metrics.char_width / 2.;
     let element = |hunk: &ChangeHunk| {
@@ -537,8 +677,20 @@ fn change_targets(frame: &Frame, cx: &App) -> Vec<AnyElement> {
             Marker::Deleted => (frame.line_top(px(0.), line) - px(DELETED_MARKER_HEIGHT / 2.), px(DELETED_MARKER_HEIGHT)),
             Marker::Added | Marker::Changed => (frame.line_top(px(0.), line), line_height * hunk.current.len() as f32),
         };
-        let click = Host::click_target(format!("change-marker:{}", line + 1), |_: &ClickEvent, _window, _cx| {}, cx);
-        div().id(("change-marker", line)).absolute().left(x).top(top).w(width).h(lines).cursor_pointer().on_click(click).into_any_element()
+        let editor = editor.clone();
+        let open = move |_: &ClickEvent, window: &mut Window, cx: &mut App| drop(editor.update(cx, |editor, cx| editor.open_change_popup(line, window, cx)));
+        let click = Host::click_target(format!("change-marker:{}", line + 1), open, cx);
+        div()
+            .id(("change-marker", line))
+            .absolute()
+            .left(x)
+            .top(top)
+            .w(width)
+            .h(lines)
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_click(click)
+            .into_any_element()
     };
     frame.changes.iter().map(element).collect()
 }

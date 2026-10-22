@@ -2,6 +2,8 @@
 //! answers, and hears its events; see the spec's "The interface: actor-style messages".
 
 #[cfg(test)]
+mod change_popup_tests;
+#[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
 mod edit_diff_tests;
@@ -357,6 +359,11 @@ impl Panel {
                 self.restart_change_pause(cx);
             }
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
+            TextEditorEvent::OpenDiff { line } => {
+                // the diff shows the file on disk: the edits go there first
+                self.request_save(SaveKind::Checked, cx);
+                cx.emit(Event::OpenDiff { line: *line });
+            }
         }
     }
 
@@ -522,7 +529,8 @@ impl Panel {
         match &self.body {
             Body::View(view) => view.update(cx, |view, cx| view.reveal_line(line, cx)),
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.reveal_line(line, cx)),
-            Body::Empty | Body::Diff(_) => {}
+            Body::Diff(diff) => diff.update(cx, |diff, cx| diff.reveal_hunk_at(line, cx)),
+            Body::Empty => {}
         }
     }
 

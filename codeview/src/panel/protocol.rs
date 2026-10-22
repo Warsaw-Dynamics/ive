@@ -51,7 +51,8 @@ pub enum Cast {
     Command(Command),
     /// types the text at the caret as the keyboard would, `\r` a line break; refused over the size limit
     Type(String),
-    /// scrolls line `line` (from 1) into view and marks it
+    /// scrolls line `line` (from 1) into view and marks it; a diff scrolls the hunk holding its first file's new-side
+    /// line `line` to the top
     RevealLine(usize),
     /// the file went away on disk; its text stays
     MarkDeleted,
@@ -155,6 +156,9 @@ pub enum Event {
     /// saved any more) and the host closes, or opens the text again where the tab stays
     DiscardRequested,
     OpenAt { path: PathBuf, line: usize },
+    /// the user asked for the edited file's uncommitted diff at its line `line` (from 1), from a change's popup; the
+    /// host knows the file. Unsaved edits were sent to be saved just before.
+    OpenDiff { line: usize },
     /// an edited text opened: the host answers [`Cast::SetChangeBase`] when it knows the file's base, and casts it
     /// again when HEAD moves
     NeedChangeBase,

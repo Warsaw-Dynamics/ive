@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use gpui::{AnyElement, App, ClickEvent, Global, KeyDownEvent, Window};
+use gpui::{AnyElement, AnyView, App, ClickEvent, Global, KeyDownEvent, SharedString, Window};
 
 use crate::diff::Mark;
 use crate::text_editor::{Motion, Selecting, Unit};
@@ -64,6 +64,7 @@ pub type PasteFn = Rc<dyn Fn(ClipboardTarget, &mut App) -> Option<String>>;
 pub type ClickListener = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
 pub type MarkFn = Rc<dyn Fn(Mark, &App) -> AnyElement>;
 pub type TargetFn = Rc<dyn Fn(String, ClickListener, &App)>;
+pub type TooltipFn = Rc<dyn Fn(SharedString, &mut Window, &mut App) -> AnyView>;
 
 /// The host's services, a gpui global. Without one, no key is bound and the clipboard does nothing.
 pub struct Host {
@@ -74,6 +75,8 @@ pub struct Host {
     pub diff_mark: MarkFn,
     /// registers a click handler under a name, so the host can click it by name (IVE's MCP `click`)
     pub click_target: TargetFn,
+    /// the host's tooltip showing a text
+    pub tooltip: TooltipFn,
 }
 
 impl Global for Host {}
@@ -100,6 +103,12 @@ impl Host {
     /// The host's drawing of `mark`; nothing without a host.
     pub fn diff_mark(mark: Mark, cx: &App) -> Option<AnyElement> {
         cx.try_global::<Host>().map(|host| (host.diff_mark.clone())(mark, cx))
+    }
+
+    /// The host's tooltip saying `text`, for `.tooltip(…)`; none without a host.
+    pub fn tooltip(text: &'static str, cx: &App) -> Option<impl Fn(&mut Window, &mut App) -> AnyView + 'static> {
+        let make = cx.try_global::<Host>()?.tooltip.clone();
+        Some(move |window: &mut Window, cx: &mut App| make(SharedString::from(text), window, cx))
     }
 
     /// Registers `listener` with the host as click target `name` and returns it, for `.on_click(…)`.

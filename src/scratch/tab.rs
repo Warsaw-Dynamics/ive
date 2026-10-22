@@ -290,7 +290,7 @@ impl ScratchView {
             // a scratch has no change markers: it gets no base to compare with
             Event::NeedChangeBase | Event::NeedChangeDiff(_) => return,
             // parsing is `codeview_host::serve`'s
-            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts(_) | Event::OpenAt { .. } => return,
+            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts(_) | Event::OpenAt { .. } | Event::OpenDiff { .. } => return,
         }
         cx.notify();
     }

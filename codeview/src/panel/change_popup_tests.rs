@@ -1,0 +1,215 @@
+//! The change popup of an edited text, driven through casts, click targets and keys as a host and a user would.
+
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::time::Duration;
+
+use gpui::{ClickEvent, Entity, Modifiers, TestAppContext, VisualTestContext, div, point};
+
+use super::*;
+use crate::changes::ChangeHunk;
+use crate::colors::{Overrides, ResolvedScheme, Scheme};
+use crate::document::TextSource;
+use crate::host::{ClickListener, Host, KeyOutcome};
+use crate::line_view::Metrics;
+use crate::style::{Appearance, ViewStyle};
+
+/// What the host saw: the click targets of the last frames by name, the clipboard, and the diffs asked for.
+#[derive(Default)]
+struct Seen {
+    targets: HashMap<String, ClickListener>,
+    copied: Vec<String>,
+    diffs: Vec<usize>,
+}
+
+/// A window showing only a panel that edits `text` against base `head`, with the markers' diff landed and drawn.
+fn editing<'a>(text: &str, head: &str, cx: &'a mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Seen>>, &'a mut VisualTestContext) {
+    let seen: Rc<RefCell<Seen>> = Rc::default();
+    cx.update(|cx| {
+        ViewStyle::set_for_test(cx);
+        cx.set_global(ResolvedScheme::resolve(Scheme::builtin(Appearance::Dark), &Overrides::new()));
+        cx.set_global(host(&seen));
+    });
+    let (panel, cx) = cx.add_window_view(|_window, cx| Panel::new(cx));
+    let jobs: Rc<RefCell<Vec<crate::changes::ChangeDiffJob>>> = Rc::default();
+    let (asked, heard) = (jobs.clone(), seen.clone());
+    cx.update(|_window, cx| {
+        cx.subscribe(&panel, move |_, event: &Event, _| match event {
+            Event::NeedChangeDiff(job) => asked.borrow_mut().push(job.clone()),
+            Event::OpenDiff { line } => heard.borrow_mut().diffs.push(*line),
+            _ => {}
+        })
+        .detach();
+    });
+    let policy = EditPolicy { save_delay: Duration::from_secs(10), limit: None };
+    let content = Content::Lines { source: Arc::new(TextSource::new(text)), language: None, edit: Some(policy) };
+    cast(&panel, Cast::Open(content), cx);
+    let head = Source::from_vec(head.as_bytes().to_vec());
+    cast(&panel, Cast::SetChangeBase { base: ChangeBase::Tracked { head, head_id: "head".to_owned() } }, cx);
+    let job = jobs.borrow().last().cloned().expect("a diff was asked for");
+    cast(&panel, Cast::ChangeDiff { revision: job.revision(), hunks: job.run() }, cx);
+    draw(cx);
+    (panel, seen, cx)
+}
+
+fn host(seen: &Rc<RefCell<Seen>>) -> Host {
+    let (targets, copied) = (seen.clone(), seen.clone());
+    Host {
+        keys: Rc::new(|_, _, _| KeyOutcome::Unbound),
+        clipboard: Rc::new(move |_, text, _| copied.borrow_mut().copied.push(text)),
+        paste: Rc::new(|_, _| None),
+        diff_mark: Rc::new(|_, _| div().into_any_element()),
+        click_target: Rc::new(move |name, listener, _| drop(targets.borrow_mut().targets.insert(name, listener))),
+        tooltip: Rc::new(|_, _, cx| cx.new(|_| gpui::EmptyView).into()),
+    }
+}
+
+fn cast(panel: &Entity<Panel>, cast: Cast, cx: &mut VisualTestContext) {
+    panel.update(cx, |panel, cx| panel.handle(cast, cx));
+}
+
+/// Draws the window's next frame; it registers the click targets shown.
+fn draw(cx: &mut VisualTestContext) {
+    cx.update(|window, _| window.refresh());
+    cx.run_until_parked();
+}
+
+/// Clicks target `name` as IVE's MCP `click` does, then draws the next frame.
+fn click(name: &str, seen: &RefCell<Seen>, cx: &mut VisualTestContext) {
+    seen.borrow_mut().targets.clear();
+    draw(cx);
+    let listener = seen.borrow().targets.get(name).cloned().unwrap_or_else(|| panic!("no click target {name}"));
+    cx.update(|window, cx| listener(&ClickEvent::default(), window, cx));
+    draw(cx);
+}
+
+fn editor_of(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Entity<TextEditor> {
+    let Body::Edit(editor) = panel.read_with(cx, |panel, _| panel.body.clone()) else { panic!("not an editor") };
+    editor
+}
+
+/// The change the popup shows, if open.
+fn in_popup(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Option<ChangeHunk> {
+    editor_of(panel, cx).read_with(cx, |editor, _| editor.change_in_popup().cloned())
+}
+
+fn text_of(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> String {
+    editor_of(panel, cx).read_with(cx, |editor, _| editor.text())
+}
+
+fn caret_line(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> usize {
+    editor_of(panel, cx).read_with(cx, |editor, _| editor.caret_position().line)
+}
+
+fn hunk(base: std::ops::Range<usize>, current: std::ops::Range<usize>) -> ChangeHunk {
+    ChangeHunk { base, current }
+}
+
+const HEAD: &str = "one\ntwo\nthree\nfour\nfive\nsix\nseven\n";
+
+#[gpui::test]
+fn should_open_the_popup_for_the_clicked_marker(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    let before = in_popup(&panel, cx);
+
+    let metrics = cx.update(|window, cx| Metrics::measure(window, cx, 8));
+    let on_marker = point(metrics.gutter_width() - metrics.char_width / 2., metrics.line_height * 1.5);
+
+    // when
+    cx.simulate_click(on_marker, Modifiers::default());
+    draw(cx);
+
+    // then
+    assert_eq!((before, in_popup(&panel, cx)), (None, Some(hunk(1..2, 1..2))));
+    assert_eq!(caret_line(&panel, cx), 0, "the click does not move the caret");
+    let targets = &seen.borrow().targets;
+    assert!(["prev", "next", "rollback", "diff", "copy"].iter().all(|name| targets.contains_key(&format!("change-popup:{name}"))));
+}
+
+#[gpui::test]
+fn should_roll_back_a_block_as_one_undoable_edit(cx: &mut TestAppContext) {
+    // given
+    let edited = "one\nTWO\nTHREE\nextra\nfour\nfive\nsix\nseven\n";
+    let (panel, seen, cx) = editing(edited, HEAD, cx);
+    click("change-marker:2", &seen, cx);
+
+    // when
+    click("change-popup:rollback", &seen, cx);
+    let rolled_back = text_of(&panel, cx);
+    cast(&panel, Cast::Command(Command::Undo), cx);
+
+    // then
+    assert_eq!(rolled_back, HEAD);
+    assert_eq!(in_popup(&panel, cx), None);
+    assert_eq!(text_of(&panel, cx), edited, "one undo brings the change back");
+    assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)), "the rollback is saved as an edit is");
+}
+
+#[gpui::test]
+fn should_copy_the_previous_text(cx: &mut TestAppContext) {
+    // given
+    let (_panel, seen, cx) = editing("one\nTWO\nTHREE\nfour\nfive\nsix\nseven\nadded\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+
+    // when
+    click("change-popup:copy", &seen, cx);
+    click("change-marker:8", &seen, cx);
+    click("change-popup:copy", &seen, cx);
+
+    // then
+    assert_eq!(seen.borrow().copied, ["two\nthree\n"], "added lines have no previous text");
+}
+
+#[gpui::test]
+fn should_move_to_the_next_and_previous_change(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfive\nsix\nSEVEN\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    let mut visited = Vec::new();
+
+    // when
+    for name in ["next", "next", "next", "prev"] {
+        click(&format!("change-popup:{name}"), &seen, cx);
+        visited.push((in_popup(&panel, cx).map(|shown| shown.current), caret_line(&panel, cx)));
+    }
+
+    // then
+    assert_eq!(visited, [(Some(3..3), 3), (Some(5..6), 5), (Some(1..2), 1), (Some(5..6), 5)], "round from the last to the first");
+}
+
+#[gpui::test]
+fn should_close_the_popup_on_escape_and_on_an_edit_elsewhere(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+
+    // when
+    cx.simulate_keystrokes("escape");
+    let after_escape = in_popup(&panel, cx);
+    click("change-marker:2", &seen, cx);
+    cast(&panel, Cast::RevealLine(2), cx);
+    cast(&panel, Cast::Type("!".to_owned()), cx);
+    let after_typing_inside = in_popup(&panel, cx);
+    cast(&panel, Cast::RevealLine(4), cx);
+    cast(&panel, Cast::Type("!".to_owned()), cx);
+
+    // then
+    assert_eq!(after_escape, None);
+    assert_eq!(after_typing_inside, Some(hunk(1..2, 1..2)));
+    assert_eq!(in_popup(&panel, cx), None);
+}
+
+#[gpui::test]
+fn should_ask_for_the_diff_at_the_change(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\ntwo\nthree\nfour\nFIVE\nsix\nseven\n", HEAD, cx);
+    click("change-marker:5", &seen, cx);
+
+    // when
+    click("change-popup:diff", &seen, cx);
+
+    // then
+    assert_eq!((seen.borrow().diffs.clone(), in_popup(&panel, cx)), (vec![5], None));
+}

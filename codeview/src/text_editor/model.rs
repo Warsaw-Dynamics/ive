@@ -35,6 +35,13 @@ struct Removal {
     inserted: Vec<u8>,
 }
 
+/// Bytes `bytes` of the text become `inserted`, joining the undo history as `kind` says.
+struct Replacement {
+    bytes: Range<u64>,
+    inserted: Vec<u8>,
+    kind: EditKind,
+}
+
 /// A place in the text: a line, and a column counted in characters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Position {
@@ -464,18 +471,36 @@ impl EditorModel {
         }
     }
 
-    /// Every edit goes through here: size limit, piece table, history, caret.
     fn replace(&mut self, range: Range<Position>, text: &str, kind: EditKind) -> Result<(), EditError> {
         if range.is_empty() && text.is_empty() {
             return Ok(());
         }
         let bytes = self.byte_at(range.start)..self.byte_at(range.end);
-        let (removed, inserted) = (self.removed(bytes.clone()), self.stored_form(range.start.line, text));
+        let inserted = self.stored_form(range.start.line, text);
+        self.replace_bytes(Replacement { bytes, inserted, kind }, end_of(range.start, text))
+    }
+
+    /// Replaces lines `lines` with `text`, whole lines as stored (line breaks included), as one undo step; the caret
+    /// goes to the start of the first.
+    pub fn replace_lines(&mut self, lines: Range<usize>, text: &[u8]) -> Result<(), EditError> {
+        let end = if lines.end < self.line_count() { self.table.line_start(lines.end) } else { self.table.byte_len() };
+        let bytes = self.table.line_start(lines.start)..end;
+        if bytes.is_empty() && text.is_empty() {
+            return Ok(());
+        }
+        let caret = Position::new(lines.start.min(self.line_count() - 1), 0);
+        self.replace_bytes(Replacement { bytes, inserted: text.to_vec(), kind: EditKind::Other }, caret)
+    }
+
+    /// Every edit goes through here: size limit, piece table, history; the caret goes to `caret`.
+    fn replace_bytes(&mut self, replacement: Replacement, caret: Position) -> Result<(), EditError> {
+        let Replacement { bytes, inserted, kind } = replacement;
+        let removed = self.removed(bytes.clone());
         self.check_size(&removed, &inserted)?;
         let before = self.cursor();
         let replaced = self.table.replace(bytes.clone(), &inserted);
         self.replacements.push(replaced);
-        self.caret = end_of(range.start, text);
+        self.caret = caret;
         self.anchor = None;
         self.goal_column = None;
         self.marked = None;

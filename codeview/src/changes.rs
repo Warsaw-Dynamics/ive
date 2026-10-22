@@ -225,6 +225,39 @@ impl ChangeMarkers {
         })
     }
 
+    /// The change whose marker starts on line `line`.
+    pub(crate) fn starting_at(&self, line: usize) -> Option<&ChangeHunk> {
+        self.hunks.iter().find(|hunk| hunk.current.start == line)
+    }
+
+    /// The change that shares lines with `block`, or touches it where either has none: where a change went after an
+    /// edit or a new diff.
+    pub(crate) fn meeting(&self, block: &Range<usize>) -> Option<&ChangeHunk> {
+        self.hunks.iter().find(|hunk| meets(&hunk.current, block))
+    }
+
+    /// The change before or after the one starting on line `line`, going round from the last to the first.
+    pub(crate) fn beside(&self, line: usize, toward: Toward) -> Option<&ChangeHunk> {
+        match toward {
+            Toward::Next => self.hunks.iter().find(|hunk| hunk.current.start > line).or(self.hunks.first()),
+            Toward::Previous => self.hunks.iter().rev().find(|hunk| hunk.current.start < line).or(self.hunks.last()),
+        }
+    }
+
+    /// The base's lines `hunk.base`, line breaks included; empty without a base.
+    pub(crate) fn base_text(&self, hunk: &ChangeHunk) -> Vec<u8> {
+        let Base::Tracked { head, .. } = &self.base else {
+            return Vec::new();
+        };
+        let text = head.as_bytes();
+        text[line_offset(text, hunk.base.start)..line_offset(text, hunk.base.end)].to_vec()
+    }
+
+    /// Forgets the change starting on line `line`, until the next diff: it was rolled back.
+    pub(crate) fn drop_starting_at(&mut self, line: usize) {
+        self.hunks.retain(|hunk| hunk.current.start != line);
+    }
+
     fn is_diffing(&self) -> bool {
         matches!(self.flight, Flight::Diffing { .. })
     }
@@ -239,9 +272,32 @@ impl ChangeMarkers {
     }
 }
 
+/// Which way to go from a change to the next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Toward {
+    Previous,
+    Next,
+}
+
+/// Whether line ranges `a` and `b` share a line, or touch where one of them is empty.
+fn meets(a: &Range<usize>, b: &Range<usize>) -> bool {
+    if a.is_empty() || b.is_empty() {
+        return a.start <= b.end && b.start <= a.end;
+    }
+    a.start < b.end && b.start < a.end
+}
+
+/// Where line `line` starts in `text`; past the last line, its end.
+fn line_offset(text: &[u8], line: usize) -> usize {
+    let Some(before) = line.checked_sub(1) else {
+        return 0;
+    };
+    text.iter().enumerate().filter(|(_, byte)| **byte == b'\n').nth(before).map_or(text.len(), |(at, _)| at + 1)
+}
+
 /// `hunk` of the text before `edit` in the text after it: lines past the edit move by the lines it added or removed,
 /// and an end inside the lines it touched moves to the end of the lines it left there.
-fn shifted(hunk: &ChangeHunk, edit: &InputEdit) -> ChangeHunk {
+pub(crate) fn shifted(hunk: &ChangeHunk, edit: &InputEdit) -> ChangeHunk {
     let lines = EditLines::of(edit);
     let start = lines.start_after(hunk.current.start);
     let end = match hunk.current.end.checked_sub(1) {

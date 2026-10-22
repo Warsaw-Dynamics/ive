@@ -91,6 +91,16 @@ impl FileDiff {
             DiffBody::Binary | DiffBody::TooLarge => 0,
         }
     }
+
+    /// The hunk showing new-side line `line` (from 1), else the last one starting before it.
+    pub fn hunk_at_new_line(&self, line: usize) -> Option<usize> {
+        let DiffBody::Text { hunks, .. } = &self.body else {
+            return None;
+        };
+        let first_new = |hunk: &Hunk| hunk.lines.iter().find_map(|diff_line| diff_line.new).map_or(usize::MAX, |new| new as usize);
+        let holding = hunks.iter().position(|hunk| hunk.lines.iter().any(|diff_line| diff_line.new == Some(line as u32)));
+        holding.or_else(|| hunks.iter().rposition(|hunk| first_new(hunk) <= line))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,6 +157,21 @@ mod tests {
             ("README.md".to_owned(), String::new(), false),
             ("nested".to_owned(), ".claude/worktrees".to_owned(), true),
         ]);
+    }
+
+    #[test]
+    fn should_find_the_hunk_showing_a_new_line() {
+        // given
+        let line = |old, new| DiffLine { kind: LineKind::Context, old, new, text: String::new() };
+        let hunk = |lines| Hunk { header: "@@ @@".to_owned(), lines };
+        let hunks = vec![hunk(vec![line(Some(1), Some(1)), line(Some(2), None)]), hunk(vec![line(Some(9), Some(8)), line(None, Some(9))])];
+        let file = FileDiff { path: GitPath::from_bytes(b"a"), old_path: None, mark: Mark::Modified, body: DiffBody::Text { hunks, cut: None } };
+
+        // when
+        let found = [1, 5, 9, 0].map(|new| file.hunk_at_new_line(new));
+
+        // then
+        assert_eq!(found, [Some(0), Some(0), Some(1), None]);
     }
 
     #[test]

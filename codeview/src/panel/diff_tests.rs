@@ -223,6 +223,7 @@ fn clipboard(cx: &mut VisualTestContext) -> Rc<RefCell<Vec<String>>> {
             paste: Rc::new(|_, _| None),
             diff_mark: Rc::new(|_, _| div().into_any_element()),
             click_target: Rc::new(|_, _, _| {}),
+            tooltip: Rc::new(|_, _, cx| cx.new(|_| gpui::EmptyView).into()),
         });
     });
     copied
