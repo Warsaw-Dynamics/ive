@@ -236,6 +236,12 @@ enum NewSide {
     Edited { file: Entity<EditedFile>, _changes: Subscription },
 }
 
+/// The key that undoes an edit, as the note of an edited diff with no changes left names it.
+#[cfg(target_os = "macos")]
+const UNDO_KEY: &str = "Cmd+Z";
+#[cfg(not(target_os = "macos"))]
+const UNDO_KEY: &str = "Ctrl+Z";
+
 /// What the panel saves with until it knows the file's size.
 const FIRST_POLICY: EditPolicy = EditPolicy { save_delay: file_write::SMALL_FILE_SAVE_DELAY, limit: None };
 
@@ -467,7 +473,11 @@ impl Render for DiffTabBody {
             .children(self.edit_note(cx).map(|note| div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(note)))
             .child(layout_switch(&self.panel, theme, cx))
             .child(toggle_button("reload-diff", icons::HISTORY, "Reload", theme).on_click(reload));
-        div().flex().flex_col().flex_1().min_h_0().child(header).child(self.panel.clone())
+        let no_changes = self.no_changes_note(cx).map(|note| {
+            let padding = (theme.sizes.git.diff_header_padding_x.px(), theme.sizes.git.diff_header_padding_y.px());
+            div().flex_none().px(padding.0).py(padding.1).child(muted(note, theme))
+        });
+        div().flex().flex_col().flex_1().min_h_0().child(header).children(no_changes).child(self.panel.clone())
     }
 }
 
@@ -480,6 +490,16 @@ impl DiffTabBody {
             NewSide::Unreadable(reason) => Some(format!("read-only: {reason}").into()),
             NewSide::ReadOnly | NewSide::Unread => None,
         }
+    }
+
+    /// The note in the body of an edited diff with no changes left: how to get them back.
+    fn no_changes_note(&self, cx: &App) -> Option<String> {
+        let panel = self.panel.read(cx);
+        let rows = match panel.diff_file(0, cx).map(|file| &file.body) {
+            Some(DiffBody::Text { hunks, .. }) => hunks.len(),
+            Some(DiffBody::Binary | DiffBody::TooLarge) | None => return None,
+        };
+        (panel.edits_new_side(cx) && rows == 0).then(|| format!("No changes; {UNDO_KEY} to undo"))
     }
 
     /// The note in the header saying why the new side is read-only, if it is.
@@ -856,6 +876,28 @@ mod editing_tests {
         assert_eq!(gone, Vec::<String>::new());
         assert_eq!(shown, ["one", "TWO", "three"]);
         assert_eq!(on_disk(&repo), "one\nxTWO\nthree\n");
+    }
+
+    #[gpui::test]
+    fn should_say_how_to_undo_in_an_edited_diff_with_no_changes_left(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        let changed = tab.body.read_with(cx, |body, cx| body.no_changes_note(cx));
+
+        // when
+        // the caret starts on "TWO": typing "two" over it leaves no change
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Delete(codeview::text_editor::Unit::Word)), cx));
+        type_and_save(&panel, "two", cx);
+
+        // then
+        assert_eq!(changed, None);
+        let note = tab.body.read_with(cx, |body, cx| body.no_changes_note(cx)).unwrap_or_default();
+        assert!(note.starts_with("No changes;") && note.ends_with("+Z to undo"), "{note}");
     }
 
     #[gpui::test]
