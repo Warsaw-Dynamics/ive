@@ -742,6 +742,11 @@ impl Workspace {
         self.schedule_save(cx);
     }
 
+    fn picker_title(&self) -> sidebar_view::PickerTitle {
+        let shown: Vec<&str> = crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.name.as_str()).collect();
+        sidebar_view::picker_title(&shown, self.projects.len())
+    }
+
     /// What the picker's menu lists: the open projects in tree order, whether each shows, their live processes.
     fn projects_menu(&self) -> sidebar_view::ProjectsMenu {
         let shown = self.shown_projects();
@@ -927,7 +932,8 @@ impl Render for Workspace {
                 recent: &self.recent,
                 menu: self.header_menu,
                 folders: (self.header_menu == Some(sidebar_view::HeaderMenu::Folders)).then(|| self.folders_menu(cx)),
-                projects: self.projects_menu(),
+                picker: self.picker_title(),
+                projects: (self.header_menu == Some(sidebar_view::HeaderMenu::Projects)).then(|| self.projects_menu()),
                 drag: &self.window_drag,
                 width,
                 resizing: self.sidebar_resize.is_some(),

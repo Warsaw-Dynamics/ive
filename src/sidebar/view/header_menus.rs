@@ -76,27 +76,29 @@ impl ProjectsMenu {
     fn all_shown(&self) -> bool {
         self.projects.iter().all(|project| project.shown)
     }
+}
 
-    /// The header's title: `All projects`, the one shown, or `2 of 4 projects`.
-    fn title(&self) -> String {
-        let shown: Vec<&PickedProject> = self.projects.iter().filter(|project| project.shown).collect();
-        match shown.as_slice() {
-            _ if self.all_shown() => "All projects".to_owned(),
-            [one] => one.name.clone(),
-            many => format!("{} of {} projects", many.len(), self.projects.len()),
-        }
+/// The header's title, drawn on every frame (the menu is built only while open): `All projects`, the one project
+/// shown with its initials, or `2 of 4 projects`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerTitle {
+    pub text: String,
+    pub badge: Option<String>,
+}
+
+/// The title for the projects `shown`, by name, of `open` open projects.
+pub fn picker_title(shown: &[&str], open: usize) -> PickerTitle {
+    match shown {
+        _ if shown.len() == open => PickerTitle { text: "All projects".to_owned(), badge: None },
+        [one] => PickerTitle { text: (*one).to_owned(), badge: Some(initials(one)) },
+        many => PickerTitle { text: format!("{} of {open} projects", many.len()), badge: None },
     }
 }
 
 /// The header's title: `All projects ▾`, the one project shown with its badge, or `2 of 4 projects ▾`; a click opens
 /// the picker.
-pub(super) fn picker_button(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(super) fn picker_button(title: &PickerTitle, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
-    let shown: Vec<&PickedProject> = menu.projects.iter().filter(|project| project.shown).collect();
-    let one = match shown.as_slice() {
-        [one] if !menu.all_shown() => Some(*one),
-        _ => None,
-    };
     let open = target("project-picker".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(super::HeaderMenu::Projects, window, cx)), cx);
     header_button_press(div().id("project-picker"), cx)
         .flex()
@@ -109,8 +111,8 @@ pub(super) fn picker_button(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<
         .hover(|style| style.bg(rgb(theme.hover)))
         .text_size(sizes.header_title_size.px())
         .font_weight(sizes.header_title_weight.font_weight())
-        .children(one.map(|project| badge(&initials(&project.name), theme.accent, theme.on_accent, theme)))
-        .child(div().overflow_hidden().text_ellipsis().whitespace_nowrap().child(menu.title()))
+        .children(title.badge.as_ref().map(|initials| badge(initials, theme.accent, theme.on_accent, theme)))
+        .child(div().overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.text.clone()))
         .child(icon(theme, icons::CHEVRON_DOWN))
         .tooltip(tooltip::text_tooltip("Show all projects, or one"))
         .on_click(open)
@@ -208,6 +210,22 @@ mod tests {
 
     fn bound(key: &str, builtin: Builtin) -> Binding {
         Binding { trigger: Trigger::Key(Keystroke::parse(key).unwrap()), scope: Scope::Window, action: Action::Builtin(builtin) }
+    }
+
+    #[test]
+    fn should_title_the_picker_by_the_projects_shown() {
+        // given
+        let shown = [vec!["ive", "notes", "third"], vec!["notes"], vec!["ive", "third"]];
+
+        // when
+        let titles = shown.map(|names| picker_title(&names, 3));
+
+        // then
+        assert_eq!(titles, [
+            PickerTitle { text: "All projects".to_owned(), badge: None },
+            PickerTitle { text: "notes".to_owned(), badge: Some("N".to_owned()) },
+            PickerTitle { text: "2 of 3 projects".to_owned(), badge: None },
+        ]);
     }
 
     #[test]

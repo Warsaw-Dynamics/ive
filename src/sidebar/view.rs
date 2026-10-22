@@ -67,7 +67,7 @@ impl Tree {
     }
 }
 
-pub use header_menus::{FoldersMenu, PickedProject, ProjectsMenu, menu_keys};
+pub use header_menus::{FoldersMenu, PickedProject, PickerTitle, ProjectsMenu, menu_keys, picker_title};
 
 /// The header's menus; one is open at a time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -84,8 +84,10 @@ pub struct Sidebar<'a> {
     pub menu: Option<HeaderMenu>,
     /// while the folders menu is open
     pub folders: Option<FoldersMenu>,
-    /// the title's picker and its menu
-    pub projects: ProjectsMenu,
+    /// the title's picker
+    pub picker: PickerTitle,
+    /// while the picker's menu is open
+    pub projects: Option<ProjectsMenu>,
     pub drag: &'a WindowDrag,
     pub width: f32,
     pub resizing: bool,
@@ -177,7 +179,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         .tooltip(tooltip::text_tooltip("Folders in every worktree"))
         .on_click(target("folders-menu".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(HeaderMenu::Folders, window, cx)), cx));
     let folders_menu = sidebar.folders.as_ref().map(|menu| deferred(header_menus::folders_menu(menu, theme, cx)).with_priority(1));
-    let projects_menu = (sidebar.menu == Some(HeaderMenu::Projects)).then(|| deferred(header_menus::projects_menu(&sidebar.projects, theme, cx)).with_priority(1));
+    let projects_menu = sidebar.projects.as_ref().map(|menu| deferred(header_menus::projects_menu(menu, theme, cx)).with_priority(1));
     sidebar
         .drag
         .apply(div().id("sidebar-header"))
@@ -192,7 +194,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         .border_b(sizes.border.px())
         .border_color(rgb(theme.border))
         .window_control_area(WindowControlArea::Drag)
-        .child(header_menus::picker_button(&sidebar.projects, theme, cx))
+        .child(header_menus::picker_button(&sidebar.picker, theme, cx))
         .child(
             div()
                 .flex()
