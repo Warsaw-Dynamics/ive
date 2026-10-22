@@ -22,6 +22,8 @@ pub enum DiffSource {
     Uncommitted,
     Since { base: BaseBranch, fork: Sha, uncommitted: Uncommitted },
     Commit { sha: Sha, subject: String },
+    /// Compare Files: `left` → `right`, two files anywhere
+    Files { left: PathBuf, right: PathBuf },
 }
 
 /// Everything needed to read one file's diff again.
@@ -43,6 +45,7 @@ impl DiffRequest {
                 uncommitted: if *with_uncommitted { Uncommitted::Included } else { Uncommitted::Excluded },
             },
             SavedDiffSource::Commit { sha, subject } => DiffSource::Commit { sha: Sha::parse(sha)?, subject: subject.clone() },
+            SavedDiffSource::Files { left, right } => DiffSource::Files { left: left.clone(), right: right.clone() },
         };
         let file = FilePaths { path: GitPath::from_bytes(&saved.path), old_path: saved.old_path.as_deref().map(GitPath::from_bytes) };
         Some(Self { dir: saved.dir.clone(), file, source })
@@ -59,6 +62,7 @@ impl DiffRequest {
                 with_uncommitted: *uncommitted == Uncommitted::Included,
             },
             DiffSource::Commit { sha, subject } => SavedDiffSource::Commit { sha: sha.as_str().to_owned(), subject: subject.clone() },
+            DiffSource::Files { left, right } => SavedDiffSource::Files { left: left.clone(), right: right.clone() },
         };
         SavedDiffRequest {
             dir: self.dir.clone(),
@@ -76,6 +80,7 @@ impl DiffRequest {
                 diff::since_file(&self.dir, &SinceRange { fork: fork.clone(), uncommitted: *uncommitted }, &self.file)
             }
             DiffSource::Commit { sha, .. } => diff::commit_file(&self.dir, sha, &self.file),
+            DiffSource::Files { left, right } => diff::two_files(left, right).map(Some),
         }
     }
 
@@ -116,6 +121,7 @@ pub fn source_text(source: &DiffSource, label: &str) -> String {
         DiffSource::Since { base, uncommitted: Uncommitted::Excluded, .. } => format!("{} … {label}", base.name),
         DiffSource::Since { base, uncommitted: Uncommitted::Included, .. } => format!("{} … {label} + uncommitted", base.name),
         DiffSource::Commit { sha, subject } => format!("commit {} · {subject}", sha.short()),
+        DiffSource::Files { left, right } => format!("{} ↔ {}", left.display(), right.display()),
     }
 }
 
@@ -141,10 +147,17 @@ impl DiffTab {
     pub fn open(spec: DiffTabSpec, cx: &mut App) -> Self {
         let source = source_text(&spec.request.source, &spec.label);
         let tooltip = format!("{} — {} ({source})", spec.label, spec.request.file.path.display());
-        let title = spec.request.file.path.file_name();
+        let title = match &spec.request.source {
+            DiffSource::Files { left, right } => format!("{} ↔ {}", file_name(left), file_name(right)),
+            _ => spec.request.file.path.file_name(),
+        };
         let body = cx.new(|cx| DiffTabBody::new(&spec, cx));
         Self { checkout: spec.checkout, request: spec.request, title, tooltip, body }
     }
+}
+
+fn file_name(path: &std::path::Path) -> String {
+    path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned())
 }
 
 enum BodyState {

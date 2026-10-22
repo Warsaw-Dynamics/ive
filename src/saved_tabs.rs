@@ -55,6 +55,8 @@ pub enum SavedDiffSource {
     Uncommitted,
     Since { base: String, reference: String, fork: String, with_uncommitted: bool },
     Commit { sha: String, subject: String },
+    /// Compare Files: two files anywhere
+    Files { left: PathBuf, right: PathBuf },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

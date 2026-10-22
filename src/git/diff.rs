@@ -116,6 +116,31 @@ pub fn uncommitted(dir: &Path, file: &FilePaths) -> Result<Option<FileDiff>, Git
     Ok(collect(&diff, ONE_FILE).map_err(&fail)?.into_iter().find(|found| found.path == file.path))
 }
 
+/// `left` → `right`, two files anywhere, as one diff; files over [`MAX_FILE_BYTES`] are too large to show.
+pub fn two_files(left: &Path, right: &Path) -> Result<FileDiff, GitError> {
+    let read = |path: &Path| match std::fs::metadata(path) {
+        Ok(meta) if meta.len() > MAX_FILE_BYTES => Ok(None),
+        Ok(_) => std::fs::read(path).map(Some),
+        Err(error) => Err(error),
+    };
+    let unreadable = |path: &Path, error: std::io::Error| GitError { operation: "compare two files".to_owned(), dir: path.to_path_buf(), message: error.to_string() };
+    let old = read(left).map_err(|error| unreadable(left, error))?;
+    let new = read(right).map_err(|error| unreadable(right, error))?;
+    use std::os::unix::ffi::OsStrExt as _;
+    let (path, old_path) = (GitPath::from_bytes(right.as_os_str().as_bytes()), Some(GitPath::from_bytes(left.as_os_str().as_bytes())));
+    let (Some(old), Some(new)) = (old, new) else {
+        return Ok(FileDiff { path, old_path, mark: Mark::Modified, body: DiffBody::TooLarge });
+    };
+    let fail = failed("compare two files", left);
+    let mut options = options();
+    let patch = Patch::from_buffers(&old, Some(left), &new, Some(right), Some(&mut options)).map_err(&fail)?;
+    let body = match patch.delta().flags().is_binary() {
+        true => DiffBody::Binary,
+        false => text(&patch, Budget { lines: FILE_LINE_LIMIT, cut: Cut::FileLimit(FILE_LINE_LIMIT) }).map_err(&fail)?,
+    };
+    Ok(FileDiff { path, old_path, mark: Mark::Modified, body })
+}
+
 /// The files changed from `fork` to `head`, names and marks only (content is read for rename detection alone),
 /// sorted by path. It depends on the two commits only, so a caller keeps it while neither moves.
 pub fn committed_changes(dir: &Path, fork: &Sha, head: &Sha) -> Result<Vec<Change>, GitError> {
@@ -362,6 +387,39 @@ fn line(line: &git2::DiffLine<'_>) -> DiffLine {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn should_diff_two_files_line_by_line() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (left, right) = (dir.path().join("left.txt"), dir.path().join("right.txt"));
+        std::fs::write(&left, "one\ntwo\nthree\n").unwrap();
+        std::fs::write(&right, "one\n2\nthree\n").unwrap();
+
+        // when
+        let file = two_files(&left, &right).expect("diff");
+
+        // then
+        let DiffBody::Text { hunks, .. } = &file.body else { panic!("{:?}", file.body) };
+        let lines: Vec<(LineKind, &str)> = hunks[0].lines.iter().map(|line| (line.kind, line.text.as_str())).collect();
+        assert_eq!(lines, [(LineKind::Context, "one"), (LineKind::Removed, "two"), (LineKind::Added, "2"), (LineKind::Context, "three")]);
+    }
+
+    #[test]
+    fn should_diff_identical_files_as_empty() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (left, right) = (dir.path().join("a"), dir.path().join("b"));
+        std::fs::write(&left, "same\n").unwrap();
+        std::fs::write(&right, "same\n").unwrap();
+
+        // when
+        let file = two_files(&left, &right).expect("diff");
+
+        // then
+        assert_eq!(file.body, DiffBody::Text { hunks: Vec::new(), cut: None });
+    }
+
     use std::fs;
 
     use super::*;
