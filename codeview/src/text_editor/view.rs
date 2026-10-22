@@ -13,7 +13,8 @@ use gpui::{
     div, fill, point, prelude::*, px, rgb, size,
 };
 
-use super::change_popup::{Anchor, ChangeAction, ChangePopup, Popup, PopupActions, popup_element};
+use super::change_popup::{Anchor, ChangeAction, ChangePopup, Committing, Popup, PopupActions, popup_element};
+use super::message_field::{FieldState, MessageField, MessageFieldEvent};
 use super::colours::Colours;
 use super::keys::command;
 use super::layout::{Area, Geometry, VisibleLine, visible_lines};
@@ -46,6 +47,8 @@ pub enum TextEditorEvent {
     OpenDiff { line: usize },
     /// a change's popup waits for the markers of the current text: diff it now, without the pause
     NeedChanges,
+    /// the user asked to commit the change shown, alone: see [`crate::panel::Event::CommitChange`]
+    CommitChange { head_id: String, block: Range<usize>, text: Vec<u8>, message: String },
 }
 
 /// What an editor is opened with: a scratch's size limit (files have none), and the language colouring the text.
@@ -59,6 +62,8 @@ pub struct TextEditor {
     colours: Colours,
     markers: ChangeMarkers,
     popup: Popup,
+    /// the popup's commit message, kept while it is closed
+    message: Entity<MessageField>,
     /// closes the popup when the keyboard leaves the editor (and what it holds), from the first popup on
     focus_out: FocusWatch,
     focus_handle: FocusHandle,
@@ -69,6 +74,7 @@ pub struct TextEditor {
     /// a left-button drag that started in the editor goes on
     dragging: bool,
     reveal_caret: bool,
+    _message_submits: Subscription,
 }
 
 enum FocusWatch {
@@ -83,7 +89,11 @@ impl TextEditor {
     pub fn new(table: PieceTable, setup: Setup, cx: &mut Context<Self>) -> Self {
         let model = EditorModel::new(table, setup.limit);
         let scroll = Rc::new(LineScroll::new(model.line_count()));
+        let message = cx.new(MessageField::new);
+        let submits = cx.subscribe(&message, |editor, _field, MessageFieldEvent::Submitted, cx| editor.commit_change(cx));
         Self {
+            message,
+            _message_submits: submits,
             scrollbars: ScrollState::new(scroll.clone()),
             scroll,
             model,
@@ -253,6 +263,51 @@ impl TextEditor {
         self.act(ChangeAction::Copy, cx);
     }
 
+    /// Commits the change shown, alone, with the message typed, once the markers are the diff of the current text;
+    /// the host answers with [`TextEditor::change_committed`] or [`TextEditor::change_commit_failed`].
+    pub fn commit_change(&mut self, cx: &mut Context<Self>) {
+        self.act(ChangeAction::Commit, cx);
+    }
+
+    /// The change sent to be committed is: the popup showing it closes and the message goes.
+    pub fn change_committed(&mut self, cx: &mut Context<Self>) {
+        self.message.update(cx, |field, cx| {
+            field.clear(cx);
+            field.set_state(FieldState::Editable, cx);
+        });
+        if matches!(&self.popup, Popup::Open(popup) if *popup.committing() == Committing::Sent) {
+            self.close_change_popup(cx);
+        }
+    }
+
+    /// The change sent to be committed is not, for `reason`: the popup showing it says why, the message stays.
+    pub fn change_commit_failed(&mut self, reason: String, cx: &mut Context<Self>) {
+        self.message.update(cx, |field, cx| field.set_state(FieldState::Editable, cx));
+        if let Popup::Open(popup) = &mut self.popup
+            && *popup.committing() == Committing::Sent
+        {
+            popup.set_committing(Committing::Failed(reason));
+        }
+        cx.notify();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn commit_message(&self, cx: &App) -> String {
+        self.message.read(cx).text().to_owned()
+    }
+
+    /// Why the last commit of the change shown failed.
+    #[cfg(test)]
+    pub(crate) fn commit_failure(&self) -> Option<String> {
+        match &self.popup {
+            Popup::Open(popup) => match popup.committing() {
+                Committing::Failed(reason) => Some(reason.clone()),
+                Committing::Idle | Committing::Sent => None,
+            },
+            Popup::Closed => None,
+        }
+    }
+
     /// Runs `action` on the change shown now when the markers are the diff of the current text; else asks for that
     /// diff, and it runs on the change as the diff finds it when it lands.
     fn act(&mut self, action: ChangeAction, cx: &mut Context<Self>) {
@@ -271,7 +326,30 @@ impl TextEditor {
         match action {
             ChangeAction::Rollback => self.roll_back_now(cx),
             ChangeAction::Copy => self.copy_now(cx),
+            ChangeAction::Commit => self.commit_now(cx),
         }
+    }
+
+    /// Sends the change shown to be committed, unless it already is: HEAD's text with only its lines replaced.
+    fn commit_now(&mut self, cx: &mut Context<Self>) {
+        let Popup::Open(popup) = &self.popup else {
+            return;
+        };
+        if *popup.committing() == Committing::Sent {
+            return;
+        }
+        let block = popup.block().clone();
+        let lines = self.model.table().bytes(self.bytes_of(block.current.clone()));
+        let Some((head_id, text)) = self.markers.committed_text(&block, &lines) else {
+            return;
+        };
+        if let Popup::Open(popup) = &mut self.popup {
+            popup.set_committing(Committing::Sent);
+        }
+        let message = self.message.read(cx).text().to_owned();
+        self.message.update(cx, |field, cx| field.set_state(FieldState::Busy, cx));
+        cx.emit(TextEditorEvent::CommitChange { head_id, block: block.base, text, message });
+        cx.notify();
     }
 
     fn roll_back_now(&mut self, cx: &mut Context<Self>) {
@@ -551,6 +629,12 @@ impl Render for TextEditor {
         let style = ViewStyle::drawing(cx).clone();
         let metrics = Metrics::measure(window, cx, self.model.line_count());
         let frame = self.frame(metrics, style.clone(), window);
+        // the message field had the keyboard and went with the popup: the text takes it back
+        if let Popup::Closed = self.popup
+            && self.message.focus_handle(cx).is_focused(window)
+        {
+            window.focus(&self.focus_handle, cx);
+        }
         let popup = self.popup_element(&frame, cx);
         let line_height = metrics.line_height;
         div()
@@ -600,12 +684,12 @@ impl TextEditor {
             line_height: metrics.line_height,
             font_size: metrics.font_size,
         };
-        popup_element(popup, anchor, popup_actions(cx.weak_entity()), cx)
+        popup_element(popup, anchor, popup_actions(cx.weak_entity(), &self.message), cx)
     }
 }
 
-/// The popup's buttons, each running an editor method.
-fn popup_actions(editor: WeakEntity<TextEditor>) -> PopupActions {
+/// The popup's buttons, each running an editor method, and the commit message's field.
+fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<MessageField>) -> PopupActions {
     let on = |run: fn(&mut TextEditor, &mut Context<TextEditor>)| -> ClickListener {
         let editor = editor.clone();
         Rc::new(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| drop(editor.update(cx, run)))
@@ -617,6 +701,16 @@ fn popup_actions(editor: WeakEntity<TextEditor>) -> PopupActions {
         rollback: on(TextEditor::roll_back_change),
         diff: on(TextEditor::show_change_diff),
         copy: on(TextEditor::copy_previous_text),
+        commit: on(TextEditor::commit_change),
+        focus_message: {
+            let field = message.downgrade();
+            Rc::new(move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
+                if let Some(field) = field.upgrade() {
+                    window.focus(&field.focus_handle(cx), cx);
+                }
+            })
+        },
+        message: message.clone().into_any_element(),
         close: Rc::new(move |_window: &mut Window, cx: &mut App| drop(closing.update(cx, TextEditor::close_change_popup))),
     }
 }

@@ -288,7 +288,7 @@ impl ScratchView {
             // the tab stays open after closing without saving: the edits given up are neither shown nor written
             Event::ReloadRequested | Event::DiscardRequested => self.reload(cx),
             // a scratch has no change markers: it gets no base to compare with
-            Event::NeedChangeBase | Event::NeedChangeDiff(_) => return,
+            Event::NeedChangeBase | Event::NeedChangeDiff(_) | Event::CommitChange { .. } => return,
             // parsing is `codeview_host::serve`'s
             Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts(_) | Event::OpenAt { .. } | Event::OpenDiff { .. } => return,
         }

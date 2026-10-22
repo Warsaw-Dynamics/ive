@@ -63,6 +63,12 @@ pub enum Cast {
     /// the answer to [`Event::NeedChangeDiff`]: shown moved by the edits made since; dropped when it is not the diff
     /// in flight, or its text or base was replaced since
     ChangeDiff { revision: u64, hunks: ChangeHunks },
+    /// the answer to [`Event::CommitChange`]: the change is committed; the popup closes, and the markers follow the
+    /// new HEAD once its base comes
+    ChangeCommitted,
+    /// the answer to [`Event::CommitChange`]: nothing was committed, for the reason given (for the user); the popup
+    /// shows it and keeps the message
+    ChangeCommitFailed(String),
     /// a diff's: [`Editable::NewSide`] edits the new side once its text comes, asked for with
     /// [`TextPurpose::Editing`]; [`Editable::No`] makes it read-only, dropping the edited text and its history (the
     /// host sends it only while nothing is unsaved)
@@ -164,6 +170,11 @@ pub enum Event {
     NeedChangeBase,
     /// the host runs the job on a background thread and answers [`Cast::ChangeDiff`]
     NeedChangeDiff(ChangeDiffJob),
+    /// the user asked to commit one change of the edited file, and nothing else: `text` is the whole file to commit
+    /// (HEAD's text, as the base was, with only base lines `block` replaced by the change's current lines, unsaved
+    /// edits included), `head_id` the base's HEAD. The host commits it on that HEAD, or refuses, and answers
+    /// [`Cast::ChangeCommitted`] or [`Cast::ChangeCommitFailed`]
+    CommitChange { head_id: String, block: Range<usize>, text: Vec<u8>, message: String },
 }
 
 /// An ask for the texts of diff file `file`; each ask has a new `generation`, which its answer carries.

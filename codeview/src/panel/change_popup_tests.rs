@@ -24,6 +24,16 @@ struct Seen {
     copied: Vec<String>,
     diffs: Vec<usize>,
     jobs: Vec<ChangeDiffJob>,
+    commits: Vec<Commit>,
+}
+
+/// An [`Event::CommitChange`], its text as a string.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Commit {
+    head_id: String,
+    block: std::ops::Range<usize>,
+    text: String,
+    message: String,
 }
 
 /// A window showing only a panel that edits `text` against base `head`, with the markers' diff landed and drawn.
@@ -40,6 +50,12 @@ fn editing<'a>(text: &str, head: &str, cx: &'a mut TestAppContext) -> (Entity<Pa
         cx.subscribe(&panel, move |_, event: &Event, _| match event {
             Event::NeedChangeDiff(job) => heard.borrow_mut().jobs.push(job.clone()),
             Event::OpenDiff { line } => heard.borrow_mut().diffs.push(*line),
+            Event::CommitChange { head_id, block, text, message } => heard.borrow_mut().commits.push(Commit {
+                head_id: head_id.clone(),
+                block: block.clone(),
+                text: String::from_utf8(text.clone()).unwrap(),
+                message: message.clone(),
+            }),
             _ => {}
         })
         .detach();
@@ -361,4 +377,60 @@ fn should_close_the_popup_once_its_change_is_scrolled_out_of_view(cx: &mut TestA
     // then
     assert_eq!(one_line_down, Some(hunk(1..2, 1..2)), "kept while its change shows");
     assert_eq!(in_popup(&panel, cx), None);
+}
+
+/// The commit message typed in the popup, and why its last commit failed, if it did.
+fn commit_state(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> (String, Option<String>) {
+    editor_of(panel, cx).read_with(cx, |editor, cx| (editor.commit_message(cx), editor.commit_failure()))
+}
+
+#[gpui::test]
+fn should_send_the_change_with_its_unsaved_text_to_be_committed_on_enter(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nFIVE\nsix\nseven\n", HEAD, cx);
+    cast(&panel, Cast::RevealLine(2), cx);
+    cast(&panel, Cast::Type("X".to_owned()), cx);
+    click("change-marker:2", &seen, cx);
+    let edited = text_of(&panel, cx);
+
+    // when
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix two");
+    cx.simulate_keystrokes("enter");
+    let waiting = seen.borrow().commits.len();
+    land(&panel, &seen, cx);
+    cx.simulate_keystrokes("enter");
+    draw(cx);
+
+    // then
+    let sent = Commit { head_id: "head".to_owned(), block: 1..2, text: "one\nXTWO\nthree\nfour\nfive\nsix\nseven\n".to_owned(), message: "fix two".to_owned() };
+    assert_eq!(waiting, 0, "it waits for the markers of the text typed");
+    assert_eq!(seen.borrow().commits, [sent], "sent once: the second Enter came while it was being committed");
+    assert_eq!(text_of(&panel, cx), edited, "the field took the typing, not the text");
+    assert_eq!(in_popup(&panel, cx), Some(hunk(1..2, 1..2)));
+}
+
+#[gpui::test]
+fn should_show_why_a_commit_failed_and_close_once_one_is_done(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix");
+    click("change-popup:commit", &seen, cx);
+
+    // when
+    cast(&panel, Cast::ChangeCommitFailed("HEAD moved".to_owned()), cx);
+    draw(cx);
+    let failed = (in_popup(&panel, cx), commit_state(&panel, cx));
+    cx.simulate_keystrokes("enter");
+    cast(&panel, Cast::ChangeCommitted, cx);
+    draw(cx);
+    cx.simulate_input("!");
+
+    // then
+    assert_eq!(failed, (Some(hunk(1..2, 1..2)), ("fix".to_owned(), Some("HEAD moved".to_owned()))), "the message stays");
+    assert_eq!(seen.borrow().commits.len(), 2);
+    assert_eq!((in_popup(&panel, cx), commit_state(&panel, cx)), (None, (String::new(), None)));
+    assert_eq!(text_of(&panel, cx), "!one\nTWO\nthree\nfour\nfive\nsix\nseven\n", "the text has the keyboard again");
 }

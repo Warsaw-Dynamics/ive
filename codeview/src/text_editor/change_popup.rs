@@ -36,6 +36,17 @@ pub(crate) struct ChangePopup {
     /// the change's lines in the base as shown, with `\n` line breaks; empty for added lines
     previous: String,
     waiting: Waiting,
+    commit: Committing,
+}
+
+/// Where committing the change shown is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Committing {
+    Idle,
+    /// sent to the host, which has not answered yet
+    Sent,
+    /// refused or failed, for the reason shown
+    Failed(String),
 }
 
 /// What a popup's button does with its change, which needs the markers to be the diff of the current text: markers
@@ -44,6 +55,7 @@ pub(crate) struct ChangePopup {
 pub(crate) enum ChangeAction {
     Rollback,
     Copy,
+    Commit,
 }
 
 #[derive(Clone, Copy)]
@@ -56,7 +68,7 @@ enum Waiting {
 impl ChangePopup {
     pub(crate) fn of(hunk: &ChangeHunk, markers: &ChangeMarkers) -> Self {
         let previous = String::from_utf8_lossy(&markers.base_text(hunk)).replace("\r\n", "\n");
-        Self { block: hunk.clone(), previous, waiting: Waiting::Nothing }
+        Self { block: hunk.clone(), previous, waiting: Waiting::Nothing, commit: Committing::Idle }
     }
 
     /// Runs `action` once the markers are the diff of the current text, instead of an action waiting before.
@@ -74,6 +86,14 @@ impl ChangePopup {
 
     pub(crate) fn is_waiting(&self) -> bool {
         matches!(self.waiting, Waiting::Action(_))
+    }
+
+    pub(crate) fn committing(&self) -> &Committing {
+        &self.commit
+    }
+
+    pub(crate) fn set_committing(&mut self, commit: Committing) {
+        self.commit = commit;
     }
 
     pub(crate) fn block(&self) -> &ChangeHunk {
@@ -117,7 +137,7 @@ impl Popup {
         };
         match markers.meeting(&popup.block.current) {
             Some(hunk) if *hunk == popup.block => Self::Open(popup),
-            Some(hunk) => Self::Open(ChangePopup { waiting: popup.waiting, ..ChangePopup::of(hunk, markers) }),
+            Some(hunk) => Self::Open(ChangePopup { waiting: popup.waiting, commit: popup.commit, ..ChangePopup::of(hunk, markers) }),
             None => Self::Closed,
         }
     }
@@ -139,13 +159,17 @@ fn is_inside(block: &ChangeHunk, edit: &InputEdit) -> bool {
 /// Closes the popup.
 pub(crate) type CloseListener = Rc<dyn Fn(&mut Window, &mut App)>;
 
-/// What the popup's buttons do.
+/// What the popup's buttons do, and the commit message's field.
 pub(crate) struct PopupActions {
     pub previous: ClickListener,
     pub next: ClickListener,
     pub rollback: ClickListener,
     pub diff: ClickListener,
     pub copy: ClickListener,
+    pub commit: ClickListener,
+    /// gives the message field the keyboard
+    pub focus_message: ClickListener,
+    pub message: AnyElement,
     /// a press outside the popup
     pub close: CloseListener,
 }
@@ -176,6 +200,7 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
     let width = (anchor.width - px(RIGHT_MARGIN)).min(px(MAX_WIDTH)).max(px(0.));
     let close = actions.close.clone();
     let state = if popup.is_waiting() { ButtonState::Busy } else { ButtonState::Ready };
+    let sending = if popup.is_waiting() || popup.commit == Committing::Sent { ButtonState::Busy } else { ButtonState::Ready };
     div()
         .id("change-popup")
         .absolute()
@@ -195,15 +220,20 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
         // the editor under it neither moves its caret nor starts a selection
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_mouse_down_out(move |_, window, cx| close(window, cx))
-        .child(toolbar(actions, state, &style, cx))
+        .child(toolbar(actions, [state, sending], &style, cx))
+        .children(failure(&popup.commit, &style))
         .child(previous_text(popup, &lines, anchor, &style))
         .into_any_element()
 }
 
-/// The buttons, in a row, those acting on the change shown as `state` says; the room on their right is kept for
-/// committing the change.
-fn toolbar(actions: PopupActions, state: ButtonState, style: &ViewStyle, cx: &App) -> impl IntoElement {
+/// The buttons, in a row, those acting on the change shown as `state` says, then the commit message's field and its
+/// send button, as `sending` says.
+fn toolbar(actions: PopupActions, [state, sending]: [ButtonState; 2], style: &ViewStyle, cx: &App) -> impl IntoElement {
     let ready = ButtonState::Ready;
+    let focus_message = actions.focus_message;
+    // MCP's `click` gives the field the keyboard; a press on it does that itself
+    drop(Host::click_target("change-popup:message".to_owned(), move |event, window, cx| focus_message(event, window, cx), cx));
+    let send = Button { name: "commit", icon: "commit.svg", tip: "Commit this change (Enter)", listener: actions.commit, state: sending };
     let buttons = [
         ("prev", "arrow-up.svg", "Previous change", actions.previous, ready),
         ("next", "arrow-down.svg", "Next change", actions.next, ready),
@@ -221,7 +251,18 @@ fn toolbar(actions: PopupActions, state: ButtonState, style: &ViewStyle, cx: &Ap
         .border_b(px(BORDER))
         .border_color(rgb(style.border))
         .children(buttons.map(|(name, icon, tip, listener, state)| button(Button { name, icon, tip, listener, state }, style, cx)))
-        .child(div().flex_1())
+        .child(div().w(px(8.)))
+        .child(actions.message)
+        .child(button(send, style, cx))
+}
+
+/// Why the last commit of the change failed, in a row under the buttons.
+fn failure(commit: &Committing, style: &ViewStyle) -> Option<AnyElement> {
+    let Committing::Failed(reason) = commit else {
+        return None;
+    };
+    let row = div().px(px(8.)).py(px(3.)).text_size(px(style.editor_notice_text_size)).text_color(rgb(style.error));
+    Some(row.border_b(px(BORDER)).border_color(rgb(style.border)).child(SharedString::from(reason.clone())).into_any_element())
 }
 
 struct Button {

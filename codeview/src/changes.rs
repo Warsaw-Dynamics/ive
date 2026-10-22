@@ -253,6 +253,17 @@ impl ChangeMarkers {
         text[line_offset(text, hunk.base.start)..line_offset(text, hunk.base.end)].to_vec()
     }
 
+    /// HEAD's id, and HEAD's text with only `hunk`'s base lines replaced by `lines` (its lines of the current text,
+    /// line breaks included): the file as committing that change alone leaves it. `None` without a base.
+    pub(crate) fn committed_text(&self, hunk: &ChangeHunk, lines: &[u8]) -> Option<(String, Vec<u8>)> {
+        let Base::Tracked { head, head_id } = &self.base else {
+            return None;
+        };
+        let text = head.as_bytes();
+        let (start, end) = (line_offset(text, hunk.base.start), line_offset(text, hunk.base.end));
+        Some((head_id.clone(), [&text[..start], lines, &text[end..]].concat()))
+    }
+
     /// Forgets the change starting on line `line`, until the next diff: it was rolled back.
     pub(crate) fn drop_starting_at(&mut self, line: usize) {
         self.hunks.retain(|hunk| hunk.current.start != line);
@@ -408,6 +419,25 @@ mod tests {
         // then
         assert_eq!(kinds(&markers), [(0..1, Marker::Added), (2..3, Marker::Changed), (4..4, Marker::Deleted)]);
         assert_eq!(markers.hunks()[2].base, 3..4);
+    }
+
+    #[test]
+    fn should_build_the_head_text_with_only_one_change() {
+        // given
+        let base = "one\ntwo\nthree\nfour\nfive";
+        let table = PieceTable::from_text("zero\none\nTWO\nthree\nFIVE\n");
+        let markers = landed(base, &table);
+        let lines = |hunk: &ChangeHunk| table.bytes(table.line_start(hunk.current.start)..table.line_start(hunk.current.end));
+
+        // when
+        let committed: Vec<String> = markers
+            .hunks()
+            .iter()
+            .map(|hunk| String::from_utf8(markers.committed_text(hunk, &lines(hunk)).unwrap().1).unwrap())
+            .collect();
+
+        // then
+        assert_eq!(committed, ["zero\none\ntwo\nthree\nfour\nfive", "one\nTWO\nthree\nfour\nfive", "one\ntwo\nthree\nFIVE\n"], "four and five became FIVE");
     }
 
     #[test]

@@ -127,6 +127,8 @@ impl Panel {
             Cast::SetBaseDiff { base, diff } => self.set_base_diff(&base, diff, cx),
             Cast::SetChangeBase { base } => self.set_change_base(base, cx),
             Cast::ChangeDiff { revision, hunks } => self.change_diffed(revision, hunks, cx),
+            Cast::ChangeCommitted => self.with_editor(cx, TextEditor::change_committed),
+            Cast::ChangeCommitFailed(reason) => self.with_editor(cx, |editor, cx| editor.change_commit_failed(reason, cx)),
         }
         self.notice_state(cx);
         cx.notify();
@@ -360,11 +362,22 @@ impl Panel {
             }
             TextEditorEvent::NeedChanges => self.diff_changes_now(cx),
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
+            TextEditorEvent::CommitChange { head_id, block, text, message } => {
+                let (head_id, block, text, message) = (head_id.clone(), block.clone(), text.clone(), message.clone());
+                cx.emit(Event::CommitChange { head_id, block, text, message });
+            }
             TextEditorEvent::OpenDiff { line } => {
                 // the diff shows the file on disk: the edits go there first
                 self.request_save(SaveKind::Checked, cx);
                 cx.emit(Event::OpenDiff { line: *line });
             }
+        }
+    }
+
+    /// Runs `update` on the editor, in Edit mode.
+    fn with_editor(&self, cx: &mut Context<Self>, update: impl FnOnce(&mut TextEditor, &mut Context<TextEditor>)) {
+        if let Body::Edit(editor) = &self.body {
+            editor.update(cx, update);
         }
     }
 

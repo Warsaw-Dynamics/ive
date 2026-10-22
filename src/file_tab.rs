@@ -20,6 +20,7 @@ use gpui::{
 
 use crate::codeview_host;
 use crate::git;
+use crate::git::commit_block::{BlockCommit, Git, commit_block};
 use crate::git::diff::BaseRead;
 use crate::disk_text::{Disk, failure_note};
 use crate::document::Document;
@@ -411,6 +412,10 @@ impl EditedFile {
             Event::SaveRequested(request) => self.save(request.clone(), cx),
             Event::ReloadRequested => self.reload(cx),
             Event::NeedChangeBase => self.send_change_base(None, cx),
+            Event::CommitChange { head_id, text, message, .. } => {
+                let commit = BlockCommit { path: self.path.clone(), head_id: head_id.clone(), text: text.clone(), message: message.clone() };
+                self.commit_change(commit, cx);
+            }
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
             // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged and opens the
@@ -458,6 +463,24 @@ impl EditedFile {
                 if let Some(base) = file.change_sent.took(read, read_base) {
                     file.answer(Cast::SetChangeBase { base }, cx);
                 }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Commits one change of the file off the UI thread and answers the panel; after a commit the markers' base is
+    /// read again at once (the git dir's watcher would also bring it).
+    fn commit_change(&mut self, commit: BlockCommit, cx: &mut Context<Self>) {
+        let committing = cx.background_executor().spawn(async move { commit_block(&Git::installed(), &commit) });
+        cx.spawn(async move |file, cx| {
+            let committed = committing.await;
+            file.update(cx, |file, cx| match committed {
+                Ok(()) => {
+                    file.answer(Cast::ChangeCommitted, cx);
+                    file.send_change_base(None, cx);
+                }
+                Err(refusal) => file.answer(Cast::ChangeCommitFailed(refusal.to_string()), cx),
             })
             .ok();
         })

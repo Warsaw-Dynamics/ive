@@ -69,8 +69,10 @@ Commits only this block, nothing else:
 - The line diff (base vs the piece table's text) is computed inside `codeview` on a background job, as parsing is
   (`Event::NeedChangeDiff(job)` → IVE runs it → `Cast::ChangeDiff { revision, hunks }`), so the text never crosses
   to IVE. A diff library may be added to `codeview` (e.g. `imara-diff`, histogram) — builder's choice, pinned.
-- `Event::CommitChange { path, head_id, block: Range<usize> (base lines), text: Vec<u8>, message }` →
-  IVE answers `Cast::ChangeCommitted` or `Cast::ChangeCommitFailed(reason)`.
+- `Event::CommitChange { head_id, block: Range<usize> (base lines), text: Vec<u8>, message }` →
+  IVE answers `Cast::ChangeCommitted` or `Cast::ChangeCommitFailed(reason)`. No `path`: the host knows the panel's
+  file. `text` is the whole file to commit (HEAD's text, from IVE, with only the block replaced), which
+  `git hash-object` needs; of the edited text only the block's lines cross.
 - Rollback, copy, navigation and show-diff stay inside the panel (show diff as `Event::OpenDiff { path, line }`).
 
 ## Non-goals
