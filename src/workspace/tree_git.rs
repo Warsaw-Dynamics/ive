@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use gpui::{Context, Window, prelude::*};
+use gpui::{App, Context, Window, prelude::*};
 
 use super::Workspace;
 use crate::git::base;
@@ -258,6 +258,21 @@ impl Workspace {
         }
         self.tree_changed(cx);
         self.schedule_save(cx);
+    }
+
+    /// What the tree header's folders menu shows.
+    pub(crate) fn folders_menu(&self, cx: &App) -> crate::sidebar::view::FoldersMenu {
+        let keymap = crate::script::state::keymap(cx);
+        let (keys, layout_key) = keymap.map_or_else(|| (FolderKind::ALL.map(|kind| (kind, None)).to_vec(), None), crate::sidebar::view::menu_keys);
+        let layout = cx.global::<SettingsStore>().current().git_files.layout;
+        crate::sidebar::view::FoldersMenu { every: self.shown_folders.clone(), layout, keys, layout_key, set_apart: self.folders_set_apart() }
+    }
+
+    /// The folders menu's Flat | Tree switch.
+    pub(crate) fn set_changes_layout(&mut self, layout: crate::overview::file_list::FileLayout, cx: &mut Context<Self>) {
+        if cx.global::<SettingsStore>().current().git_files.layout != layout {
+            self.toggle_changes_layout(cx);
+        }
     }
 
     /// Every worktree shows every worktree's folders again.

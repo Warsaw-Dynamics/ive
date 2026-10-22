@@ -98,9 +98,9 @@ pub struct Workspace {
     tree_statuses: tree_status::TreeStatuses,
     tree_git: tree_git::TreeGit,
     /// the Open project menu of the sidebar header
-    menu_open: bool,
+    header_menu: Option<sidebar_view::HeaderMenu>,
     /// the menu was open when the + button was pressed: that press closed it, so the click must not reopen it
-    menu_open_at_press: bool,
+    header_menu_at_press: Option<sidebar_view::HeaderMenu>,
     /// the menu a right click on a tab opened
     tab_menu: Option<tab_menu::TabMenu>,
     /// the row Select Opened File is expanding the tree towards, while folders above it are read
@@ -257,8 +257,8 @@ impl Workspace {
             tree: Tree::new(),
             tree_statuses: tree_status::TreeStatuses::default(),
             tree_git: tree_git::TreeGit::default(),
-            menu_open: false,
-            menu_open_at_press: false,
+            header_menu: None,
+            header_menu_at_press: None,
             tab_menu: None,
             locating: None,
             restart_script: startup.restart_script.clone(),
@@ -704,28 +704,28 @@ impl Workspace {
         cx.notify();
     }
 
-    /// The + button: opens the Open project menu, or closes it when it was open.
-    pub(crate) fn toggle_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let was_open = self.menu_open || self.menu_open_at_press;
-        self.menu_open_at_press = false;
+    /// A header button: opens its menu, or closes it when it was open.
+    pub(crate) fn toggle_menu(&mut self, menu: sidebar_view::HeaderMenu, window: &mut Window, cx: &mut Context<Self>) {
+        let was_open = self.header_menu == Some(menu) || self.header_menu_at_press == Some(menu);
+        self.header_menu_at_press = None;
         if was_open {
             return self.close_menu(window, cx);
         }
-        self.menu_open = true;
+        self.header_menu = Some(menu);
         // so Escape reaches the workspace, not a focused terminal; the sidebar keeps the keyboard
         window.focus(&cx.global::<theme::SidebarFocus>().0.clone(), cx);
         cx.notify();
     }
 
-    /// A press on the + button, seen before the menu's press-outside closes the menu.
+    /// A press on a header button, seen before the open menu's press-outside closes it.
     pub(crate) fn note_menu_press(&mut self) {
-        self.menu_open_at_press = self.menu_open;
+        self.header_menu_at_press = self.header_menu;
     }
 
     /// Closes the menu and gives the keyboard back to the shown tab.
     pub(crate) fn close_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_open {
-            self.menu_open = false;
+        if self.header_menu.is_some() {
+            self.header_menu = None;
             self.focus_active_tab(window, cx);
             cx.notify();
         }
@@ -877,7 +877,8 @@ impl Render for Workspace {
             let sidebar = Sidebar {
                 tree: &self.tree,
                 recent: &self.recent,
-                menu_open: self.menu_open,
+                menu: self.header_menu,
+                folders: (self.header_menu == Some(sidebar_view::HeaderMenu::Folders)).then(|| self.folders_menu(cx)),
                 drag: &self.window_drag,
                 width,
                 resizing: self.sidebar_resize.is_some(),
