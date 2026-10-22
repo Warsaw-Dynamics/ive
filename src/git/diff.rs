@@ -833,6 +833,20 @@ mod tests {
         assert_eq!(edited_lines(found), [(LineKind::Added, None, Some(1), "new".to_owned())]);
     }
 
+    #[test]
+    fn should_diff_an_edited_text_against_a_binary_head_as_binary() {
+        // given
+        let repo = TestRepo::init();
+        repo.write_bytes(Path::new("a.txt"), b"one\0two\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"one\n").expect("diff");
+
+        // then
+        assert_eq!((found.old.is_none(), found.body), (true, DiffBody::Binary));
+    }
+
     /// Both sides of `paths` between `sides`, as text; `None` for a side without one.
     fn both(repo: &TestRepo, sides: &Sides, paths: &FilePaths) -> (Option<String>, Option<String>) {
         let text = |side: Option<Source>| side.map(|source| String::from_utf8(source.as_bytes().to_vec()).expect("utf-8"));
