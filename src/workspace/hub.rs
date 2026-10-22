@@ -17,8 +17,8 @@ use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use codeview::diff::Headers;
 use codeview::panel::Cast;
-use crate::codeview_host::diff_panel;
-use crate::git::diff::{FileDiff, FilePaths};
+use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
+use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
 use crate::git::repo::GitError;
 use crate::git::types::GitPath;
@@ -70,7 +70,7 @@ impl Wanted {
 /// A preview read off the UI thread.
 enum Loaded {
     Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
-    Diff { title: String, diff: FileDiff },
+    Diff { title: String, dir: PathBuf, diff: FileDiff },
     Message(String),
 }
 
@@ -554,7 +554,7 @@ impl Workspace {
             Wanted::Diff { title, dir, path } => cx.background_executor().spawn(async move {
                 let file = FilePaths { path: GitPath::from_bytes(path.as_bytes()), old_path: None };
                 match crate::git::diff::uncommitted(&dir, &file) {
-                    Ok(Some(diff)) => Loaded::Diff { title, diff },
+                    Ok(Some(diff)) => Loaded::Diff { title, dir, diff },
                     Ok(None) => Loaded::Message("No changes any more".to_owned()),
                     Err(error) => Loaded::Message(error.to_string()),
                 }
@@ -572,8 +572,12 @@ impl Workspace {
         let preview = match loaded {
             Loaded::Text { title, first, lines, line } => Preview::Text { title, first, lines, line },
             Loaded::Message(message) => Preview::Message(message),
-            Loaded::Diff { title, diff } => {
+            Loaded::Diff { title, dir, diff } => {
+                let origin = DiffOrigin { dir, sides: Sides::Uncommitted };
+                let name = diff.path.display();
                 let panel = diff_panel(vec![diff], Headers::Hidden, cx);
+                serve(&panel, name, cx);
+                serve_texts(&panel, origin, cx);
                 Preview::Diff { title, panel }
             }
         };

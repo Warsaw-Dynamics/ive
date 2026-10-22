@@ -6,11 +6,11 @@ use gpui::{App, Context, Entity, IntoElement, Render, Task, Window, div, prelude
 
 use super::git_ui::{mark_label, muted, toggle_button};
 use crate::click_targets::target;
-use crate::codeview_host::diff_panel;
+use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serve};
 use codeview::diff::Headers;
-use codeview::panel::{Cast, Panel, PanelState};
+use codeview::panel::{Cast, Event, Panel, PanelState};
 use crate::git::base::{ForkPoint, fork_point};
-use crate::git::diff::{self, FileDiff, FilePaths, SinceRange, Uncommitted};
+use crate::git::diff::{self, FileDiff, FilePaths, Sides, SinceRange, Uncommitted};
 use crate::git::repo::GitError;
 use crate::git::types::{GitPath, Mark, Sha};
 use crate::git::worktrees::BaseBranch;
@@ -78,6 +78,16 @@ impl DiffRequest {
             }
             DiffSource::Commit { sha, .. } => diff::commit_file(&self.dir, sha, &self.file),
         }
+    }
+
+    /// Where its texts are read, as the request stands now.
+    pub fn origin(&self) -> DiffOrigin {
+        let sides = match &self.source {
+            DiffSource::Uncommitted => Sides::Uncommitted,
+            DiffSource::Since { fork, uncommitted, .. } => Sides::Since(SinceRange { fork: fork.clone(), uncommitted: *uncommitted }),
+            DiffSource::Commit { sha, .. } => Sides::Commit(sha.clone()),
+        };
+        DiffOrigin { dir: self.dir.clone(), sides }
     }
 
     /// A diff tab's Reload: the request as it stands now (a Since diff starts from where the branch leaves its base
@@ -178,6 +188,14 @@ pub struct DiffTabBody {
 impl DiffTabBody {
     fn new(spec: &DiffTabSpec, cx: &mut Context<Self>) -> Self {
         let panel = diff_panel(vec![spec.file.clone()], Headers::Hidden, cx);
+        serve(&panel, spec.request.file.path.display(), cx);
+        // the texts as the request stands when they are asked for: a reload may move a Since diff's fork point
+        cx.subscribe(&panel, |body: &mut Self, panel, event, cx| {
+            if let Event::NeedTexts { file } = event {
+                send_texts(&panel, WantedTexts { file: *file, origin: body.request.origin() }, cx);
+            }
+        })
+        .detach();
         let source = source_text(&spec.request.source, &spec.label);
         Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, _reload: None }
     }

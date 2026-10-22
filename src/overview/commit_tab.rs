@@ -7,7 +7,8 @@ use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, 
 use super::git_event::CommitLink;
 use super::git_ui::{error_with_retry, muted};
 use crate::age::date_time;
-use crate::codeview_host::diff_panel;
+use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
+use crate::git::diff::Sides;
 use codeview::diff::Headers;
 use codeview::panel::{Cast, Panel, PanelState};
 use crate::git::log::{self, CommitDetail, CommitInfo};
@@ -67,6 +68,8 @@ impl CommitView {
     /// Reads git once it is first shown.
     fn new(dir: PathBuf, sha: Sha, cx: &mut Context<Self>) -> Self {
         let files = diff_panel(Vec::new(), Headers::Shown, cx);
+        serve(&files, format!("commit {}", sha.short()), cx);
+        serve_texts(&files, DiffOrigin { dir: dir.clone(), sides: Sides::Commit(sha.clone()) }, cx);
         Self { dir, sha, header: None, files, started: false, _load: None }
     }
 

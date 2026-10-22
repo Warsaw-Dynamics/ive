@@ -457,22 +457,27 @@ fn follow_drag(metrics: Metrics, into: Rc<Cell<Option<Placed>>>, view: Entity<Co
     .size_full()
 }
 
-/// Highlights of the lines drawn in the last frame, by the file offset each starts at; repaints and horizontal
-/// scrolling reuse them instead of querying the tree again.
-#[derive(Default)]
-pub(crate) struct HighlightCache {
-    current: RefCell<HashMap<usize, Rc<[Highlight]>>>,
-    previous: RefCell<HashMap<usize, Rc<[Highlight]>>>,
+/// Highlights of the lines drawn in the last frame, by the file offset each starts at (a diff: by row); repaints and
+/// horizontal scrolling reuse them instead of querying the tree again.
+pub(crate) struct HighlightCache<T = Highlight> {
+    current: RefCell<HashMap<usize, Rc<[T]>>>,
+    previous: RefCell<HashMap<usize, Rc<[T]>>>,
 }
 
-impl HighlightCache {
+impl<T> Default for HighlightCache<T> {
+    fn default() -> Self {
+        Self { current: RefCell::default(), previous: RefCell::default() }
+    }
+}
+
+impl<T> HighlightCache<T> {
     /// Lines not asked for until the next frame starts are forgotten then.
     pub(crate) fn start_frame(&self) {
         let current = self.current.take();
         self.previous.replace(current);
     }
 
-    pub(crate) fn get_or_query(&self, line_start: usize, query: impl FnOnce() -> Vec<Highlight>) -> Rc<[Highlight]> {
+    pub(crate) fn get_or_query(&self, line_start: usize, query: impl FnOnce() -> Vec<T>) -> Rc<[T]> {
         let known = self.current.borrow().get(&line_start).cloned();
         let highlights = known
             .or_else(|| self.previous.borrow_mut().remove(&line_start))
@@ -557,7 +562,7 @@ mod tests {
     #[test]
     fn should_query_each_shown_line_once_across_repaints() {
         // given
-        let cache = HighlightCache::default();
+        let cache: HighlightCache = HighlightCache::default();
         let queries = Cell::new(0);
         let query = || {
             queries.set(queries.get() + 1);
@@ -578,7 +583,7 @@ mod tests {
     #[test]
     fn should_forget_lines_not_shown_in_the_last_frame() {
         // given
-        let cache = HighlightCache::default();
+        let cache: HighlightCache = HighlightCache::default();
         let queries = Cell::new(0);
         let query = || {
             queries.set(queries.get() + 1);

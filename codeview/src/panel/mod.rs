@@ -1,6 +1,8 @@
 //! The panel: the one entity a host holds for any code it shows. The host casts messages to it, calls it for
 //! answers, and hears its events; see the spec's "The interface: actor-style messages".
 
+#[cfg(test)]
+mod diff_tests;
 mod protocol;
 mod saving;
 mod state;
@@ -21,7 +23,9 @@ pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
 
 use crate::code_view::CodeView;
-use crate::diff::{DiffView, FileDiff};
+use crate::diff::texts::Parsed;
+use crate::diff::{DiffEvent, DiffView, FileDiff};
+use crate::document::Source;
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
@@ -104,8 +108,7 @@ impl Panel {
             Cast::CloseWithdrawn => self.saving.withdraw_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
             Cast::Type(text) => self.type_text(&text, cx),
-            // Task 11 fetches diff texts
-            Cast::SetTexts { .. } => {}
+            Cast::SetTexts { file, old, new } => self.set_texts([(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx),
         }
         self.notice_state(cx);
         cx.notify();
@@ -125,6 +128,14 @@ impl Panel {
         match &self.body {
             Body::Edit(editor) => self.saving.has_unsaved(editor.read(cx).revision()),
             Body::Empty | Body::View(_) | Body::Diff(_) => false,
+        }
+    }
+
+    /// File `file` of the diff shown; `None` outside Diff mode or past its files.
+    pub fn diff_file<'a>(&self, file: usize, cx: &'a App) -> Option<&'a FileDiff> {
+        match &self.body {
+            Body::Diff(diff) => diff.read(cx).file(file),
+            Body::Empty | Body::View(_) | Body::Edit(_) => None,
         }
     }
 
@@ -205,11 +216,32 @@ impl Panel {
 
     fn build_diff(&mut self, input: DiffInput, cx: &mut Context<Self>) {
         // editable diffs come with Task 13
-        self.body = Body::Diff(cx.new(|cx| {
+        let diff = cx.new(|cx| {
             let mut diff = DiffView::new(input.headers, cx);
             diff.set_files(input.files, cx);
             diff
-        }));
+        });
+        self._body_events.push(cx.subscribe(&diff, Self::on_diff_event));
+        self.body = Body::Diff(diff);
+    }
+
+    fn on_diff_event(&mut self, _diff: Entity<DiffView>, event: &DiffEvent, cx: &mut Context<Self>) {
+        match event {
+            DiffEvent::NeedTexts { file } => cx.emit(Event::NeedTexts { file: *file }),
+        }
+    }
+
+    /// A diff file's sides, each the text of the side its target names; a missing side stays plain.
+    fn set_texts(&self, sides: [(ParseTarget, Option<Source>); 2], cx: &mut Context<Self>) {
+        let Body::Diff(diff) = &self.body else {
+            return;
+        };
+        for (target, source) in sides {
+            let job = source.and_then(|source| diff.update(cx, |diff, cx| diff.set_text(target, source, cx)));
+            if let Some(job) = job {
+                cx.emit(Event::NeedParse(job));
+            }
+        }
     }
 
     fn on_editor_event(&mut self, editor: Entity<TextEditor>, event: &TextEditorEvent, cx: &mut Context<Self>) {
@@ -236,8 +268,8 @@ impl Panel {
         }
     }
 
-    /// In View mode a parse of an older text is dropped, in Edit mode the editor takes it; diff parses come with
-    /// Task 11.
+    /// In View mode a parse of an older text is dropped, in Edit mode the editor takes it, a diff takes it for the
+    /// side it was asked for unless that side's text was replaced since.
     fn parsed(&self, target: ParseTarget, revision: u64, syntax: Syntax, cx: &mut Context<Self>) {
         match (&self.body, target) {
             (Body::View(view), ParseTarget::Text) if revision == self.revision => {
@@ -247,6 +279,9 @@ impl Panel {
                 editor.update(cx, |editor, cx| editor.parsed(revision, syntax, cx));
                 // edits made while it ran are parsed next
                 self.request_parse(cx);
+            }
+            (Body::Diff(diff), ParseTarget::DiffOld(_) | ParseTarget::DiffNew(_)) => {
+                diff.update(cx, |diff, cx| diff.parsed(Parsed { target, revision, syntax }, cx));
             }
             _ => {}
         }

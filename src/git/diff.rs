@@ -1,17 +1,22 @@
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::Path;
 
-use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, Patch, Repository};
+use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree};
 
 use super::repo::{self, GitError};
-use super::status::Change;
+use super::status::{Change, relative_path};
 use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy, mark_of_delta};
 
 pub use codeview::diff::{Cut, DiffBody, DiffLine, FileDiff, Hunk, LineKind};
 pub use codeview::diff::{FILE_LINE_LIMIT, MAX_FILE_BYTES, VIEW_LINE_LIMIT};
+use codeview::document::Source;
+use codeview::syntax::MAX_HIGHLIGHT_BYTES;
 
 const CONTEXT_LINES: u32 = 3;
 const TAB: &str = "    ";
+/// Like git, a NUL byte in the first 8000 bytes marks a file as binary.
+const BINARY_SNIFF_BYTES: usize = 8000;
 
 /// Whether a diff from a tree reaches into the work tree (staged, unstaged and untracked changes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,6 +115,91 @@ pub fn commit_changes(dir: &Path, sha: &Sha) -> Result<Vec<Change>, GitError> {
     let repo = repo::open(dir)?;
     let commit = repo.find_commit(sha.oid().map_err(&fail)?).map_err(&fail)?;
     commit_deltas(&repo, &commit).map(sorted).map_err(&fail)
+}
+
+/// Which two texts a diff's files are diffed between.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Sides {
+    /// HEAD → the work tree
+    Uncommitted,
+    /// the fork point → HEAD, or → the work tree
+    Since(SinceRange),
+    /// the commit's first parent (nothing for a root commit) → the commit
+    Commit(Sha),
+}
+
+/// The whole old and new text of `file` between `sides`, for colouring its diff; a side is `None` when the file is
+/// missing there, binary, or larger than `MAX_HIGHLIGHT_BYTES`.
+pub fn texts(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<Source>, Option<Source>), GitError> {
+    let fail = failed("read the texts of a diff", dir);
+    let repo = repo::open(dir)?;
+    let (old_tree, new_side) = side_trees(&repo, sides).map_err(&fail)?;
+    let old = blob_text(&repo, old_tree.as_ref(), file.old_path.as_ref().unwrap_or(&file.path)).map_err(&fail)?;
+    let new = match new_side {
+        NewSide::Tree(tree) => blob_text(&repo, tree.as_ref(), &file.path).map_err(&fail)?,
+        NewSide::WorkTree => work_tree_text(&repo, &file.path),
+    };
+    Ok((old, new))
+}
+
+/// Where a diff's new side is.
+enum NewSide<'r> {
+    /// `None`: no tree at all, as before the first commit
+    Tree(Option<Tree<'r>>),
+    WorkTree,
+}
+
+/// The old side's tree (`None` before a root commit or the first commit) and where the new side is.
+fn side_trees<'r>(repo: &'r Repository, sides: &Sides) -> Result<(Option<Tree<'r>>, NewSide<'r>), git2::Error> {
+    let commit_tree = |sha: &Sha| repo.find_commit(sha.oid()?)?.tree();
+    Ok(match sides {
+        Sides::Uncommitted => (head_tree(repo)?, NewSide::WorkTree),
+        Sides::Since(SinceRange { fork, uncommitted: Uncommitted::Included }) => (Some(commit_tree(fork)?), NewSide::WorkTree),
+        Sides::Since(SinceRange { fork, uncommitted: Uncommitted::Excluded }) => (Some(commit_tree(fork)?), NewSide::Tree(head_tree(repo)?)),
+        Sides::Commit(sha) => {
+            let commit = repo.find_commit(sha.oid()?)?;
+            let parent = match commit.parent_count() {
+                0 => None,
+                _ => Some(commit.parent(0)?.tree()?),
+            };
+            (parent, NewSide::Tree(Some(commit.tree()?)))
+        }
+    })
+}
+
+/// The text of the file at `path` in `tree`, when it is one to colour: a regular file, not binary, small enough.
+fn blob_text(repo: &Repository, tree: Option<&Tree<'_>>, path: &GitPath) -> Result<Option<Source>, git2::Error> {
+    let Some(tree) = tree else {
+        return Ok(None);
+    };
+    let entry = match tree.get_path(&relative_path(path.as_bytes())) {
+        Ok(entry) => entry,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    // a symbolic link's blob is its target, a submodule's entry a commit
+    if entry.filemode() != i32::from(FileMode::Blob) && entry.filemode() != i32::from(FileMode::BlobExecutable) {
+        return Ok(None);
+    }
+    // the size first: a blob too large to colour is not read at all
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size > MAX_HIGHLIGHT_BYTES {
+        return Ok(None);
+    }
+    let blob = repo.find_blob(entry.id())?;
+    Ok((!blob.is_binary()).then(|| Source::from_vec(blob.content().to_vec())))
+}
+
+/// The work tree's file at `path`, when it is one to colour; `None` also when it cannot be read (it went away).
+fn work_tree_text(repo: &Repository, path: &GitPath) -> Option<Source> {
+    let file = repo.workdir()?.join(relative_path(path.as_bytes()));
+    let metadata = fs::symlink_metadata(&file).ok()?;
+    if !metadata.is_file() || metadata.len() > MAX_HIGHLIGHT_BYTES as u64 {
+        return None;
+    }
+    let bytes = fs::read(&file).ok()?;
+    let binary = memchr::memchr(0, &bytes[..bytes.len().min(BINARY_SNIFF_BYTES)]).is_some();
+    (bytes.len() <= MAX_HIGHLIGHT_BYTES && !binary).then(|| Source::from_vec(bytes))
 }
 
 /// One file of a commit, read when it is shown.
@@ -643,5 +733,74 @@ mod tests {
         let after = (fs::read(&index).expect("index"), fs::metadata(&index).and_then(|meta| meta.modified()).expect("mtime"));
         assert!(before == after, "the index changed");
         assert!(!repo.repo.path().join("index.lock").exists());
+    }
+
+    /// Both sides of `paths` between `sides`, as text; `None` for a side without one.
+    fn both(repo: &TestRepo, sides: &Sides, paths: &FilePaths) -> (Option<String>, Option<String>) {
+        let text = |side: Option<Source>| side.map(|source| String::from_utf8(source.as_bytes().to_vec()).expect("utf-8"));
+        let (old, new) = texts(repo.path(), sides, paths).expect("texts");
+        (text(old), text(new))
+    }
+
+    #[test]
+    fn should_read_the_old_and_new_text_of_each_source() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "fork\n");
+        let root = Sha::of(repo.commit("root"));
+        repo.write("a.txt", "head\n");
+        let head = Sha::of(repo.commit("head"));
+        repo.write("a.txt", "work tree\n");
+        let since = |uncommitted| Sides::Since(SinceRange { fork: root.clone(), uncommitted });
+
+        // when
+        let found = [Sides::Uncommitted, since(Uncommitted::Excluded), since(Uncommitted::Included), Sides::Commit(head), Sides::Commit(root.clone())]
+            .map(|sides| both(&repo, &sides, &file("a.txt")));
+
+        // then
+        let pair = |old: Option<&str>, new: &str| (old.map(str::to_owned), Some(new.to_owned()));
+        assert_eq!(found, [
+            pair(Some("head\n"), "work tree\n"),
+            pair(Some("fork\n"), "head\n"),
+            pair(Some("fork\n"), "work tree\n"),
+            pair(Some("fork\n"), "head\n"),
+            pair(None, "fork\n"),
+        ]);
+    }
+
+    #[test]
+    fn should_read_a_renamed_files_old_side_by_its_old_name_and_leave_out_a_missing_side() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("old.txt", "kept\n");
+        repo.write("gone.txt", "deleted\n");
+        repo.commit("first");
+        repo.rename("old.txt", "new.txt");
+        repo.remove("gone.txt");
+        repo.write("added.txt", "added\n");
+
+        // when
+        let found = [renamed("old.txt", "new.txt"), file("gone.txt"), file("added.txt")].map(|paths| both(&repo, &Sides::Uncommitted, &paths));
+
+        // then
+        let text = |text: &str| Some(text.to_owned());
+        assert_eq!(found, [(text("kept\n"), text("kept\n")), (text("deleted\n"), None), (None, text("added\n"))]);
+    }
+
+    #[test]
+    fn should_leave_out_binary_sides_and_sides_too_large_to_colour() {
+        // given
+        let repo = TestRepo::init();
+        repo.write_bytes(Path::new("data.bin"), &[0, 1, 2, 0, 3]);
+        repo.write("big.txt", &"x\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+        repo.commit("first");
+        repo.write_bytes(Path::new("data.bin"), &[0, 1, 2, 0, 4]);
+        repo.write("big.txt", &"y\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+
+        // when
+        let found = [file("data.bin"), file("big.txt")].map(|paths| both(&repo, &Sides::Uncommitted, &paths));
+
+        // then
+        assert_eq!(found, [(None, None), (None, None)]);
     }
 }

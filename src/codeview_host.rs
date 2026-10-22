@@ -1,5 +1,6 @@
 //! IVE's side of `codeview::host`: its key bindings and its clipboard; and what every panel asks of IVE.
 
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use codeview::diff::{FileDiff, Headers};
@@ -10,6 +11,7 @@ use gpui::{App, AppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
 
 use crate::click_targets::ClickTargets;
 use crate::clipboard;
+use crate::git::diff::{self, FilePaths, Sides};
 use crate::overview::git_ui::mark_label;
 use crate::script::keymap::{Action, Builtin, Place};
 use crate::script::state::{bound_action, invoke};
@@ -90,6 +92,45 @@ pub fn serve(panel: &Entity<Panel>, name: String, cx: &mut App) {
         if let Event::NeedParse(job) = event {
             parse_in_background(panel.downgrade(), job.clone(), &name, cx);
         }
+    })
+    .detach();
+}
+
+/// Where a diff's texts are read: its repository, and the sides its files are diffed between.
+#[derive(Debug, Clone)]
+pub struct DiffOrigin {
+    pub dir: PathBuf,
+    pub sides: Sides,
+}
+
+/// The texts of one file of a diff panel, asked for by [`Event::NeedTexts`].
+pub struct WantedTexts {
+    pub file: usize,
+    pub origin: DiffOrigin,
+}
+
+/// Answers a diff panel's [`Event::NeedTexts`] with the texts `origin` has, for a diff whose origin never changes.
+pub fn serve_texts(panel: &Entity<Panel>, origin: DiffOrigin, cx: &mut App) {
+    cx.subscribe(panel, move |panel, event: &Event, cx| {
+        if let Event::NeedTexts { file } = event {
+            send_texts(&panel, WantedTexts { file: *file, origin: origin.clone() }, cx);
+        }
+    })
+    .detach();
+}
+
+/// Reads the two texts of the file `wanted` names off the UI thread and casts them to `panel`; a file that cannot be
+/// read stays uncoloured, with the reason on stderr.
+pub fn send_texts(panel: &Entity<Panel>, wanted: WantedTexts, cx: &mut App) {
+    let Some(file) = panel.read(cx).diff_file(wanted.file, cx) else {
+        return;
+    };
+    let paths = FilePaths { path: file.path.clone(), old_path: file.old_path.clone() };
+    let (panel, WantedTexts { file, origin }) = (panel.downgrade(), wanted);
+    let reading = cx.background_executor().spawn(async move { diff::texts(&origin.dir, &origin.sides, &paths) });
+    cx.spawn(async move |cx| match reading.await {
+        Ok((old, new)) => drop(panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file, old, new }, cx))),
+        Err(error) => eprintln!("ive: a diff file shown uncoloured: {error}"),
     })
     .detach();
 }

@@ -77,7 +77,7 @@ pub struct EditPolicy {
 }
 
 /// Which text a parse is for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ParseTarget {
     Text,
     /// the old side of diff file `n`

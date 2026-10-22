@@ -4,6 +4,7 @@
 pub mod data;
 pub mod rows;
 pub mod selection;
+pub mod texts;
 
 use std::cell::Cell;
 use std::collections::HashSet;
@@ -11,12 +12,16 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use gpui::{
-    App, Bounds, Context, CursorStyle, DispatchPhase, Div, FocusHandle, Focusable, IntoElement, KeyDownEvent, ListHorizontalSizingBehavior,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, SharedString, Stateful, Window, canvas, div,
-    img, point, prelude::*, px, rgb, rgba, uniform_list,
+    App, Bounds, Context, CursorStyle, DispatchPhase, Div, EventEmitter, FocusHandle, Focusable, IntoElement, KeyDownEvent,
+    ListHorizontalSizingBehavior, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, SharedString, Stateful,
+    StyledText, Window, canvas, div, img, point, prelude::*, px, rgb, rgba, uniform_list,
 };
 
+use crate::code_view::HighlightCache;
+use crate::colors::ResolvedScheme;
+use crate::document::Source;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
+use crate::panel::{ParseJob, ParseTarget};
 use crate::icons;
 use crate::position::ScrollPosition;
 use crate::scrollbar::{Axis, ListScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar, widest_row};
@@ -25,6 +30,7 @@ pub use data::{Cut, DiffBody, DiffLine, FILE_LINE_LIMIT, FileDiff, GitPath, Hunk
 pub use rows::Headers;
 use rows::{COLLAPSE_LINES, DiffRow, diff_rows};
 use selection::{DiffPosition, DiffSelection, word_around};
+use texts::{DiffTexts, Parsed, Placed};
 
 /// `1 file`, `2 files`.
 pub fn counted(count: usize, one: &str, many: &str) -> String {
@@ -38,6 +44,11 @@ pub fn counted(count: usize, one: &str, many: &str) -> String {
 const HEADER_SLOTS: usize = 6;
 /// Width of the `+`/`-` column, in characters.
 const SIGN_CHARS: f32 = 2.;
+
+pub enum DiffEvent {
+    /// file `file` showed lines on screen for the first time since its diff was read: the host answers with its texts
+    NeedTexts { file: usize },
+}
 
 pub struct DiffView {
     files: Vec<FileDiff>,
@@ -59,7 +70,12 @@ pub struct DiffView {
     sizes: DiffSizes,
     /// where the last frame put the view, for the mouse
     bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    texts: DiffTexts,
+    /// the colours of the rows drawn, by row
+    colours: HighlightCache<Placed>,
 }
+
+impl EventEmitter<DiffEvent> for DiffView {}
 
 impl DiffView {
     pub fn new(headers: Headers, cx: &mut Context<Self>) -> Self {
@@ -79,6 +95,8 @@ impl DiffView {
             char_width: px(8.),
             sizes: ViewStyle::get(cx).diff,
             bounds: Rc::default(),
+            texts: DiffTexts::default(),
+            colours: HighlightCache::default(),
         }
     }
 
@@ -92,9 +110,14 @@ impl DiffView {
             (false, Headers::Hidden) => HashSet::new(),
         };
         self.number_width = files.iter().map(largest_line_number).max().unwrap_or(1).to_string().len();
+        self.texts.forget_changed(&self.files, &files);
         self.files = files;
         self.rebuild();
         cx.notify();
+    }
+
+    pub fn file(&self, file: usize) -> Option<&FileDiff> {
+        self.files.get(file)
     }
 
     pub fn has_files(&self) -> bool {
@@ -129,6 +152,43 @@ impl DiffView {
         cx.notify();
     }
 
+    /// Keeps `source` as side `target` of its file, if the view still waits for it; the parse that colours it.
+    pub fn set_text(&mut self, target: ParseTarget, source: Source, cx: &mut Context<Self>) -> Option<ParseJob> {
+        let file = match target {
+            ParseTarget::DiffOld(file) | ParseTarget::DiffNew(file) => self.files.get(file)?,
+            ParseTarget::Text => return None,
+        };
+        let job = self.texts.set(target, source, file);
+        self.colours = HighlightCache::default();
+        cx.notify();
+        job
+    }
+
+    /// Colours a side with `parsed`, unless its text was replaced meanwhile.
+    pub fn parsed(&mut self, parsed: Parsed, cx: &mut Context<Self>) {
+        if self.texts.parsed(parsed) {
+            self.colours = HighlightCache::default();
+            cx.notify();
+        }
+    }
+
+    /// Asks for the texts of the files showing lines on screen that it has not asked for yet. Run after a frame's
+    /// layout: the rows the list laid out to measure them are not all on screen.
+    fn request_texts(&mut self, cx: &mut Context<Self>) {
+        let shown = self.list.visible_rows(self.rows.len());
+        for file in self.texts.wanted(&self.rows[shown]) {
+            cx.emit(DiffEvent::NeedTexts { file });
+        }
+    }
+
+    /// The colours of row `row`'s text: none for rows without code, and until its side's text is parsed.
+    pub(crate) fn row_colours(&self, row: usize) -> Rc<[Placed]> {
+        let DiffRow::Line { file, hunk, line } = &self.rows[row] else {
+            return Rc::from([]);
+        };
+        self.colours.get_or_query(row, || self.texts.colours(*file, &self.hunk(*file, *hunk).lines[*line]))
+    }
+
     /// Copy and Select All; the diff ignores other commands.
     pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         match command {
@@ -150,6 +210,7 @@ impl DiffView {
 
     fn rebuild(&mut self) {
         self.rows = diff_rows(&self.files, self.headers, &self.collapsed);
+        self.colours = HighlightCache::default();
         self.selection = None;
         self.dragging = false;
     }
@@ -291,7 +352,10 @@ impl DiffView {
         match &self.rows[index] {
             DiffRow::File(file) => self.render_file_header(row, *file, theme, cx),
             DiffRow::Hunk { file, hunk } => row.pl(px(self.sizes.hunk_padding_left)).text_color(rgb(theme.muted)).child(self.hunk(*file, *hunk).header.clone()),
-            DiffRow::Line { file, hunk, line } => self.render_line(row, index, &self.hunk(*file, *hunk).lines[*line], theme),
+            DiffRow::Line { file, hunk, line } => {
+                let line = &self.hunk(*file, *hunk).lines[*line];
+                self.render_line(row, CodeRow { index, line, text: self.styled_text(index, line, cx) }, theme)
+            }
             DiffRow::Note { note, .. } => row.pl(px(self.sizes.hunk_padding_left)).italic().text_color(rgb(theme.muted)).child(note.text()),
         }
     }
@@ -317,7 +381,19 @@ impl DiffView {
             .on_click(toggle)
     }
 
-    fn render_line(&self, row: Stateful<Div>, index: usize, line: &DiffLine, theme: &ViewStyle) -> Stateful<Div> {
+    /// Row `index`'s text, `line`, in its side's colours.
+    fn styled_text(&self, index: usize, line: &DiffLine, cx: &App) -> StyledText {
+        let colours = self.row_colours(index);
+        let text = StyledText::new(line.text.clone());
+        if colours.is_empty() {
+            return text;
+        }
+        let scheme = cx.global::<ResolvedScheme>();
+        text.with_highlights(colours.iter().map(|(range, key)| (range.clone(), scheme.get(*key).highlight_style())))
+    }
+
+    fn render_line(&self, row: Stateful<Div>, code: CodeRow<'_>, theme: &ViewStyle) -> Stateful<Div> {
+        let CodeRow { index, line, text } = code;
         let number = |value: Option<u32>| {
             let text = value.map_or_else(String::new, |value| value.to_string());
             div()
@@ -345,7 +421,7 @@ impl DiffView {
             .flex()
             .items_center()
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
-            .child(line.text.clone());
+            .child(text);
         row.pl(px(self.sizes.line_padding))
             .child(number(line.old))
             .child(number(line.new))
@@ -363,6 +439,13 @@ impl DiffView {
             .w(self.char_width * columns.len() as f32)
             .bg(rgb(theme.selected))
     }
+}
+
+/// A code line's row: its index, the line, and its text as drawn.
+struct CodeRow<'a> {
+    index: usize,
+    line: &'a DiffLine,
+    text: StyledText,
 }
 
 fn measure_char_width(window: &Window, cx: &App) -> Pixels {
@@ -408,6 +491,8 @@ impl Render for DiffView {
         let theme = ViewStyle::drawing(cx).clone();
         self.char_width = measure_char_width(window, cx);
         self.sizes = ViewStyle::get(cx).diff;
+        self.colours.start_frame();
+        cx.defer_in(window, |view, _window, cx| view.request_texts(cx));
         let widest = widest_row(self.list.visible_rows(self.rows.len()), |index| self.row_chars(index));
         let list = uniform_list(
             ("diff-rows", cx.entity_id().as_u64()),
