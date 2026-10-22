@@ -77,8 +77,7 @@ impl Workspace {
                 self.projects.push(open);
             }
         }
-        let open: Vec<ProjectId> = self.projects.iter().map(|open| open.project.id.clone()).collect();
-        self.hidden_projects.retain(|id| open.contains(id));
+        self.forget_stale_hidden();
         self.refresh_all(cx);
         self.tree_changed(cx);
     }
@@ -407,7 +406,7 @@ impl Workspace {
         if project_list::close(&mut self.projects, &mut self.recent, id).is_none() {
             return;
         }
-        self.hidden_projects.remove(id);
+        self.forget_stale_hidden();
         self.project_closed(id, cx);
         self.tree_changed(cx);
         self.schedule_save(cx);

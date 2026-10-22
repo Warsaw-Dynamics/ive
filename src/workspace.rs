@@ -716,16 +716,23 @@ impl Workspace {
     /// The picker's row of project `project`: shows it, or leaves it out of the tree and the hub; the last one shown
     /// stays.
     pub(crate) fn toggle_project_shown(&mut self, project: ProjectId, cx: &mut Context<Self>) {
-        let hiding = !self.hidden_projects.contains(&project);
-        if hiding && self.shown_projects() == [project.clone()] {
+        let shown = self.shown_projects();
+        let hiding = shown.contains(&project);
+        if hiding && shown == [project.clone()] {
             return;
         }
         match hiding {
             true => self.hidden_projects.insert(project),
             false => self.hidden_projects.remove(&project),
         };
+        self.forget_stale_hidden();
         self.tree_changed(cx);
         self.schedule_save(cx);
+    }
+
+    /// Drops from the projects left out those closed, and all of them when they would leave none shown.
+    pub(crate) fn forget_stale_hidden(&mut self) {
+        self.hidden_projects = crate::project_list::still_hidden(&self.projects, std::mem::take(&mut self.hidden_projects));
     }
 
     /// The picker's All projects.

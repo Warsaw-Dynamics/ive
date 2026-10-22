@@ -246,7 +246,7 @@ fn render_menu(recent: &[RecentProject], theme: Theme, cx: &mut Context<Workspac
             .on_click(open)
     });
     let section = (!recent.is_empty()).then(|| menu_section("Recent", theme));
-    menu_panel("open-project-menu", theme)
+    let menu = menu_panel("open-project-menu", theme)
         .right(sizes.menu_offset.px())
         .w(sizes.menu_width.px())
         .children(section)
@@ -256,11 +256,11 @@ fn render_menu(recent: &[RecentProject], theme: Theme, cx: &mut Context<Workspac
                 .child(icon(theme, icons::PROJECT_FOLDER))
                 .child("Open Folder…")
                 .on_click(target("open-folder".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.prompt_for_folder(window, cx)), cx)),
-        )
-        .on_mouse_down_out(cx.listener(|workspace, _event, window, cx| workspace.close_menu(window, cx)))
+        );
+    closing_outside(menu, cx)
 }
 
-/// A header menu's box under the header, before its side and width are set; a press outside closes it.
+/// A header menu's box under the header, before its side, width and [`closing_outside`] are set.
 fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
@@ -276,6 +276,11 @@ fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
         .occlude()
         .text_size(sizes.menu_text_size.px())
         .font_weight(sizes.menu_weight.font_weight())
+}
+
+/// A header menu that a press outside closes.
+fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    menu.on_mouse_down_out(cx.listener(|workspace, _event, window, cx| workspace.close_menu(window, cx)))
 }
 
 fn menu_section(title: &'static str, theme: Theme) -> Div {

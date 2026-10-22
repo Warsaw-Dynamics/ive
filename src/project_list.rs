@@ -57,6 +57,15 @@ pub fn shown<'a>(projects: &'a [OpenProject], hidden: &'a BTreeSet<ProjectId>) -
     projects.iter().filter(move |open| none_left || !hidden.contains(&open.project.id))
 }
 
+/// `hidden` without the projects no longer open; empty when it would leave none shown.
+pub fn still_hidden(projects: &[OpenProject], mut hidden: BTreeSet<ProjectId>) -> BTreeSet<ProjectId> {
+    hidden.retain(|id| projects.iter().any(|open| &open.project.id == id));
+    match projects.iter().all(|open| hidden.contains(&open.project.id)) {
+        true => BTreeSet::new(),
+        false => hidden,
+    }
+}
+
 /// A slug of `root`'s folder name that no open, recent or on-disk id has.
 fn new_id(root: &Path, projects: &[OpenProject], recent: &[RecentProject], on_disk: &[String]) -> ProjectId {
     let others = recent.iter().map(|closed| closed.id.as_str()).chain(on_disk.iter().map(String::as_str));
@@ -132,6 +141,19 @@ mod tests {
         assert_eq!(some, ["b", "c"]);
         assert_eq!(none, ["a", "b", "c"]);
         assert_eq!(every, ["a", "b", "c"], "the tree never shows no project");
+    }
+
+    #[test]
+    fn should_forget_hidden_projects_that_are_closed_or_would_leave_none() {
+        // given
+        let projects = [opened("a", "/a"), opened("b", "/b")];
+        let hidden = |ids: &[&str]| ids.iter().map(|id| ProjectId::new(*id)).collect::<BTreeSet<_>>();
+
+        // when
+        let kept = [hidden(&["a", "gone"]), hidden(&["a", "b"]), hidden(&["a", "b", "gone"])].map(|set| still_hidden(&projects, set));
+
+        // then
+        assert_eq!(kept, [hidden(&["a"]), hidden(&[]), hidden(&[])]);
     }
 
     #[test]

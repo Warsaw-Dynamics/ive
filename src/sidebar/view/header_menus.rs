@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb};
 
-use super::{badge, header_button_press, menu_item, menu_panel, menu_section};
+use super::{badge, closing_outside, header_button_press, menu_item, menu_panel, menu_section};
 use crate::click_targets::target;
 use crate::hub::key_label;
 use crate::icons;
@@ -47,14 +47,15 @@ pub(super) fn folders_menu(menu: &FoldersMenu, theme: Theme, cx: &mut Context<Wo
         let row = menu_item("reset-folders", theme).child(tick(false, theme)).child(label).tooltip(tooltip::text_tooltip(menu.set_apart.join("\n"))).on_click(reset);
         div().child(separator(theme)).child(row)
     });
-    menu_panel("folders-menu", theme)
+    let panel = menu_panel("folders-menu", theme)
         .left(theme.sizes.tree.menu_offset.px())
         .right(theme.sizes.tree.menu_offset.px())
         .child(menu_section("In every worktree", theme))
         .children(rows)
         .child(separator(theme))
         .child(layout_row(menu, theme, cx))
-        .children(reset)
+        .children(reset);
+    closing_outside(panel, cx)
 }
 
 /// What the title's picker shows and lists: the open projects, in tree order.
@@ -135,12 +136,13 @@ pub(super) fn projects_menu(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<
             .children(running)
             .on_click(show)
     });
-    menu_panel("projects-menu", theme)
+    let panel = menu_panel("projects-menu", theme)
         .left(theme.sizes.tree.menu_offset.px())
         .right(theme.sizes.tree.menu_offset.px())
         .child(all)
         .child(separator(theme))
-        .children(rows)
+        .children(rows);
+    closing_outside(panel, cx)
 }
 
 /// `Changed files`, a Flat | Tree switch, the key that flips it.
