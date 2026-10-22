@@ -65,6 +65,8 @@ mod text_input;
 mod theme;
 mod theme_config;
 mod tooltip;
+#[allow(dead_code)] // wired into the workspace in a later commit
+mod update;
 mod watch;
 mod window_capture;
 mod window_controls;
