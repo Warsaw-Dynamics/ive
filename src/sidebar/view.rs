@@ -28,7 +28,6 @@ use crate::script::state::{bound_mouse, invoke};
 use crate::paging::more_row;
 use crate::progress_bar::progress_bar;
 use crate::scrollbar::{ListScroll, ScrollState, horizontal_scrollbar, vertical_scrollbar, widest_row};
-use crate::project::CheckoutRef;
 use crate::process::RunId;
 use crate::run::values_tab::ShowRun;
 use crate::state::RecentProject;
@@ -462,33 +461,13 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         let action = RowAction { id: "hide-worktree", icon: icons::HIDE, tip: "Hide worktree (the project page shows it again)".to_owned(), on_click: Box::new(on_click) };
         row_action(action, &line)
     });
-    // left of Hide, which shows over the row's end on hover
-    let action_size = theme.sizes.icon.0 + 2. * theme.sizes.tree.action_padding.0;
-    let after = if hide.is_some() { px(action_size + 2.) } else { px(0.) };
-    let badges = folder_view::folder_badges(&row.badges, &row.checkout, &line, after, cx);
     let line = line
         .div
         .child(chevron(row.expanded, theme, shared(&toggle)))
         .child(icon(theme, icons::BRANCH))
         .child(row.label.clone())
-        .child(badges)
-        .children(hide)
-        .on_hover(want_git(&row.checkout, cx));
+        .children(hide);
     bind_row(line, mouse, cx)
-}
-
-/// Pointing at a checkout's row reads its git data for the badges' counts, and keeps it fresh until the pointer leaves.
-fn want_git(checkout: &CheckoutRef, cx: &mut Context<Workspace>) -> impl Fn(&bool, &mut Window, &mut App) + 'static {
-    let (checkout, workspace) = (checkout.clone(), cx.entity().downgrade());
-    move |hovered, _window, cx| {
-        let entered = *hovered;
-        workspace
-            .update(cx, |workspace, cx| match entered {
-                true => workspace.hover_checkout(&checkout, cx),
-                false => workspace.leave_checkout(&checkout),
-            })
-            .ok();
-    }
 }
 
 fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -666,10 +645,6 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
     let chevron = toggle.as_ref().map(|toggle| chevron(project.expanded, theme, shared(toggle)));
     let project_target = line.name("project");
     let (badge_fill, badge_text) = if present { (theme.accent, theme.on_accent) } else { (theme.hover, theme.muted) };
-    // left of Close project, which shows over the row's end on hover
-    let action_size = theme.sizes.icon.0 + 2. * sizes.action_padding.0;
-    let folder_badges = project.only_checkout.as_ref().map(|checkout| folder_view::folder_badges(&project.badges, checkout, &line, px(action_size + 2.), cx));
-    let hover = project.only_checkout.as_ref().map(|checkout| want_git(checkout, cx));
     let line = line
         .div
         .children(chevron)
@@ -678,12 +653,7 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
         .children(tag)
         .children(running)
         .children(warning)
-        .children(folder_badges)
         .child(close);
-    let line = match hover {
-        Some(hover) => line.on_hover(hover),
-        None => line,
-    };
     if present {
         let show: Listener = Rc::new(target(project_target.clone(), cx.listener(move |workspace, _event, window, cx| {
             workspace.show_project_overview(&shown, window, cx);

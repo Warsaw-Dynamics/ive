@@ -110,11 +110,6 @@ impl CheckoutFolders {
         self.shown == *every && self.folds.is_empty() && git_default
     }
 
-    /// Whether this checkout shows `kind` where every worktree does not, or the other way round.
-    pub fn is_apart(&self, kind: FolderKind, every: &BTreeSet<FolderKind>) -> bool {
-        self.shown.contains(&kind) != every.contains(&kind)
-    }
-
     pub fn is_set_apart(&self, every: &BTreeSet<FolderKind>) -> bool {
         self.shown != *every
     }
@@ -128,6 +123,7 @@ impl CheckoutFolders {
         self.folds.get(&kind).map_or_else(|| open.is_open(kind), |folded| !folded)
     }
 
+    #[cfg(test)]
     pub fn toggle_shown(&mut self, kind: FolderKind) {
         if self.shown.remove(&kind) {
             return;
@@ -274,17 +270,13 @@ impl ChangeSource {
     }
 }
 
-/// A badge at a checkout row's end: switches its folder on and off.
+/// A worktree folder of a checkout, shown or not, with its count.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FolderBadge {
+pub struct FolderState {
     pub kind: FolderKind,
     /// `None` until the git data is read
     pub count: Option<usize>,
     pub shown: bool,
-    /// shown here and not in every worktree, or the other way round
-    pub apart: bool,
-    /// `<checkout target>/<kind>`
-    pub target: String,
 }
 
 /// A worktree folder's row.
@@ -362,8 +354,6 @@ pub struct GitFolders<'a> {
     /// the checkout's click target name
     pub target: &'a str,
     pub folders: &'a CheckoutFolders,
-    /// the folders every worktree shows
-    pub every: &'a BTreeSet<FolderKind>,
     /// `None` until read
     pub git: Option<&'a CheckoutGit>,
     pub layout: FileLayout,
@@ -371,16 +361,10 @@ pub struct GitFolders<'a> {
 }
 
 impl GitFolders<'_> {
-    /// A badge per folder, in order, empty or not, so each can be switched on; a git folder's count is `None` until
-    /// read and without a base, Files' always. `processes` counts Processes' rows.
-    pub fn badges(&self, processes: usize) -> Vec<FolderBadge> {
-        let badge = |kind: FolderKind, count: Option<usize>| FolderBadge {
-            kind,
-            count,
-            shown: self.folders.is_shown(kind),
-            apart: self.folders.is_apart(kind, self.every),
-            target: format!("{}/{}", self.target, kind.name()),
-        };
+    /// Every folder, in order, empty or not; a git folder's count is `None` until read and without a base, Files'
+    /// always. `processes` counts Processes' rows.
+    pub fn states(&self, processes: usize) -> Vec<FolderState> {
+        let badge = |kind: FolderKind, count: Option<usize>| FolderState { kind, count, shown: self.folders.is_shown(kind) };
         let git = [FolderKind::Uncommitted, FolderKind::SinceBase, FolderKind::Commits].map(|kind| badge(kind, self.git.and_then(|git| count_of(git, kind))));
         std::iter::once(badge(FolderKind::Processes, Some(processes))).chain(git).chain([badge(FolderKind::Files, None)]).collect()
     }

@@ -1,7 +1,6 @@
 //! The git data of the tree's worktree folders (Uncommitted, Since base, Commits), per checkout: read on the
-//! background executor the first time its row is hovered or one of its git folders is shown, read again after its
-//! files or its git dir changed (and every 2 s) while a git folder of it is shown or its row is hovered, and
-//! forgotten otherwise.
+//! background executor the first time one of its git folders is shown, read again after its files or its git dir
+//! changed (and every 2 s) while a git folder of it is shown, and forgotten otherwise.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -33,7 +32,6 @@ pub(super) struct TreeGit {
     failed: HashSet<PathBuf>,
     /// commits whose files are being read
     reading: HashSet<(PathBuf, Sha)>,
-    hovered: Option<PathBuf>,
     /// the last since data of each known checkout, which the next read reuses while HEAD and the fork point stay
     since: HashMap<PathBuf, SinceData>,
 }
@@ -56,25 +54,17 @@ impl TreeGit {
         }
     }
 
-    /// The checkout row under the pointer, whose badges count.
-    pub(super) fn hover(&mut self, checkout: Option<PathBuf>) {
-        self.hovered = checkout;
-    }
-
-    /// What file events miss (changes in folders the tree has collapsed): `showing` and the hovered checkout are
-    /// read again on the next tick.
+    /// What file events miss (changes in folders the tree has collapsed): `showing` is read again on the next tick.
     fn poll(&mut self, showing: &[PathBuf]) {
-        let hovered = self.hovered.clone();
-        for checkout in showing.iter().chain(&hovered) {
+        for checkout in showing {
             self.mark_dirty(checkout);
         }
     }
 
-    /// The changed checkouts to read again: those `has_git_folder` shows; the others' data is forgotten, so their
-    /// next hover reads it.
+    /// The changed checkouts to read again: those `has_git_folder` shows; the others' data is forgotten, so showing
+    /// a git folder of theirs reads it.
     fn take_due(&mut self, has_git_folder: impl Fn(&Path) -> bool) -> Vec<PathBuf> {
-        let hovered = self.hovered.clone();
-        let wanted = |checkout: &PathBuf| has_git_folder(checkout) || hovered.as_ref() == Some(checkout);
+        let wanted = |checkout: &PathBuf| has_git_folder(checkout);
         // one read per checkout at a time: a change during a read is read on a later tick
         let reading: HashSet<PathBuf> = self.dirty.intersection(&self.asked).cloned().collect();
         let (due, stale): (Vec<PathBuf>, Vec<PathBuf>) = self.dirty.drain().filter(|checkout| !reading.contains(checkout)).partition(wanted);
@@ -183,20 +173,7 @@ impl Workspace {
         shown.filter(|(_, found)| found.path == checkout).any(|(open, _)| open.folders(checkout).shows_git())
     }
 
-    /// The pointer entered a checkout's row: its badges' counts are read, and kept fresh while it stays.
-    pub(crate) fn hover_checkout(&mut self, checkout: &CheckoutRef, cx: &mut Context<Self>) {
-        self.tree_git.hover(Some(checkout.path.clone()));
-        self.want_tree_git(checkout, cx);
-    }
-
-    /// The pointer left a checkout's row; another row's enter may have come first.
-    pub(crate) fn leave_checkout(&mut self, checkout: &CheckoutRef) {
-        if self.tree_git.hovered.as_ref() == Some(&checkout.path) {
-            self.tree_git.hover(None);
-        }
-    }
-
-    /// On the tick: reads the changed checkouts that show a git folder or are hovered, and those that show one never
+    /// On the tick: reads the changed checkouts that show a git folder, and those that show one never
     /// read (a restart with saved folders, a checkout just expanded). While an IVE window is active, every
     /// `GIT_POLL_TICKS` they count as changed: edits in folders the tree has collapsed send no file events. In the
     /// background that would cost a status read per checkout every 2 s for nobody; activation reads them instead.
@@ -221,20 +198,7 @@ impl Workspace {
         self.tree_git.mark_dirty(checkout);
     }
 
-    /// A badge: shows or hides its folder.
-    pub(crate) fn toggle_folder_shown(&mut self, checkout: &CheckoutRef, kind: FolderKind, cx: &mut Context<Self>) {
-        let Some(open) = self.open_project_mut(&checkout.project) else {
-            return;
-        };
-        open.folders_mut(&checkout.path).toggle_shown(kind);
-        if GIT_FOLDERS.contains(&kind) {
-            self.want_tree_git(checkout, cx);
-        }
-        self.tree_changed(cx);
-        self.schedule_save(cx);
-    }
-
-    /// Alt+click on a badge, or its `act::ToggleFolderEverywhere` key: shows `kind` in every worktree, or hides it.
+    /// The folders menu's tick, or its `act::ToggleFolderEverywhere` key: shows `kind` in every worktree, or hides it.
     pub(crate) fn toggle_folder_everywhere(&mut self, kind: FolderKind, cx: &mut Context<Self>) {
         let on = !self.shown_folders.contains(&kind);
         self.show_folder_everywhere(kind, on, cx);
@@ -479,13 +443,12 @@ mod tests {
     }
 
     #[test]
-    fn should_read_shown_and_hovered_checkouts_again_on_a_poll() {
+    fn should_read_shown_checkouts_again_on_a_poll() {
         // given
         let mut git = TreeGit::default();
-        for name in ["shown", "hovered", "other"] {
+        for name in ["shown", "other"] {
             git.store(path(name), Some(CheckoutGit::default()));
         }
-        git.hover(Some(path("hovered")));
 
         // when
         git.poll(&[path("shown")]);
@@ -493,7 +456,7 @@ mod tests {
         due.sort();
 
         // then
-        assert_eq!(due, [path("hovered"), path("shown")]);
+        assert_eq!(due, [path("shown")]);
         assert!(git.known().contains_key(&path("other")));
     }
 

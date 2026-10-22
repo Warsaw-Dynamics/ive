@@ -2,17 +2,16 @@
 
 use std::rc::Rc;
 
-use gpui::{Context, Div, Pixels, Stateful, div, prelude::*, px, rgb};
+use gpui::{Context, Div, Stateful, div, prelude::*, rgb};
 
 use super::{RowAction, RowLine, RowMouse, RunActionsIn, Shown, bind_row, chevron, count_badge, dot_note, keep_shown, row_action, row_actions, run_actions, run_label, secondary, shared};
 use crate::click_targets::{Listener, target};
 use crate::clipboard;
 use crate::icons;
 use crate::overview::git_ui::mark_label;
-use crate::project::CheckoutRef;
 use crate::script::keymap::ClipboardTarget;
-use crate::sidebar::folders::{ChangeFolderRow, ChangeRow, CommitRow, CommitsMoreRow, FolderBadge, FolderKind, FolderRow, NoteRow};
-use crate::sidebar::rows::{RunRow, target_name};
+use crate::sidebar::folders::{ChangeFolderRow, ChangeRow, CommitRow, CommitsMoreRow, FolderKind, FolderRow, NoteRow};
+use crate::sidebar::rows::RunRow;
 use crate::theme::Theme;
 use crate::tooltip;
 use crate::workspace::{Workspace, icon};
@@ -183,76 +182,4 @@ fn link_actions(run: &RunRow, line: &RowLine, cx: &mut Context<Workspace>) -> Ve
         RowAction { id: "open-link", icon: icons::WEB, tip: "Open in the browser".to_owned(), on_click: Box::new(open) },
         RowAction { id: "copy-link", icon: icons::COPY, tip: "Copy the link".to_owned(), on_click: Box::new(copy) },
     ]
-}
-
-/// `Commits (5) · this worktree only`, then what a click and an Alt+click do.
-fn badge_tip(badge: &FolderBadge) -> String {
-    let count = badge.count.map_or_else(String::new, |count| format!(" ({count})"));
-    let apart = if badge.apart { " · this worktree only" } else { "" };
-    format!("{}{count}{apart}\nClick: this worktree · Alt+click: every worktree", badge.kind.title())
-}
-
-/// The mark of a badge set apart from every worktree's: a 4 px accent dot at its top right.
-fn apart_dot(theme: Theme) -> Div {
-    div().absolute().top(px(1.)).right(px(1.)).size(px(4.)).rounded_full().bg(rgb(theme.accent))
-}
-
-/// The badges at the end of a checkout's row (or a single checkout's project row): each its folder's icon and count,
-/// highlighted while the folder shows; a click shows or hides it. Shown while the row is hovered, pinned like row
-/// actions to the panel's visible right edge, `after` short of it, over a long name.
-pub(super) fn folder_badges(badges: &[FolderBadge], checkout: &CheckoutRef, line: &RowLine, after: Pixels, cx: &mut Context<Workspace>) -> Div {
-    let theme = line.theme;
-    let sizes = &theme.sizes.tree;
-    let height = theme.sizes.icon.0 + 2. * sizes.action_padding.0;
-    let buttons = badges.iter().map(|badge| {
-        let (kind, toggled) = (badge.kind, checkout.clone());
-        // Alt (Option on macOS): every worktree
-        let toggle = target(target_name("badge", &badge.target), cx.listener(move |workspace, event: &gpui::ClickEvent, _window, cx| {
-            match event.modifiers().alt {
-                true => workspace.toggle_folder_everywhere(kind, cx),
-                false => workspace.toggle_folder_shown(&toggled, kind, cx),
-            }
-        }), cx);
-        let (fill, text) = if badge.shown { (Some(theme.border), theme.text) } else { (None, secondary(theme)) };
-        let tip = badge_tip(badge);
-        let dot = badge.apart.then(|| apart_dot(theme));
-        div()
-            .id(("folder-badge", kind as usize))
-            .flex()
-            .flex_none()
-            .items_center()
-            .gap(sizes.tag_gap.px())
-            .px(sizes.count_padding_x.px())
-            .rounded(sizes.count_radius.px())
-            .text_size(sizes.count_text_size.px())
-            .text_color(rgb(text))
-            .map(|button| match fill {
-                Some(fill) => button.bg(rgb(fill)),
-                None => button,
-            })
-            .hover(|style| style.bg(rgb(theme.border)))
-            .relative()
-            .children(dot)
-            .child(icon(theme, kind.icon()))
-            .children(badge.count.map(|count| count.to_string()))
-            .tooltip(tooltip::text_tooltip(tip))
-            .on_click(move |event, window, cx| {
-                cx.stop_propagation();
-                toggle(event, window, cx);
-            })
-    });
-    div()
-        .absolute()
-        .top(px((sizes.row_height.0 - height) / 2.))
-        .right(sizes.padding_right.px() + after)
-        .h(px(height))
-        .rounded(sizes.action_radius.px())
-        .bg(rgb(theme.hover))
-        .flex()
-        .flex_none()
-        .items_center()
-        .gap_0p5()
-        .invisible()
-        .group_hover(line.group.clone(), |style| style.visible())
-        .children(buttons)
 }

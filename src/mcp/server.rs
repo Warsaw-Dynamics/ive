@@ -503,7 +503,6 @@ a live one is shown instead. Answers with its process id, or with the variables 
 
     #[tool(description = "List what click can press now, by name. Sidebar: open-project, recent:<id>, open-folder, \
 project:<id>, toggle:<id>, close-project:<id>, toggle:<id>/<label> (a worktree), \
-badge:<id>/<label>/<folder> (shows or hides a worktree folder: processes, uncommitted, since-base, commits), \
 folder:<id>/<label>/<folder> (folds it; also files; processes opens its Run configurations tab), \
 toggle:<id>/<label>/processes (folds it), new-terminal:<id>/<label>/processes, process:<n>, \
 stop-process:<n> (ends it for good), live-run:<n>, change:<id>/<label>/<source>:<path> (its diff), \

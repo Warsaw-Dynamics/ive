@@ -100,20 +100,6 @@ code { font-family: var(--mono); }
 .tree__label--special { font-style: italic; padding: 0 6px; border-radius: 4px; background: var(--hover); }
 .tree__label--struck { text-decoration: line-through; color: var(--muted); }
 .tree__label--link { color: var(--accent); }
-/* a worktree's badges (DESIGN.md "Worktree folders") */
-/* folder_badges: pinned to the panel's right edge like row actions, over a long name; left of a row action when there is one */
-.tree__badges { position: absolute; top: 2px; right: 8px; display: flex; gap: 2px; padding: 0 2px; border-radius: 4px; background: var(--hover); visibility: hidden; }
-.tree__row:has(.row-action) .tree__badges { right: 32px; }
-/* on hover only, as the row's action */
-.tree__row:hover .tree__badges { visibility: visible; }
-.tree__badge { display: inline-flex; align-items: center; gap: 2px; height: 18px; padding: 0 4px; border-radius: 4px; font-size: 11px; color: var(--muted); }
-.tree__badge .icon { width: 12px; height: 12px; opacity: 0.7; }
-.tree__badge:hover { background: var(--border); }
-.tree__badge--on { background: var(--selected); color: var(--text); }
-.tree__badge--on .icon { opacity: 1; }
-/* a proposal: a badge this worktree set apart from every worktree's */
-.tree__badge { position: relative; }
-.tree__badge--own::after { content: ""; position: absolute; top: 1px; right: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
 .menu__tick { width: 12px; text-align: center; font-size: 12px; }
 .menu__key { flex: none; margin-left: 16px; font-size: 12px; color: var(--muted); }
 /* a row holding a switch: the switch takes the clicks, the row no hover */
