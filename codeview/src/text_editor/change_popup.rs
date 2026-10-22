@@ -1,5 +1,6 @@
 //! The popup a change marker opens: the change's text in the base (HEAD), and what to do with the change.
 
+use std::ops::Range;
 use std::rc::Rc;
 
 use gpui::{AnyElement, App, MouseButton, Pixels, SharedString, Window, div, img, prelude::*, px, rgb, rgba};
@@ -36,17 +37,53 @@ pub(crate) struct ChangePopup {
     /// the change's lines in the base as shown, with `\n` line breaks; empty for added lines
     previous: String,
     waiting: Waiting,
-    commit: Committing,
 }
 
-/// Where committing the change shown is.
+/// Where committing a change of the editor is: one commit at a time, whether its popup is open or not.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Committing {
     Idle,
     /// sent to the host, which has not answered yet
-    Sent,
-    /// refused or failed, for the reason shown
-    Failed(String),
+    Sent(SentChange),
+    /// refused or failed, for the reason shown in that change's popup until the next commit is sent
+    Failed(SentChange, String),
+}
+
+/// A change sent to be committed: its lines in the base, and the HEAD that base is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SentChange {
+    pub base: Range<usize>,
+    pub head_id: String,
+}
+
+/// How a popup shows committing: ready, waiting for the answer (to its change's commit or another's), or failed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum CommitShown {
+    Ready,
+    Sending,
+    Failed(SharedString),
+}
+
+impl Committing {
+    pub(crate) fn is_in_flight(&self) -> bool {
+        matches!(self, Self::Sent(_))
+    }
+
+    /// How the popup of `block`, a change against HEAD `head_id`, shows it.
+    pub(crate) fn shown(&self, block: &ChangeHunk, head_id: Option<&str>) -> CommitShown {
+        match self {
+            Self::Sent(_) => CommitShown::Sending,
+            Self::Failed(sent, reason) if sent.is_of(block, head_id) => CommitShown::Failed(reason.clone().into()),
+            Self::Failed(..) | Self::Idle => CommitShown::Ready,
+        }
+    }
+}
+
+impl SentChange {
+    /// Whether `block`, a change against HEAD `head_id`, is the change sent.
+    pub(crate) fn is_of(&self, block: &ChangeHunk, head_id: Option<&str>) -> bool {
+        block.base == self.base && head_id == Some(self.head_id.as_str())
+    }
 }
 
 /// What a popup's button does with its change, which needs the markers to be the diff of the current text: markers
@@ -68,7 +105,7 @@ enum Waiting {
 impl ChangePopup {
     pub(crate) fn of(hunk: &ChangeHunk, markers: &ChangeMarkers) -> Self {
         let previous = String::from_utf8_lossy(&markers.base_text(hunk)).replace("\r\n", "\n");
-        Self { block: hunk.clone(), previous, waiting: Waiting::Nothing, commit: Committing::Idle }
+        Self { block: hunk.clone(), previous, waiting: Waiting::Nothing }
     }
 
     /// Runs `action` once the markers are the diff of the current text, instead of an action waiting before.
@@ -86,14 +123,6 @@ impl ChangePopup {
 
     pub(crate) fn is_waiting(&self) -> bool {
         matches!(self.waiting, Waiting::Action(_))
-    }
-
-    pub(crate) fn committing(&self) -> &Committing {
-        &self.commit
-    }
-
-    pub(crate) fn set_committing(&mut self, commit: Committing) {
-        self.commit = commit;
     }
 
     pub(crate) fn block(&self) -> &ChangeHunk {
@@ -137,7 +166,7 @@ impl Popup {
         };
         match markers.meeting(&popup.block.current) {
             Some(hunk) if *hunk == popup.block => Self::Open(popup),
-            Some(hunk) => Self::Open(ChangePopup { waiting: popup.waiting, commit: popup.commit, ..ChangePopup::of(hunk, markers) }),
+            Some(hunk) => Self::Open(ChangePopup { waiting: popup.waiting, ..ChangePopup::of(hunk, markers) }),
             None => Self::Closed,
         }
     }
@@ -170,6 +199,7 @@ pub(crate) struct PopupActions {
     /// gives the message field the keyboard
     pub focus_message: ClickListener,
     pub message: AnyElement,
+    pub commit_shown: CommitShown,
     /// a press outside the popup
     pub close: CloseListener,
 }
@@ -200,7 +230,8 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
     let width = (anchor.width - px(RIGHT_MARGIN)).min(px(MAX_WIDTH)).max(px(0.));
     let close = actions.close.clone();
     let state = if popup.is_waiting() { ButtonState::Busy } else { ButtonState::Ready };
-    let sending = if popup.is_waiting() || popup.commit == Committing::Sent { ButtonState::Busy } else { ButtonState::Ready };
+    let sending = if popup.is_waiting() || actions.commit_shown == CommitShown::Sending { ButtonState::Busy } else { ButtonState::Ready };
+    let failed = failure(&actions.commit_shown, &style);
     div()
         .id("change-popup")
         .absolute()
@@ -221,7 +252,7 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_mouse_down_out(move |_, window, cx| close(window, cx))
         .child(toolbar(actions, [state, sending], &style, cx))
-        .children(failure(&popup.commit, &style))
+        .children(failed)
         .child(previous_text(popup, &lines, anchor, &style))
         .into_any_element()
 }
@@ -257,12 +288,12 @@ fn toolbar(actions: PopupActions, [state, sending]: [ButtonState; 2], style: &Vi
 }
 
 /// Why the last commit of the change failed, in a row under the buttons.
-fn failure(commit: &Committing, style: &ViewStyle) -> Option<AnyElement> {
-    let Committing::Failed(reason) = commit else {
+fn failure(commit: &CommitShown, style: &ViewStyle) -> Option<AnyElement> {
+    let CommitShown::Failed(reason) = commit else {
         return None;
     };
     let row = div().px(px(8.)).py(px(3.)).text_size(px(style.editor_notice_text_size)).text_color(rgb(style.error));
-    Some(row.border_b(px(BORDER)).border_color(rgb(style.border)).child(SharedString::from(reason.clone())).into_any_element())
+    Some(row.border_b(px(BORDER)).border_color(rgb(style.border)).child(reason.clone()).into_any_element())
 }
 
 struct Button {

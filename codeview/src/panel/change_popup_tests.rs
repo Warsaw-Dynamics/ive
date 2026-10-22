@@ -434,3 +434,93 @@ fn should_show_why_a_commit_failed_and_close_once_one_is_done(cx: &mut TestAppCo
     assert_eq!((in_popup(&panel, cx), commit_state(&panel, cx)), (None, (String::new(), None)));
     assert_eq!(text_of(&panel, cx), "!one\nTWO\nthree\nfour\nfive\nsix\nseven\n", "the text has the keyboard again");
 }
+
+#[gpui::test]
+fn should_send_a_change_once_while_its_commit_is_in_flight_after_reopening(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix two");
+    cx.simulate_keystrokes("enter");
+    cx.simulate_keystrokes("escape");
+    draw(cx);
+    let closed = in_popup(&panel, cx);
+
+    // when
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_keystrokes("enter");
+    click("change-popup:commit", &seen, cx);
+    cx.simulate_input("!");
+
+    // then
+    assert_eq!(closed, None);
+    assert_eq!(seen.borrow().commits.len(), 1, "sent once");
+    assert_eq!(commit_state(&panel, cx), ("fix two".to_owned(), None), "the field takes no typing meanwhile");
+    assert_eq!(text_of(&panel, cx), "one\nTWO\nthree\nfour\nfive\nsix\nseven\n");
+}
+
+#[gpui::test]
+fn should_show_a_failure_on_the_change_sent_when_its_popup_opens_again(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nFIVE\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix two");
+    cx.simulate_keystrokes("enter");
+    cx.simulate_keystrokes("escape");
+    draw(cx);
+
+    // when
+    cast(&panel, Cast::ChangeCommitFailed("HEAD moved".to_owned()), cx);
+    click("change-marker:5", &seen, cx);
+    let other = commit_state(&panel, cx);
+    cast(&panel, Cast::ChangeCommitted, cx);
+    let after_stale_answer = in_popup(&panel, cx);
+    click("change-marker:2", &seen, cx);
+
+    // then
+    assert_eq!(other, ("fix two".to_owned(), None), "another change's popup shows no failure");
+    assert_eq!(after_stale_answer, Some(hunk(4..5, 4..5)), "an answer to no commit in flight does nothing");
+    assert_eq!(commit_state(&panel, cx), ("fix two".to_owned(), Some("HEAD moved".to_owned())));
+}
+
+#[gpui::test]
+fn should_keep_another_changes_popup_open_when_the_one_sent_is_committed(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nFIVE\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("fix two");
+    cx.simulate_keystrokes("enter");
+    click("change-popup:next", &seen, cx);
+
+    // when
+    cast(&panel, Cast::ChangeCommitted, cx);
+    draw(cx);
+
+    // then
+    assert_eq!(in_popup(&panel, cx), Some(hunk(4..5, 4..5)));
+    assert_eq!(commit_state(&panel, cx), (String::new(), None), "the message went with the commit");
+}
+
+#[gpui::test]
+fn should_close_the_popup_on_escape_in_the_field_and_give_the_text_the_keyboard(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    click("change-popup:message", &seen, cx);
+    cx.simulate_input("typed in the field");
+
+    // when
+    cx.simulate_keystrokes("escape");
+    draw(cx);
+    let after_escape = (in_popup(&panel, cx), text_of(&panel, cx));
+    cx.simulate_input("!");
+
+    // then
+    assert_eq!(after_escape, (None, "one\nTWO\nthree\nfour\nfive\nsix\nseven\n".to_owned()), "the file is untouched");
+    assert_eq!(seen.borrow().commits.len(), 0);
+    assert_eq!(text_of(&panel, cx), "!one\nTWO\nthree\nfour\nfive\nsix\nseven\n", "the text has the keyboard again");
+}

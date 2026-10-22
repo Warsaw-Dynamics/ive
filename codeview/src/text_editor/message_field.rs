@@ -104,10 +104,10 @@ impl MessageField {
     /// Runs `command` as a one-line field does; moving between lines and undoing do nothing here.
     fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         match command {
-            Command::Newline => cx.emit(MessageFieldEvent::Submitted),
             Command::Move(motion, _) => self.caret = self.moved(motion),
             Command::Copy(target) => Host::write_clipboard(target, self.text.clone(), cx),
             _ if self.state == FieldState::Busy => {}
+            Command::Newline => cx.emit(MessageFieldEvent::Submitted),
             Command::Backspace(_) => drop(self.replace(self.before(self.caret)..self.caret, "")),
             Command::Delete(_) => drop(self.replace(self.caret..self.after(self.caret), "")),
             Command::Paste(source) => self.paste(source, cx),

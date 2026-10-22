@@ -52,13 +52,28 @@ Commits only this block, nothing else:
 - The new content committed for the file = HEAD's version of the file with only this block replaced by the
   current block text (unsaved edits in the block count; other changes in the file and in other files are left out).
 - Done through the `git` CLI so hooks, signing and the user's config apply: content into the object store with
-  `git hash-object -w --path=<path> --stdin` (clean filters run), a temporary index built from HEAD
-  (`GIT_INDEX_FILE`, `git read-tree HEAD`), the one entry updated (`git update-index --cacheinfo`), then
-  `git commit -m <message>` with that index. Afterwards the real index entry for the file is set to the new blob
-  only if it equalled the old HEAD blob (the file had nothing staged).
+  `git hash-object -w --path=<path> --stdin` (clean filters run), a temporary index built from the HEAD checked
+  (`GIT_INDEX_FILE`, `git read-tree <head_id>`), the one entry updated (`git update-index --cacheinfo`), then
+  `git commit -m <message>` with that index (reflog action `commit (ive <run>)`, so IVE finds its commit in HEAD's
+  reflog). Afterwards the real index entry for the file is set to the file's entry in the new commit (as hooks left
+  it) only if it equalled the old HEAD blob (the file had nothing staged). The `GIT_DIR`-like variables IVE was
+  started with are not passed on.
+- IVE's commits run one at a time (process-wide lock). HEAD is checked before, and the new commit's parent after:
+  when another commit landed in between (git put ours on top of it), ours is taken off with a compare-and-swap
+  `git update-ref -m "ive: undo commit on moved HEAD" HEAD <parent> <ours>` and the commit is refused as HEAD
+  moved. Should that fail too (HEAD moved on again), the reason says so loudly: our commit, the commit it went on,
+  and `git reset --soft <parent>` to undo it while HEAD is still ours. The work tree is never touched.
 - Refused, with the reason shown in the popup: an empty message; the file has staged changes that differ from HEAD;
-  a merge, rebase, cherry-pick or revert in progress; no HEAD (empty repository); the `git` command missing or
-  failing (its stderr shown); HEAD moved since the markers were computed (recompute and try again).
+  a merge, rebase, cherry-pick or revert in progress; no HEAD (empty repository); a `filter` or
+  `working-tree-encoding` attribute on the file (git's form of the text may differ from the one IVE compared); the
+  `git` command missing or failing (its stderr shown); HEAD moved since the markers were computed (recompute and
+  try again).
+- Hooks run as with `git commit`: one that stashes or rewrites files (a formatter, `lint-staged`) changes them on
+  disk during the commit, and IVE sees that as any outside change to the file.
+- One commit in flight per editor: while it is, the field takes no typing, Enter and the send button do nothing
+  (also after Esc and reopening the popup), and the send button shows busy. The answer applies to the change sent
+  (its base lines and HEAD): a success closes that change's popup if it is open; a failure shows under that
+  change's popup, now or when it is next opened, until the next commit is sent.
 - After a commit the markers recompute against the new HEAD (that block's marker disappears) and IVE's git views
   refresh as they do for outside commits.
 

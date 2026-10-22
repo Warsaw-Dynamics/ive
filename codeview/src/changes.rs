@@ -264,6 +264,14 @@ impl ChangeMarkers {
         Some((head_id.clone(), [&text[..start], lines, &text[end..]].concat()))
     }
 
+    /// The id of the HEAD the markers are against; `None` without a base.
+    pub(crate) fn head_id(&self) -> Option<&str> {
+        match &self.base {
+            Base::Tracked { head_id, .. } => Some(head_id),
+            Base::Unknown | Base::Untracked => None,
+        }
+    }
+
     /// Forgets the change starting on line `line`, until the next diff: it was rolled back.
     pub(crate) fn drop_starting_at(&mut self, line: usize) {
         self.hunks.retain(|hunk| hunk.current.start != line);

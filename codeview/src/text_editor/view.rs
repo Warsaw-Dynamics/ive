@@ -13,7 +13,7 @@ use gpui::{
     div, fill, point, prelude::*, px, rgb, size,
 };
 
-use super::change_popup::{Anchor, ChangeAction, ChangePopup, Committing, Popup, PopupActions, popup_element};
+use super::change_popup::{Anchor, ChangeAction, ChangePopup, CommitShown, Committing, Popup, PopupActions, SentChange, popup_element};
 use super::message_field::{FieldState, MessageField, MessageFieldEvent};
 use super::colours::Colours;
 use super::keys::command;
@@ -62,8 +62,9 @@ pub struct TextEditor {
     colours: Colours,
     markers: ChangeMarkers,
     popup: Popup,
-    /// the popup's commit message, kept while it is closed
+    /// the popup's commit message, kept while it is closed; it takes no typing while its commit is in flight
     message: Entity<MessageField>,
+    committing: Committing,
     /// closes the popup when the keyboard leaves the editor (and what it holds), from the first popup on
     focus_out: FocusWatch,
     focus_handle: FocusHandle,
@@ -100,6 +101,7 @@ impl TextEditor {
             colours: Colours::new(setup.language),
             markers: ChangeMarkers::new(),
             popup: Popup::Closed,
+            committing: Committing::Idle,
             focus_out: FocusWatch::Unwatched,
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
@@ -264,30 +266,41 @@ impl TextEditor {
     }
 
     /// Commits the change shown, alone, with the message typed, once the markers are the diff of the current text;
-    /// the host answers with [`TextEditor::change_committed`] or [`TextEditor::change_commit_failed`].
+    /// the host answers with [`TextEditor::change_committed`] or [`TextEditor::change_commit_failed`]. Nothing while
+    /// a commit is in flight.
     pub fn commit_change(&mut self, cx: &mut Context<Self>) {
+        if self.committing.is_in_flight() {
+            return;
+        }
         self.act(ChangeAction::Commit, cx);
     }
 
-    /// The change sent to be committed is: the popup showing it closes and the message goes.
+    /// The change sent to be committed is: its popup closes if open, and the message goes.
     pub fn change_committed(&mut self, cx: &mut Context<Self>) {
-        self.message.update(cx, |field, cx| {
-            field.clear(cx);
-            field.set_state(FieldState::Editable, cx);
-        });
-        if matches!(&self.popup, Popup::Open(popup) if *popup.committing() == Committing::Sent) {
+        let Committing::Sent(sent) = &self.committing else {
+            return;
+        };
+        if matches!(&self.popup, Popup::Open(popup) if sent.is_of(popup.block(), self.markers.head_id())) {
             self.close_change_popup(cx);
         }
+        self.message.update(cx, |field, cx| field.clear(cx));
+        self.set_committing(Committing::Idle, cx);
     }
 
-    /// The change sent to be committed is not, for `reason`: the popup showing it says why, the message stays.
+    /// The change sent to be committed is not, for `reason`: its popup says why, now or when it next opens, until
+    /// the next commit is sent; the message stays.
     pub fn change_commit_failed(&mut self, reason: String, cx: &mut Context<Self>) {
-        self.message.update(cx, |field, cx| field.set_state(FieldState::Editable, cx));
-        if let Popup::Open(popup) = &mut self.popup
-            && *popup.committing() == Committing::Sent
-        {
-            popup.set_committing(Committing::Failed(reason));
-        }
+        let Committing::Sent(sent) = &self.committing else {
+            return;
+        };
+        self.set_committing(Committing::Failed(sent.clone(), reason), cx);
+    }
+
+    /// The field takes typing unless the commit is in flight.
+    fn set_committing(&mut self, committing: Committing, cx: &mut Context<Self>) {
+        let state = if committing.is_in_flight() { FieldState::Busy } else { FieldState::Editable };
+        self.committing = committing;
+        self.message.update(cx, |field, cx| field.set_state(state, cx));
         cx.notify();
     }
 
@@ -299,12 +312,12 @@ impl TextEditor {
     /// Why the last commit of the change shown failed.
     #[cfg(test)]
     pub(crate) fn commit_failure(&self) -> Option<String> {
-        match &self.popup {
-            Popup::Open(popup) => match popup.committing() {
-                Committing::Failed(reason) => Some(reason.clone()),
-                Committing::Idle | Committing::Sent => None,
-            },
-            Popup::Closed => None,
+        let Popup::Open(popup) = &self.popup else {
+            return None;
+        };
+        match self.committing.shown(popup.block(), self.markers.head_id()) {
+            CommitShown::Failed(reason) => Some(reason.to_string()),
+            CommitShown::Ready | CommitShown::Sending => None,
         }
     }
 
@@ -330,12 +343,12 @@ impl TextEditor {
         }
     }
 
-    /// Sends the change shown to be committed, unless it already is: HEAD's text with only its lines replaced.
+    /// Sends the change shown to be committed, unless a commit is in flight: HEAD's text with only its lines replaced.
     fn commit_now(&mut self, cx: &mut Context<Self>) {
         let Popup::Open(popup) = &self.popup else {
             return;
         };
-        if *popup.committing() == Committing::Sent {
+        if self.committing.is_in_flight() {
             return;
         }
         let block = popup.block().clone();
@@ -343,13 +356,9 @@ impl TextEditor {
         let Some((head_id, text)) = self.markers.committed_text(&block, &lines) else {
             return;
         };
-        if let Popup::Open(popup) = &mut self.popup {
-            popup.set_committing(Committing::Sent);
-        }
         let message = self.message.read(cx).text().to_owned();
-        self.message.update(cx, |field, cx| field.set_state(FieldState::Busy, cx));
+        self.set_committing(Committing::Sent(SentChange { base: block.base.clone(), head_id: head_id.clone() }), cx);
         cx.emit(TextEditorEvent::CommitChange { head_id, block: block.base, text, message });
-        cx.notify();
     }
 
     fn roll_back_now(&mut self, cx: &mut Context<Self>) {
@@ -684,12 +693,13 @@ impl TextEditor {
             line_height: metrics.line_height,
             font_size: metrics.font_size,
         };
-        popup_element(popup, anchor, popup_actions(cx.weak_entity(), &self.message), cx)
+        let commit_shown = self.committing.shown(popup.block(), self.markers.head_id());
+        popup_element(popup, anchor, popup_actions(cx.weak_entity(), &self.message, commit_shown), cx)
     }
 }
 
-/// The popup's buttons, each running an editor method, and the commit message's field.
-fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<MessageField>) -> PopupActions {
+/// The popup's buttons, each running an editor method, the commit message's field, and how committing shows.
+fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<MessageField>, commit_shown: CommitShown) -> PopupActions {
     let on = |run: fn(&mut TextEditor, &mut Context<TextEditor>)| -> ClickListener {
         let editor = editor.clone();
         Rc::new(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| drop(editor.update(cx, run)))
@@ -711,6 +721,7 @@ fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<MessageField>)
             })
         },
         message: message.clone().into_any_element(),
+        commit_shown,
         close: Rc::new(move |_window: &mut Window, cx: &mut App| drop(closing.update(cx, TextEditor::close_change_popup))),
     }
 }
