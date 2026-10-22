@@ -5,7 +5,7 @@ use std::rc::Rc;
 use codeview::panel::Cast;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, Render, SharedString,
+    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, SharedString,
     ScrollHandle, Stateful, Subscription, Svg, Task, Window, canvas, div, img, prelude::*, rgb, svg,
 };
 
@@ -66,6 +66,7 @@ mod tab_state;
 mod tab_windows;
 mod tree_git;
 mod tree_status;
+mod updates;
 mod drag_preview;
 mod worktree_list;
 
@@ -170,6 +171,7 @@ pub struct Workspace {
     /// the tab opened from the hub a moment ago, while it is the one shown
     hub_return: Option<hub::HubReturn>,
     _signals: Option<Task<()>>,
+    updates: updates::Updates,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -251,6 +253,7 @@ impl Workspace {
             worktree_list_keys(cx),
             cx.on_app_quit(|workspace, cx| {
                 workspace.flush_state(cx);
+                workspace.apply_update_on_quit(cx);
                 async {}
             }),
         ];
@@ -315,6 +318,7 @@ impl Workspace {
             worktree_creations: crate::hub::creations::Creations::default(),
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
+            updates: updates::start(window, cx),
         };
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
         // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
@@ -938,6 +942,9 @@ impl Render for Workspace {
             .child(content.flex_1().min_h_0())
             .children(quit_prompt)
             .track_focus(&self.focus_handle)
+            // input anywhere in the window: IVE is not idle
+            .capture_key_down(cx.listener(|workspace, _: &KeyDownEvent, _, _| workspace.note_activity()))
+            .capture_any_mouse_down(cx.listener(|workspace, _: &MouseDownEvent, _, _| workspace.note_activity()))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.close_menu_on_escape(event, window, cx)))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.run_window_binding(event, window, cx)))
             .on_drop(cx.listener(|workspace, dropped: &ExternalPaths, window, cx| workspace.open_dropped(dropped, window, cx)))

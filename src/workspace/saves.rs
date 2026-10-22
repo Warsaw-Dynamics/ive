@@ -43,7 +43,6 @@ impl Workspace {
     }
 
     /// The first tab whose edits are not saved: a save failed or waits for the user.
-    #[cfg(target_os = "macos")]
     pub(super) fn unsaved_tab(&self, cx: &App) -> Option<TabId> {
         self.unsaved_tabs(cx).into_iter().next()
     }

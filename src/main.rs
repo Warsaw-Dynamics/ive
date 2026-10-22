@@ -65,7 +65,6 @@ mod text_input;
 mod theme;
 mod theme_config;
 mod tooltip;
-#[allow(dead_code)] // wired into the workspace in a later commit
 mod update;
 mod watch;
 mod window_capture;
@@ -118,6 +117,9 @@ fn main() -> ExitCode {
     memory_watch::start();
     #[cfg(windows)]
     update::install::delete_set_aside_exe();
+    if let Some(pid) = args.replacing {
+        wait_for_replaced(pid);
+    }
     let start = Start::of(&args);
     let (calls, api_calls) = unbounded();
     if let Err(error) = tracing::info_span!("serve_mcp").in_scope(|| serve_mcp(args.mcp, start, &calls)) {
@@ -270,6 +272,14 @@ fn check_restart(script: Option<&std::path::Path>) -> Result<(), String> {
     return args::check_restart_script(script);
     #[cfg(not(unix))]
     Err(format!("--restart {} needs SIGUSR1, which only Unix has", script.display()))
+}
+
+/// An update restart starts this IVE at once; the one it replaces saves its tabs as it quits, which this one reads.
+fn wait_for_replaced(pid: u32) {
+    let limit = retry::RESTART_INTERVAL * retry::RESTART_ATTEMPTS;
+    if update::restart::wait_for_exit(pid, limit) == update::restart::Exit::StillRunning {
+        eprintln!("ive: IVE {pid}, which this one replaces, still runs after {} s; starting anyway", limit.as_secs());
+    }
 }
 
 /// Whether this IVE may be replacing another, which still holds the terminals and the MCP port for a moment.

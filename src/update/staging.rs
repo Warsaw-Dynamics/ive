@@ -239,11 +239,12 @@ mod tests {
     #[test]
     fn should_read_the_protocol_a_binary_prints() {
         // given
-        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let binary = dir.path().join("ive");
-        write(&binary, "#!/bin/sh\n[ \"$1 $2\" = \"--pty-host protocol\" ] && echo 7\n");
-        fs::set_permissions(&binary, fs::Permissions::from_mode(0o755)).unwrap();
+        // written by a child: a file this process wrote can still be open in a child another test forks meanwhile,
+        // and executing it then fails with ETXTBSY
+        let script = "printf '#!/bin/sh\\n[ \"$1 $2\" = \"--pty-host protocol\" ] && echo 7\\n' > \"$0\" && chmod 755 \"$0\"";
+        assert!(Command::new("sh").arg("-c").arg(script).arg(&binary).status().unwrap().success());
 
         // when
         let protocol = staged_protocol(&binary);

@@ -610,6 +610,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         }))
         .child(end);
     let restart = workspace.restart_script().map(|_| restart_button(theme, cx));
+    let update = workspace.update_to_restart_onto().map(|tag| update_button(tag.to_owned(), theme, cx));
     let tools = div()
         .flex()
         .flex_none()
@@ -617,6 +618,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .gap(sizes.tools_gap.px())
         .h_full()
         .pl(sizes.tools_padding_left.px())
+        .children(update)
         .children(restart)
         .child(settings_button(theme, cx))
         .children(window_controls(theme, window, cx));
@@ -875,6 +877,26 @@ fn restart_button(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
         .tooltip(tooltip::text_tooltip("Restart IVE"))
         .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
         .on_click(target("restart".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.restart(window, cx)), cx))
+}
+
+/// Shown while a release is staged: restarts onto it now instead of on quit or when idle.
+fn update_button(tag: String, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    div()
+        .id("update-restart")
+        .flex()
+        .items_center()
+        .gap(theme.sizes.tabs.toolbar_button_padding.px())
+        .p(theme.sizes.tabs.toolbar_button_padding.px())
+        .rounded(theme.sizes.tabs.toolbar_button_radius.px())
+        .cursor_pointer()
+        .text_size(theme.sizes.tabs.tab_text_size.px())
+        .text_color(rgb(theme.accent))
+        .hover(|style| style.bg(rgb(theme.hover)))
+        .child(img(icons::embedded(theme.appearance, icons::RESTART)).size(theme.sizes.tabs.toolbar_icon_size.px()))
+        .child("Restart to update")
+        .tooltip(tooltip::text_tooltip(format!("Restart IVE onto {tag}; terminals keep running")))
+        .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+        .on_click(target("update-restart".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.restart_to_update(window, cx)), cx))
 }
 
 fn settings_button(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {

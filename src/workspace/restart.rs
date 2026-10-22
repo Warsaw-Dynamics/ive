@@ -35,13 +35,13 @@ impl Workspace {
     }
 
     #[cfg(unix)]
-    fn keeps_terminals(&self) -> bool {
+    pub(super) fn keeps_terminals(&self) -> bool {
         self.hosted.is_some()
     }
 
     /// Without Unix, terminals run inside IVE, so a restart ends them.
     #[cfg(not(unix))]
-    fn keeps_terminals(&self) -> bool {
+    pub(super) fn keeps_terminals(&self) -> bool {
         false
     }
 

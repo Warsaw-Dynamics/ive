@@ -120,6 +120,27 @@ fn launch_command(install: &Install, args: &[OsString]) -> Command {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Exit {
+    Exited,
+    StillRunning,
+}
+
+/// How often [`wait_for_exit`] looks.
+const EXIT_POLL: Duration = Duration::from_millis(100);
+
+/// Waits up to `limit` for process `pid` to exit: an IVE replacing another reads the tabs it saves as it quits.
+pub fn wait_for_exit(pid: u32, limit: Duration) -> Exit {
+    let deadline = std::time::Instant::now() + limit;
+    while super::staging::is_alive(pid) {
+        if std::time::Instant::now() >= deadline {
+            return Exit::StillRunning;
+        }
+        std::thread::sleep(EXIT_POLL);
+    }
+    Exit::Exited
+}
+
 /// A process group of its own: the old IVE's terminal closing does not hang it up.
 #[cfg(unix)]
 fn detach(command: &mut Command) {
@@ -247,6 +268,39 @@ mod tests {
 
         // then
         assert_eq!(verdicts, [RestartVerdict::Wait("no update staged"); 2]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn should_wait_for_the_replaced_ive_to_exit() {
+        // given
+        let mut child = std::process::Command::new("sleep").arg("0.3").spawn().unwrap();
+        let pid = child.id();
+        let reaper = std::thread::spawn(move || child.wait());
+        let started = std::time::Instant::now();
+
+        // when
+        let exited = wait_for_exit(pid, Duration::from_secs(5));
+
+        // then
+        assert_eq!(exited, Exit::Exited);
+        assert!(started.elapsed() >= Duration::from_millis(250));
+        reaper.join().unwrap().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn should_stop_waiting_after_the_limit() {
+        // given
+        let mut child = std::process::Command::new("sleep").arg("5").spawn().unwrap();
+
+        // when
+        let exited = wait_for_exit(child.id(), Duration::from_millis(300));
+
+        // then
+        child.kill().unwrap();
+        child.wait().unwrap();
+        assert_eq!(exited, Exit::StillRunning);
     }
 
     #[test]
