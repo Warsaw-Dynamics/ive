@@ -17,4 +17,88 @@ Read [README.md](README.md) first: how to run IVE, use it, and drive it over MCP
 - Stop the IVE instances you start when done; a leftover one holds its MCP port. Its terminals keep running: end
   them with `IVE_PTY_DIR=$XDG_RUNTIME_DIR/ive-pty/<profile> ive --pty-host kill <id>` (macOS:
   `IVE_PTY_DIR="$HOME/.ive-pty/<profile>"`), or answer the quit prompt with `prompt:Stop all`.
-- Tests follow `should_…` names with `// given`, `// when`, `// then` sections, like the existing ones.
+
+## Coding guidelines
+
+These apply to any language. Where a rule names a construct, use the language's equivalent.
+
+### Language and types
+
+- Use the language's current idioms and features (records/data classes, type inference, pattern matching, etc.).
+- Avoid null or nil where possible. Use the language's option or result types at boundaries instead.
+- Do not store optional wrappers (Optional, Maybe, Option) in fields. Use them for return values only.
+
+### Errors
+
+- Do not use exceptions or errors for control flow. Fail fast, but prefer readability over avoiding exceptions.
+- Make error messages self-contained: state what failed and the offending value, so they make sense in a log
+  without a stack trace.
+- Validate and bound inputs. Reject unreasonable values rather than letting them run.
+
+### State
+
+- Do not mutate state. Fields are immutable, except where a library requires setters or mutable structs.
+- Keep collections as immutable as you can: return unmodifiable views, copies, or the language's immutable types.
+- When data is fixed, prefer immutable literals and constructors (e.g. `List.of`, tuples, `frozenset`, `const`,
+  `readonly`).
+- Prefer composition over inheritance.
+
+### Functions
+
+- Keep each function at a single level of abstraction. Do not mix low-level operations (direct stdout/stderr
+  printing, byte twiddling, raw I/O) with higher-level helper calls in the same function.
+- Prefer fewer than 20 statements per function.
+- Prefer at most 3 parameters per function. When a constructor needs more, use a builder, an options/config
+  struct, or named arguments (enum-like constant definitions are exempt).
+- Do not use boolean parameters, except in setters. Use an enum or two separate functions.
+- Avoid nesting deeper than 3 levels.
+- Avoid negation in conditions: `if (!condition)` becomes `if (condition)`.
+- Return early:
+
+  ```
+  if condition:
+      return 1
+  return 2
+  ```
+
+  instead of
+
+  ```
+  if not condition:
+      return 2
+  else:
+      return 1
+  ```
+
+### Naming
+
+- Name functions with verbs, except property-like accessors.
+- Avoid negation in function names: `notEmpty` becomes `isEmpty`.
+- Follow the language's naming convention for constants, and give that style only to true compile-time or static
+  immutable constants. Instance-level immutable fields use the ordinary field style (e.g. `setupFile`, not
+  `SETUP_FILE`).
+
+### Comments
+
+- Doc comments state the contract: what it does, its inputs, and its errors. Keep implementation details in inline
+  comments.
+- Do not write comments that restate the code or a name. The best comment is a precise name. Comment only what the
+  code cannot express: why, non-obvious invariants, references.
+- Keep doc comments terse: a one-line description, plus an example only where it helps. Skip parameter, return and
+  error tags when the names and types already say it. A doc comment should never be longer or harder to read than
+  the body it documents.
+
+### Tests
+
+Name tests `should…` (or the language's equivalent, e.g. `should_…` in snake_case) and split each into three
+sections, like the existing ones:
+
+```
+test should_<expected_behaviour>:
+    // given
+    ... setup ...
+    // when
+    ... code under test ...
+    // then
+    ... assertions ...
+```
