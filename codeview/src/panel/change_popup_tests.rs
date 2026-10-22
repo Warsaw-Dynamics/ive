@@ -5,22 +5,25 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui::{ClickEvent, Entity, Modifiers, TestAppContext, VisualTestContext, div, point};
+use gpui::{ClickEvent, Entity, Modifiers, ScrollDelta, ScrollWheelEvent, TestAppContext, VisualTestContext, div, point, px};
 
 use super::*;
-use crate::changes::ChangeHunk;
+use crate::changes::{ChangeDiffJob, ChangeHunk};
+use crate::text_editor::Unit;
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
 use crate::document::TextSource;
 use crate::host::{ClickListener, Host, KeyOutcome};
 use crate::line_view::Metrics;
 use crate::style::{Appearance, ViewStyle};
 
-/// What the host saw: the click targets of the last frames by name, the clipboard, and the diffs asked for.
+/// What the host saw: the click targets of the last frames by name, the clipboard, the diffs asked for, and the
+/// change markers' diffs asked for.
 #[derive(Default)]
 struct Seen {
     targets: HashMap<String, ClickListener>,
     copied: Vec<String>,
     diffs: Vec<usize>,
+    jobs: Vec<ChangeDiffJob>,
 }
 
 /// A window showing only a panel that edits `text` against base `head`, with the markers' diff landed and drawn.
@@ -32,11 +35,10 @@ fn editing<'a>(text: &str, head: &str, cx: &'a mut TestAppContext) -> (Entity<Pa
         cx.set_global(host(&seen));
     });
     let (panel, cx) = cx.add_window_view(|_window, cx| Panel::new(cx));
-    let jobs: Rc<RefCell<Vec<crate::changes::ChangeDiffJob>>> = Rc::default();
-    let (asked, heard) = (jobs.clone(), seen.clone());
+    let heard = seen.clone();
     cx.update(|_window, cx| {
         cx.subscribe(&panel, move |_, event: &Event, _| match event {
-            Event::NeedChangeDiff(job) => asked.borrow_mut().push(job.clone()),
+            Event::NeedChangeDiff(job) => heard.borrow_mut().jobs.push(job.clone()),
             Event::OpenDiff { line } => heard.borrow_mut().diffs.push(*line),
             _ => {}
         })
@@ -47,10 +49,24 @@ fn editing<'a>(text: &str, head: &str, cx: &'a mut TestAppContext) -> (Entity<Pa
     cast(&panel, Cast::Open(content), cx);
     let head = Source::from_vec(head.as_bytes().to_vec());
     cast(&panel, Cast::SetChangeBase { base: ChangeBase::Tracked { head, head_id: "head".to_owned() } }, cx);
-    let job = jobs.borrow().last().cloned().expect("a diff was asked for");
-    cast(&panel, Cast::ChangeDiff { revision: job.revision(), hunks: job.run() }, cx);
-    draw(cx);
+    land(&panel, &seen, cx);
     (panel, seen, cx)
+}
+
+/// Lands the change markers' diff asked for last, then draws the next frame.
+fn land(panel: &Entity<Panel>, seen: &RefCell<Seen>, cx: &mut VisualTestContext) {
+    let job = seen.borrow().jobs.last().cloned().expect("a diff was asked for");
+    cast(panel, Cast::ChangeDiff { revision: job.revision(), hunks: job.run() }, cx);
+    draw(cx);
+}
+
+fn jobs_asked(seen: &RefCell<Seen>) -> usize {
+    seen.borrow().jobs.len()
+}
+
+/// Whether the popup's buttons wait for the markers of the current text.
+fn is_busy(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> bool {
+    editor_of(panel, cx).read_with(cx, |editor, _| editor.waits_for_changes())
 }
 
 fn host(seen: &Rc<RefCell<Seen>>) -> Host {
@@ -212,4 +228,137 @@ fn should_ask_for_the_diff_at_the_change(cx: &mut TestAppContext) {
 
     // then
     assert_eq!((seen.borrow().diffs.clone(), in_popup(&panel, cx)), (vec![5], None));
+}
+
+#[gpui::test]
+fn should_roll_back_to_head_after_an_edit_joined_the_next_line(cx: &mut TestAppContext) {
+    // given
+    let head = "a\nb\nc\nd\n";
+    let (panel, seen, cx) = editing("a\nB1\nB2\nc\nd\n", head, cx);
+    cast(&panel, Cast::RevealLine(4), cx);
+    cast(&panel, Cast::Command(Command::Backspace(Unit::Char)), cx);
+    click("change-marker:2", &seen, cx);
+    let asked = jobs_asked(&seen);
+
+    // when
+    click("change-popup:rollback", &seen, cx);
+    let waiting = (text_of(&panel, cx), is_busy(&panel, cx), jobs_asked(&seen));
+    land(&panel, &seen, cx);
+
+    // then
+    assert_eq!(waiting, ("a\nB1\nB2c\nd\n".to_owned(), true, asked + 1), "waits for a diff asked for at once");
+    assert_eq!(text_of(&panel, cx), head);
+    assert_eq!(in_popup(&panel, cx), None);
+}
+
+#[gpui::test]
+fn should_wait_for_current_markers_before_copying(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    click("change-marker:2", &seen, cx);
+    cast(&panel, Cast::RevealLine(3), cx);
+    cast(&panel, Cast::Type("x".to_owned()), cx);
+
+    // when
+    click("change-popup:copy", &seen, cx);
+    let waiting = (seen.borrow().copied.clone(), is_busy(&panel, cx));
+    land(&panel, &seen, cx);
+
+    // then
+    assert_eq!(waiting, (Vec::<String>::new(), true));
+    assert_eq!(seen.borrow().copied, ["two\nthree\n"], "the change as the new diff found it");
+    assert_eq!((in_popup(&panel, cx), is_busy(&panel, cx)), (Some(hunk(1..3, 1..3)), false));
+}
+
+/// The text after rolling back the change whose marker is on line `marker` (from 1) of `text`, diffed with `head`.
+fn rolled_back(text: &str, head: &str, marker: usize, cx: &mut TestAppContext) -> String {
+    let (panel, seen, cx) = editing(text, head, cx);
+    click(&format!("change-marker:{marker}"), &seen, cx);
+    click("change-popup:rollback", &seen, cx);
+    text_of(&panel, cx)
+}
+
+#[gpui::test]
+fn should_roll_back_deleted_lines(cx: &mut TestAppContext) {
+    // given
+    let text = "one\ntwo\nfour\nfive\nsix\nseven\n";
+
+    // when
+    let restored = rolled_back(text, HEAD, 3, cx);
+
+    // then
+    assert_eq!(restored, HEAD);
+}
+
+#[gpui::test]
+fn should_roll_back_lines_of_a_crlf_file(cx: &mut TestAppContext) {
+    // given
+    let head = "one\r\ntwo\r\nthree\r\n";
+
+    // when
+    let restored = rolled_back("one\r\nTWO\r\nTHREE\r\n", head, 2, cx);
+
+    // then
+    assert_eq!(restored, head);
+}
+
+#[gpui::test]
+fn should_roll_back_a_last_line_without_a_line_break(cx: &mut TestAppContext) {
+    // given
+    let head = "one\ntwo";
+
+    // when
+    let restored = rolled_back("one\nTWO", head, 2, cx);
+
+    // then
+    assert_eq!(restored, head);
+}
+
+#[gpui::test]
+fn should_close_the_popup_on_a_click_outside_it_and_when_the_focus_leaves(cx: &mut TestAppContext) {
+    // given
+    let (panel, seen, cx) = editing("one\nTWO\nthree\nfour\nfive\nsix\nseven\n", HEAD, cx);
+    let metrics = cx.update(|window, cx| Metrics::measure(window, cx, 8));
+    let below_popup = point(metrics.gutter_width() + px(40.), metrics.line_height * 7.5);
+    cx.update(|window, _| window.activate_window());
+    click("change-marker:2", &seen, cx);
+
+    // when
+    cx.simulate_click(below_popup, Modifiers::default());
+    draw(cx);
+    let after_click = in_popup(&panel, cx);
+    click("change-marker:2", &seen, cx);
+    let reopened = in_popup(&panel, cx);
+    cx.update(|window, cx| window.blur(cx));
+    draw(cx);
+
+    // then
+    assert_eq!((after_click, reopened), (None, Some(hunk(1..2, 1..2))));
+    assert_eq!(in_popup(&panel, cx), None);
+}
+
+#[gpui::test]
+fn should_close_the_popup_once_its_change_is_scrolled_out_of_view(cx: &mut TestAppContext) {
+    // given
+    let text: String = (0..200).map(|line| if line == 1 { "CHANGED\n".to_owned() } else { format!("line {line}\n") }).collect();
+    let head: String = (0..200).map(|line| format!("line {line}\n")).collect();
+    let (panel, seen, cx) = editing(&text, &head, cx);
+    let metrics = cx.update(|window, cx| Metrics::measure(window, cx, 200));
+    let wheel = |lines: f32| ScrollWheelEvent {
+        position: point(metrics.gutter_width() + px(40.), metrics.line_height * 0.5),
+        delta: ScrollDelta::Lines(point(0., lines)),
+        ..Default::default()
+    };
+    click("change-marker:2", &seen, cx);
+
+    // when
+    cx.simulate_event(wheel(-1.));
+    draw(cx);
+    let one_line_down = in_popup(&panel, cx);
+    cx.simulate_event(wheel(-10.));
+    draw(cx);
+
+    // then
+    assert_eq!(one_line_down, Some(hunk(1..2, 1..2)), "kept while its change shows");
+    assert_eq!(in_popup(&panel, cx), None);
 }

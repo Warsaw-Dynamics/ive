@@ -5,10 +5,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use codeview::panel::Event;
-use gpui::{App, Context, Window};
+use gpui::{App, Context};
 
 use super::Workspace;
-use crate::editor::Tab;
 use crate::tabs::TabId;
 use crate::state::{SavedState, StateError, VERSION, Writer};
 
@@ -126,22 +125,16 @@ impl Workspace {
         }
     }
 
-    /// Follows the panel of tab `id` (a file, diff or commit tab): saves soon whenever it scrolls or changes layout,
-    /// so a crash does not lose it, and opens a file's uncommitted diff when its change popup asks; the subscription
-    /// ends with the panel.
-    pub(super) fn watch_panel(&self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+    /// Saves soon whenever the panel of tab `id` (a file, diff or commit tab) scrolls or changes layout, so a crash
+    /// does not lose it; the subscription ends with the panel.
+    pub(super) fn save_on_state_change(&self, id: TabId, cx: &mut Context<Self>) {
         let Some(panel) = self.tabs.get(id).and_then(|tab| tab.saved_panel(cx)) else {
             return;
         };
-        cx.subscribe_in(&panel, window, move |workspace, _panel, event: &Event, window, cx| match event {
-            Event::StateChanged => workspace.schedule_save(cx),
-            Event::OpenDiff { line } => {
-                if let Some(Tab::Document(file)) = workspace.tabs.get(id) {
-                    let path = file.path().to_path_buf();
-                    workspace.open_uncommitted_diff(&path, *line, window, cx);
-                }
+        cx.subscribe(&panel, |workspace, _panel, event: &Event, cx| {
+            if let Event::StateChanged = event {
+                workspace.schedule_save(cx);
             }
-            _ => {}
         })
         .detach();
     }

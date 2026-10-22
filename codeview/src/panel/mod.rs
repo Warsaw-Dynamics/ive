@@ -356,8 +356,9 @@ impl Panel {
             TextEditorEvent::Edited => {
                 self.edited(cx);
                 self.request_parse(cx);
-                self.restart_change_pause(cx);
+                self.diff_changes_later(cx);
             }
+            TextEditorEvent::NeedChanges => self.diff_changes_now(cx),
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
             TextEditorEvent::OpenDiff { line } => {
                 // the diff shows the file on disk: the edits go there first
@@ -399,7 +400,7 @@ impl Panel {
         }
     }
 
-    /// A diff landed; edits made while it ran are diffed after the pause.
+    /// A diff landed; edits made while it ran are diffed after the pause, or at once while the popup waits for it.
     fn change_diffed(&mut self, revision: u64, hunks: ChangeHunks, cx: &mut Context<Self>) {
         let Body::Edit(editor) = &self.body else {
             return;
@@ -411,7 +412,24 @@ impl Panel {
         if current {
             return;
         }
+        self.diff_changes_later(cx);
+    }
+
+    /// The change markers are diffed again after the pause, or at once while the change popup waits for them.
+    fn diff_changes_later(&mut self, cx: &mut Context<Self>) {
+        let Body::Edit(editor) = &self.body else {
+            return;
+        };
+        if editor.read(cx).waits_for_changes() {
+            return self.diff_changes_now(cx);
+        }
         self.restart_change_pause(cx);
+    }
+
+    /// Diffs the change markers now (once the diff in flight landed), instead of after the pause.
+    fn diff_changes_now(&mut self, cx: &mut Context<Self>) {
+        self.change_pause = Task::ready(());
+        self.request_change_diff(cx);
     }
 
     /// The edit that just happened starts the pause before the change markers are diffed again.

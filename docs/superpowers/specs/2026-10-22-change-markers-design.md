@@ -39,6 +39,12 @@ Opens under the changed block, over the text, and closes with Esc, a click outsi
 - Below: the previous text of the block, coloured as code (deleted lines in the removed tint); nothing for pure
   additions.
 
+Rollback, Copy and Commit act only on markers diffed from the current text: markers moved by edits since may hold a
+line that is not the change's (one joined to the block's last line). While they are stale, the clicked action waits,
+its buttons shown busy; the diff is asked for at once (no pause), and the action runs on the block as the new diff
+finds it, or not at all when the block is gone (the popup closes). The popup also closes when the keyboard leaves
+the editor and when the wheel scrolls the block out of view.
+
 ### Commit this change (user asked to include it)
 
 Commits only this block, nothing else:

@@ -28,18 +28,52 @@ pub(crate) enum Popup {
     Open(ChangePopup),
 }
 
-/// An open popup: the change it is for and that change's lines in the base.
+/// An open popup: the change it is for, that change's lines in the base, and the action waiting for the markers of
+/// the current text.
 pub(crate) struct ChangePopup {
     /// the change, in the current text's lines
     block: ChangeHunk,
     /// the change's lines in the base as shown, with `\n` line breaks; empty for added lines
     previous: String,
+    waiting: Waiting,
+}
+
+/// What a popup's button does with its change, which needs the markers to be the diff of the current text: markers
+/// moved by edits may hold lines that are not the change's (a line joined to its last one).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ChangeAction {
+    Rollback,
+    Copy,
+}
+
+#[derive(Clone, Copy)]
+enum Waiting {
+    Nothing,
+    /// to run on the change as the diff of the current text finds it
+    Action(ChangeAction),
 }
 
 impl ChangePopup {
     pub(crate) fn of(hunk: &ChangeHunk, markers: &ChangeMarkers) -> Self {
         let previous = String::from_utf8_lossy(&markers.base_text(hunk)).replace("\r\n", "\n");
-        Self { block: hunk.clone(), previous }
+        Self { block: hunk.clone(), previous, waiting: Waiting::Nothing }
+    }
+
+    /// Runs `action` once the markers are the diff of the current text, instead of an action waiting before.
+    pub(crate) fn wait_to(&mut self, action: ChangeAction) {
+        self.waiting = Waiting::Action(action);
+    }
+
+    /// The action waiting, which no longer waits.
+    pub(crate) fn take_waiting(&mut self) -> Option<ChangeAction> {
+        match std::mem::replace(&mut self.waiting, Waiting::Nothing) {
+            Waiting::Action(action) => Some(action),
+            Waiting::Nothing => None,
+        }
+    }
+
+    pub(crate) fn is_waiting(&self) -> bool {
+        matches!(self.waiting, Waiting::Action(_))
     }
 
     pub(crate) fn block(&self) -> &ChangeHunk {
@@ -83,17 +117,23 @@ impl Popup {
         };
         match markers.meeting(&popup.block.current) {
             Some(hunk) if *hunk == popup.block => Self::Open(popup),
-            Some(hunk) => Self::Open(ChangePopup::of(hunk, markers)),
+            Some(hunk) => Self::Open(ChangePopup { waiting: popup.waiting, ..ChangePopup::of(hunk, markers) }),
             None => Self::Closed,
         }
     }
 }
 
-/// Whether `edit` changed only the lines of `block`: from its first line's start to the start of the line after it
-/// (for deleted lines, only an insertion where they were).
+/// Whether `edit` changed only the lines of `block`, or inserted text at the start of the line after them (for
+/// deleted lines, where they were). Removing the last line's break joins the next line to the block: outside.
 fn is_inside(block: &ChangeHunk, edit: &InputEdit) -> bool {
     let (start, end) = (edit.start_position, edit.old_end_position);
-    start.row >= block.current.start && (end.row, end.column) <= (block.current.end, 0)
+    if start.row < block.current.start {
+        return false;
+    }
+    if end.row < block.current.end {
+        return true;
+    }
+    start == end && (end.row, end.column) == (block.current.end, 0)
 }
 
 /// Closes the popup.
@@ -135,6 +175,7 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
     let top = if below { anchor.bottom } else { anchor.top - height };
     let width = (anchor.width - px(RIGHT_MARGIN)).min(px(MAX_WIDTH)).max(px(0.));
     let close = actions.close.clone();
+    let state = if popup.is_waiting() { ButtonState::Busy } else { ButtonState::Ready };
     div()
         .id("change-popup")
         .absolute()
@@ -154,19 +195,21 @@ pub(crate) fn popup_element(popup: &ChangePopup, anchor: Anchor, actions: PopupA
         // the editor under it neither moves its caret nor starts a selection
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_mouse_down_out(move |_, window, cx| close(window, cx))
-        .child(toolbar(actions, &style, cx))
+        .child(toolbar(actions, state, &style, cx))
         .child(previous_text(popup, &lines, anchor, &style))
         .into_any_element()
 }
 
-/// The buttons, in a row; the room on their right is kept for committing the change.
-fn toolbar(actions: PopupActions, style: &ViewStyle, cx: &App) -> impl IntoElement {
+/// The buttons, in a row, those acting on the change shown as `state` says; the room on their right is kept for
+/// committing the change.
+fn toolbar(actions: PopupActions, state: ButtonState, style: &ViewStyle, cx: &App) -> impl IntoElement {
+    let ready = ButtonState::Ready;
     let buttons = [
-        ("prev", "arrow-up.svg", "Previous change", actions.previous),
-        ("next", "arrow-down.svg", "Next change", actions.next),
-        ("rollback", "rollback.svg", "Rollback", actions.rollback),
-        ("diff", "changes.svg", "Show diff", actions.diff),
-        ("copy", "copy.svg", "Copy the previous text", actions.copy),
+        ("prev", "arrow-up.svg", "Previous change", actions.previous, ready),
+        ("next", "arrow-down.svg", "Next change", actions.next, ready),
+        ("rollback", "rollback.svg", "Rollback", actions.rollback, state),
+        ("diff", "changes.svg", "Show diff", actions.diff, ready),
+        ("copy", "copy.svg", "Copy the previous text", actions.copy, state),
     ];
     div()
         .flex()
@@ -177,7 +220,7 @@ fn toolbar(actions: PopupActions, style: &ViewStyle, cx: &App) -> impl IntoEleme
         .px(px(4.))
         .border_b(px(BORDER))
         .border_color(rgb(style.border))
-        .children(buttons.map(|(name, icon, tip, listener)| button(Button { name, icon, tip, listener }, style, cx)))
+        .children(buttons.map(|(name, icon, tip, listener, state)| button(Button { name, icon, tip, listener, state }, style, cx)))
         .child(div().flex_1())
 }
 
@@ -187,7 +230,18 @@ struct Button {
     icon: &'static str,
     tip: &'static str,
     listener: ClickListener,
+    state: ButtonState,
 }
+
+/// A busy button waits for the markers of the current text to run what it was clicked for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ButtonState {
+    Ready,
+    Busy,
+}
+
+/// How faint a busy button's icon is.
+const BUSY_OPACITY: f32 = 0.4;
 
 fn button(button: Button, style: &ViewStyle, cx: &App) -> AnyElement {
     let listener = button.listener;
@@ -202,6 +256,7 @@ fn button(button: Button, style: &ViewStyle, cx: &App) -> AnyElement {
         .cursor_pointer()
         .hover(|hovered| hovered.bg(rgb(style.hover)))
         .on_click(click)
+        .when(button.state == ButtonState::Busy, |busy| busy.opacity(BUSY_OPACITY).cursor_default())
         .child(img(icons::embedded(style.appearance, button.icon)).size(px(style.icon_size)));
     match Host::tooltip(button.tip, cx) {
         Some(tooltip) => element.tooltip(tooltip).into_any_element(),
@@ -249,11 +304,13 @@ mod tests {
         let deleted = block(2..2);
 
         // when
-        let inside = [edit((2, 0), (2, 3)), edit((3, 5), (3, 5)), edit((3, 2), (4, 0))].map(|edit| is_inside(&changed, &edit));
-        let outside = [edit((1, 9), (2, 0)), edit((4, 0), (4, 1)), edit((3, 0), (4, 1))].map(|edit| is_inside(&changed, &edit));
+        let inside = [edit((2, 0), (2, 3)), edit((3, 5), (3, 5)), edit((4, 0), (4, 0))].map(|edit| is_inside(&changed, &edit));
+        let joining_the_next_line = edit((3, 2), (4, 0));
+        let outside = [edit((1, 9), (2, 0)), edit((4, 0), (4, 1)), edit((3, 0), (4, 1)), joining_the_next_line]
+            .map(|edit| is_inside(&changed, &edit));
         let at_deleted = [edit((2, 0), (2, 0)), edit((2, 1), (2, 1))].map(|edit| is_inside(&deleted, &edit));
 
         // then
-        assert_eq!((inside, outside, at_deleted), ([true; 3], [false; 3], [true, false]));
+        assert_eq!((inside, outside, at_deleted), ([true; 3], [false; 4], [true, false]));
     }
 }

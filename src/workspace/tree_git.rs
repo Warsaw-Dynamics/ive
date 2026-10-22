@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use codeview::panel::Cast;
+use codeview::panel::{Cast, Event};
 use gpui::{Context, Window, prelude::*};
 
 use super::Workspace;
@@ -332,6 +332,22 @@ impl Workspace {
         };
         let request = DiffRequest { dir: checkout.path.clone(), file: FilePaths::of(change), source };
         self.load_diff_tab(DiffAsk { checkout: checkout.clone(), request, scroll: DiffScroll::Kept }, window, cx);
+    }
+
+    /// Opens the uncommitted diff of the file in tab `id` when its change popup asks; the subscription ends with the
+    /// panel. Other tabs ask for none.
+    pub(super) fn open_diff_on_request(&self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(Tab::Document(file)) = self.tabs.get(id) else {
+            return;
+        };
+        cx.subscribe_in(&file.panel.clone(), window, move |workspace, _panel, event: &Event, window, cx| {
+            let (Event::OpenDiff { line }, Some(Tab::Document(file))) = (event, workspace.tabs.get(id)) else {
+                return;
+            };
+            let path = file.path().to_path_buf();
+            workspace.open_uncommitted_diff(&path, *line, window, cx);
+        })
+        .detach();
     }
 
     /// The uncommitted diff of the file at `path` in a tab, its hunk showing the file's line `line` (from 1) at the

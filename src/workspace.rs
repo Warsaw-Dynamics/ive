@@ -440,7 +440,8 @@ impl Workspace {
     pub fn open_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let temporary = tab.temporary_kind().is_some_and(|kind| cx.try_global::<TemporaryTabs>().is_some_and(|tabs| tabs.opens_temporary(kind)));
         let id = if temporary { self.tabs.open_temporary(tab) } else { self.tabs.open(tab) };
-        self.watch_panel(id, window, cx);
+        self.save_on_state_change(id, cx);
+        self.open_diff_on_request(id, window, cx);
         self.went_to_tab(id, cx);
         self.tab_shown(window, cx);
         id

@@ -8,11 +8,12 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, App, Bounds, ClickEvent, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
     EntityInputHandler, EventEmitter, FocusHandle, Focusable, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, TextRun, UTF16Selection, WeakEntity, Window, canvas,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, ScrollWheelEvent, Subscription, TextRun, UTF16Selection,
+    WeakEntity, Window, canvas,
     div, fill, point, prelude::*, px, rgb, size,
 };
 
-use super::change_popup::{Anchor, ChangePopup, Popup, PopupActions, popup_element};
+use super::change_popup::{Anchor, ChangeAction, ChangePopup, Popup, PopupActions, popup_element};
 use super::colours::Colours;
 use super::keys::command;
 use super::layout::{Area, Geometry, VisibleLine, visible_lines};
@@ -43,6 +44,8 @@ pub enum TextEditorEvent {
     Refused(String),
     /// the user asked for the file's diff at line `line` (from 1), from a change's popup
     OpenDiff { line: usize },
+    /// a change's popup waits for the markers of the current text: diff it now, without the pause
+    NeedChanges,
 }
 
 /// What an editor is opened with: a scratch's size limit (files have none), and the language colouring the text.
@@ -56,6 +59,8 @@ pub struct TextEditor {
     colours: Colours,
     markers: ChangeMarkers,
     popup: Popup,
+    /// closes the popup when the keyboard leaves the editor (and what it holds), from the first popup on
+    focus_out: FocusWatch,
     focus_handle: FocusHandle,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
@@ -64,6 +69,11 @@ pub struct TextEditor {
     /// a left-button drag that started in the editor goes on
     dragging: bool,
     reveal_caret: bool,
+}
+
+enum FocusWatch {
+    Unwatched,
+    Watched { _subscription: Subscription },
 }
 
 impl EventEmitter<TextEditorEvent> for TextEditor {}
@@ -80,6 +90,7 @@ impl TextEditor {
             colours: Colours::new(setup.language),
             markers: ChangeMarkers::new(),
             popup: Popup::Closed,
+            focus_out: FocusWatch::Unwatched,
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
             dragging: false,
@@ -154,14 +165,35 @@ impl TextEditor {
 
     /// The diff of the current text with the markers' base; see [`ChangeMarkers::job`].
     pub fn change_job(&mut self) -> Option<ChangeDiffJob> {
-        self.markers.job(self.model.revision(), self.model.table())
+        let job = self.markers.job(self.model.revision(), self.model.table());
+        // a text grown too large to diff loses its markers, and the popup its change
+        self.follow_changes();
+        job
     }
 
-    /// A diff of the text at `revision` landed; see [`ChangeMarkers::landed`].
+    /// A diff of the text at `revision` landed; see [`ChangeMarkers::landed`]. The popup's action waiting for it runs
+    /// once it is of the current text.
     pub fn change_diffed(&mut self, revision: u64, hunks: ChangeHunks, cx: &mut Context<Self>) {
         self.markers.landed(revision, hunks);
         self.follow_changes();
         cx.notify();
+        if self.has_current_changes() {
+            self.run_waiting(cx);
+        }
+    }
+
+    fn run_waiting(&mut self, cx: &mut Context<Self>) {
+        let Popup::Open(popup) = &mut self.popup else {
+            return;
+        };
+        if let Some(action) = popup.take_waiting() {
+            self.run_action(action, cx);
+        }
+    }
+
+    /// Whether the popup's action waits for the markers of the current text.
+    pub fn waits_for_changes(&self) -> bool {
+        matches!(&self.popup, Popup::Open(popup) if popup.is_waiting())
     }
 
     /// The popup stays on its change, wherever the markers put it, and closes when it is gone.
@@ -175,6 +207,10 @@ impl TextEditor {
             return;
         };
         self.popup = Popup::Open(ChangePopup::of(hunk, &self.markers));
+        if let FocusWatch::Unwatched = self.focus_out {
+            let watch = cx.on_focus_out(&self.focus_handle, window, |editor, _event, _window, cx| editor.close_change_popup(cx));
+            self.focus_out = FocusWatch::Watched { _subscription: watch };
+        }
         window.focus(&self.focus_handle, cx);
         cx.notify();
     }
@@ -205,8 +241,40 @@ impl TextEditor {
         cx.notify();
     }
 
-    /// Replaces the lines of the change shown with the base's, as one edit (one undo step), and closes the popup.
+    /// Replaces the lines of the change shown with the base's, as one edit (one undo step), and closes the popup;
+    /// once the markers are the diff of the current text.
     pub fn roll_back_change(&mut self, cx: &mut Context<Self>) {
+        self.act(ChangeAction::Rollback, cx);
+    }
+
+    /// Puts the previous text of the change shown on the clipboard (added lines have none), once the markers are the
+    /// diff of the current text.
+    pub fn copy_previous_text(&mut self, cx: &mut Context<Self>) {
+        self.act(ChangeAction::Copy, cx);
+    }
+
+    /// Runs `action` on the change shown now when the markers are the diff of the current text; else asks for that
+    /// diff, and it runs on the change as the diff finds it when it lands.
+    fn act(&mut self, action: ChangeAction, cx: &mut Context<Self>) {
+        if self.has_current_changes() {
+            return self.run_action(action, cx);
+        }
+        let Popup::Open(popup) = &mut self.popup else {
+            return;
+        };
+        popup.wait_to(action);
+        cx.emit(TextEditorEvent::NeedChanges);
+        cx.notify();
+    }
+
+    fn run_action(&mut self, action: ChangeAction, cx: &mut Context<Self>) {
+        match action {
+            ChangeAction::Rollback => self.roll_back_now(cx),
+            ChangeAction::Copy => self.copy_now(cx),
+        }
+    }
+
+    fn roll_back_now(&mut self, cx: &mut Context<Self>) {
         let Popup::Open(popup) = std::mem::replace(&mut self.popup, Popup::Closed) else {
             return;
         };
@@ -218,8 +286,7 @@ impl TextEditor {
         let _ = self.edit(|model| model.replace_lines(block.current.clone(), &text), cx);
     }
 
-    /// Puts the previous text of the change shown on the clipboard; added lines have none.
-    pub fn copy_previous_text(&mut self, cx: &mut Context<Self>) {
+    fn copy_now(&mut self, cx: &mut Context<Self>) {
         let Popup::Open(popup) = &self.popup else {
             return;
         };
@@ -400,6 +467,25 @@ impl TextEditor {
         self.dragging = false;
     }
 
+    /// Scrolls; the popup closes once its change is out of view.
+    fn on_scroll_wheel(&mut self, event: &ScrollWheelEvent, line_height: Pixels, window: &mut Window, cx: &mut Context<Self>) {
+        self.scroll.scroll_by_wheel(event, line_height, window);
+        let Some(block) = self.change_in_popup() else {
+            return;
+        };
+        if self.shows_lines(&block.current) {
+            return;
+        }
+        self.close_change_popup(cx);
+    }
+
+    /// Whether any of lines `lines` is in view; for no lines, the top of the line they would start.
+    fn shows_lines(&self, lines: &Range<usize>) -> bool {
+        let (top, bottom) = (self.scroll.top(), self.scroll.top() + self.scroll.viewport_lines());
+        let end = lines.end.max(lines.start + 1);
+        end as f64 > top && (lines.start as f64) < bottom
+    }
+
     /// Scrolls to the caret when it moved, then gathers what this frame paints.
     fn frame(&mut self, metrics: Metrics, style: ViewStyle, window: &Window) -> Frame {
         let char_width = f64::from(f32::from(metrics.char_width));
@@ -462,15 +548,11 @@ impl Focusable for TextEditor {
 
 impl Render for TextEditor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // the keyboard went elsewhere
-        if !self.focus_handle.contains_focused(window, cx) {
-            self.popup = Popup::Closed;
-        }
         let style = ViewStyle::drawing(cx).clone();
         let metrics = Metrics::measure(window, cx, self.model.line_count());
         let frame = self.frame(metrics, style.clone(), window);
         let popup = self.popup_element(&frame, cx);
-        let (wheel, line_height) = (self.scroll.clone(), metrics.line_height);
+        let line_height = metrics.line_height;
         div()
             .id("text-editor")
             .track_focus(&self.focus_handle)
@@ -484,7 +566,7 @@ impl Render for TextEditor {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             // a drag that ends outside the editor still ends the selection
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
-            .on_scroll_wheel(move |event, window, _cx| wheel.scroll_by_wheel(event, line_height, window))
+            .on_scroll_wheel(cx.listener(move |editor, event, window, cx| editor.on_scroll_wheel(event, line_height, window, cx)))
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
             .children(change_targets(&frame, cx.weak_entity(), cx))
             .child(text_canvas(frame, cx.entity()))
@@ -495,11 +577,19 @@ impl Render for TextEditor {
 }
 
 impl TextEditor {
-    /// The open popup under (or over) its change; `None` while closed.
+    /// The open popup under (or over) its change; `None` while closed or while its change is out of view (scrolled
+    /// away by the caret; the wheel closes it).
     fn popup_element(&self, frame: &Frame, cx: &mut Context<Self>) -> Option<AnyElement> {
         let Popup::Open(popup) = &self.popup else {
             return None;
         };
+        if self.shows_lines(&popup.block().current) {
+            return Some(self.shown_popup(popup, frame, cx));
+        }
+        None
+    }
+
+    fn shown_popup(&self, popup: &ChangePopup, frame: &Frame, cx: &mut Context<Self>) -> AnyElement {
         let (lines, metrics) = (&popup.block().current, frame.metrics);
         let anchor = Anchor {
             top: frame.line_top(px(0.), lines.start),
@@ -510,7 +600,7 @@ impl TextEditor {
             line_height: metrics.line_height,
             font_size: metrics.font_size,
         };
-        Some(popup_element(popup, anchor, popup_actions(cx.weak_entity()), cx))
+        popup_element(popup, anchor, popup_actions(cx.weak_entity()), cx)
     }
 }
 
