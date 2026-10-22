@@ -59,6 +59,12 @@ pub fn init(config) {
         #{ key: stop_tab.key, mods: stop_tab.mods, action: stop_back_to_hub },
         // changed files flat or grouped by folder: the tree's git folders and the Git sections
         #{ key: "g", mods: "ALT|SHIFT", action: act::ToggleChangesLayout },
+        // a worktree folder in every worktree, or in none (the tree header's folders menu shows these keys)
+        #{ key: "p", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("processes") },
+        #{ key: "u", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("uncommitted") },
+        #{ key: "b", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("since-base") },
+        #{ key: "c", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("commits") },
+        #{ key: "f", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("files") },
         // keys while the sidebar has the keyboard (a click on it gives it)
         #{ key: copy_full_path.key, mods: copy_full_path.mods, action: act::CopyFullPath, scope: "tree" },
 

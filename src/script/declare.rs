@@ -289,6 +289,9 @@ fn tagged_action(value: Value) -> Result<Action, String> {
     if name == "HubOpenRow" {
         return hub_row(&argument);
     }
+    if name == "ToggleFolderEverywhere" {
+        return folder_everywhere(&argument);
+    }
     let argument = string(&argument).ok_or_else(|| format!("{name} takes a string"))?;
     let builtin = match name.as_str() {
         "SendString" => return Ok(Action::Send(argument)),
@@ -304,6 +307,16 @@ fn tagged_action(value: Value) -> Result<Action, String> {
         _ => return Err(format!("action {name:?} is not an act:: action")),
     };
     Ok(Action::Builtin(builtin))
+}
+
+/// `act::ToggleFolderEverywhere("commits")`: a worktree folder by the name `config.open_folders` uses.
+fn folder_everywhere(argument: &Value) -> Result<Action, String> {
+    let names = "\"processes\", \"uncommitted\", \"since-base\", \"commits\" or \"files\"";
+    let name = string(argument).ok_or_else(|| format!("act::ToggleFolderEverywhere takes {names}"))?;
+    match serde_json::from_value(serde_json::Value::String(name.clone())) {
+        Ok(kind) => Ok(Action::Builtin(Builtin::ToggleFolderEverywhere(kind))),
+        Err(_) => Err(format!("act::ToggleFolderEverywhere takes {names}, not {name:?}")),
+    }
 }
 
 /// `act::HubOpenRow(n)`: one of the rows numbered on screen.

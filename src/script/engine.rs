@@ -671,6 +671,31 @@ mod tests {
     }
 
     #[test]
+    fn should_bind_alt_shift_letters_to_folders_everywhere() {
+        // given
+        let keys = [("p", FolderKind::Processes), ("u", FolderKind::Uncommitted), ("b", FolderKind::SinceBase), ("c", FolderKind::Commits), ("f", FolderKind::Files)];
+
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let found: Vec<_> = keys.iter().map(|(key, _)| keymap.find_key(&pressed(&format!("alt-shift-{key}")), Place::Elsewhere).cloned()).collect();
+        assert_eq!(found, keys.iter().map(|(_, kind)| builtin(Builtin::ToggleFolderEverywhere(*kind))).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn should_reject_an_unknown_folder_for_everywhere() {
+        // given
+        let init = r#"pub fn init(config) { config.keys = [#{ key: "t", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("tests") }]; }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("\"tests\"") && error.contains("since-base"), "{error}");
+    }
+
+    #[test]
     fn should_load_ive_rn_defaults() {
         // when
         let keymap = defaults().keymap;

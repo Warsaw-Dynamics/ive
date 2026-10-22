@@ -108,5 +108,6 @@ pub fn act_module() -> Result<Module, ContextError> {
     module.function("ExtendSelectionToMouseCursor", |mode: &str| tagged("ExtendSelectionToMouseCursor", mode)).build()?;
     module.function("CompleteSelection", |target: &str| tagged("CompleteSelection", target)).build()?;
     module.function("HubOpenRow", |row: i64| HashMap::from([("HubOpenRow".to_owned(), row)])).build()?;
+    module.function("ToggleFolderEverywhere", |kind: &str| tagged("ToggleFolderEverywhere", kind)).build()?;
     Ok(module)
 }

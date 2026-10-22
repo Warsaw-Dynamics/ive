@@ -216,6 +216,7 @@ impl Workspace {
                 self.open_terminal_in(checkout, window, cx);
             }
             Builtin::ToggleChangesLayout => self.toggle_changes_layout(cx),
+            Builtin::ToggleFolderEverywhere(kind) => self.toggle_folder_everywhere(kind, cx),
             Builtin::OpenTerminalIn => {
                 self.open_terminal_picker(window, cx);
             }
