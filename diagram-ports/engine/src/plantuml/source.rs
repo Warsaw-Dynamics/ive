@@ -16,7 +16,9 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.checkpoint()?;
         let line = offset + 1;
-        let text = strip_comments(raw, &mut block_comment).trim().to_owned();
+        let text = strip_comments(raw, &mut block_comment, budget)?
+            .trim()
+            .to_owned();
         if text.is_empty() {
             continue;
         }
@@ -51,18 +53,26 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     Ok(lines)
 }
 
-fn strip_comments(raw: &str, block: &mut bool) -> String {
+fn strip_comments(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, RenderError> {
     let mut out = String::new();
     let mut rest = raw;
     let mut quoted = false;
+    let mut content = false;
+    let mut charged = 0;
     while let Some(ch) = rest.chars().next() {
+        let consumed = raw.len() - rest.len();
+        if consumed - charged >= 512 {
+            budget.charge(consumed - charged)?;
+            charged = consumed;
+        }
         if *block {
-            if let Some(end) = rest.find("'/") {
-                rest = &rest[end + 2..];
+            if rest.starts_with("'/") {
+                rest = &rest[2..];
                 *block = false;
-                continue;
+            } else {
+                rest = &rest[ch.len_utf8()..];
             }
-            break;
+            continue;
         }
         if quoted && ch == '\\' {
             out.push(ch);
@@ -81,11 +91,39 @@ fn strip_comments(raw: &str, block: &mut bool) -> String {
             rest = &rest[2..];
             continue;
         }
-        if !quoted && ch == '\'' && out.trim().is_empty() {
+        if !quoted && ch == '\'' && !content {
             break;
         }
+        content |= !ch.is_whitespace();
         out.push(ch);
         rest = &rest[ch.len_utf8()..];
     }
-    out
+    budget.charge(raw.len() - rest.len() - charged)?;
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RenderOptions;
+
+    #[test]
+    fn should_charge_long_line_scanning_before_finishing_the_line() {
+        // given
+        let source = format!(
+            "@startuml\n{}A{}\n@enduml",
+            " ".repeat(2048),
+            "'".repeat(2048)
+        );
+        let mut config = RenderOptions::default();
+        config.limits.layout_work = source.len() + 512;
+        let mut budget = Budget::new(&config);
+        // when
+        let result = prepare(&source, &mut budget);
+        // then
+        assert!(
+            result.is_err(),
+            "scan work was not charged before retaining the line"
+        );
+    }
 }

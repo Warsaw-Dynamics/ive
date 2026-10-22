@@ -87,6 +87,8 @@ impl Element {
 
 pub(super) struct Scene {
     pub elements: Vec<Element>,
+    pub min_x: f64,
+    pub min_y: f64,
     pub width: f64,
     pub height: f64,
 }
@@ -94,6 +96,8 @@ impl Scene {
     pub fn new() -> Self {
         Self {
             elements: Vec::new(),
+            min_x: 0.,
+            min_y: 0.,
             width: 1.,
             height: 1.,
         }
@@ -130,6 +134,8 @@ impl Scene {
                 }
                 self.width = self.width.max(point.x + 24.);
                 self.height = self.height.max(point.y + 24.);
+                self.min_x = self.min_x.min(point.x - 24.);
+                self.min_y = self.min_y.min(point.y - 24.);
             }
         }
         self.elements.push(element);

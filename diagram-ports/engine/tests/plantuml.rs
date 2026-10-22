@@ -12,6 +12,140 @@ fn diagram(body: &str) -> String {
 }
 
 #[test]
+fn should_reject_substantive_suffixes_and_validate_every_endpoint_branch() {
+    // given
+    for body in [
+        "class A : discarded member",
+        "object A : discarded",
+        "component A : discarded",
+        "participant A : discarded",
+        "A -> B : ok\nactivate B : discarded",
+        "A -> B : ok\nactivate B/role",
+        "create B/role",
+        "A -> B : ok\nnote over B/role : discarded",
+        "class A\nA --> \"1\" B/role",
+        "class A\nA/role \"1\" --> B",
+        "A -> B : ok\ngroup g\nend : discarded",
+    ] {
+        // when
+        let result = render(&diagram(body), &options());
+        // then
+        assert!(
+            result.is_err(),
+            "accepted substantive suffix/endpoint: {body}"
+        );
+    }
+}
+
+#[test]
+fn should_reject_rich_text_variants_in_every_label_bearing_path() {
+    // given
+    for markup in [
+        "<s>strike</s>",
+        "<STRIKE:red>x</STRIKE>",
+        "<DEL>x</DEL>",
+        "<U:blue>x</U>",
+        "<W>x</W>",
+        "<Plain>x</Plain>",
+        "<FONT:serif>x</FONT>",
+        "<sup>x</sup>",
+        "<sub>x</sub>",
+        "--strike--",
+        "\"\"mono\"\"",
+        "<color red>x</color>",
+    ] {
+        for body in [
+            format!("A -> B : {markup}"),
+            format!("participant \"{}\" as A", markup.replace('"', "\\\"")),
+            format!("class A {{\n{markup}\n}}"),
+            format!("class A\nnote \"{}\" as N", markup.replace('"', "\\\"")),
+            format!("\"{}\" -> B : hi", markup.replace('"', "\\\"")),
+            format!("class A\nA --> \"{}\"", markup.replace('"', "\\\"")),
+        ] {
+            // when
+            let result = render(&diagram(&body), &options());
+            // then
+            assert!(result.is_err(), "silently painted rich text: {body}");
+        }
+    }
+}
+
+#[test]
+fn should_preserve_literal_angles_urls_and_escaped_markup() {
+    // given
+    let source = diagram(
+        "A -> B : <value> https://example.test/a//b 1 < 2 ~<s>literal~</s> ~**plain~** ~#hash ~.dot \\~literal",
+    );
+    // when
+    let result = render(&source, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    assert!(xml.descendants().filter_map(|n| n.text()).any(|text| text.contains("<value> https://example.test/a//b 1 < 2 <s>literal</s> **plain** #hash .dot ~literal")));
+}
+
+#[test]
+fn should_report_actual_multiline_note_statement_line() {
+    // given
+    let source = "@startuml\nparticipant A\nA -> B : hello\nnote beside B\nbody\nend note\n@enduml";
+    // when
+    let error = render(source, &options()).unwrap_err();
+    // then
+    assert!(error.to_string().contains("line 4,"), "{error}");
+}
+
+#[test]
+fn should_keep_unpaired_punctuation_and_empty_object_slot_strings_literal() {
+    // given
+    let source = diagram("object A {\nempty = \"\"\n}\nobject B\nA --> B : left -- right");
+    // when
+    let result = render(&source, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    assert!(
+        xml.descendants()
+            .filter_map(|n| n.text())
+            .any(|text| text == "empty = \"\"")
+    );
+    assert!(
+        xml.descendants()
+            .filter_map(|n| n.text())
+            .any(|text| text == "left -- right")
+    );
+}
+
+#[test]
+fn should_keep_colons_in_quoted_multiline_note_targets() {
+    // given
+    let source = diagram(
+        "A -> \"B:role\" : hello\nnote over \"B:role\"\nfirst note line\nsecond note line\nend note",
+    );
+    // when
+    let result = render(&source, &options()).unwrap();
+    // then
+    assert!(result.svg.contains("first note line"));
+    assert!(result.svg.contains("second note line"));
+}
+
+#[test]
+fn should_bound_adversarial_comment_scanning_with_a_tiny_deadline() {
+    // given
+    let source = diagram(&format!("{}A{}", " ".repeat(65536), "'".repeat(65536)));
+    let mut config = options();
+    config.limits.timeout = std::time::Duration::from_millis(10);
+    config.limits.layout_work = 200_000;
+    let started = std::time::Instant::now();
+    // when
+    let result = render(&source, &config);
+    // then
+    assert!(result.is_err());
+    assert!(
+        started.elapsed() < std::time::Duration::from_millis(500),
+        "cooperative scanner stalled for {:?}",
+        started.elapsed()
+    );
+}
+
+#[test]
 fn should_bound_expanded_namespace_text_before_retaining_keys() {
     // given
     let mut body = String::new();

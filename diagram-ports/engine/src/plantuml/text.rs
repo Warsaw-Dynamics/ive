@@ -47,7 +47,7 @@ impl<'a> Context<'a> {
         if let Some(label) = self.cache.get(&key) {
             return Ok(label.clone());
         }
-        let lines: Vec<String> = text
+        let lines: Vec<String> = literal_label(text, 1)?
             .replace("\\n", "\n")
             .split('\n')
             .map(str::to_owned)
@@ -98,23 +98,86 @@ impl<'a> Context<'a> {
 }
 
 pub(super) fn validate_label(text: &str, line: usize) -> Result<(), RenderError> {
-    let italic = text
-        .match_indices("//")
-        .filter(|(i, _)| *i == 0 || !text[..*i].ends_with(':'))
-        .count()
-        >= 2;
-    if italic
-        || [
-            "[[", "<img", "<image", "<$", "<sprite", "<math", "<latex", "<b>", "<i>", "<u>",
-            "<back", "<color", "<size", "<font", "**", "__", "~~",
-        ]
-        .iter()
-        .any(|marker| text.contains(marker))
-    {
-        return Err(unsupported(
-            line,
-            "rich text, links, images, sprites or math",
-        ));
+    literal_label(text, line).map(|_| ())
+}
+
+fn literal_label(text: &str, line: usize) -> Result<String, RenderError> {
+    let mut literal = String::with_capacity(text.len());
+    let mut rest = text;
+    let mut delimiters = [false; 6];
+    while let Some(ch) = rest.chars().next() {
+        if ["https://", "http://", "ftp://", "file://"]
+            .iter()
+            .any(|scheme| rest.starts_with(scheme))
+        {
+            let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+            literal.push_str(&rest[..end]);
+            rest = &rest[end..];
+            continue;
+        }
+        if rest.starts_with("\\~") {
+            literal.push('~');
+            rest = &rest[2..];
+            continue;
+        }
+        if rest.starts_with('~') && !rest.starts_with("~~") {
+            let after = &rest[1..];
+            if let Some(escaped) = after
+                .chars()
+                .next()
+                .filter(|c| matches!(c, '<' | '*' | '_' | '-' | '/' | '[' | ']' | '"' | '#' | '.'))
+            {
+                literal.push(escaped);
+                rest = &after[escaped.len_utf8()..];
+                continue;
+            }
+        }
+        let url_slashes = rest.starts_with("//") && literal.ends_with(':');
+        if url_slashes {
+            literal.push_str("//");
+            rest = &rest[2..];
+            continue;
+        }
+        if rest.starts_with("[[") || (ch == '<' && rich_tag(&rest[1..])) {
+            return Err(unsupported(
+                line,
+                "rich text, links, images, sprites or math",
+            ));
+        }
+        if let Some(index) = ["**", "__", "~~", "--", "//", "\"\""]
+            .iter()
+            .position(|marker| rest.starts_with(marker))
+        {
+            if delimiters[index] {
+                return Err(unsupported(line, "paired rich-text delimiter"));
+            }
+            delimiters[index] = true;
+            literal.push_str(&rest[..2]);
+            rest = &rest[2..];
+            continue;
+        }
+        literal.push(ch);
+        rest = &rest[ch.len_utf8()..];
     }
-    Ok(())
+    Ok(literal)
+}
+
+fn rich_tag(rest: &str) -> bool {
+    let rest = rest.strip_prefix('/').unwrap_or(rest);
+    if rest.starts_with(['$', '&', ':', '#']) {
+        return true;
+    }
+    let end = rest
+        .find(|ch: char| !ch.is_ascii_alphabetic())
+        .unwrap_or(rest.len());
+    let name = &rest[..end];
+    matches!(
+        rest.as_bytes().get(end),
+        Some(b'>' | b':' | b'/' | b' ' | b'\t')
+    ) && [
+        "b", "i", "u", "s", "strike", "del", "w", "plain", "back", "color", "size", "font", "text",
+        "sup", "sub", "img", "image", "sprite", "math", "latex", "qrcode", "space",
+    ]
+    .iter()
+    .any(|reserved| name.eq_ignore_ascii_case(reserved))
 }

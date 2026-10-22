@@ -330,6 +330,110 @@
         "* Original Author:  Arnaud Roques"
       ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/font/FontStyle.java",
+      "sha256": "7b6fb79f8a28e95cb42d64bd6d3c73e92f6a6d665e895992cf04b1d65093da28",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Case/alias-aware rejection of unsupported HTML-style font decorations.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/legacy/CommandCreoleBuilder.java",
+      "sha256": "236a6b30a4c3b65cbb79ffb2b3d0fa8f3509407ed127a08ec79abf20b88cf8e0",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Registered unsupported Creole command vocabulary; no command silently lowered to literal text.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/command/Splitter.java",
+      "sha256": "7538ae4ac4a6dc5449bc41c2ba691b5891570f1dcf13fc9bbaf0680d1fb41599",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Boundaries for color/font/size/super-subscript/image/math/link/icon tag families.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/command/CommandCreoleStyle.java",
+      "sha256": "014c7f897d8b192767933be8fddc333c7ed96141b64f1b5633a70f13dd6c6da9",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Paired Creole delimiter recognition and legacy style-to-end-of-line rejection.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/command/CommandCreoleMonospaced.java",
+      "sha256": "321a88b8e3a724cea12fb2ae58dd8db13261f54194c68c8cd0a4bb08970d8280",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Paired double-quote monospaced syntax; unmatched quote punctuation remains literal.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/command/CommandCreoleSpace.java",
+      "sha256": "bfc32311f5a3b5d856705c275b903bf8e6020ca3eae1fcfc13766380c65f8a36",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Recognize space-tag grammar as unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/command/CommandCreoleExposantChange.java",
+      "sha256": "7f17703309b70c440861b139a9a0ed1fbecb3df19b4e818f8e4ab98bf5f087f8",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Recognize superscript/subscript tags as unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/utils/CharHidder.java",
+      "sha256": "accd201736dca2bef239b3b86bb9bb1ccd85f1632c310d972a58df632c38e276",
+      "rust": [
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Literal tilde escapes and backslash-tilde decoding before native measurement/painting.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [

@@ -95,7 +95,7 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Sequence, Ren
         }
         if tokens[0].text == "note" {
             let label = collect_note(lines, &mut index, label)?;
-            parser.note(&tokens, &label, budget)?;
+            parser.note((line.number, &tokens), &label, budget)?;
         } else {
             parser.command(line, &tokens, label, budget)?;
         }
@@ -114,7 +114,7 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Sequence, Ren
 }
 
 fn collect_note(lines: &[Line], index: &mut usize, single: &str) -> Result<String, RenderError> {
-    if lines[*index].text.contains(':') {
+    if lexer::split_label(&lines[*index]).0 != lines[*index].text {
         return Ok(single.into());
     }
     let start = *index;
@@ -160,6 +160,20 @@ impl Parser {
         label: &str,
         budget: &mut Budget,
     ) -> Result<(), RenderError> {
+        if matches!(
+            tokens[0].text.as_str(),
+            "participant"
+                | "actor"
+                | "database"
+                | "activate"
+                | "deactivate"
+                | "create"
+                | "destroy"
+                | "end"
+        ) && lexer::split_label(line).0 != line.text
+        {
+            return Err(unsupported(line.number, "non-message command colon suffix"));
+        }
         match tokens[0].text.as_str() {
             "participant" | "actor" | "database" => self.declare(line, tokens, budget),
             "activate" | "deactivate" | "create" | "destroy" => {
@@ -222,6 +236,7 @@ impl Parser {
         if tokens.len() != 2 {
             return Err(unsupported(line.number, &line.text));
         }
+        lexer::validate_name(&tokens[1], line.number)?;
         let existed = self
             .model
             .participants
@@ -272,10 +287,11 @@ impl Parser {
 
     fn note(
         &mut self,
-        tokens: &[lexer::Token],
+        statement: (usize, &[lexer::Token]),
         label: &str,
         budget: &mut Budget,
     ) -> Result<(), RenderError> {
+        let (line, tokens) = statement;
         let (side, name) = match tokens {
             [_, side, of, name]
                 if of.text == "of" && matches!(side.text.as_str(), "left" | "right") =>
@@ -286,19 +302,20 @@ impl Parser {
                     } else {
                         Side::Right
                     },
-                    &name.text,
+                    name,
                 )
             }
-            [_, over, name] if over.text == "over" => (Side::Over, &name.text),
+            [_, over, name] if over.text == "over" => (Side::Over, name),
             _ => {
                 return Err(unsupported(
-                    1,
+                    line,
                     "note positioning (expected left/right of or over one participant)",
                 ));
             }
         };
-        validate_label(label, 1)?;
-        let participant = self.participant(name, budget)?;
+        validate_label(label, line)?;
+        lexer::validate_name(name, line)?;
+        let participant = self.participant(&name.text, budget)?;
         self.push(
             Event::Note {
                 participant,
@@ -320,9 +337,7 @@ impl Parser {
             return Err(unsupported(line.number, &line.text));
         };
         for endpoint in [left, right] {
-            if !endpoint.quoted {
-                lexer::validate_identifier(&endpoint.text, line.number)?;
-            }
+            lexer::validate_name(endpoint, line.number)?;
         }
         let mut arrow = arrow::parse(&middle.text, line.number)?;
         if !matches!(arrow.start, End::None | End::Open | End::Filled)
@@ -386,16 +401,55 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
         .map(|i| margin + step * (i + 1) as f64)
         .collect();
     let mut scene = Scene::new();
-    let mut rows = Vec::new();
-    let mut y = heads.iter().map(|h| h.height).fold(35., f64::max) + 110.;
-    for label in &labels {
-        context.budget.charge(1)?;
-        rows.push(y);
-        y += label.height + 36.;
-    }
-    draw_lanes(model, &heads, &xs, &rows, y, &mut scene, context)?;
+    let (rows, bottom) = allocate_rows(model, (&heads, &labels), context.budget)?;
+    draw_lanes(model, &heads, &xs, &rows, bottom, &mut scene, context)?;
     draw_events(model, &labels, &xs, &rows, &mut scene, context)?;
     Ok(scene)
+}
+
+fn allocate_rows(
+    model: &Sequence,
+    labels: (&[Label], &[Label]),
+    budget: &mut Budget,
+) -> Result<(Vec<f64>, f64), RenderError> {
+    let (heads, events) = labels;
+    let mut bottom = model
+        .participants
+        .iter()
+        .zip(heads)
+        .map(|(p, label)| 24. + head_height(p.kind, label))
+        .fold(24., f64::max);
+    let mut rows = Vec::with_capacity(events.len());
+    for (event, label) in model.events.iter().zip(events) {
+        budget.charge(1)?;
+        let (above, below) = event_extents(event, label, heads);
+        let anchor = bottom + 24. + above;
+        rows.push(anchor);
+        bottom = anchor + below;
+    }
+    Ok((rows, bottom + 36.))
+}
+
+fn head_height(kind: ParticipantKind, label: &Label) -> f64 {
+    label.height
+        + if matches!(kind, ParticipantKind::Actor) {
+            65.
+        } else {
+            24.
+        }
+}
+
+fn event_extents(event: &Event, label: &Label, heads: &[Label]) -> (f64, f64) {
+    match event {
+        Event::Message { from, to, .. } => (label.height + 4., if from == to { 24. } else { 8. }),
+        Event::Note { .. } => (label.height / 2., label.height / 2. + 16.),
+        Event::Open { .. } => (40., (label.height - 20.).max(0.)),
+        Event::Else(_) => (0., label.height + 5.),
+        Event::Close => (0., 16.),
+        Event::Create(id) => (0., head_height(ParticipantKind::Participant, &heads[*id])),
+        Event::Destroy(_) => (7., 7.),
+        _ => (0., 0.),
+    }
 }
 
 fn event_label(event: &Event) -> &str {
@@ -444,12 +498,7 @@ fn draw_lanes(
             .iter()
             .position(|e| matches!(e, Event::Destroy(p) if *p == id))
             .map_or(end, |i| rows[i]);
-        let height = heads[id].height
-            + if matches!(participant.kind, ParticipantKind::Actor) {
-                65.
-            } else {
-                24.
-            };
+        let height = head_height(participant.kind, &heads[id]);
         let rect = Rect {
             x: xs[id] - heads[id].width.max(60.) / 2. - 12.,
             y: birth,
@@ -649,6 +698,88 @@ mod tests {
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
+
+    fn draw(source: &str) -> Scene {
+        let mut budget = Budget::new(&RenderOptions::default());
+        let lines = super::super::source::prepare(source, &mut budget).unwrap();
+        let model = parse(&lines, &mut budget).unwrap();
+        let session = RenderEnvironment::deterministic().begin_session().unwrap();
+        layout(&model, &mut Context::new(&session, &mut budget)).unwrap()
+    }
+
+    fn occupied(element: &Element) -> (f64, f64) {
+        element.shapes.iter().fold(
+            (f64::INFINITY, f64::NEG_INFINITY),
+            |(top, bottom), shape| {
+                let (a, b) = match shape {
+                    Shape::Text(point, label, _) => (point.y, point.y + label.height),
+                    Shape::Rect(rect, _, _) | Shape::Ellipse(rect, _) => {
+                        (rect.y, rect.y + rect.height)
+                    }
+                    Shape::Line(points, _) | Shape::Polygon(points, _) => (
+                        points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min),
+                        points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max),
+                    ),
+                };
+                (top.min(a), bottom.max(b))
+            },
+        )
+    }
+
+    #[test]
+    fn should_reserve_multiline_message_occupied_height_before_its_anchor() {
+        // given
+        let source = "@startuml\nA -> B : first\nA -> B : line1\\nline2\\nline3\\nline4\\nline5\\nline6\nB -> B : self\\ncall\n@enduml";
+        // when
+        let scene = draw(source);
+        let messages = scene
+            .elements
+            .iter()
+            .filter(|e| e.kind == "message")
+            .collect::<Vec<_>>();
+        // then
+        for pair in messages.windows(2) {
+            assert!(
+                occupied(pair[0]).1 < occupied(pair[1]).0,
+                "later message overlaps earlier event"
+            );
+        }
+    }
+
+    #[test]
+    fn should_reserve_multiline_note_occupied_height_after_a_message() {
+        // given
+        let source = "@startuml\nA -> B : first\nnote over B\nline1\nline2\nline3\nline4\nline5\nline6\nend note\nB -> A : done\n@enduml";
+        // when
+        let scene = draw(source);
+        let events = scene
+            .elements
+            .iter()
+            .filter(|e| matches!(e.kind, "message" | "note"))
+            .collect::<Vec<_>>();
+        // then
+        for pair in events.windows(2) {
+            assert!(
+                occupied(pair[0]).1 < occupied(pair[1]).0,
+                "multiline note overlaps adjacent event"
+            );
+        }
+    }
+
+    #[test]
+    fn should_reserve_created_multiline_head_before_the_next_message() {
+        // given
+        let source = "@startuml\nparticipant A\ncreate \"B\\nline2\\nline3\\nline4\"\nA -> \"B\\nline2\\nline3\\nline4\" : created\ndestroy \"B\\nline2\\nline3\\nline4\"\n@enduml";
+        // when
+        let scene = draw(source);
+        let head = scene.elements.iter().find(|e| e.id == "p1").unwrap();
+        let message = scene.elements.iter().find(|e| e.kind == "message").unwrap();
+        // then
+        assert!(
+            occupied(head).1 < occupied(message).0,
+            "message crosses created participant head"
+        );
+    }
 
     #[test]
     fn should_preserve_lane_order_reverse_message_and_balanced_events() {

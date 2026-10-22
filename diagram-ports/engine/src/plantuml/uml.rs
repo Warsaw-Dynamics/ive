@@ -239,6 +239,9 @@ impl Parser {
         if let Some(first) = tokens.first()
             && (kind(&first.text).is_some() || first.text == "abstract")
         {
+            if head != line.text {
+                return Err(unsupported(line.number, "declaration colon suffix"));
+            }
             return self.declare(line, &tokens, budget);
         }
         self.relation(line, &tokens, label, budget)
@@ -502,10 +505,8 @@ impl Parser {
 }
 
 fn endpoint(tokens: &[Token], line: usize) -> Result<(String, String), RenderError> {
-    if let Some(token) = tokens.first()
-        && !token.quoted
-    {
-        lexer::validate_identifier(&token.text, line)?;
+    if let Some(token) = tokens.first() {
+        lexer::validate_name(token, line)?;
     }
     match tokens {
         [name] => Ok((name.text.clone(), String::new())),
@@ -521,6 +522,7 @@ fn endpoint(tokens: &[Token], line: usize) -> Result<(String, String), RenderErr
 fn endpoint_right(tokens: &[Token], line: usize) -> Result<(String, String), RenderError> {
     match tokens {
         [multiplicity, name] if multiplicity.quoted => {
+            lexer::validate_name(name, line)?;
             Ok((name.text.clone(), multiplicity.text.clone()))
         }
         _ => endpoint(tokens, line),

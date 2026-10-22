@@ -9,7 +9,9 @@ pub(super) fn serialize(scene: &Scene, budget: &mut Budget) -> Result<String, Re
         value: String::new(),
         limit: budget.limits.svg_bytes,
     };
-    writer.add(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\"><rect width=\"100%\" height=\"100%\" fill=\"white\"/>", scene.width, scene.height, scene.width, scene.height))?;
+    let width = scene.width - scene.min_x;
+    let height = scene.height - scene.min_y;
+    writer.add(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"{} {} {width} {height}\"><rect x=\"{}\" y=\"{}\" width=\"{width}\" height=\"{height}\" fill=\"white\"/>", scene.min_x, scene.min_y, scene.min_x, scene.min_y))?;
     for element in &scene.elements {
         budget.charge(1)?;
         writer.add("<g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\"")?;
@@ -123,6 +125,39 @@ impl Writer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_include_negative_scene_coordinates_in_the_canvas() {
+        use super::super::scene::{Element, Paint, Rect};
+        // given
+        let mut budget = Budget::new(&crate::RenderOptions::default());
+        let mut scene = Scene::new();
+        let mut element = Element::new("negative", "test");
+        element.shapes.push(Shape::Rect(
+            Rect {
+                x: -40.,
+                y: -30.,
+                width: 20.,
+                height: 20.,
+            },
+            0.,
+            Paint::Paper,
+        ));
+        scene.push(element, &mut budget).unwrap();
+        // when
+        let svg = serialize(&scene, &mut budget).unwrap();
+        let xml = roxmltree::Document::parse(&svg).unwrap();
+        let bounds = xml
+            .root_element()
+            .attribute("viewBox")
+            .unwrap()
+            .split_whitespace()
+            .map(|s| s.parse::<f64>().unwrap())
+            .collect::<Vec<_>>();
+        // then
+        assert!(bounds[0] <= -40. && bounds[1] <= -30.);
+        assert!(bounds[0] + bounds[2] >= -20. && bounds[1] + bounds[3] >= -10.);
+    }
 
     #[test]
     fn should_reject_svg_growth_before_appending_or_allocating() {

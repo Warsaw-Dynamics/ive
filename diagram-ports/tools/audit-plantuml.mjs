@@ -15,7 +15,7 @@ const safe = value => typeof value === 'string' && !value.split('/').some(part =
 export function validateManifest(manifest) {
   if (manifest.edition !== 'PlantUML MIT' || manifest.version !== '1.2026.9' || manifest.sourceRoot !== sourceRoot || manifest.artifact.path !== artifact || manifest.artifact.sha256 !== artifactHash) throw new Error('unauthorized PlantUML edition, source root or artifact');
   for (const file of manifest.sourceFiles) {
-    if (!safe(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|klimt\/font)\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
+    if (!safe(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|utils\/CharHidder\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|klimt\/(?:font|creole\/(?:legacy|command)))\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
     if (!/^[a-f0-9]{64}$/.test(file.sha256) || file.notice !== 'provenance/LICENSE-PlantUML-MIT.txt') throw new Error(`invalid source hash/notice: ${file.path}`);
     if (file.rust.some(target => !manifest.nativeModules.includes(target))) throw new Error(`unregistered Rust destination: ${file.path}`);
   }

@@ -113,8 +113,8 @@ pub(super) fn split_label(line: &Line) -> (&str, &str) {
 
 pub(super) fn name(tokens: &[Token], line: usize) -> Result<(String, String), RenderError> {
     for token in tokens {
-        if !token.quoted && token.text != "as" {
-            validate_identifier(&token.text, line)?;
+        if token.text != "as" {
+            validate_name(token, line)?;
         }
     }
     match tokens {
@@ -130,6 +130,13 @@ pub(super) fn name(tokens: &[Token], line: usize) -> Result<(String, String), Re
             "declaration syntax (expected name or quoted display as alias)",
         )),
     }
+}
+
+pub(super) fn validate_name(token: &Token, line: usize) -> Result<(), RenderError> {
+    if !token.quoted {
+        validate_identifier(&token.text, line)?;
+    }
+    super::text::validate_label(&token.text, line)
 }
 
 pub(super) fn validate_identifier(value: &str, line: usize) -> Result<(), RenderError> {

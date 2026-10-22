@@ -39,13 +39,32 @@ struct Measured {
     height: f64,
 }
 
-pub(super) fn layout(model: &Uml, context: &mut Context<'_>) -> Result<Scene, RenderError> {
-    let measured = measure(model, context)?;
-    let labels = model
+struct RelationLabels {
+    middle: Label,
+    left: Label,
+    right: Label,
+}
+
+fn measure_relations(
+    model: &Uml,
+    context: &mut Context<'_>,
+) -> Result<Vec<RelationLabels>, RenderError> {
+    model
         .relations
         .iter()
-        .map(|r| context.label(&r.label))
-        .collect::<Result<Vec<_>, _>>()?;
+        .map(|relation| {
+            Ok(RelationLabels {
+                middle: context.label(&relation.label)?,
+                left: context.label(&relation.left)?,
+                right: context.label(&relation.right)?,
+            })
+        })
+        .collect()
+}
+
+pub(super) fn layout(model: &Uml, context: &mut Context<'_>) -> Result<Scene, RenderError> {
+    let measured = measure(model, context)?;
+    let labels = measure_relations(model, context)?;
     let mut graph = build_graph(model, &measured, &labels, context.budget)?;
     let mut work = Work {
         budget: context.budget,
@@ -107,7 +126,7 @@ fn measure(model: &Uml, context: &mut Context<'_>) -> Result<Vec<Measured>, Rend
 fn build_graph(
     model: &Uml,
     nodes: &[Measured],
-    labels: &[Label],
+    labels: &[RelationLabels],
     budget: &mut Budget,
 ) -> Result<Graph<NodeLabel, EdgeLabel, GraphLabel>, RenderError> {
     let mut graph = Graph::new(GraphOptions {
@@ -127,7 +146,7 @@ fn build_graph(
             Direction::Down => RankDir::TB,
             Direction::Right => RankDir::LR,
         },
-        nodesep: 70.,
+        nodesep: ranksep,
         ranksep,
         marginx: 60.,
         marginy: 60.,
@@ -146,6 +165,22 @@ fn build_graph(
     }
     let mut parents = Vec::new();
     for (i, node) in model.entities.iter().enumerate() {
+        if node.container {
+            budget.charge(1)?;
+            let caption = format!("caption-{i}");
+            graph.set_node(
+                &caption,
+                NodeLabel {
+                    width: nodes[i].title.width + 36.,
+                    height: nodes[i].title.height + 40.,
+                    ..Default::default()
+                },
+            );
+            parents.push((
+                graph.node_ix(&caption).unwrap(),
+                graph.node_ix(&format!("n{i}")).unwrap(),
+            ));
+        }
         if let Parent::Node(parent) = node.parent {
             parents.push((
                 graph.node_ix(&format!("n{i}")).unwrap(),
@@ -163,20 +198,41 @@ fn build_graph(
         .map_err(|e| invalid(1, format!("invalid compound graph: {e}")))?;
     for (i, relation) in model.relations.iter().enumerate() {
         budget.charge(1)?;
+        let (width, height) = relation_space(&labels[i], model.direction);
         graph
             .try_set_edge_named(
                 format!("n{}", relation.from),
                 format!("n{}", relation.to),
                 Some(format!("r{i}")),
                 Some(EdgeLabel {
-                    width: labels[i].width + 16.,
-                    height: labels[i].height + 12.,
+                    width,
+                    height,
                     ..Default::default()
                 }),
             )
             .map_err(|e| invalid(1, format!("invalid graph relation: {e}")))?;
     }
     Ok(graph)
+}
+
+fn relation_space(labels: &RelationLabels, direction: Direction) -> (f64, f64) {
+    let sizes = [&labels.middle, &labels.left, &labels.right].map(|label| {
+        if label.lines.iter().all(String::is_empty) {
+            (0., 0.)
+        } else {
+            (label.width, label.height)
+        }
+    });
+    match direction {
+        Direction::Down => (
+            sizes.iter().map(|s| s.0).fold(0., f64::max) + 32.,
+            sizes.iter().map(|s| s.1).sum::<f64>() + 48.,
+        ),
+        Direction::Right => (
+            sizes.iter().map(|s| s.0).sum::<f64>() + 48.,
+            sizes.iter().map(|s| s.1).fold(0., f64::max) + 32.,
+        ),
+    }
 }
 
 fn bounds(graph: &Graph<NodeLabel, EdgeLabel, GraphLabel>, id: usize) -> Result<Rect, RenderError> {
@@ -279,7 +335,7 @@ fn draw_nodes(
 
 fn draw_edges(
     model: &Uml,
-    labels: &[Label],
+    labels: &[RelationLabels],
     graph: &Graph<NodeLabel, EdgeLabel, GraphLabel>,
     scene: &mut Scene,
     context: &mut Context<'_>,
@@ -309,6 +365,9 @@ fn draw_edges(
         );
         let first = points[0];
         let last = points[points.len() - 1];
+        let near_first = points[1];
+        let near_last = points[points.len() - 2];
+        let middle = &labels[id].middle;
         let mut element = Element::new(format!("r{id}"), "relation");
         element.owner = format!("n{}", relation.from);
         element.target = format!("n{}", relation.to);
@@ -318,32 +377,74 @@ fn draw_edges(
             let y = edge.y.ok_or_else(|| invalid(1, "layout omitted label y"))?;
             element.shapes.push(Shape::Rect(
                 Rect {
-                    x: x - labels[id].width / 2. - 3.,
-                    y: y - labels[id].height / 2. - 2.,
-                    width: labels[id].width + 6.,
-                    height: labels[id].height + 4.,
+                    x: x - middle.width / 2. - 3.,
+                    y: y - middle.height / 2. - 2.,
+                    width: middle.width + 6.,
+                    height: middle.height + 4.,
                 },
                 0.,
                 Paint::Paper,
             ));
             element.shapes.push(Shape::Text(
-                Point::new(x - labels[id].width / 2., y - labels[id].height / 2.),
-                labels[id].clone(),
+                Point::new(x - middle.width / 2., y - middle.height / 2.),
+                middle.clone(),
                 Decoration::Plain,
             ));
         }
-        for (point, text) in [(first, &relation.left), (last, &relation.right)] {
-            if !text.is_empty() {
-                element.shapes.push(Shape::Text(
-                    Point::new(point.x + 10., point.y + 4.),
-                    context.label(text)?,
-                    Decoration::Plain,
-                ));
+        for (point, neighbor, label, owner) in [
+            (first, near_first, &labels[id].left, relation.from),
+            (last, near_last, &labels[id].right, relation.to),
+        ] {
+            if label.lines.iter().any(|line| !line.is_empty()) {
+                let rect = endpoint_label_box((point, neighbor), label, bounds(graph, owner)?);
+                element.shapes.push(Shape::Rect(rect, 0., Paint::Paper));
+                element.shapes.push(text_at(rect, label.clone()));
             }
         }
         scene.push(element, context.budget)?;
     }
     Ok(())
+}
+
+fn endpoint_label_box(route: (Point, Point), label: &Label, owner: Rect) -> Rect {
+    let (point, neighbor) = route;
+    let dx = neighbor.x - point.x;
+    let dy = neighbor.y - point.y;
+    let length = dx.hypot(dy).max(1e-9);
+    let (ux, uy) = (dx / length, dy / length);
+    let along = ux.abs() * label.width / 2. + uy.abs() * label.height / 2. + 16.;
+    let normal = uy.abs() * label.width / 2. + ux.abs() * label.height / 2. + 8.;
+    let rect = Rect {
+        x: point.x + ux * along - uy * normal - label.width / 2. - 3.,
+        y: point.y + uy * along + ux * normal - label.height / 2. - 3.,
+        width: label.width + 6.,
+        height: label.height + 6.,
+    };
+    if rect.x + rect.width <= owner.x
+        || rect.x >= owner.x + owner.width
+        || rect.y + rect.height <= owner.y
+        || rect.y >= owner.y + owner.height
+    {
+        return rect;
+    }
+    if dx.abs() > dy.abs() {
+        return Rect {
+            x: if dx < 0. {
+                owner.x - rect.width - 16.
+            } else {
+                owner.x + owner.width + 16.
+            },
+            ..rect
+        };
+    }
+    Rect {
+        y: if dy < 0. {
+            owner.y - rect.height - 16.
+        } else {
+            owner.y + owner.height + 16.
+        },
+        ..rect
+    }
 }
 
 fn intersect(kind: Kind, rect: Rect, point: Point) -> Point {
@@ -367,6 +468,88 @@ mod tests {
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
 
+    fn draw(source: &str) -> Scene {
+        let mut budget = Budget::new(&RenderOptions::default());
+        let lines = super::super::source::prepare(source, &mut budget).unwrap();
+        let model = super::super::uml::parse(&lines, &mut budget).unwrap();
+        let session = RenderEnvironment::deterministic().begin_session().unwrap();
+        layout(&model, &mut Context::new(&session, &mut budget)).unwrap()
+    }
+
+    #[test]
+    fn should_contain_long_multiline_compound_captions_in_both_directions() {
+        // given
+        for direction in ["top to bottom direction", "left to right direction"] {
+            let source = format!(
+                "@startuml\n{direction}\npackage \"Extremely long container caption that must stay within its box\\nA second line\\nA third line\" as P {{\nclass A\n}}\n@enduml"
+            );
+            // when
+            let scene = draw(&source);
+            let parent = scene.elements.iter().find(|e| e.id == "n0").unwrap();
+            let Shape::Rect(box_rect, _, _) = parent.shapes[0] else {
+                panic!("package box")
+            };
+            // then
+            for shape in &parent.shapes {
+                if let Shape::Text(point, label, _) = shape {
+                    assert!(
+                        point.x >= box_rect.x
+                            && point.x + label.width <= box_rect.x + box_rect.width,
+                        "caption exceeds compound width: {direction}"
+                    );
+                    assert!(
+                        point.y >= box_rect.y
+                            && point.y + label.height <= box_rect.y + box_rect.height,
+                        "caption exceeds compound height: {direction}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn should_place_endpoint_labels_outside_nodes_for_tb_lr_and_reverse_routes() {
+        // given
+        for direction in ["top to bottom direction", "left to right direction"] {
+            for arrow in ["-->", "<--"] {
+                let source = format!(
+                    "@startuml\n{direction}\nclass A\nclass TargetName\nA \"one source\" {arrow} \"many targets\" TargetName : relation\n@enduml"
+                );
+                // when
+                let scene = draw(&source);
+                let boxes = scene
+                    .elements
+                    .iter()
+                    .filter(|e| e.kind == "class")
+                    .map(|e| match e.shapes[0] {
+                        Shape::Rect(rect, _, _) => rect,
+                        _ => panic!("class box"),
+                    })
+                    .collect::<Vec<_>>();
+                let edge = scene
+                    .elements
+                    .iter()
+                    .find(|e| e.kind == "relation")
+                    .unwrap();
+                // then
+                for shape in &edge.shapes {
+                    if let Shape::Text(point, label, _) = shape {
+                        for rect in &boxes {
+                            assert!(
+                                point.x + label.width <= rect.x
+                                    || point.x >= rect.x + rect.width
+                                    || point.y + label.height <= rect.y
+                                    || point.y >= rect.y + rect.height,
+                                "edge label {:?} overlaps a node: {direction} {arrow}",
+                                label.lines
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn should_intersect_usecase_ellipse_instead_of_its_bounding_rectangle() {
         // given
@@ -384,6 +567,36 @@ mod tests {
         assert!(point.x < 100. && point.y < 60.);
     }
 
+    #[test]
+    fn should_keep_diagonal_endpoint_label_outside_a_wide_owning_node() {
+        // given
+        let owner = Rect {
+            x: 0.,
+            y: 0.,
+            width: 500.,
+            height: 100.,
+        };
+        let label = Label {
+            lines: vec!["wide role".into()],
+            width: 160.,
+            height: 20.,
+            line_height: 20.,
+        };
+        // when
+        let rect = endpoint_label_box(
+            (Point::new(250., 100.), Point::new(200., 150.)),
+            &label,
+            owner,
+        );
+        // then
+        assert!(
+            rect.x + rect.width <= owner.x
+                || rect.x >= owner.x + owner.width
+                || rect.y >= owner.y + owner.height
+                || rect.y + rect.height <= owner.y
+        );
+    }
+
     fn model(budget: &mut Budget) -> Uml {
         let lines = super::super::source::prepare("@startuml\npackage P {\nclass A\nclass B\nA --> B\nB --> A\nA --> A\nA --> B : second\n}\nclass Alone\n@enduml", budget).unwrap();
         super::super::uml::parse(&lines, budget).unwrap()
@@ -398,11 +611,7 @@ mod tests {
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget);
         let nodes = measure(&model, &mut context).unwrap();
-        let labels = model
-            .relations
-            .iter()
-            .map(|r| context.label(&r.label).unwrap())
-            .collect::<Vec<_>>();
+        let labels = measure_relations(&model, &mut context).unwrap();
         // when
         let result = build_graph(&model, &nodes, &labels, context.budget);
         // then
@@ -417,11 +626,7 @@ mod tests {
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget);
         let nodes = measure(&model, &mut context).unwrap();
-        let labels = model
-            .relations
-            .iter()
-            .map(|r| context.label(&r.label).unwrap())
-            .collect::<Vec<_>>();
+        let labels = measure_relations(&model, &mut context).unwrap();
         let mut graph = build_graph(&model, &nodes, &labels, context.budget).unwrap();
         context.budget.limits.layout_work = context.budget.work + 1;
         let mut work = Work {
