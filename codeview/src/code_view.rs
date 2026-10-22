@@ -429,7 +429,8 @@ impl Render for CodeView {
         let release = cx.listener(Self::on_mouse_up);
         let release_out = cx.listener(Self::on_mouse_up);
         let (view, placed) = (cx.entity(), self.state.placed.clone());
-        self.state
+        let body = self
+            .state
             .render_with(&style, window, cx, move |text, metrics| match selectable {
                 true => text
                     .cursor(CursorStyle::IBeam)
@@ -439,9 +440,12 @@ impl Render for CodeView {
                     .on_mouse_up_out(MouseButton::Left, release_out)
                     .child(follow_drag(metrics, placed, view)),
                 false => text,
-            })
-            .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(Self::on_key_down))
+            });
+        // `track_focus` alone makes a press take focus, so an unselectable view leaves it to the parent
+        match selectable {
+            true => body.track_focus(&self.focus_handle).on_key_down(cx.listener(Self::on_key_down)),
+            false => body,
+        }
     }
 }
 
