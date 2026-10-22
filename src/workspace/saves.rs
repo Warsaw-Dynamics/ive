@@ -1,6 +1,7 @@
 //! Edits reach the disk without the user saving: the workspace asks every editing panel to save now when the user
 //! turns away from it (another tab, another window), before a run, and before quitting or closing its tab, which
-//! wait for the saves; edits that cannot be saved can be given up with the tab's "Close without saving".
+//! wait for the saves; edits that cannot be saved can be given up with the tab's "Close without saving". What a
+//! close or quit waits for is kept in [`super::waits::Waits`].
 
 use std::time::Duration;
 
@@ -9,31 +10,13 @@ use codeview::panel::{Cast, Event, Panel};
 use gpui::{App, AsyncWindowContext, Context, Entity, WeakEntity, Window};
 
 use super::Workspace;
+use super::waits::{AfterDiscard, Forgot, Ticket};
 use crate::editor::Tab;
 use crate::file_tab;
-use crate::project::ProjectId;
 use crate::tabs::TabId;
 
 /// How often waiting for saves looks again.
 const SAVE_POLL: Duration = Duration::from_millis(20);
-
-/// What waits for edits that could not be saved, until the user closes without saving or a save lands.
-#[derive(Default)]
-pub struct Waits {
-    /// the tabs whose panels this workspace listens to for a discard
-    watched: Vec<TabId>,
-    quit: QuitWait,
-    /// projects whose closing waits for their tabs to close
-    pub(super) projects: Vec<ProjectId>,
-}
-
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
-enum QuitWait {
-    #[default]
-    Idle,
-    /// a quit stopped at unsaved edits and goes on once they are saved or discarded
-    Waiting,
-}
 
 impl Workspace {
     /// Every editing panel saves its edits now instead of after its pause.
@@ -69,70 +52,117 @@ impl Workspace {
     }
 
     /// Quits once every save landed; edits that could not be saved keep IVE open, their tab shown with the reason.
+    /// It replaces any close or quit waiting.
     pub(super) fn quit_when_saved(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let ticket = self.waits.quit();
+        self.withdraw_stale_asks(cx);
+        self.quit_after_saves(ticket, window, cx);
+    }
+
+    /// Quit `ticket` goes on once every save landed, unless the user went on working meanwhile.
+    fn quit_after_saves(&mut self, ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
         self.flush_edits(cx);
         cx.spawn_in(window, async move |workspace, cx| {
             saves_landed(&workspace, cx).await;
-            let _ = workspace.update_in(cx, |workspace, window, cx| workspace.quit_unless_unsaved(window, cx));
+            let _ = workspace.update_in(cx, |workspace, window, cx| workspace.quit_unless_unsaved(ticket, window, cx));
         })
         .detach();
     }
 
-    fn quit_unless_unsaved(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn quit_unless_unsaved(&mut self, ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.waits.is_live(ticket) {
+            return;
+        }
         let unsaved = self.unsaved_tabs(cx);
         let Some(first) = unsaved.first().copied() else {
             return cx.quit();
         };
         self.quit_prompt = None;
         cx.cancel_quit();
-        self.waits.quit = QuitWait::Waiting;
+        self.waits.quit_stopped(ticket, unsaved.clone());
         self.ask_close(&unsaved, window, cx);
         self.activate_tab(first, window, cx);
         cx.notify();
     }
 
+    /// The user showed tab `id`: a close or quit not waiting for it is forgotten.
+    pub(super) fn went_to_tab(&mut self, id: TabId, cx: &mut App) {
+        if self.waits.activated(id) == Forgot::Request {
+            self.withdraw_stale_asks(cx);
+        }
+    }
+
+    /// The user edited tab `id`: a close or quit waiting for it is forgotten.
+    fn edited(&mut self, id: TabId, cx: &mut App) {
+        if self.waits.edited(id) == Forgot::Request {
+            self.withdraw_stale_asks(cx);
+        }
+    }
+
+    /// Panels asked to close for a request no longer live stop offering closing without saving.
+    fn withdraw_stale_asks(&self, cx: &mut App) {
+        let stale = self.editing_panels(cx).into_iter().filter(|(id, _)| !self.waits.waits_on(*id));
+        for (_, panel) in stale {
+            panel.update(cx, |panel, cx| panel.handle(Cast::CloseWithdrawn, cx));
+        }
+    }
+
     /// Tells the panels of tabs `ids` that a close waits for their edits, so their bars offer closing without
-    /// saving, and closes the tab or goes on quitting when the user does.
+    /// saving, and closes the tab or goes on quitting when the user does; an edit there forgets the close.
     fn ask_close(&mut self, ids: &[TabId], window: &mut Window, cx: &mut Context<Self>) {
-        for (id, panel) in self.editing_panels(cx).into_iter().filter(|(id, _)| ids.contains(id)) {
+        let panels = self.editing_panels(cx);
+        self.waits.watched.retain(|watched| panels.iter().any(|(_, panel)| panel.entity_id() == *watched));
+        for (id, panel) in panels.into_iter().filter(|(id, _)| ids.contains(id)) {
             panel.update(cx, |panel, cx| panel.handle(Cast::CloseAsked, cx));
-            if self.waits.watched.contains(&id) {
+            if self.waits.watched.contains(&panel.entity_id()) {
                 continue;
             }
-            self.waits.watched.push(id);
-            cx.subscribe_in(&panel, window, move |workspace, _panel, event: &Event, window, cx| {
-                if let Event::DiscardRequested = event {
-                    workspace.discarded(id, window, cx);
-                }
+            self.waits.watched.push(panel.entity_id());
+            cx.subscribe_in(&panel, window, move |workspace, _panel, event: &Event, window, cx| match event {
+                Event::DiscardRequested => workspace.discarded(id, window, cx),
+                Event::Edited { .. } => workspace.edited(id, cx),
+                _ => {}
             })
             .detach();
         }
     }
 
-    /// The user chose closing tab `id` without saving: its panel dropped the edits, so the close or quit goes on.
+    /// The user chose closing tab `id` without saving: its panel dropped the edits, so a file tab closes (a scratch
+    /// tab stays and reloads) and the close or quit waiting for it goes on.
     fn discarded(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(Tab::Document(_)) = self.tabs.get(id) {
             self.tabs.close(id);
         }
         self.tab_shown(window, cx);
-        self.finish_closing_projects(window, cx);
-        if self.waits.quit == QuitWait::Waiting {
-            self.waits.quit = QuitWait::Idle;
-            self.quit_when_saved(window, cx);
+        match self.waits.discarded(id) {
+            AfterDiscard::Quit(ticket) => self.quit_after_saves(ticket, window, cx),
+            AfterDiscard::CloseProjects => self.finish_closing_projects(window, cx),
+            AfterDiscard::Nothing => {}
         }
         cx.notify();
     }
 
     /// Closes tabs `ids` as quitting does: a file tab with edits is flushed and closes once its saves landed; one
-    /// whose edits cannot be saved stays, shown with the reason. Other tabs close at once.
-    pub fn close_tabs(&mut self, ids: Vec<TabId>, window: &mut Window, cx: &mut Context<Self>) {
+    /// whose edits cannot be saved stays, shown with the reason. Other tabs close at once. Returns the close.
+    pub fn close_tabs(&mut self, ids: Vec<TabId>, window: &mut Window, cx: &mut Context<Self>) -> Ticket {
+        let ticket = self.begin_close(&ids, cx);
         let (waiting, settled): (Vec<_>, Vec<_>) = ids.into_iter().partition(|id| self.is_unsettled(*id, cx));
         for id in settled {
             self.tabs.close(id);
         }
         // flushes the waiting tabs' edits
         self.tab_shown(window, cx);
-        self.close_when_saved(waiting, window, cx);
+        self.close_when_saved(waiting, ticket, window, cx);
+        // a project waiting for these tabs closes with the last of them
+        self.finish_closing_projects(window, cx);
+        ticket
+    }
+
+    /// A close of tabs `ids`: it goes on with the close waiting for them, or replaces any close or quit waiting.
+    pub(super) fn begin_close(&mut self, ids: &[TabId], cx: &mut App) -> Ticket {
+        let ticket = self.waits.close(ids);
+        self.withdraw_stale_asks(cx);
+        ticket
     }
 
     /// Whether tab `id` is a file tab whose edits are not on disk yet: waiting for a pause, in flight, or failed.
@@ -143,27 +173,31 @@ impl Workspace {
         }
     }
 
-    /// Closes the flushed file tabs `ids` once their saves landed, unless edits stay unsaved.
-    pub(super) fn close_when_saved(&mut self, ids: Vec<TabId>, window: &mut Window, cx: &mut Context<Self>) {
+    /// Closes the flushed file tabs `ids` of close `ticket` once their saves landed, unless edits stay unsaved.
+    pub(super) fn close_when_saved(&mut self, ids: Vec<TabId>, ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
         if ids.is_empty() {
             return;
         }
         cx.spawn_in(window, async move |workspace, cx| {
             tabs_saved(&workspace, &ids, cx).await;
-            let _ = workspace.update_in(cx, |workspace, window, cx| workspace.close_saved_tabs(&ids, window, cx));
+            let _ = workspace.update_in(cx, |workspace, window, cx| workspace.close_saved_tabs(&ids, ticket, window, cx));
         })
         .detach();
     }
 
-    /// Closes the tabs of `ids` whose edits are all saved; the first of the others is shown, with the reason.
-    fn close_saved_tabs(&mut self, ids: &[TabId], window: &mut Window, cx: &mut Context<Self>) {
+    /// Closes the tabs of `ids` whose edits are all saved; the first of the others is shown, with the reason, unless
+    /// close `ticket` was forgotten or replaced meanwhile: they then stay as they are.
+    fn close_saved_tabs(&mut self, ids: &[TabId], ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
         let (unsaved, saved): (Vec<TabId>, Vec<TabId>) = ids.iter().partition(|id| self.is_unsettled(**id, cx));
         for id in saved {
             self.tabs.close(id);
         }
-        self.ask_close(&unsaved, window, cx);
-        match unsaved.first() {
-            Some(tab) => self.activate_tab(*tab, window, cx),
+        let shown = unsaved.first().copied().filter(|_| self.waits.is_live(ticket));
+        match shown {
+            Some(tab) => {
+                self.ask_close(&unsaved, window, cx);
+                self.activate_tab(tab, window, cx);
+            }
             None => self.tab_shown(window, cx),
         }
         self.finish_closing_projects(window, cx);

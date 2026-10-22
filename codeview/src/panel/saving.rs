@@ -102,9 +102,17 @@ impl Saving {
         revision != self.saved && self.close != Close::Discarded
     }
 
-    /// The host waits for the edits to close the tab or quit; ends with a save.
+    /// The host waits for the edits to close the tab or quit; ends with a save, an edit or
+    /// [`Self::withdraw_close`].
     pub(super) fn ask_close(&mut self) {
         self.close = Close::Asked;
+    }
+
+    /// The host no longer waits to close; edits already given up stay given up.
+    pub(super) fn withdraw_close(&mut self) {
+        if self.close == Close::Asked {
+            self.close = Close::Unasked;
+        }
     }
 
     /// The bar offers closing without saving: a close waits, and the last save failed or met a conflict, with no
@@ -140,11 +148,10 @@ impl Saving {
         }
     }
 
-    /// An edit restarts the pause; `pause` is the timer that ends it.
+    /// An edit restarts the pause; `pause` is the timer that ends it. The user went on working: a close no longer
+    /// waits, and edits given up count again.
     pub(super) fn restart_pause(&mut self, pause: Task<()>) {
-        if self.close == Close::Discarded {
-            self.close = Close::Unasked;
-        }
+        self.close = Close::Unasked;
         self.pause = Pause::Running { _timer: pause };
     }
 

@@ -101,6 +101,7 @@ impl Panel {
             Cast::Saved { revision, source } => self.saved(revision, source, cx),
             Cast::SaveFailed { revision, reason } => self.save_failed(revision, reason),
             Cast::CloseAsked => self.saving.ask_close(),
+            Cast::CloseWithdrawn => self.saving.withdraw_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
             Cast::Type(text) => self.type_text(&text, cx),
             // Task 11 fetches diff texts
@@ -713,6 +714,7 @@ mod tests {
             cast(&panel, typed("b"), cx);
             cast(&panel, Cast::Command(Command::Flush), cx);
             cast(&panel, Cast::SaveFailed { revision: 2, reason: SaveFailure::Conflict(Resolve::Reload) }, cx);
+            cast(&panel, Cast::CloseAsked, cx);
             offers(&panel, cx)
         };
         assert_eq!((before_close, offers(&panel, cx), conflict), (false, true, true));
@@ -753,6 +755,31 @@ mod tests {
         // then
         assert!(panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx)));
         assert_eq!((*discards.borrow(), saves.borrow().len()), (1, 1));
+    }
+
+    #[gpui::test]
+    fn should_not_offer_closing_without_saving_after_the_close_was_abandoned(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let offers = |panel: &Entity<Panel>, cx: &mut TestAppContext| panel.read_with(cx, |panel, _| panel.saving.offers_discard());
+        let failed = |revision, cx: &mut TestAppContext| {
+            cast(&panel, Cast::Command(Command::Flush), cx);
+            cast(&panel, Cast::SaveFailed { revision, reason: SaveFailure::Io("read-only".to_owned()) }, cx);
+            cast(&panel, Cast::CloseAsked, cx);
+        };
+        cast(&panel, typed("a"), cx);
+        failed(1, cx);
+        let asked = offers(&panel, cx);
+
+        // when
+        cast(&panel, Cast::CloseWithdrawn, cx);
+        let withdrawn = offers(&panel, cx);
+        failed(1, cx);
+        cast(&panel, typed("b"), cx);
+        let edited = offers(&panel, cx);
+
+        // then
+        assert_eq!((asked, withdrawn, edited), (true, false, false));
     }
 
     #[gpui::test]

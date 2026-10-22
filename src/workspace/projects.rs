@@ -375,19 +375,16 @@ impl Workspace {
             .map(|(tab_id, _)| tab_id)
             .collect();
         // file tabs with edits close once those are saved, and the project with the last of its tabs
-        self.close_tabs(tabs, window, cx);
-        if !self.waits.projects.contains(id) {
-            self.waits.projects.push(id.clone());
-        }
+        let close = self.close_tabs(tabs, window, cx);
+        self.waits.close_project(close, id.clone());
         self.finish_closing_projects(window, cx);
     }
 
-    /// Closes the projects whose closing was asked for and whose tabs are all closed now.
+    /// Closes the projects the live close waits for whose tabs are all closed now.
     pub(super) fn finish_closing_projects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let asked = std::mem::take(&mut self.waits.projects);
-        let (ready, waiting): (Vec<_>, Vec<_>) = asked.into_iter().partition(|id| !self.has_tabs_of(id));
-        self.waits.projects = waiting;
+        let ready: Vec<_> = self.waits.projects().into_iter().filter(|id| !self.has_tabs_of(id)).collect();
         for id in ready {
+            self.waits.project_closed(&id);
             self.close_project_now(&id, window, cx);
         }
     }

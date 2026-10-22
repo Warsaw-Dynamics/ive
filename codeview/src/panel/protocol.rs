@@ -35,8 +35,10 @@ pub enum Cast {
     /// the edits stay; the bar says why, and the next pause or flush tries again
     SaveFailed { revision: u64, reason: SaveFailure },
     /// the host would close the tab or quit but for the unsaved edits: while the last save has failed, the bar offers
-    /// closing without saving; ends with a save
+    /// closing without saving; ends with a save, an edit or [`Cast::CloseWithdrawn`]
     CloseAsked,
+    /// the host no longer waits to close (the user went on working): the bar stops offering closing without saving
+    CloseWithdrawn,
     Command(Command),
     /// types the text at the caret as the keyboard would, `\r` a line break; refused over the size limit
     Type(String),
@@ -118,7 +120,7 @@ pub enum Event {
     /// the user chose Reload on a conflict: the host opens the text again, dropping the edits
     ReloadRequested,
     /// the user chose closing without saving after [`Cast::CloseAsked`]: the panel dropped its edits (nothing is
-    /// saved any more) and the host closes
+    /// saved any more) and the host closes, or opens the text again where the tab stays
     DiscardRequested,
     OpenAt { path: PathBuf, line: usize },
 }

@@ -285,10 +285,10 @@ impl ScratchView {
             // caret and scroll are saved with the open tabs
             Event::StateChanged => return self.schedule_workspace_save(cx),
             Event::SaveRequested(request) => self.write_request(request.clone(), mode_of(request.kind), cx),
-            Event::ReloadRequested => self.reload(cx),
+            // the tab stays open after closing without saving: the edits given up are neither shown nor written
+            Event::ReloadRequested | Event::DiscardRequested => self.reload(cx),
             // parsing is `codeview_host::serve`'s
-            // the workspace closes on a discard
-            Event::DiscardRequested | Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::OpenAt { .. } => return,
+            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::OpenAt { .. } => return,
         }
         cx.notify();
     }
@@ -701,6 +701,8 @@ fn bar_button(
 
 #[cfg(test)]
 mod tests {
+    use codeview::host::Command;
+
     use super::*;
 
     fn stamp(content: &str) -> FileStamp {
@@ -800,5 +802,43 @@ mod tests {
 
         // then
         assert_eq!(state.action(5, Some(stamp("newer")), SaveMode::Ask), SaveAction::Nothing);
+    }
+
+    /// An editing scratch view of scratch `name` holding `text`, in a store under `dir`.
+    fn scratch_view(dir: &Path, text: &str, cx: &mut gpui::TestAppContext) -> (ScratchStore, Entity<ScratchView>) {
+        let store = ScratchStore::new(dir, "p").unwrap();
+        store.ensure_dir().unwrap();
+        store.write("notes", text, LineEnding::Lf).unwrap();
+        let content = store.read("notes").unwrap();
+        let scratch = ScratchRef { project: ProjectId::new("p"), name: "notes".to_owned() };
+        let target = ScratchTarget { scratch, project_name: "p".to_owned(), store: store.clone(), workspace: WeakEntity::new_invalid() };
+        let view = cx.new(|cx| ScratchView::new(target, content, cx));
+        (store, view)
+    }
+
+    #[gpui::test]
+    fn should_reload_a_tab_that_stays_open_after_closing_without_saving(cx: &mut gpui::TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (store, view) = scratch_view(dir.path(), "mine\n", cx);
+        let panel = view.read_with(cx, |view, _| view.editor().unwrap());
+        let cast = |cast: Cast, cx: &mut gpui::TestAppContext| panel.update(cx, |panel, cx| panel.handle(cast, cx));
+        cast(Cast::Type("lost ".to_owned()), cx);
+        // another program's change: the save meets a conflict, and a quit waits for the edits
+        std::fs::write(store.path("notes"), "theirs\n").unwrap();
+        cast(Cast::Command(Command::Flush), cx);
+        cast(Cast::CloseAsked, cx);
+
+        // when
+        // as the panel does on the bar's "Close without saving"
+        panel.update(cx, |_, cx| cx.emit(Event::DiscardRequested));
+        let unsaved = panel.read_with(cx, |panel, cx| panel.has_unsaved(cx));
+        cast(Cast::Type("kept ".to_owned()), cx);
+        cast(Cast::Command(Command::Flush), cx);
+
+        // then
+        let written = std::fs::read_to_string(store.path("notes")).unwrap();
+        // the caret stays where it was, in the text as reloaded
+        assert_eq!((unsaved, written.contains("kept "), written.replace("kept ", "")), (false, true, "theirs\n".to_owned()));
     }
 }

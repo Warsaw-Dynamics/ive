@@ -54,6 +54,7 @@ mod quit;
 mod restart;
 mod runs;
 mod saves;
+mod waits;
 mod scratches;
 mod scripts;
 mod settings_actions;
@@ -134,7 +135,7 @@ pub struct Workspace {
     scripts: scripts::ScriptWatch,
     quit_prompt: Option<quit::QuitPrompt>,
     /// closes waiting for edits that could not be saved
-    waits: saves::Waits,
+    waits: waits::Waits,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
     /// the tabs shown, for the hub's Recent rows
@@ -281,7 +282,7 @@ impl Workspace {
             _api_calls: api_requests::answer_calls(startup.api_calls, window, cx),
             scripts,
             quit_prompt: None,
-            waits: saves::Waits::default(),
+            waits: waits::Waits::default(),
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
@@ -439,12 +440,14 @@ impl Workspace {
     pub fn open_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let temporary = tab.temporary_kind().is_some_and(|kind| cx.try_global::<TemporaryTabs>().is_some_and(|tabs| tabs.opens_temporary(kind)));
         let id = if temporary { self.tabs.open_temporary(tab) } else { self.tabs.open(tab) };
+        self.went_to_tab(id, cx);
         self.tab_shown(window, cx);
         id
     }
 
     /// Shows tab `id`; a detached one by bringing its window to the front.
     pub fn activate_tab(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        self.went_to_tab(id, cx);
         if self.activate_tab_window(id, cx) {
             return;
         }
