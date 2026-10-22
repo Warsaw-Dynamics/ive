@@ -282,6 +282,29 @@ impl EditorModel {
         self.place_caret(position, selecting);
     }
 
+    /// Moves the caret up or down to line `line` (clamped), aiming for the column Up and Down aim for.
+    pub fn move_to_line(&mut self, line: usize, selecting: Selecting) {
+        let goal = self.goal_column.unwrap_or(self.caret.column);
+        let target = self.at_line(line.min(self.line_count() - 1), goal);
+        self.place_caret(target, selecting);
+        self.goal_column = Some(goal);
+    }
+
+    /// The byte offset of `position` within its stored line.
+    pub fn byte_in_line(&self, position: Position) -> usize {
+        stored_byte_of(&self.table.line(position.line), position.column)
+    }
+
+    /// The column of the shown character at or after byte `byte` of stored line `line`.
+    pub fn column_at_byte(&self, line: usize, byte: usize) -> usize {
+        shown_char_starts(content(&self.table.line(line))).take_while(|start| *start < byte).count()
+    }
+
+    /// Drops the selection, keeping the caret.
+    pub fn deselect(&mut self) {
+        self.anchor = None;
+    }
+
     pub fn select_all(&mut self) {
         self.place_caret(Position::default(), Selecting::Move);
         self.place_caret(self.end(), Selecting::Extend);

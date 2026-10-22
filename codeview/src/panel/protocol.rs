@@ -47,6 +47,10 @@ pub enum Cast {
     /// the file went away on disk; its text stays
     MarkDeleted,
     SetPolicy(EditPolicy),
+    /// a diff's: [`Editable::NewSide`] edits the new side once its text comes, asked for with
+    /// [`TextPurpose::Editing`]; [`Editable::No`] makes it read-only, dropping the edited text and its history (the
+    /// host sends it only while nothing is unsaved)
+    SetEditable(Editable),
 }
 
 /// What a panel shows.
@@ -64,6 +68,8 @@ pub struct DiffInput {
     pub editable: Editable,
 }
 
+/// Whether a diff edits its new side: only a single file's uncommitted changes do, saved as `policy` says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Editable {
     No,
     NewSide { policy: EditPolicy },
@@ -132,6 +138,16 @@ pub enum Event {
 pub struct TextsRequest {
     pub file: usize,
     pub generation: u64,
+    pub purpose: TextPurpose,
+}
+
+/// What a diff asks a file's texts for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextPurpose {
+    Colours,
+    /// also to edit the new side: the host reads the file on disk and checks the saves against what it read, as for
+    /// a file it opened for editing
+    Editing,
 }
 
 /// `edits` turn the text of revision `base` into that of `revision`: sorted, non-overlapping, in `base`'s bytes.

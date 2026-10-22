@@ -2,9 +2,9 @@
 
 mod colours;
 mod history;
-mod keys;
+pub(crate) mod keys;
 mod layout;
-mod model;
+pub(crate) mod model;
 mod view;
 
 pub use model::{Motion, Selecting, SizeLimit, Unit};

@@ -2,6 +2,8 @@
 //! and new side by side. Only visible rows are built, so a 200,000-line view scrolls as cheaply as a short one.
 
 pub mod data;
+mod editing;
+mod patch;
 pub mod rows;
 pub mod selection;
 pub mod side_by_side;
@@ -13,7 +15,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, Bounds, Context, CursorStyle, DispatchPhase, Div, EventEmitter, FocusHandle, Focusable, IntoElement,
+    AnyElement, App, Bounds, Context, CursorStyle, DispatchPhase, Div, ElementInputHandler, EventEmitter, FocusHandle, Focusable, IntoElement,
     KeyDownEvent, ListHorizontalSizingBehavior, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render,
     ScrollWheelEvent, SharedString, Stateful, StyledText, UniformList, Window, canvas, div, img, point, prelude::*, px, relative,
     rgb, rgba, uniform_list,
@@ -23,7 +25,7 @@ use crate::code_view::HighlightCache;
 use crate::colors::ResolvedScheme;
 use crate::document::Source;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
-use crate::panel::{DiffLayout, ParseJob, ParseTarget, TextsRequest};
+use crate::panel::{DiffLayout, ParseJob, ParseTarget, TextPurpose, TextsRequest};
 use crate::icons;
 use crate::position::ScrollPosition;
 use crate::scrollbar::{
@@ -35,6 +37,7 @@ pub use rows::{Headers, Shape};
 use rows::{COLLAPSE_LINES, DiffRow, diff_rows};
 use selection::{DiffPosition, DiffSelection, word_around};
 use side_by_side::{DiffLineRef, Side};
+use editing::{EditMarks, Editing};
 use texts::{DiffTexts, Parsed, Placed};
 
 /// `1 file`, `2 files`.
@@ -55,6 +58,8 @@ pub enum DiffEvent {
     NeedTexts(TextsRequest),
     /// the user switched the layout
     LayoutToggled(DiffLayout),
+    /// the edited new side changed
+    Edited,
 }
 
 pub struct DiffView {
@@ -84,6 +89,20 @@ pub struct DiffView {
     texts: DiffTexts,
     /// the colours of the rows drawn, by row; side by side, by row and panel
     colours: HighlightCache<Placed>,
+    editing: Editing,
+    /// what the left button pressed: rows to select, or the edited text
+    pressed: Pressed,
+    /// the view has the keyboard, as of the last frame: the caret shows
+    focused: bool,
+    /// the caret moved: the next frame scrolls it into view
+    reveal_caret: bool,
+}
+
+/// What a left-button drag selects.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Pressed {
+    Rows,
+    Text,
 }
 
 /// A side-by-side panel's sideways scroll and the scrollbar that moves it.
@@ -137,23 +156,35 @@ impl DiffView {
             bounds: Rc::default(),
             texts: DiffTexts::default(),
             colours: HighlightCache::default(),
+            editing: Editing::Off,
+            pressed: Pressed::Rows,
+            focused: false,
+            reveal_caret: false,
         }
     }
 
     /// Shows `files`, keeping the scroll. The same files again (a reload) keep what was collapsed; new ones in a
     /// commit tab start collapsed when over [`COLLAPSE_LINES`].
     pub fn set_files(&mut self, files: Vec<FileDiff>, cx: &mut Context<Self>) {
+        let caret_row = self.caret_row();
+        let files = self.edited_files(files);
         let same_files = files.len() == self.files.len() && files.iter().zip(&self.files).all(|(new, old)| new.path == old.path);
         self.collapsed = match (same_files, self.shape.headers) {
             (true, _) => std::mem::take(&mut self.collapsed),
             (false, Headers::Shown) => files.iter().enumerate().filter(|(_, file)| file.line_count() > COLLAPSE_LINES).map(|(index, _)| index).collect(),
             (false, Headers::Hidden) => HashSet::new(),
         };
-        self.number_width = files.iter().map(largest_line_number).max().unwrap_or(1).to_string().len();
         self.texts.forget_changed(&self.files, &files);
         self.files = files;
+        self.measure_numbers();
         self.rebuild();
+        self.keep_caret(caret_row, cx);
         cx.notify();
+    }
+
+    /// Sizes the gutter for the largest line number.
+    fn measure_numbers(&mut self) {
+        self.number_width = self.files.iter().map(largest_line_number).max().unwrap_or(1).to_string().len();
     }
 
     pub fn file(&self, file: usize) -> Option<&FileDiff> {
@@ -219,13 +250,17 @@ impl DiffView {
     }
 
     /// Keeps `source` as side `target` of its file when it answers the last ask, `generation`, for that file; the
-    /// parse that colours it.
-    pub fn set_text(&mut self, target: ParseTarget, generation: u64, source: Source, cx: &mut Context<Self>) -> Option<ParseJob> {
+    /// parse that colours it. The new side asked for to edit becomes the edited text (missing, the diff stays
+    /// read-only).
+    pub fn set_text(&mut self, target: ParseTarget, generation: u64, source: Option<Source>, cx: &mut Context<Self>) -> Option<ParseJob> {
+        if target == ParseTarget::DiffNew(0) && self.waits_to_edit(generation) {
+            self.adopt(source.clone());
+        }
         let file = match target {
             ParseTarget::DiffOld(file) | ParseTarget::DiffNew(file) => self.files.get(file)?,
             ParseTarget::Text => return None,
         };
-        let job = self.texts.set(target, generation, source, file);
+        let job = self.texts.set(target, generation, source?, file);
         self.colours = HighlightCache::default();
         cx.notify();
         job
@@ -243,7 +278,9 @@ impl DiffView {
     /// layout: the rows the list laid out to measure them are not all on screen.
     fn request_texts(&mut self, cx: &mut Context<Self>) {
         let shown = self.list.visible_rows(self.rows.len());
-        for request in self.texts.wanted(&self.rows[shown]) {
+        let waiting = self.waits_for_text();
+        let purpose = |file: usize| if waiting && file == 0 { TextPurpose::Editing } else { TextPurpose::Colours };
+        for request in self.texts.wanted(&self.rows[shown], &purpose) {
             cx.emit(DiffEvent::NeedTexts(request));
         }
     }
@@ -253,7 +290,8 @@ impl DiffView {
         let DiffRow::Line { file, hunk, line } = &self.rows[row] else {
             return Rc::from([]);
         };
-        self.colours.get_or_query(row, || self.texts.colours(*file, &self.hunk(*file, *hunk).lines[*line]))
+        let line = self.coloured_line(&self.hunk(*file, *hunk).lines[*line]);
+        self.colours.get_or_query(row, || line.map_or_else(Vec::new, |line| self.texts.colours(*file, &line)))
     }
 
     /// The colours of panel `side` of side-by-side row `row`: none for fillers and rows without code, and until the
@@ -265,17 +303,17 @@ impl DiffView {
         let Some(at) = pair.on(side) else {
             return Rc::from([]);
         };
-        let line = self.line(*file, at);
-        self.colours.get_or_query(2 * row + side as usize, || self.texts.colours_on(*file, line, side))
+        let line = self.coloured_line(self.line(*file, at));
+        self.colours.get_or_query(2 * row + side as usize, || line.map_or_else(Vec::new, |line| self.texts.colours_on(*file, &line, side)))
     }
 
-    /// Copy, Select All and Toggle Layout; the diff ignores other commands.
+    /// Copy, Select All and Toggle Layout; while the new side is edited, the editing commands too.
     pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         match command {
             Command::Copy(target) => self.copy(target, cx),
             Command::SelectAll => self.select_all(cx),
             Command::ToggleLayout => self.toggle_layout(cx),
-            _ => {}
+            command => self.run_editing(command, cx),
         }
     }
 
@@ -364,6 +402,14 @@ impl DiffView {
     pub(crate) fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
         self.pick_side(event);
+        self.dragging = true;
+        if self.press_text(event) {
+            self.selection = None;
+            self.pressed = Pressed::Text;
+            return cx.notify();
+        }
+        self.deselect_text();
+        self.pressed = Pressed::Rows;
         let Some(position) = self.position_at(event.position) else {
             return;
         };
@@ -377,7 +423,6 @@ impl DiffView {
             _ => DiffSelection::at(position),
         };
         self.selection = Some(selection);
-        self.dragging = true;
         cx.notify();
     }
 
@@ -393,6 +438,11 @@ impl DiffView {
     /// selection follows the pointer to rows and columns out of view, which scrolls them in.
     pub(crate) fn on_window_mouse_move(&mut self, event: &MouseMoveEvent, cx: &mut Context<Self>) {
         let held = self.dragging && event.pressed_button == Some(MouseButton::Left);
+        if let (true, Pressed::Text, Some(bounds)) = (held, self.pressed, self.bounds.get()) {
+            self.scroll_towards(event.position, bounds);
+            self.drag_text(event);
+            return cx.notify();
+        }
         let (Some(selection), Some(bounds)) = (self.selection.filter(|_| held), self.bounds.get()) else {
             return;
         };
@@ -439,8 +489,12 @@ impl DiffView {
         self.dragging = false;
     }
 
-    /// The host's Copy, Select All and Toggle Layout; other keys go on to the window's bindings.
+    /// The host's Copy, Select All and Toggle Layout; other keys go on to the window's bindings. While the new side
+    /// is edited, keys work as in an editor.
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.edited().is_some() {
+            return self.on_editing_key(event, cx);
+        }
         match Host::key_outcome(event, KeyScope::Viewer, cx) {
             KeyOutcome::Command(command @ (Command::Copy(_) | Command::SelectAll | Command::ToggleLayout)) => self.run(command, cx),
             KeyOutcome::Handled => {}
@@ -450,8 +504,12 @@ impl DiffView {
         cx.stop_propagation();
     }
 
-    /// Copies the selected text; side by side, of the selection's panel only.
+    /// Copies the selected text: the edited text's selection, else the rows' (side by side, of the selection's panel
+    /// only).
     fn copy(&self, target: ClipboardTarget, cx: &mut App) {
+        if self.copy_edited(target, cx) {
+            return;
+        }
         let Some(selection) = self.selection else {
             return;
         };
@@ -570,14 +628,16 @@ impl DiffView {
 
     fn render_line(&self, row: Stateful<Div>, code: CodeRow<'_>, theme: &ViewStyle) -> Stateful<Div> {
         let CodeRow { index, line, text } = code;
-        let selected = self.selection.and_then(|selection| selection.columns_on(index, line.text.chars().count()));
+        let marks = self.edit_marks(line);
+        let selected = self.selection.and_then(|selection| selection.columns_on(index, line.text.chars().count())).or(marks.selected.clone());
         let text = div()
             .relative()
             .h_full()
             .flex()
             .items_center()
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
-            .child(text);
+            .child(text)
+            .children(self.caret_bar(&marks, theme));
         tinted(row, line.kind, theme)
             .pl(px(self.sizes.line_padding))
             .child(self.line_number(line.old, theme))
@@ -601,7 +661,11 @@ impl DiffView {
             Side::New => line.new,
         };
         let selection = self.selection.filter(|_| self.side == cell.side);
-        let selected = selection.and_then(|selection| selection.columns_on(cell.index, line.text.chars().count()));
+        let marks = match cell.side {
+            Side::Old => EditMarks { selected: None, caret: None },
+            Side::New => self.edit_marks(line),
+        };
+        let selected = selection.and_then(|selection| selection.columns_on(cell.index, line.text.chars().count())).or(marks.selected.clone());
         let text = div()
             .absolute()
             .top_0()
@@ -610,7 +674,8 @@ impl DiffView {
             .flex()
             .items_center()
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
-            .child(self.styled_text(line, self.cell_colours(cell.index, cell.side), cx));
+            .child(self.styled_text(line, self.cell_colours(cell.index, cell.side), cx))
+            .children(self.caret_bar(&marks, theme));
         tinted(panel, line.kind, theme)
             .child(self.line_number(number, theme))
             .child(div().relative().flex_1().min_w_0().h_full().overflow_hidden().child(text))
@@ -635,6 +700,12 @@ impl DiffView {
             .left(self.char_width * columns.start as f32)
             .w(self.char_width * columns.len() as f32)
             .bg(rgb(theme.selected))
+    }
+
+    /// The edited text's caret on a row, at its display column.
+    fn caret_bar(&self, marks: &EditMarks, theme: &ViewStyle) -> Option<Div> {
+        let column = marks.caret?;
+        Some(div().absolute().top_0().h_full().left(self.char_width * column as f32).w(px(theme.editor_caret_width)).bg(rgb(theme.text)))
     }
 
     /// The list of rows: inline as wide as the widest row on screen, side by side as wide as the view, each panel
@@ -712,7 +783,7 @@ fn measure_char_width(window: &Window, cx: &App) -> Pixels {
 fn follow_mouse(into: Rc<Cell<Option<Bounds<Pixels>>>>, view: gpui::Entity<DiffView>) -> impl IntoElement {
     canvas(
         |_bounds, _window, _cx| {},
-        move |bounds, (), window, _cx| {
+        move |bounds, (), window, cx| {
             into.set(Some(bounds));
             let dragged = view.clone();
             window.on_mouse_event(move |event: &MouseMoveEvent, phase, _window, cx| {
@@ -720,6 +791,10 @@ fn follow_mouse(into: Rc<Cell<Option<Bounds<Pixels>>>>, view: gpui::Entity<DiffV
                     dragged.update(cx, |view, cx| view.on_window_mouse_move(event, cx));
                 }
             });
+            // while the new side is edited, the platform's text input (an input method too) types into it
+            if let Some(focus) = view.read(cx).input_focus() {
+                window.handle_input(&focus, ElementInputHandler::new(bounds, view.clone()), cx);
+            }
             window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
                 if phase == DispatchPhase::Capture && view.read(cx).layout() == DiffLayout::SideBySide {
                     view.update(cx, |view, cx| view.on_window_wheel(event, window, cx));
@@ -750,8 +825,10 @@ impl Render for DiffView {
         self.char_width = measure_char_width(window, cx);
         self.sizes = ViewStyle::get(cx).diff;
         self.colours.start_frame();
+        self.focused = self.focus_handle.is_focused(window);
         cx.defer_in(window, |view, _window, cx| view.request_texts(cx));
         self.size_panels();
+        self.reveal();
         div()
             .relative()
             .flex_1()

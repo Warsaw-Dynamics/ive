@@ -171,6 +171,11 @@ impl Workspace {
                 file.cast(codeview::panel::Cast::Type(text.to_owned()), cx);
                 Ok(())
             }
+            Some(Tab::Diff(diff)) => {
+                let panel = diff.editing_panel(cx).ok_or_else(|| format!("tab {} shows a diff that cannot be edited: only a diff of uncommitted changes can", tab.value()))?;
+                panel.update(cx, |panel, cx| panel.handle(codeview::panel::Cast::Type(text.to_owned()), cx));
+                Ok(())
+            }
             _ => self.send_text_to_process(tab, text),
         }
     }

@@ -15,6 +15,8 @@ use codeview::panel::Edit;
 
 const SMALL_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const LARGE_FILE_BYTES: u64 = 256 * 1024 * 1024;
+/// The pause before a file of up to `SMALL_FILE_BYTES` is saved.
+pub const SMALL_FILE_SAVE_DELAY: Duration = Duration::from_millis(500);
 /// Links followed to a file before giving up, as Linux's `open` does.
 const MAX_LINKS: usize = 40;
 
@@ -69,7 +71,7 @@ impl fmt::Display for WriteError {
 /// The pause after the last edit before a file of `byte_len` bytes is saved: a rewrite costs more the larger it is.
 pub fn save_delay(byte_len: u64) -> Duration {
     if byte_len <= SMALL_FILE_BYTES {
-        return Duration::from_millis(500);
+        return SMALL_FILE_SAVE_DELAY;
     }
     if byte_len <= LARGE_FILE_BYTES {
         return Duration::from_secs(2);

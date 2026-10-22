@@ -1,13 +1,21 @@
 //! A file's tab: the file edited in a panel, its edits written by `file_write` as the panel asks, and what IVE
-//! knows of the file on disk.
+//! knows of the file on disk. An uncommitted diff tab edits its file's new side through the same [`EditedFile`].
+//!
+//! Two panels may edit one file (its tab and a diff tab of it): while one holds unsaved edits, the others are
+//! read-only and say why, and once its edits are saved they read the file again. So no panel ever writes the file
+//! from a text another panel's save has changed.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use codeview::document::{self, DocumentError, Reread, Stamp};
-use codeview::panel::{Cast, Content, EditPolicy, Edit, Event, Panel, Resolve, SaveFailure, SaveKind, SaveRequest};
-use gpui::{AnyElement, App, AppContext, Context, Entity, Subscription, div, prelude::*};
+use codeview::panel::{Cast, Content, EditPolicy, Edit, Editable, Event, Panel, Resolve, SaveFailure, SaveKind, SaveRequest};
+use gpui::{
+    AnyElement, App, AppContext, Context, Div, Entity, EntityId, EventEmitter, Global, SharedString, Subscription, WeakEntity, div, prelude::*,
+    rgb,
+};
 
 use crate::codeview_host;
 use crate::disk_text::{Disk, failure_note};
@@ -37,7 +45,7 @@ impl FileTab {
         let path = opened.0.path().to_path_buf();
         let panel = cx.new(Panel::new);
         codeview_host::serve(&panel, path.display().to_string(), cx);
-        let file = cx.new(|cx| EditedFile::new(opened, panel.clone(), cx));
+        let file = cx.new(|cx| EditedFile::new(opened, Shown { panel: panel.clone(), shows: Shows::File }, cx));
         Self { path, panel, file }
     }
 
@@ -62,23 +70,86 @@ impl FileTab {
         self.path.file_name().map_or_else(|| self.path.display().to_string(), |name| name.to_string_lossy().into_owned())
     }
 
-    /// The panel under the note about a failed re-read, if there is one.
+    /// The panel under the note about a failed re-read, or about why the file is read-only, if there is one.
     pub fn render(&self, theme: Theme, cx: &App) -> AnyElement {
-        let Some(failure) = self.file.read(cx).disk.failure().cloned() else {
-            return self.panel.clone().into_any_element();
+        let file = self.file.read(cx);
+        let note = match (file.disk.failure().cloned(), file.lock_note()) {
+            (Some(failure), _) => failure_note(failure, theme),
+            (None, Some(lock)) => lock_note(lock, theme),
+            (None, None) => return self.panel.clone().into_any_element(),
         };
-        div().flex().flex_col().flex_1().min_h_0().child(failure_note(failure, theme)).child(self.panel.clone()).into_any_element()
+        div().flex().flex_col().flex_1().min_h_0().child(note).child(self.panel.clone()).into_any_element()
     }
 }
 
-/// The file behind a file tab's panel: the text the panel's edits apply to, and its saves.
+/// Why a file is read-only, above its text.
+pub(crate) fn lock_note(note: SharedString, theme: Theme) -> Div {
+    div().flex_none().px_2().py_1().bg(rgb(theme.sidebar)).text_color(rgb(theme.error)).child(note)
+}
+
+/// What shows the file: its panel, and how a new text reaches it.
+pub(crate) struct Shown {
+    pub(crate) panel: Entity<Panel>,
+    pub(crate) shows: Shows,
+}
+
+/// How the panel shows the file.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Shows {
+    /// a file tab: the whole text, opened in Edit mode
+    File,
+    /// a diff tab's new side: the panel asks for the text to edit (after [`Cast::SetEditable`]) and the tab reads it
+    DiffSide,
+}
+
+/// What an edited file tells the tab holding it.
+pub(crate) enum FileEvent {
+    /// the file changed on disk: IVE saved it, or read it again
+    Changed,
+}
+
+/// Whether a panel holds edits not on disk yet.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Holding {
+    Nothing,
+    Edits,
+}
+
+/// Every file opened for editing, by its resolved path; see the module doc.
+#[derive(Default)]
+struct OpenFiles(HashMap<PathBuf, Vec<WeakEntity<EditedFile>>>);
+
+impl Global for OpenFiles {}
+
+/// The files open for editing at `key` other than `me`.
+fn peers_of(key: &Path, me: EntityId, cx: &mut App) -> Vec<Entity<EditedFile>> {
+    let open = cx.default_global::<OpenFiles>().0.entry(key.to_path_buf()).or_default();
+    open.retain(|file| file.upgrade().is_some());
+    open.iter().filter_map(WeakEntity::upgrade).filter(|file| file.entity_id() != me).collect()
+}
+
+/// The path all names of a file share: links and `..` resolved; the path itself when it cannot be resolved.
+fn resolved(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// The file behind a file tab's panel, or behind a diff tab's new side: the text the panel's edits apply to, and its
+/// saves.
 ///
 /// `base` is the panel's base at all times: it changes only with an answer that moves the panel onto it (`Saved`,
-/// `Open`), never while a write is in flight. `disk` is `Disk::Read` only while the file holds `base`, so a save
-/// checked against it writes at the right offsets.
-struct EditedFile {
+/// `Open`, a diff's text to edit), never while a write is in flight. `disk` is `Disk::Read` only while the file holds
+/// `base`, so a save checked against it writes at the right offsets.
+pub(crate) struct EditedFile {
+    /// this entity's, kept for telling the others editing the file when it goes
+    id: EntityId,
     path: PathBuf,
     panel: Entity<Panel>,
+    shows: Shows,
+    /// `path` resolved: what the others editing the file are found by
+    key: PathBuf,
+    holding: Holding,
+    /// the others editing the file that hold edits: while there are any, this one is read-only
+    locked_by: Vec<EntityId>,
     /// the panel's base: the file as last read or written
     base: Arc<Document>,
     disk: Disk,
@@ -139,36 +210,129 @@ impl Drop for Running {
     }
 }
 
+impl EventEmitter<FileEvent> for EditedFile {}
+
 impl EditedFile {
-    fn new(opened: (Document, Option<Stamp>), panel: Entity<Panel>, cx: &mut Context<Self>) -> Self {
+    /// The file `opened` (with the stamp it had when read) edited in `shown`; read-only from the start while another
+    /// panel holds edits to it.
+    pub(crate) fn new(opened: (Document, Option<Stamp>), shown: Shown, cx: &mut Context<Self>) -> Self {
         let (document, stamp) = opened;
-        let base = Arc::new(document);
-        panel.update(cx, |panel, cx| panel.handle(Cast::Open(edited(&base)), cx));
+        let (base, Shown { panel, shows }) = (Arc::new(document), shown);
         let subscriptions = vec![
             cx.subscribe(&panel, |file, _panel, event: &Event, cx| file.on_panel_event(event, cx)),
             // the workspace closes a tab once its saves landed; anything else releasing it gets this last chance
-            cx.on_release(|file, cx| file.flush(cx)),
+            cx.on_release(|file, cx| {
+                file.flush(cx);
+                file.leave(cx);
+            }),
         ];
+        let (path, id) = (base.path().to_path_buf(), cx.entity_id());
+        let key = resolved(&path);
+        let holders = peers_of(&key, id, cx).into_iter().filter(|peer| peer.read(cx).holding == Holding::Edits);
+        let locked_by = holders.map(|peer| peer.entity_id()).collect();
+        let me = cx.weak_entity();
+        cx.default_global::<OpenFiles>().0.entry(key.clone()).or_default().push(me);
         let disk = stamp.map_or(Disk::Unstamped, Disk::Read);
-        let path = base.path().to_path_buf();
-        Self { path, panel, base, disk, writing: Writing::Idle, version: 0, _subscriptions: subscriptions }
+        let file = Self { id, path, panel, shows, key, holding: Holding::Nothing, locked_by, base, disk, writing: Writing::Idle, version: 0, _subscriptions: subscriptions };
+        file.show_first(cx);
+        file
+    }
+
+    /// A file tab opens the text; a diff's new side, which its panel is about to take, only stops it when locked.
+    fn show_first(&self, cx: &mut App) {
+        match (self.shows, self.locked_by.is_empty()) {
+            (Shows::File, _) | (Shows::DiffSide, false) => self.present(cx),
+            (Shows::DiffSide, true) => {}
+        }
+    }
+
+    /// A diff's new side, read again to edit: it becomes the base, checked against its stamp on the next save. The
+    /// panel waits for that text (it holds no edits, nothing is being written), so nothing is lost.
+    pub(crate) fn adopt(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) {
+        debug_assert!(self.writing == Writing::Idle, "a diff's text replaced while it is being saved");
+        let (document, stamp) = opened;
+        self.base = Arc::new(document);
+        self.disk = stamp.map_or(Disk::Unstamped, Disk::Read);
+        self.version += 1;
+        self.answer(Cast::SetPolicy(policy(&self.base)), cx);
+    }
+
+    /// Why the file is read-only here: another panel holds edits to it.
+    pub(crate) fn lock_note(&self) -> Option<SharedString> {
+        if self.locked_by.is_empty() {
+            return None;
+        }
+        let name = self.path.file_name().map_or_else(|| self.path.display().to_string(), |name| name.to_string_lossy().into_owned());
+        Some(format!("read-only: {name} has unsaved edits in another tab").into())
+    }
+
+    /// Shows the base: editable, or read-only while another panel holds edits to the file.
+    fn present(&self, cx: &mut App) {
+        let cast = match (self.shows, self.locked_by.is_empty()) {
+            (Shows::File, true) => Cast::Open(edited(&self.base)),
+            (Shows::File, false) => Cast::Open(viewed(&self.base)),
+            (Shows::DiffSide, true) => Cast::SetEditable(Editable::NewSide { policy: policy(&self.base) }),
+            (Shows::DiffSide, false) => Cast::SetEditable(Editable::No),
+        };
+        self.answer(cast, cx);
+    }
+
+    /// Tells the others editing the file whether this one holds edits, when that changed.
+    fn notice_holding(&mut self, cx: &mut Context<Self>) {
+        let panel = self.panel.read(cx);
+        let edits = self.writing != Writing::Idle || panel.has_unsaved(cx) || panel.is_saving();
+        let holding = if edits { Holding::Edits } else { Holding::Nothing };
+        if holding == self.holding {
+            return;
+        }
+        self.holding = holding;
+        self.tell_peers(holding, cx);
+    }
+
+    fn tell_peers(&self, holding: Holding, cx: &mut App) {
+        for peer in peers_of(&self.key, self.id, cx) {
+            peer.update(cx, |peer, cx| peer.peer_holding(self.id, holding, cx));
+        }
+    }
+
+    /// `peer`, editing the same file, holds edits, or no longer does: this one is read-only meanwhile, and reads
+    /// the file again after.
+    fn peer_holding(&mut self, peer: EntityId, holding: Holding, cx: &mut Context<Self>) {
+        let was_locked = !self.locked_by.is_empty();
+        self.locked_by.retain(|id| *id != peer);
+        if holding == Holding::Edits {
+            self.locked_by.push(peer);
+        }
+        match (was_locked, self.locked_by.is_empty()) {
+            (false, false) => self.present(cx),
+            (true, true) => self.reload(cx),
+            _ => {}
+        }
+        cx.notify();
+    }
+
+    /// The panel goes away: the others editing the file stop waiting for its edits.
+    fn leave(&self, cx: &mut App) {
+        if self.holding == Holding::Edits {
+            self.tell_peers(Holding::Nothing, cx);
+        }
     }
 
     fn on_panel_event(&mut self, event: &Event, cx: &mut Context<Self>) {
         match event {
             Event::SaveRequested(request) => self.save(request.clone(), cx),
             Event::ReloadRequested => self.reload(cx),
-            // parsing is `codeview_host::serve`'s; scroll and caret are saved with the tabs on redraw; the workspace
-            // closes the tab on a discard
-            Event::DiscardRequested
-            | Event::Edited { .. }
-            | Event::Refused(_)
+            // the workspace closes the tab on a discard
+            Event::Edited { .. } | Event::DiscardRequested => {}
+            // parsing is `codeview_host::serve`'s; scroll and caret are saved with the tabs on redraw
+            Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)
             | Event::NeedParse(_)
             | Event::NeedTexts(_)
             | Event::OpenAt { .. } => {}
         }
+        self.notice_holding(cx);
     }
 
     /// The write of `request`, or why there is none: the file is not known to hold the base (a conflict), or a
@@ -213,11 +377,23 @@ impl EditedFile {
         };
         self.writing = Writing::Idle;
         self.version += 1;
-        let answer = match written {
+        let answer = self.take_written(revision, written, cx);
+        self.answer(answer, cx);
+        self.notice_holding(cx);
+        match after {
+            AfterWrite::Check => self.check_disk(cx),
+            AfterWrite::Reload => self.reload(cx),
+        }
+    }
+
+    /// The answer to the save of `revision`: a saved file becomes the base.
+    fn take_written(&mut self, revision: u64, written: Written, cx: &mut Context<Self>) -> Cast {
+        match written {
             Written::Saved { stamp, document } => {
                 self.base = Arc::new(document);
                 self.disk = Disk::Read(stamp);
                 self.answer(Cast::SetPolicy(policy(&self.base)), cx);
+                cx.emit(FileEvent::Changed);
                 Cast::Saved { revision, source: self.base.clone() }
             }
             Written::Unconfirmed(reason) => {
@@ -226,11 +402,6 @@ impl EditedFile {
                 Cast::SaveFailed { revision, reason }
             }
             Written::Failed(reason) => Cast::SaveFailed { revision, reason },
-        };
-        self.answer(answer, cx);
-        match after {
-            AfterWrite::Check => self.check_disk(cx),
-            AfterWrite::Reload => self.reload(cx),
         }
     }
 
@@ -323,17 +494,20 @@ impl EditedFile {
         };
         self.disk = disk;
         self.version += 1;
-        match reread {
-            Reread::Changed(document, _) => {
+        match (reread, self.shows) {
+            (Reread::Changed(document, _), _) => {
                 self.base = Arc::new(document);
-                self.answer(Cast::Open(edited(&self.base)), cx);
+                self.present(cx);
             }
-            Reread::Gone => {
+            (Reread::Gone, Shows::File) => {
                 self.answer(Cast::Open(viewed(&self.base)), cx);
                 self.answer(Cast::MarkDeleted, cx);
             }
-            Reread::Unchanged | Reread::Failed(_) => {}
+            (Reread::Gone, Shows::DiffSide) => self.answer(Cast::SetEditable(Editable::No), cx),
+            (Reread::Unchanged | Reread::Failed(_), _) => {}
         }
+        cx.emit(FileEvent::Changed);
+        self.notice_holding(cx);
         cx.notify();
     }
 }
@@ -404,7 +578,7 @@ mod tests {
         fs::write(&path, text).unwrap();
         let opened = Document::open_stamped(&path).unwrap();
         let panel = cx.new(Panel::new);
-        let file = cx.new(|cx| EditedFile::new(opened, panel, cx));
+        let file = cx.new(|cx| EditedFile::new(opened, Shown { panel, shows: Shows::File }, cx));
         (dir, path, file)
     }
 
@@ -528,6 +702,35 @@ mod tests {
         // then
         let (base, stamp) = file.read_with(cx, |file, _| (file.base.bytes().to_vec(), file.disk.stamp()));
         assert_eq!((base, stamp), (fs::read(&path).unwrap(), document::stamp(&path)));
+    }
+
+    fn typed(panel: &Entity<Panel>, text: &str, cx: &mut TestAppContext) {
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type(text.to_owned()), cx));
+    }
+
+    #[gpui::test]
+    fn should_keep_a_file_read_only_while_another_panel_holds_edits_to_it(cx: &mut TestAppContext) {
+        // given
+        let (_dir, path, first) = edited_file(b"one\n", cx);
+        let first_panel = first.read_with(cx, |file, _| file.panel.clone());
+        let second_panel = cx.new(Panel::new);
+        let opened = Document::open_stamped(&path).unwrap();
+        let second = cx.new(|cx| EditedFile::new(opened, Shown { panel: second_panel.clone(), shows: Shows::File }, cx));
+
+        // when
+        typed(&first_panel, "a", cx);
+        let locked = second.read_with(cx, |file, _| file.lock_note().is_some());
+        typed(&second_panel, "b", cx);
+        let refused = second_panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx));
+        first_panel.update(cx, |panel, cx| panel.handle(Cast::Command(codeview::host::Command::Flush), cx));
+        cx.run_until_parked();
+
+        // then
+        assert_eq!((locked, refused), (true, true));
+        assert_eq!(fs::read(&path).unwrap(), b"aone\n");
+        assert_eq!((base_of(&second, cx), second.read_with(cx, |file, _| file.lock_note())), (b"aone\n".to_vec(), None));
+        typed(&second_panel, "c", cx);
+        assert!(second_panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)));
     }
 
     #[gpui::test]

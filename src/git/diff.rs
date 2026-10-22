@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree};
 
@@ -140,6 +140,21 @@ pub fn texts(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<Sour
         NewSide::WorkTree => work_tree_text(&repo, &file.path),
     };
     Ok((old, new))
+}
+
+/// The old text of `file` between `sides`, as [`texts`] reads it.
+pub fn old_text(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<Option<Source>, GitError> {
+    let fail = failed("read the old text of a diff", dir);
+    let repo = repo::open(dir)?;
+    let (old_tree, _) = side_trees(&repo, sides).map_err(&fail)?;
+    blob_text(&repo, old_tree.as_ref(), file.old_path.as_ref().unwrap_or(&file.path)).map_err(fail)
+}
+
+/// Where the work tree of the repository at `dir` keeps `path`.
+pub fn work_tree_path(dir: &Path, path: &GitPath) -> Result<PathBuf, GitError> {
+    let repo = repo::open(dir)?;
+    let workdir = repo.workdir().ok_or_else(|| GitError::new("find the work tree", dir, git2::Error::from_str("a bare repository has none")))?;
+    Ok(workdir.join(relative_path(path.as_bytes())))
 }
 
 /// Where a diff's new side is.

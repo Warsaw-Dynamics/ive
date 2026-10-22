@@ -1,14 +1,21 @@
-//! A diff tab: one file's diff, frozen when it opened, with Reload.
+//! A diff tab: one file's diff, frozen when it opened, with Reload. A diff of uncommitted changes edits its new
+//! side, the file in the work tree, saved as a file tab saves it; each save reads the diff again.
 
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use gpui::{App, Context, Entity, IntoElement, Render, Task, Window, div, prelude::*, rgb};
+use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Subscription, Task, Window, div, prelude::*, rgb};
 
 use super::git_ui::{layout_switch, mark_label, muted, toggle_button};
 use crate::click_targets::target;
 use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serve};
+use crate::document::Document;
+use crate::file_tab::{EditedFile, FileEvent, Shown, Shows};
+use crate::file_write;
 use codeview::diff::Headers;
-use codeview::panel::{Cast, Event, Panel, PanelState};
+use codeview::document::{Source, Stamp};
+use codeview::panel::{Cast, EditPolicy, Editable, Event, Panel, PanelState, TextPurpose, TextsRequest};
+use codeview::syntax::MAX_HIGHLIGHT_BYTES;
 use crate::git::base::{ForkPoint, fork_point};
 use crate::git::diff::{self, FileDiff, FilePaths, Sides, SinceRange, Uncommitted};
 use crate::git::repo::GitError;
@@ -161,6 +168,15 @@ impl DiffTab {
         self.body.read(cx).panel.read(cx).state()
     }
 
+    /// The panel when the tab edits the new side: a diff of uncommitted changes.
+    pub fn editing_panel(&self, cx: &App) -> Option<Entity<Panel>> {
+        let body = self.body.read(cx);
+        match body.new_side {
+            NewSide::ReadOnly => None,
+            NewSide::Unread | NewSide::Edited { .. } => Some(body.panel.clone()),
+        }
+    }
+
     /// Scrolls the diff back to where a saved tab had it.
     pub fn restore(&self, state: PanelState, cx: &mut App) {
         let panel = self.body.read(cx).panel.clone();
@@ -176,12 +192,31 @@ enum BodyState {
     Failed(String),
 }
 
+/// The new side of the diff, which only a diff of uncommitted changes edits.
+enum NewSide {
+    ReadOnly,
+    /// editable once its text is read to edit
+    Unread,
+    /// the file behind it, read to edit; each save reads the diff again
+    Edited { file: Entity<EditedFile>, _changes: Subscription },
+}
+
+/// What the panel saves with until it knows the file's size.
+const FIRST_POLICY: EditPolicy = EditPolicy { save_delay: file_write::SMALL_FILE_SAVE_DELAY, limit: None };
+
+/// A file's texts read to edit its new side: the old one to colour, and the file in the work tree with its stamp.
+struct EditTexts {
+    old: Option<Source>,
+    new: Option<(Document, Option<Stamp>)>,
+}
+
 pub struct DiffTabBody {
     request: DiffRequest,
     source: String,
     mark: Mark,
     panel: Entity<Panel>,
     state: BodyState,
+    new_side: NewSide,
     _reload: Option<Task<()>>,
 }
 
@@ -189,15 +224,64 @@ impl DiffTabBody {
     fn new(spec: &DiffTabSpec, cx: &mut Context<Self>) -> Self {
         let panel = diff_panel(vec![spec.file.clone()], Headers::Hidden, cx);
         serve(&panel, spec.request.file.path.display(), cx);
-        // the texts as the request stands when they are asked for: a reload may move a Since diff's fork point
-        cx.subscribe(&panel, |body: &mut Self, panel, event, cx| {
+        cx.subscribe(&panel, |body: &mut Self, _panel, event, cx| {
             if let Event::NeedTexts(request) = event {
-                send_texts(&panel, WantedTexts { request: *request, origin: body.request.origin() }, cx);
+                body.send_texts(*request, cx);
             }
         })
         .detach();
+        let new_side = new_side_of(&spec.request.source);
+        if let NewSide::Unread = new_side {
+            panel.update(cx, |panel, cx| panel.handle(Cast::SetEditable(Editable::NewSide { policy: FIRST_POLICY }), cx));
+        }
         let source = source_text(&spec.request.source, &spec.label);
-        Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, _reload: None }
+        Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, new_side, _reload: None }
+    }
+
+    /// Answers an ask for the texts, as the request stands now (a reload may move a Since diff's fork point); the
+    /// new side to edit comes from the work tree, with the stamp the next save is checked against.
+    fn send_texts(&mut self, request: TextsRequest, cx: &mut Context<Self>) {
+        let origin = self.request.origin();
+        if request.purpose == TextPurpose::Colours {
+            return send_texts(&self.panel, WantedTexts { request, origin }, cx);
+        }
+        let file = self.request.file.clone();
+        let reading = cx.background_executor().spawn(async move { read_to_edit(&origin, &file) });
+        cx.spawn(async move |body, cx| {
+            let read = reading.await;
+            body.update(cx, |body, cx| body.take_texts(request, read, cx)).ok();
+        })
+        .detach();
+    }
+
+    /// Answers ask `request` with texts read to edit; the new side becomes the edited file's base only when the
+    /// panel takes it as its text, so the two always agree.
+    fn take_texts(&mut self, request: TextsRequest, read: Result<EditTexts, String>, cx: &mut Context<Self>) {
+        let EditTexts { old, new } = match read {
+            Ok(texts) => texts,
+            Err(message) => return eprintln!("ive: the diff of {} cannot be edited: {message}", self.request.file.path.display()),
+        };
+        let waits = self.panel.read(cx).waits_to_edit(request.generation, cx);
+        let new = new.filter(|_| waits).map(|opened| self.take_base(opened, cx));
+        let TextsRequest { file, generation, .. } = request;
+        self.panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file, generation, old, new }, cx));
+    }
+
+    /// The file read to edit becomes the base of the file behind the new side; its text, for the panel.
+    fn take_base(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) -> Source {
+        let source = opened.0.source();
+        match &self.new_side {
+            NewSide::Edited { file, .. } => file.update(cx, |file, cx| file.adopt(opened, cx)),
+            NewSide::ReadOnly | NewSide::Unread => {
+                let shown = Shown { panel: self.panel.clone(), shows: Shows::DiffSide };
+                let file = cx.new(|cx| EditedFile::new(opened, shown, cx));
+                let changes = cx.subscribe(&file, |body, _file, event: &FileEvent, cx| match event {
+                    FileEvent::Changed => body.reload(cx),
+                });
+                self.new_side = NewSide::Edited { file, _changes: changes };
+            }
+        }
+        source
     }
 
     fn reload(&mut self, cx: &mut Context<Self>) {
@@ -258,10 +342,46 @@ impl Render for DiffTabBody {
             .child(div().flex_none().font_weight(theme.sizes.git.diff_header_weight.font_weight()).text_size(theme.sizes.git.text_size.px()).child(self.request.file.path.display()))
             .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(self.source.clone()))
             .children(status)
+            .children(self.lock_note(cx).map(|note| div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(note)))
             .child(layout_switch(&self.panel, theme, cx))
             .child(toggle_button("reload-diff", icons::HISTORY, "Reload", theme).on_click(reload));
         div().flex().flex_col().flex_1().min_h_0().child(header).child(self.panel.clone())
     }
+}
+
+impl DiffTabBody {
+    /// Why the new side is read-only for now: another tab holds unsaved edits to the file.
+    fn lock_note(&self, cx: &App) -> Option<gpui::SharedString> {
+        match &self.new_side {
+            NewSide::Edited { file, .. } => file.read(cx).lock_note(),
+            NewSide::ReadOnly | NewSide::Unread => None,
+        }
+    }
+}
+
+/// Only a diff of uncommitted changes edits its new side: every other one shows commits, which stay as they are.
+fn new_side_of(source: &DiffSource) -> NewSide {
+    match source {
+        DiffSource::Uncommitted => NewSide::Unread,
+        DiffSource::Since { .. } | DiffSource::Commit { .. } => NewSide::ReadOnly,
+    }
+}
+
+/// The old text of `file` and its file in the work tree, read to edit.
+fn read_to_edit(origin: &DiffOrigin, file: &FilePaths) -> Result<EditTexts, String> {
+    let old = diff::old_text(&origin.dir, &origin.sides, file).map_err(|error| error.to_string())?;
+    let path = diff::work_tree_path(&origin.dir, &file.path).map_err(|error| error.to_string())?;
+    Ok(EditTexts { old, new: editable_file(&path) })
+}
+
+/// The file at `path` with the stamp it had when read, when a diff edits it: a regular file, not binary, small enough
+/// to colour (so held in memory, never mapped).
+fn editable_file(path: &Path) -> Option<(Document, Option<Stamp>)> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > MAX_HIGHLIGHT_BYTES as u64 {
+        return None;
+    }
+    Document::open_stamped(path).ok().filter(|(document, _)| document.byte_len() <= MAX_HIGHLIGHT_BYTES)
 }
 
 #[cfg(test)]
@@ -344,5 +464,126 @@ mod tests {
         // then
         let DiffSource::Since { fork, .. } = &request.source else { panic!("not a since diff") };
         assert_eq!((fork, diff.is_some(), request.same_diff(&stale)), (&Sha::of(merged), true, true));
+    }
+}
+
+#[cfg(test)]
+mod editing_tests {
+    use std::time::Duration;
+
+    use codeview::colors::{Overrides, ResolvedScheme, Scheme};
+    use codeview::diff::{DiffBody, LineKind};
+    use codeview::host::Command;
+    use gpui::{TestAppContext, VisualTestContext, point, px, size};
+
+    use super::*;
+    use crate::git::testing::TestRepo;
+    use crate::project::ProjectId;
+    use crate::theme::{Appearance, Theme, view_style};
+
+    /// A repository whose `a.txt` was committed as "one", "two", "three" and changed since: "two" became "TWO".
+    fn changed_repo() -> (TestRepo, Sha) {
+        let repo = TestRepo::init();
+        repo.write("a.txt", "one\ntwo\nthree\n");
+        let commit = Sha::of(repo.commit("three lines"));
+        repo.write("a.txt", "one\nTWO\nthree\n");
+        (repo, commit)
+    }
+
+    /// A diff tab of `a.txt` in `repo` from `source`.
+    fn diff_tab(repo: &TestRepo, source: DiffSource, cx: &mut App) -> DiffTab {
+        let file = FilePaths { path: GitPath::from_bytes(b"a.txt"), old_path: None };
+        let request = DiffRequest { dir: repo.path().to_path_buf(), file, source };
+        let file = request.load().expect("load").expect("a.txt changed");
+        let checkout = CheckoutRef { project: ProjectId::new("p"), path: repo.path().to_path_buf() };
+        DiffTab::open(DiffTabSpec { checkout, label: "main".to_owned(), request, file }, cx)
+    }
+
+    fn styled(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            cx.set_global(view_style(&Theme::of(Appearance::Dark)));
+            cx.set_global(ResolvedScheme::resolve(Scheme::builtin(codeview::style::Appearance::Dark), &Overrides::new()));
+        });
+    }
+
+    #[gpui::test]
+    fn should_not_allow_edits_in_commit_and_since_diffs(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, commit) = changed_repo();
+        let base = BaseBranch { name: "main".to_owned(), reference: "refs/heads/main".to_owned() };
+        let since = DiffSource::Since { base, fork: commit.clone(), uncommitted: Uncommitted::Included };
+        let sources = [DiffSource::Uncommitted, since, DiffSource::Commit { sha: commit, subject: "three lines".to_owned() }];
+
+        // when
+        let tabs: Vec<DiffTab> = sources.into_iter().map(|source| cx.update(|cx| diff_tab(&repo, source, cx))).collect();
+
+        // then
+        let editable = |tab: &DiffTab, cx: &App| tab.editing_panel(cx).is_some_and(|panel| panel.read(cx).is_editable_diff(cx));
+        let found: Vec<bool> = tabs.iter().map(|tab| cx.read(|cx| editable(tab, cx))).collect();
+        assert_eq!(found, [true, false, false]);
+    }
+
+    /// Draws `panel` in a window 20 rows high, so it asks for its texts, and lets the answers land.
+    fn draw(panel: &Entity<Panel>, cx: &mut VisualTestContext) {
+        let panel = panel.clone();
+        cx.draw(point(px(0.), px(0.)), size(px(800.), px(400.)), |_, _| div().size_full().flex().flex_col().child(panel));
+        cx.run_until_parked();
+    }
+
+    /// The lines of the new side the diff shows.
+    fn new_lines(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Vec<String> {
+        panel.read_with(cx, |panel, cx| {
+            let DiffBody::Text { hunks, .. } = &panel.diff_file(0, cx).expect("a file").body else { panic!("no text") };
+            hunks.iter().flat_map(|hunk| &hunk.lines).filter(|line| line.kind != LineKind::Removed).map(|line| line.text.clone()).collect()
+        })
+    }
+
+    #[gpui::test]
+    fn should_save_an_edit_of_an_uncommitted_diff_to_its_file_and_read_the_diff_again(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+
+        // when
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type("x".to_owned()), cx));
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Flush), cx));
+        cx.run_until_parked();
+        cx.executor().advance_clock(Duration::from_millis(10));
+        cx.run_until_parked();
+
+        // then
+        assert_eq!(std::fs::read_to_string(repo.path().join("a.txt")).unwrap(), "one\nxTWO\nthree\n");
+        assert_eq!(new_lines(&panel, cx), ["one", "xTWO", "three"]);
+        assert!(panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx)));
+    }
+
+    #[gpui::test]
+    fn should_read_the_diff_again_after_a_save(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+
+        // when
+        // the caret starts on "TWO": typing "two" over it undoes the change
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Delete(codeview::text_editor::Unit::Word)), cx));
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type("two".to_owned()), cx));
+        let before_save = new_lines(&panel, cx);
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Flush), cx));
+        cx.run_until_parked();
+
+        // then
+        assert_eq!(std::fs::read_to_string(repo.path().join("a.txt")).unwrap(), "one\ntwo\nthree\n");
+        assert_eq!(before_save, ["one", "two", "three"]);
+        // git finds no change any more: the diff has no lines left
+        assert_eq!(new_lines(&panel, cx), Vec::<String>::new());
     }
 }

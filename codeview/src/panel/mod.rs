@@ -3,6 +3,8 @@
 
 #[cfg(test)]
 mod diff_tests;
+#[cfg(test)]
+mod edit_diff_tests;
 mod protocol;
 mod saving;
 mod state;
@@ -17,7 +19,7 @@ use gpui::{
 
 pub use protocol::{
     Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
-    SaveFailure, SaveKind, SaveRequest, TextsRequest,
+    SaveFailure, SaveKind, SaveRequest, TextPurpose, TextsRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
@@ -107,6 +109,7 @@ impl Panel {
             Cast::CloseAsked => self.saving.ask_close(),
             Cast::CloseWithdrawn => self.saving.withdraw_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
+            Cast::SetEditable(editable) => self.set_editable(editable, cx),
             Cast::Type(text) => self.type_text(&text, cx),
             Cast::SetTexts { file, generation, old, new } => {
                 self.set_texts(generation, [(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx);
@@ -127,9 +130,32 @@ impl Panel {
 
     /// Edits not saved yet: in flight, waiting for the pause, or kept after a failed save.
     pub fn has_unsaved(&self, cx: &App) -> bool {
+        self.edit_revision(cx).is_some_and(|revision| self.saving.has_unsaved(revision))
+    }
+
+    /// The revision of the text edited: in Edit mode, or a diff's new side; `None` when nothing is edited.
+    fn edit_revision(&self, cx: &App) -> Option<u64> {
         match &self.body {
-            Body::Edit(editor) => self.saving.has_unsaved(editor.read(cx).revision()),
-            Body::Empty | Body::View(_) | Body::Diff(_) => false,
+            Body::Edit(editor) => Some(editor.read(cx).revision()),
+            Body::Diff(diff) => diff.read(cx).edited().map(|model| model.revision()),
+            Body::Empty | Body::View(_) => None,
+        }
+    }
+
+    /// Whether a diff takes the new side's text answering ask `generation` as the text it edits: the host pairs that
+    /// text with what it knows of the file on disk before answering.
+    pub fn waits_to_edit(&self, generation: u64, cx: &App) -> bool {
+        match &self.body {
+            Body::Diff(diff) => diff.read(cx).waits_to_edit(generation),
+            Body::Empty | Body::View(_) | Body::Edit(_) => false,
+        }
+    }
+
+    /// Whether a diff edits its new side, or waits for its text to.
+    pub fn is_editable_diff(&self, cx: &App) -> bool {
+        match &self.body {
+            Body::Diff(diff) => diff.read(cx).is_editable(),
+            Body::Empty | Body::View(_) | Body::Edit(_) => false,
         }
     }
 
@@ -225,7 +251,6 @@ impl Panel {
     }
 
     fn build_diff(&mut self, input: DiffInput, cx: &mut Context<Self>) {
-        // editable diffs come with Task 13
         let diff = cx.new(|cx| {
             let mut diff = DiffView::new(Shape { headers: input.headers, layout: input.layout }, cx);
             diff.set_files(input.files, cx);
@@ -233,6 +258,19 @@ impl Panel {
         });
         self._body_events.push(cx.subscribe(&diff, Self::on_diff_event));
         self.body = Body::Diff(diff);
+        self.set_editable(input.editable, cx);
+    }
+
+    /// A diff edits its new side, saved as `editable` says, or stops editing it.
+    fn set_editable(&mut self, editable: Editable, cx: &mut Context<Self>) {
+        let Body::Diff(diff) = &self.body else {
+            return;
+        };
+        diff.update(cx, |diff, cx| diff.set_editable(editable, cx));
+        if let Editable::NewSide { policy } = editable {
+            // the text comes with revision 0, as saved
+            self.saving = Saving::new(policy.save_delay, 0);
+        }
     }
 
     fn on_diff_event(&mut self, _diff: Entity<DiffView>, event: &DiffEvent, cx: &mut Context<Self>) {
@@ -242,7 +280,15 @@ impl Panel {
                 cx.emit(Event::LayoutToggled(*layout));
                 self.notice_state(cx);
             }
+            DiffEvent::Edited => self.edited(cx),
         }
+    }
+
+    /// The edited text changed: it is unsaved, and saved after the pause.
+    fn edited(&mut self, cx: &mut Context<Self>) {
+        self.revision = self.edit_revision(cx).unwrap_or(self.revision);
+        cx.emit(Event::Edited { revision: self.revision });
+        self.restart_pause(cx);
     }
 
     /// A diff file's sides, each the text of the side its target names, answering ask `generation`; a missing side
@@ -252,20 +298,18 @@ impl Panel {
             return;
         };
         for (target, source) in sides {
-            let job = source.and_then(|source| diff.update(cx, |diff, cx| diff.set_text(target, generation, source, cx)));
+            let job = diff.update(cx, |diff, cx| diff.set_text(target, generation, source, cx));
             if let Some(job) = job {
                 cx.emit(Event::NeedParse(job));
             }
         }
     }
 
-    fn on_editor_event(&mut self, editor: Entity<TextEditor>, event: &TextEditorEvent, cx: &mut Context<Self>) {
+    fn on_editor_event(&mut self, _editor: Entity<TextEditor>, event: &TextEditorEvent, cx: &mut Context<Self>) {
         match event {
             TextEditorEvent::Edited => {
-                self.revision = editor.read(cx).revision();
-                cx.emit(Event::Edited { revision: self.revision });
+                self.edited(cx);
                 self.request_parse(cx);
-                self.restart_pause(cx);
             }
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
         }
@@ -323,9 +367,11 @@ impl Panel {
 
     /// Types `text` at the caret; a refusal is reported as [`Event::Refused`], and outside Edit mode nothing happens.
     fn type_text(&self, text: &str, cx: &mut Context<Self>) {
-        if let Body::Edit(editor) = &self.body {
+        match &self.body {
             // a refused edit was already reported through TextEditorEvent::Refused
-            let _ = editor.update(cx, |editor, cx| editor.type_text(text, cx));
+            Body::Edit(editor) => drop(editor.update(cx, |editor, cx| editor.type_text(text, cx))),
+            Body::Diff(diff) => diff.update(cx, |diff, cx| diff.type_text(text, cx)),
+            Body::Empty | Body::View(_) => {}
         }
     }
 
@@ -348,18 +394,24 @@ impl Panel {
     }
 
     fn next_save(&mut self, kind: SaveKind, cx: &mut Context<Self>) -> Next {
-        let Body::Edit(editor) = &self.body else {
+        let Some(revision) = self.edit_revision(cx) else {
             return Next::Nothing;
         };
-        let editor = editor.read(cx);
-        self.saving.next(kind, editor.revision(), || editor.edits_since_base())
+        let body = &self.body;
+        self.saving.next(kind, revision, || match body {
+            Body::Edit(editor) => editor.read(cx).edits_since_base(),
+            Body::Diff(diff) => diff.read(cx).edited().map_or_else(Vec::new, |model| model.edits_since_base()),
+            Body::Empty | Body::View(_) => Vec::new(),
+        })
     }
 
     fn saved(&mut self, revision: u64, source: Arc<dyn LineSource>, cx: &mut Context<Self>) {
-        let Body::Edit(editor) = &self.body else {
-            return;
+        let body = self.body.clone();
+        let rebase = |edits: &[Edit]| match body {
+            Body::Edit(editor) => editor.update(cx, |editor, _cx| editor.rebase(source, edits)),
+            Body::Diff(diff) => diff.update(cx, |diff, cx| diff.rebase(source, edits, cx)),
+            Body::Empty | Body::View(_) => Ok(()),
         };
-        let rebase = |edits: &[Edit]| editor.update(cx, |editor, _cx| editor.rebase(source, edits));
         if let Answer::Saved { then: Then::SaveAgain } = self.saving.saved(revision, rebase) {
             self.request_save(SaveKind::Checked, cx);
         }
@@ -462,8 +514,9 @@ impl Panel {
 }
 
 impl Panel {
-    /// The editor under the bar of a failed save; watches the editor's focus to save when it leaves.
-    fn render_edit(&mut self, editor: Entity<TextEditor>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    /// The edited body (an editor, or a diff editing its new side) under the bar of a failed save; watches the body's
+    /// focus to save when it leaves.
+    fn render_edit(&mut self, editor: impl Focusable + IntoElement, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         if let Blur::Unwatched = self.blur {
             let focus = editor.focus_handle(cx);
             let watch = cx.on_blur(&focus, window, |panel, _window, cx| panel.request_save(SaveKind::Checked, cx));
@@ -503,6 +556,7 @@ impl Render for Panel {
             Body::Empty => div().into_any_element(),
             Body::View(view) => view.into_any_element(),
             Body::Edit(editor) => self.render_edit(editor, window, cx),
+            Body::Diff(diff) if diff.read(cx).is_editable() => self.render_edit(diff, window, cx),
             Body::Diff(diff) => diff.into_any_element(),
         };
         body

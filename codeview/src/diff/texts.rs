@@ -11,7 +11,7 @@ use super::rows::DiffRow;
 use super::side_by_side::Side;
 use crate::colors::ColorKey;
 use crate::document::{DisplayLine, Source, TextSource};
-use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous, TextsRequest};
+use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous, TextPurpose, TextsRequest};
 use crate::syntax::{self, Cancel, Language, Syntax};
 
 /// A row's text as coloured ranges of it.
@@ -58,9 +58,9 @@ impl Drop for SideText {
 }
 
 impl DiffTexts {
-    /// The asks for the files that show a line in `shown` (rows on screen) and were not asked for yet; they count
-    /// as asked now.
-    pub(crate) fn wanted(&mut self, shown: &[DiffRow]) -> Vec<TextsRequest> {
+    /// The asks for the files that show a line in `shown` (rows on screen) and were not asked for yet, each for what
+    /// `purpose` says; they count as asked now.
+    pub(crate) fn wanted(&mut self, shown: &[DiffRow], purpose: &dyn Fn(usize) -> TextPurpose) -> Vec<TextsRequest> {
         let mut wanted = Vec::new();
         for row in shown {
             if let DiffRow::Line { file, .. } | DiffRow::Pair { file, .. } = row
@@ -68,7 +68,7 @@ impl DiffTexts {
             {
                 self.generation += 1;
                 self.requested.insert(*file, self.generation);
-                wanted.push(TextsRequest { file: *file, generation: self.generation });
+                wanted.push(TextsRequest { file: *file, generation: self.generation, purpose: purpose(*file) });
             }
         }
         wanted
@@ -77,6 +77,12 @@ impl DiffTexts {
     /// Whether `generation` is the last ask for file `file`'s texts.
     pub(crate) fn awaits(&self, file: usize, generation: u64) -> bool {
         self.requested.get(&file) == Some(&generation)
+    }
+
+    /// Forgets what is known of file `file`'s texts: they are asked for again when shown.
+    pub(crate) fn forget(&mut self, file: usize) {
+        self.requested.remove(&file);
+        self.sides.retain(|target, _| file_of(*target) != file);
     }
 
     /// Forgets what is known of the files whose diff differs between `before` and `after`: their texts may have
@@ -196,6 +202,10 @@ mod tests {
         DiffLine { kind, old, new, text: text.to_owned() }
     }
 
+    fn colours(_file: usize) -> TextPurpose {
+        TextPurpose::Colours
+    }
+
     fn rust_file(lines: Vec<DiffLine>) -> FileDiff {
         let hunk = Hunk { header: "@@ -1,3 +1,3 @@".to_owned(), lines };
         FileDiff { path: GitPath::from_bytes(b"src/a.rs"), old_path: None, mark: Mark::Modified, body: DiffBody::Text { hunks: vec![hunk], cut: None } }
@@ -220,7 +230,7 @@ mod tests {
         let added = line(LineKind::Added, None, Some(1), "\"text\"");
         let diff = rust_file(vec![removed.clone(), added.clone()]);
         let mut texts = DiffTexts::default();
-        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
+        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }], &colours);
         parsed_side(&mut texts, ParseTarget::DiffOld(0), "let a = 1;\n", &diff);
         parsed_side(&mut texts, ParseTarget::DiffNew(0), "\"text\"\n", &diff);
 
@@ -238,7 +248,7 @@ mod tests {
         let context = line(LineKind::Context, Some(1), Some(2), "let a;");
         let diff = rust_file(vec![context.clone()]);
         let mut texts = DiffTexts::default();
-        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
+        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }], &colours);
         parsed_side(&mut texts, ParseTarget::DiffNew(0), "\"x\"\nlet a;\n", &diff);
         let without_old = texts.colours_on(0, &context, Side::Old);
         parsed_side(&mut texts, ParseTarget::DiffOld(0), "/* old */\n", &diff);
@@ -258,7 +268,7 @@ mod tests {
         let added = line(LineKind::Added, None, Some(1), "    let a;");
         let diff = rust_file(vec![added.clone()]);
         let mut texts = DiffTexts::default();
-        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
+        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }], &colours);
         parsed_side(&mut texts, ParseTarget::DiffNew(0), "\tlet a;\n", &diff);
 
         // when
@@ -274,7 +284,7 @@ mod tests {
         let added = line(LineKind::Added, None, Some(1), "let a;");
         let diff = rust_file(vec![added.clone()]);
         let mut texts = DiffTexts::default();
-        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
+        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }], &colours);
         parsed_side(&mut texts, ParseTarget::DiffNew(0), "fn changed_since() {}\n", &diff);
 
         // when
@@ -290,7 +300,7 @@ mod tests {
         let added = line(LineKind::Added, None, Some(1), "let a;");
         let diff = rust_file(vec![added.clone()]);
         let mut texts = DiffTexts::default();
-        let generation = texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }])[0].generation;
+        let generation = texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }], &colours)[0].generation;
         let first = texts.set(ParseTarget::DiffNew(0), generation, Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
         let second = texts.set(ParseTarget::DiffNew(0), generation, Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
 
@@ -312,12 +322,12 @@ mod tests {
         let shown = [DiffRow::Line { file: 0, hunk: 0, line: 0 }, DiffRow::Line { file: 1, hunk: 0, line: 0 }];
         let mut texts = DiffTexts::default();
         let files = |asks: Vec<TextsRequest>| asks.iter().map(|ask| ask.file).collect::<Vec<_>>();
-        let first = files(texts.wanted(&shown));
+        let first = files(texts.wanted(&shown, &colours));
 
         // when
         texts.forget_changed(&before, &after);
 
         // then
-        assert_eq!((first, files(texts.wanted(&shown))), (vec![0, 1], vec![1]));
+        assert_eq!((first, files(texts.wanted(&shown, &colours))), (vec![0, 1], vec![1]));
     }
 }

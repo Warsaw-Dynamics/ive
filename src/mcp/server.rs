@@ -35,7 +35,7 @@ const FRAME_WAIT: Duration = Duration::from_millis(500);
 const INSTRUCTIONS: &str = "Drives the IVE editor window. Tab ids come from list_tabs; projects, their checkouts \
 and processes from list_projects. Process tabs (terminals, Claude Code) take send_text (end with \\r to press \
 Enter), send_keys (e.g. [\"ctrl-c\"]) and send_mouse (clicks, drags, wheel on screen cells); read_screen returns \
-their visible text, read_output all they printed (or its last lines). Scratch tabs take send_text too (\\r is a line break; the scratch saves itself 500 ms later). \
+their visible text, read_output all they printed (or its last lines). Scratch, file and uncommitted diff tabs take send_text too (\\r is a line break; the text saves itself 500 ms later). \
 screenshot shows the whole window. list_targets names what click can press on screen \
 (tree rows, overview sections and cards, git views and their rows, scratch rows and buttons, prompt buttons); \
 window_keys and window_text type into whatever has the keyboard (click new-worktree first to type a branch). \
@@ -150,7 +150,7 @@ starts in the checkout holding it. Default: the current checkout (the shown tab'
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct SendTextArgs {
-    #[schemars(description = "process, file or scratch tab id from list_tabs")]
+    #[schemars(description = "process, file, scratch or uncommitted diff tab id from list_tabs")]
     tab: u64,
     #[schemars(description = "text typed as is; end with \\r to press Enter")]
     text: String,
@@ -424,7 +424,7 @@ opened_from_hub.hub) in that state: query, scope, worktree question, selected ro
         Ok(self.ask(Request::AttachTab { tab: args.tab }).await)
     }
 
-    #[tool(description = "Type text into a process, file or scratch tab, as if typed on the keyboard. End with \\r to \
+    #[tool(description = "Type text into a process, file, scratch or uncommitted diff tab, as if typed on the keyboard. End with \\r to \
 press Enter.")]
     async fn send_text(&self, Parameters(args): Parameters<SendTextArgs>) -> Result<CallToolResult, ErrorData> {
         if args.text.len() > MAX_TEXT_BYTES {

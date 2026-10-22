@@ -26,11 +26,12 @@ impl Workspace {
         }
     }
 
-    /// The panels of file and scratch tabs that edit text, with their tabs.
+    /// The panels of file, scratch and diff tabs that edit text, with their tabs.
     fn editing_panels(&self, cx: &App) -> Vec<(TabId, Entity<Panel>)> {
         let panel = |tab: &Tab| match tab {
             Tab::Document(file) => Some(file.panel.clone()),
             Tab::Scratch(scratch) => scratch.editing_panel(cx),
+            Tab::Diff(diff) => diff.editing_panel(cx),
             _ => None,
         };
         self.tabs.iter().filter_map(|(id, tab)| panel(tab).map(|panel| (id, panel))).collect()
@@ -127,10 +128,10 @@ impl Workspace {
         }
     }
 
-    /// The user chose closing tab `id` without saving: its panel dropped the edits, so a file tab closes (a scratch
-    /// tab stays and reloads) and the close or quit waiting for it goes on.
+    /// The user chose closing tab `id` without saving: its panel dropped the edits, so a file or diff tab closes (a
+    /// scratch tab stays and reloads) and the close or quit waiting for it goes on.
     fn discarded(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(Tab::Document(_)) = self.tabs.get(id) {
+        if let Some(Tab::Document(_) | Tab::Diff(_)) = self.tabs.get(id) {
             self.tabs.close(id);
         }
         self.tab_shown(window, cx);
@@ -165,12 +166,18 @@ impl Workspace {
         ticket
     }
 
-    /// Whether tab `id` is a file tab whose edits are not on disk yet: waiting for a pause, in flight, or failed.
+    /// Whether tab `id` is a file or diff tab whose edits are not on disk yet: waiting for a pause, in flight, or
+    /// failed.
     pub(super) fn is_unsettled(&self, id: TabId, cx: &App) -> bool {
-        match self.tabs.get(id) {
-            Some(Tab::Document(file)) => file.panel.read(cx).has_unsaved(cx) || file.panel.read(cx).is_saving(),
-            _ => false,
-        }
+        let panel = match self.tabs.get(id) {
+            Some(Tab::Document(file)) => file.panel.clone(),
+            Some(Tab::Diff(diff)) => match diff.editing_panel(cx) {
+                Some(panel) => panel,
+                None => return false,
+            },
+            _ => return false,
+        };
+        panel.read(cx).has_unsaved(cx) || panel.read(cx).is_saving()
     }
 
     /// Closes the flushed file tabs `ids` of close `ticket` once their saves landed, unless edits stay unsaved.

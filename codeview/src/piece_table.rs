@@ -81,6 +81,11 @@ impl PieceTable {
         self.index.byte_len
     }
 
+    /// The text as opened or last saved, which [`Self::edits_since_base`] counts from.
+    pub fn base(&self) -> &Arc<dyn LineSource> {
+        &self.base
+    }
+
     /// Never 0: an empty text has one empty line.
     pub fn line_count(&self) -> usize {
         self.index.newlines + 1

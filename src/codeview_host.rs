@@ -128,7 +128,7 @@ pub fn send_texts(panel: &Entity<Panel>, wanted: WantedTexts, cx: &mut App) {
         return;
     };
     let paths = FilePaths { path: file.path.clone(), old_path: file.old_path.clone() };
-    let (panel, WantedTexts { request: TextsRequest { file, generation }, origin }) = (panel.downgrade(), wanted);
+    let (panel, WantedTexts { request: TextsRequest { file, generation, .. }, origin }) = (panel.downgrade(), wanted);
     let reading = cx.background_executor().spawn(async move { diff::texts(&origin.dir, &origin.sides, &paths) });
     cx.spawn(async move |cx| match reading.await {
         Ok((old, new)) => drop(panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file, generation, old, new }, cx))),

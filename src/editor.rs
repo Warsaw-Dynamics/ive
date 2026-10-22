@@ -382,12 +382,13 @@ impl Tab {
             Self::Process(id) => workspace.processes().get(*id).map(|process| process.view.focus_handle()),
             Self::Scratch(scratch) => scratch.focus_handle(cx),
             Self::Document(file) => Some(file.panel.focus_handle(cx)),
+            // a diff of uncommitted changes edits its new side
+            Self::Diff(diff) => diff.editing_panel(cx).map(|panel| panel.focus_handle(cx)),
             Self::RunValues(tab) => tab.fields.first().map(|field| field.input.focus_handle(cx)),
             Self::Hub(hub) => Some(hub.focus_handle(cx)),
             // the Worktrees list's filter keeps the keyboard
             Self::ProjectOverview(ProjectOverview { section: ProjectSection::Worktrees, git: Some(views), .. }) => Some(views.list.focus_handle(cx)),
             Self::ProjectOverview(_)
-            | Self::Diff(_)
             | Self::Commit(_)
             | Self::GitLog(_)
             | Self::Settings(_)
