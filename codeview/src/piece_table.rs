@@ -164,8 +164,8 @@ impl PieceTable {
         out
     }
 
-    /// The changes from the base to the current text, in base coordinates: sorted, non-overlapping, and merged where
-    /// no base byte is kept between them.
+    /// The changes from the base to the current text, in base coordinates: sorted, non-overlapping, merged where
+    /// no base byte is kept between them, and without changes that put back the bytes they replace.
     pub fn edits_since_base(&self) -> Vec<Edit> {
         let mut edits = EditCollector::default();
         for piece in &self.pieces {
@@ -174,19 +174,85 @@ impl PieceTable {
                 Buffer::Added => edits.typed.extend_from_slice(&self.buffer_bytes(Buffer::Added, piece.bytes.clone())),
             }
         }
-        edits.finish(self.base.byte_len())
+        let mut edits = edits.finish(self.base.byte_len());
+        edits.retain(|edit| self.changes_base(edit));
+        edits
     }
 
-    /// Makes `base`, which must hold the current text (as after a save), the new base; the typed text is dropped.
-    pub fn rebase(&mut self, base: Arc<dyn LineSource>) {
+    /// Makes `base` the new base once `saved` is written: `base` must be the old base with `saved` (an earlier
+    /// [`Self::edits_since_base`]) applied. The text stays as it is, edits made since `saved` was taken included;
+    /// afterwards [`Self::edits_since_base`] reports only those.
+    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) {
+        let growth: i64 = saved.iter().map(Edit::growth).sum();
         assert_eq!(
+            base.byte_len() as i64,
+            self.base.byte_len() as i64 + growth,
+            "rebase onto a base of {} bytes, but the old base of {} bytes grows by {growth} with the saved edits",
             base.byte_len(),
-            self.byte_len(),
-            "rebase onto a base of {} bytes, but the text has {} bytes",
-            base.byte_len(),
-            self.byte_len()
+            self.base.byte_len()
         );
-        *self = Self::new(base);
+        let mut shift = Shift::new(saved);
+        let moved: Vec<(Buffer, Range<u64>)> = self
+            .pieces
+            .iter()
+            .map(|piece| match piece.buffer {
+                Buffer::Base => (Buffer::Base, shift.map(piece.bytes.clone())),
+                Buffer::Added => (Buffer::Added, piece.bytes.clone()),
+            })
+            .collect();
+        self.base = base;
+        let folded = self.fold_saved_text(moved);
+        self.pieces = folded.into_iter().map(|(buffer, bytes)| self.piece(buffer, bytes)).collect();
+        self.reindex();
+    }
+
+    /// Whether `edit` replaces base bytes with different ones.
+    fn changes_base(&self, edit: &Edit) -> bool {
+        edit.growth() != 0 || *self.base.bytes(edit.bytes.clone()) != edit.text[..]
+    }
+
+    /// Runs of typed pieces that hold exactly the base bytes between their neighbouring base pieces (saved text)
+    /// become base pieces, and neighbouring base pieces join.
+    fn fold_saved_text(&self, pieces: Vec<(Buffer, Range<u64>)>) -> Vec<(Buffer, Range<u64>)> {
+        let mut folded = Vec::with_capacity(pieces.len());
+        let mut typed = Vec::new();
+        let mut base_end = 0;
+        let end = self.base.byte_len();
+        // an empty base piece at the end closes the last run
+        for (buffer, bytes) in pieces.into_iter().chain([(Buffer::Base, end..end)]) {
+            if buffer == Buffer::Added {
+                typed.push(bytes);
+                continue;
+            }
+            self.fold_run(&mut folded, mem::take(&mut typed), base_end..bytes.start);
+            base_end = bytes.end;
+            push_joined(&mut folded, Buffer::Base, bytes);
+        }
+        folded.retain(|(_, bytes)| !bytes.is_empty());
+        folded
+    }
+
+    /// Appends the typed run `typed` found where base bytes `gap` are: its pieces at either end that hold the same
+    /// bytes as the gap there become those base bytes.
+    fn fold_run(&self, folded: &mut Vec<(Buffer, Range<u64>)>, typed: Vec<Range<u64>>, gap: Range<u64>) {
+        let (mut first, mut last) = (0, typed.len());
+        let (mut start, mut end) = (gap.start, gap.end);
+        while first < last && span(&typed[first]) <= end - start && self.is_base_at(&typed[first], start) {
+            start += span(&typed[first]);
+            first += 1;
+        }
+        while first < last && span(&typed[last - 1]) <= end - start && self.is_base_at(&typed[last - 1], end - span(&typed[last - 1])) {
+            end -= span(&typed[last - 1]);
+            last -= 1;
+        }
+        push_joined(folded, Buffer::Base, gap.start..start);
+        folded.extend(typed[first..last].iter().map(|bytes| (Buffer::Added, bytes.clone())));
+        push_joined(folded, Buffer::Base, end..gap.end);
+    }
+
+    /// Whether typed bytes `typed` are the base bytes from `at` on.
+    fn is_base_at(&self, typed: &Range<u64>, at: u64) -> bool {
+        *self.base.bytes(at..at + span(typed)) == *self.buffer_bytes(Buffer::Added, typed.clone())
     }
 
     fn piece(&self, buffer: Buffer, bytes: Range<u64>) -> Piece {
@@ -299,6 +365,51 @@ impl PieceIndex {
     }
 }
 
+fn span(bytes: &Range<u64>) -> u64 {
+    bytes.end - bytes.start
+}
+
+/// Appends `bytes` of `buffer`, joined with the last piece when both are of the base and touch.
+fn push_joined(pieces: &mut Vec<(Buffer, Range<u64>)>, buffer: Buffer, bytes: Range<u64>) {
+    if let Some((Buffer::Base, last)) = pieces.last_mut()
+        && buffer == Buffer::Base
+        && last.end == bytes.start
+    {
+        last.end = bytes.end;
+        return;
+    }
+    pieces.push((buffer, bytes));
+}
+
+/// Maps ranges of an old base, in order, to where saved edits moved them in the new base.
+struct Shift<'a> {
+    edits: &'a [Edit],
+    /// the edits before this one end at or before the ranges still to map
+    next: usize,
+    growth: i64,
+}
+
+impl<'a> Shift<'a> {
+    fn new(edits: &'a [Edit]) -> Self {
+        Self { edits, next: 0, growth: 0 }
+    }
+
+    /// `old`, at or after the last range mapped, in the new base. Base pieces never hold bytes a saved edit
+    /// replaced: typed text always goes into the typed buffer, so base bytes once replaced never come back.
+    fn map(&mut self, old: Range<u64>) -> Range<u64> {
+        while let Some(edit) = self.edits.get(self.next).filter(|edit| edit.bytes.end <= old.start) {
+            self.growth += edit.growth();
+            self.next += 1;
+        }
+        if let Some(edit) = self.edits.get(self.next) {
+            let overlaps = edit.bytes.start < old.end && edit.bytes.end > old.start;
+            assert!(!overlaps, "base bytes {old:?} overlap the saved edit of bytes {:?}", edit.bytes);
+        }
+        let start = (old.start as i64 + self.growth) as u64;
+        start..start + (old.end - old.start)
+    }
+}
+
 /// Walks the pieces in order: base pieces are kept base bytes, everything between two of them is one edit.
 #[derive(Default)]
 struct EditCollector {
@@ -320,8 +431,7 @@ impl EditCollector {
         if removed.is_empty() && self.typed.is_empty() {
             return;
         }
-        let text = String::from_utf8_lossy(&mem::take(&mut self.typed)).into_owned();
-        self.edits.push(Edit { bytes: removed, text });
+        self.edits.push(Edit { bytes: removed, text: mem::take(&mut self.typed) });
     }
 
     fn finish(mut self, base_len: u64) -> Vec<Edit> {
@@ -388,7 +498,7 @@ mod tests {
         }
 
         // then
-        assert_eq!(table.edits_since_base(), [Edit { bytes: 3..3, text: typed }]);
+        assert_eq!(table.edits_since_base(), [Edit { bytes: 3..3, text: typed.into_bytes() }]);
     }
 
     #[test]
@@ -403,7 +513,7 @@ mod tests {
         // then
         assert_eq!(
             table.edits_since_base(),
-            [Edit { bytes: 2..4, text: String::new() }, Edit { bytes: 10..10, text: "new".to_owned() }]
+            [Edit { bytes: 2..4, text: Vec::new() }, Edit { bytes: 10..10, text: b"new".to_vec() }]
         );
     }
 
@@ -473,49 +583,137 @@ mod tests {
         assert_eq!(table.line(1), b"c\r");
     }
 
+    /// `base` with `edits` applied; checks they are sorted and do not overlap.
+    fn applied(base: &[u8], edits: &[Edit]) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut kept_from = 0;
+        for edit in edits {
+            assert!(edit.bytes.start >= kept_from && edit.bytes.start <= edit.bytes.end, "edits out of order: {edits:?}");
+            out.extend_from_slice(&base[kept_from as usize..edit.bytes.start as usize]);
+            out.extend_from_slice(&edit.text);
+            kept_from = edit.bytes.end;
+        }
+        out.extend_from_slice(&base[kept_from as usize..]);
+        out
+    }
+
+    /// A pseudo-random replacement in a text of `len` bytes, from `next`.
+    fn random_replacement(next: &mut impl FnMut(u64) -> u64, len: u64, step: usize) -> (Range<u64>, &'static str) {
+        let start = next(len + 1);
+        let end = start + next(4).min(len - start);
+        (start..end, ["", "q", "\n", "ab\ncd", "é"][step % 5])
+    }
+
+    fn generator(mut seed: u64) -> impl FnMut(u64) -> u64 {
+        move |bound: u64| {
+            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) % bound.max(1)
+        }
+    }
+
     #[test]
     fn should_hold_the_current_text_after_rebase() {
         // given
         let mut table = PieceTable::from_text("ab\ncd\n");
         table.replace(1..4, "X\nY");
-        let saved = String::from_utf8(text(&table)).unwrap();
+        let saved = table.edits_since_base();
 
         // when
-        table.rebase(Arc::new(TextSource::new(&saved)));
+        table.rebase(Arc::new(TextSource::new("aX\nYd\n")), &saved);
 
         // then
         assert_eq!(table.edits_since_base(), []);
         assert_eq!(lines(&table), ["aX", "Yd", ""]);
         table.replace(0..1, "z");
-        assert_eq!(table.edits_since_base(), [Edit { bytes: 0..1, text: "z".to_owned() }]);
+        assert_eq!(table.edits_since_base(), [Edit { bytes: 0..1, text: b"z".to_vec() }]);
+    }
+
+    #[test]
+    fn should_keep_edits_typed_while_a_save_was_written() {
+        // given
+        let mut table = PieceTable::from_text("0123456789\n");
+        table.replace(2..4, "ab");
+        table.replace(8..8, "XYZ");
+        let saved = table.edits_since_base();
+        table.replace(0..1, "-");
+        table.replace(9..10, "");
+
+        // when
+        table.rebase(Arc::new(TextSource::new("01ab4567XYZ89\n")), &saved);
+
+        // then
+        assert_eq!(text(&table), b"-1ab4567XZ89\n");
+        assert_eq!(table.edits_since_base(), [Edit { bytes: 0..1, text: b"-".to_vec() }, Edit { bytes: 9..10, text: Vec::new() }]);
+    }
+
+    #[test]
+    fn should_leave_out_edits_that_put_back_what_they_replace() {
+        // given
+        let mut table = PieceTable::from_text("abc\n");
+
+        // when
+        table.replace(1..2, "x");
+        table.replace(1..2, "b");
+
+        // then
+        assert_eq!(table.edits_since_base(), []);
     }
 
     #[test]
     fn should_match_a_plain_buffer_after_many_edits() {
         // given
-        let mut table = PieceTable::from_text("first\nsecond\n\nfourth line\n");
-        let mut expected = text(&table);
-        let mut seed: u64 = 7;
-        let mut next = |bound: u64| {
-            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
-            (seed >> 33) % bound.max(1)
-        };
+        let original = b"first\nsecond\n\nfourth line\n".to_vec();
+        let mut table = table_of(&original);
+        let mut expected = original.clone();
+        let mut next = generator(7);
 
         // when
         for step in 0..500 {
-            let start = next(expected.len() as u64 + 1);
-            let end = start + next(4).min(expected.len() as u64 - start);
-            let inserted = ["", "q", "\n", "ab\ncd", "é"][step % 5];
-            table.replace(start..end, inserted);
-            expected.splice(start as usize..end as usize, inserted.bytes());
+            let (bytes, inserted) = random_replacement(&mut next, expected.len() as u64, step);
+            table.replace(bytes.clone(), inserted);
+            expected.splice(bytes.start as usize..bytes.end as usize, inserted.bytes());
         }
 
         // then
         assert_eq!(text(&table), expected);
+        assert_eq!(applied(&original, &table.edits_since_base()), expected);
         let expected_lines: Vec<&[u8]> = expected.split(|&byte| byte == b'\n').collect();
         assert_eq!(table.line_count(), expected_lines.len());
         for (index, line) in expected_lines.iter().enumerate() {
             assert_eq!(table.line(index), *line, "line {index}");
+        }
+    }
+
+    #[test]
+    fn should_keep_the_text_across_saves_with_edits_in_flight() {
+        // given
+        let mut base = b"first\nsecond\n\nfourth line\n".to_vec();
+        let mut table = table_of(&base);
+        let mut next = generator(11);
+        let mut step = 0;
+
+        // when
+        for _save in 0..60 {
+            for _ in 0..next(6) {
+                let (bytes, inserted) = random_replacement(&mut next, table.byte_len(), step);
+                table.replace(bytes, inserted);
+                step += 1;
+            }
+            let saved = table.edits_since_base();
+            let written = applied(&base, &saved);
+            for _ in 0..next(4) {
+                let (bytes, inserted) = random_replacement(&mut next, table.byte_len(), step);
+                table.replace(bytes, inserted);
+                step += 1;
+            }
+            let before = text(&table);
+            table.rebase(Arc::new(TextSource::from_bytes(&written)), &saved);
+            base = written;
+
+            // then
+            assert_eq!(text(&table), before);
+            assert_eq!(applied(&base, &table.edits_since_base()), before);
+            assert_eq!(table.line_count(), before.split(|&byte| byte == b'\n').count());
         }
     }
 

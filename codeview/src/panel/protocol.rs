@@ -102,11 +102,19 @@ pub enum Event {
     OpenAt { path: PathBuf, line: usize },
 }
 
-/// One change to a saved text: `bytes` of it, as of the save's base revision, become `text`.
+/// One change to a saved text: `bytes` of it, as of the save's base revision, become `text`, stored as given (not
+/// necessarily UTF-8: bytes restored by an undo are written back exactly).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Edit {
     pub bytes: Range<u64>,
-    pub text: String,
+    pub text: Vec<u8>,
+}
+
+impl Edit {
+    /// How much longer the text gets; negative when it shrinks.
+    pub fn growth(&self) -> i64 {
+        self.text.len() as i64 - (self.bytes.end - self.bytes.start) as i64
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

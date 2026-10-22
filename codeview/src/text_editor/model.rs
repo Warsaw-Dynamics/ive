@@ -13,9 +13,26 @@ use tree_sitter::InputEdit;
 use super::history::{Change, Cursor, Edit, History};
 use crate::panel;
 use crate::piece_table::PieceTable;
+use crate::syntax::MAX_HIGHLIGHT_BYTES;
 
 /// What Tab inserts.
 pub const INDENT: &str = "    ";
+/// The most bytes one edit may remove and still be undone: the undo history holds a copy of them.
+pub const MAX_UNDO_BYTES: u64 = MAX_HIGHLIGHT_BYTES as u64;
+
+/// What an edit removed, as the undo history keeps it.
+enum Removed {
+    Copied(Vec<u8>),
+    /// more than [`MAX_UNDO_BYTES`], so not read
+    Uncopied { len: u64 },
+}
+
+/// An edit's bytes before the undo history takes them.
+struct Removal {
+    at: u64,
+    removed: Removed,
+    inserted: Vec<u8>,
+}
 
 /// A place in the text: a line, and a column counted in characters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -429,7 +446,7 @@ impl EditorModel {
             return Ok(());
         }
         let bytes = self.byte_at(range.start)..self.byte_at(range.end);
-        let (removed, inserted) = (self.table.bytes(bytes.clone()), self.stored_form(range.start.line, text));
+        let (removed, inserted) = (self.removed(bytes.clone()), self.stored_form(range.start.line, text));
         self.check_size(&removed, &inserted)?;
         let before = self.cursor();
         let replaced = self.table.replace(bytes.clone(), &inserted);
@@ -439,17 +456,42 @@ impl EditorModel {
         self.goal_column = None;
         self.marked = None;
         self.revision += 1;
-        let change = Change { at: bytes.start, removed, inserted };
-        self.history.record(Edit { change, kind, before, after: self.cursor() });
+        self.remember(Removal { at: bytes.start, removed, inserted }, kind, before);
         Ok(())
     }
 
+    /// The bytes `bytes` of the text, unless there are more than [`MAX_UNDO_BYTES`].
+    fn removed(&self, bytes: Range<u64>) -> Removed {
+        let len = bytes.end - bytes.start;
+        if len > MAX_UNDO_BYTES {
+            return Removed::Uncopied { len };
+        }
+        Removed::Copied(self.table.bytes(bytes))
+    }
+
+    /// Records a replacement in the undo history; one that removed more than [`MAX_UNDO_BYTES`] cannot be undone and
+    /// empties the history, so a huge deletion never copies the file into memory.
+    fn remember(&mut self, removal: Removal, kind: EditKind, before: Cursor) {
+        let Removal { at, removed, inserted } = removal;
+        match removed {
+            Removed::Copied(removed) => {
+                let change = Change { at, removed, inserted };
+                self.history.record(Edit { change, kind, before, after: self.cursor() });
+            }
+            Removed::Uncopied { .. } => self.history.clear(),
+        }
+    }
+
     /// Refuses an edit that would grow a scratch past its size limit.
-    fn check_size(&self, removed: &[u8], inserted: &[u8]) -> Result<(), EditError> {
+    fn check_size(&self, removed: &Removed, inserted: &[u8]) -> Result<(), EditError> {
         let Some(limit) = self.limit else {
             return Ok(());
         };
-        let (added, dropped) = (limit.written_len(inserted), limit.written_len(removed));
+        let dropped = match removed {
+            Removed::Copied(removed) => limit.written_len(removed),
+            Removed::Uncopied { len } => *len,
+        };
+        let added = limit.written_len(inserted);
         if added > dropped && self.byte_len() - dropped + added > limit.max_bytes as u64 {
             return Err(EditError::TooLarge { limit: limit.max_bytes });
         }
@@ -1011,7 +1053,7 @@ mod tests {
         model.insert("x", EditKind::Typing).unwrap();
 
         // then
-        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: "x".to_owned() }]);
+        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: b"x".to_vec() }]);
         assert_eq!(model.line(0), "ax");
     }
 
@@ -1025,7 +1067,7 @@ mod tests {
         model.insert("y", EditKind::Typing).unwrap();
 
         // then
-        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: "y".to_owned() }]);
+        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: b"y".to_vec() }]);
         assert_eq!(model.caret(), Position::new(0, 2));
     }
 
@@ -1039,7 +1081,7 @@ mod tests {
         model.insert("\n", EditKind::Other).unwrap();
 
         // then
-        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: "\r\n".to_owned() }]);
+        assert_eq!(model.edits_since_base(), [SavedEdit { bytes: 1..1, text: b"\r\n".to_vec() }]);
         assert_eq!((model.line(0), model.line(1), model.caret()), ("a".to_owned(), "b".to_owned(), Position::new(1, 0)));
     }
 
@@ -1060,7 +1102,7 @@ mod tests {
         }
 
         // then
-        assert_eq!(typed, [SavedEdit { bytes: 3..3, text: "y".to_owned() }]);
+        assert_eq!(typed, [SavedEdit { bytes: 3..3, text: b"y".to_vec() }]);
         assert_eq!(shown, "a\u{fffd}\u{fffd}yb");
         assert_eq!(deleted, b"a\xffb\n");
         assert_eq!(stored(&model), b"a\xff\xfeb\n");
@@ -1102,6 +1144,25 @@ mod tests {
         fn line_of(&self, byte: u64) -> usize {
             self.inner.line_of(byte)
         }
+    }
+
+    #[test]
+    fn should_delete_a_large_text_without_reading_it_and_forget_the_history() {
+        // given
+        let text = "some text\n".repeat(MAX_UNDO_BYTES as usize / 10 + 1);
+        let source = Arc::new(CountingSource { inner: TextSource::new(&text), read: AtomicU64::new(0) });
+        let mut model = EditorModel::new(PieceTable::new(source.clone()), None);
+        model.insert("x", EditKind::Typing).unwrap();
+        model.select_all();
+
+        // when
+        model.delete_selection().unwrap();
+        let undone = model.undo();
+
+        // then
+        assert_eq!((model.table.byte_len(), undone), (0, false));
+        let read = source.read.load(Ordering::Relaxed);
+        assert!(read < 1024 * 1024, "read {read} bytes");
     }
 
     #[test]

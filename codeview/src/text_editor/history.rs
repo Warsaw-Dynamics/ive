@@ -71,6 +71,11 @@ impl History {
         self.open = typing;
     }
 
+    /// Forgets every group: after an edit that cannot be undone, the older ones no longer apply.
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
     /// Ends the open typing group, as a caret move does.
     pub fn seal(&mut self) {
         self.open = false;
