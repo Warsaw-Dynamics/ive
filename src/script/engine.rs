@@ -867,24 +867,6 @@ mod tests {
     }
 
     #[test]
-    fn should_load_the_default_tab_menu() {
-        // when
-        let menus = defaults().menus;
-
-        // then
-        let expected = [
-            item(Builtin::KeepTab),
-            item(Builtin::StopProgram),
-            MenuItem::Separator,
-            item(Builtin::CloseTab),
-            item(Builtin::CloseOtherTabs),
-            item(Builtin::CloseTabsToTheLeft),
-            item(Builtin::CloseTabsToTheRight),
-        ];
-        assert_eq!(menus.get(MenuKind::Tab, "main"), Some(&expected[..]));
-    }
-
-    #[test]
     fn should_let_init_add_a_tab_menu_shown_by_shift_right_press() {
         // given
         let init = r#"pub fn init(config) {
@@ -1115,6 +1097,34 @@ mod tests {
 
         // then
         assert!(error.contains("tree_menus.main[0].when") && error.contains("[a-"), "{error}");
+    }
+
+    #[test]
+    fn should_load_ive_rn_with_the_default_tree_and_tab_menus() {
+        // when
+        let loaded = defaults();
+
+        // then
+        let tree = loaded.menus.get(MenuKind::Tree, "main").expect("tree menu");
+        let tab = loaded.menus.get(MenuKind::Tab, "main").expect("tab menu");
+        assert_eq!(tree[0], item(Builtin::SendPathsToTerminal));
+        assert_eq!(tab[..2], [item(Builtin::KeepTab), item(Builtin::StopProgram)]);
+        assert!(tab.contains(&item(Builtin::CloseTabsToTheRight)));
+        let right_press = loaded.keymap.find_mouse(Scope::Tree, &mouse(MouseKind::Down, MouseButton::Right, 1)).cloned();
+        assert_eq!(right_press, Some(Action::ShowTreeMenu("main".to_owned())));
+    }
+
+    #[test]
+    fn should_bind_find_in_files_and_its_hub_keys() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let find = if cfg!(target_os = "macos") { "cmd-shift-f" } else { "ctrl-shift-f" };
+        assert_eq!(keymap.find_key(&pressed(find), Place::Elsewhere).cloned(), builtin(Builtin::OpenFindInFiles));
+        assert_eq!(keymap.find_key(&pressed(find), Place::Hub).cloned(), builtin(Builtin::HubToggleContent));
+        assert_eq!(keymap.find_key(&pressed("alt-r"), Place::Hub).cloned(), builtin(Builtin::HubToggleRegex));
+        assert_eq!(keymap.find_key(&pressed("alt-w"), Place::Hub).cloned(), builtin(Builtin::HubToggleWholeWord));
     }
 
     #[test]

@@ -22,15 +22,27 @@ pub fn init(config) {
         marker: "Italic",
     };
 
-    // menus a mouse binding opens on a tab with act::ShowTabMenu("<name>"); init.rn adds menus or replaces one by name,
-    // e.g. config.tab_menus.close = [act::CloseOtherTabs]; items a tab has no use for are left out (Keep Tab on a
-    // permanent tab, Stop and Kill on a tab that is not a process), and so are separators they leave dangling
+    // menus a mouse binding opens with act::ShowTabMenu("<name>") on a tab, act::ShowTreeMenu("<name>") on a tree row;
+    // init.rn adds menus, replaces one by name, or edits one, e.g. config.tab_menus.close = [act::CloseOtherTabs] or
+    // config.tree_menus.main.push(#{ label: "Open in IntelliJ", action: idea, when: #{ kind: "file" } }).
+    // An item is an act:: action, "Separator", #{ label, action, when } (action: an act:: action or a function) or
+    // #{ label, items, when } (a submenu). Items that do not apply are left out (Keep Tab on a permanent tab, Stop on a
+    // tab that is not a process, Run on a file that does not run), and so are separators and submenus left empty.
+    let copy_path = #{ label: "Copy Path", items: [act::CopyFullPath, act::CopyRelativePath, act::CopyFileName] };
+    let open_in = #{ label: "Open In", items: [act::RevealInFileManager, act::OpenWithDefaultApp, act::OpenInBrowser, act::OpenInNewWindow] };
     config.tab_menus = #{
         main: [act::KeepTab, act::StopProgram, "Separator",
+                  act::SendPathsToTerminal, act::FindInFiles, copy_path, open_in,
+                  #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory] }, "Separator",
                   act::CloseTab, act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight],
     };
-    // menus act::ShowTreeMenu("<name>") opens on a tree row, declared like tab menus
-    config.tree_menus = #{};
+    config.tree_menus = #{
+        main: [act::SendPathsToTerminal, act::OpenTerminalHere, act::RunFile, "Separator",
+                  act::FindInFiles, "Separator",
+                  copy_path, open_in, "Separator",
+                  #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory, "Separator", act::GitIgnore] },
+                  act::CompareFiles],
+    };
 
     // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
     config.quit_countdown = 10;
@@ -47,6 +59,8 @@ pub fn init(config) {
     // a hub row's absolute path; the tree's selected files and folders, one per line
     let copy_full_path = if ive::os() == "macos" { #{ key: "c", mods: "CMD|ALT" } } else { #{ key: "c", mods: "CTRL|SHIFT" } };
     let stop_tab = if ive::os() == "macos" { #{ key: "w", mods: "CMD|ALT" } } else { #{ key: "q", mods: "CTRL|SHIFT" } };
+    // the hub searching the files' contents; in the hub, between names and contents
+    let find_in_files = #{ key: "f", mods: "SECONDARY|SHIFT" };
 
     config.keys = [
         #{ key: ",", mods: "SECONDARY", action: act::OpenSettings },
@@ -55,6 +69,7 @@ pub fn init(config) {
         #{ key: "t", mods: "SECONDARY|SHIFT", action: act::OpenTerminalIn },
         // recent tabs, changed files, running processes, and every file of the open projects
         #{ key: "e", mods: "SECONDARY|SHIFT", action: act::OpenHub },
+        #{ key: find_in_files.key, mods: find_in_files.mods, action: act::OpenFindInFiles },
         // a tab opened from the hub a moment ago brings the hub back when closed with these keys (functions below);
         // the mouse and the tab menu close plainly
         #{ key: close_tab.key, mods: close_tab.mods, action: close_back_to_hub },
@@ -100,6 +115,10 @@ pub fn init(config) {
         // only on an empty query: back to all projects
         #{ key: "Backspace", action: act::HubWiden, scope: "hub" },
         #{ key: "i", mods: "ALT", action: act::HubToggleExcluded, scope: "hub" },
+        // a contents search: regex, whole words
+        #{ key: "r", mods: "ALT", action: act::HubToggleRegex, scope: "hub" },
+        #{ key: "w", mods: "ALT", action: act::HubToggleWholeWord, scope: "hub" },
+        #{ key: find_in_files.key, mods: find_in_files.mods, action: act::HubToggleContent, scope: "hub" },
         // Ctrl+Shift+E again: only the changed files
         #{ key: "e", mods: "SECONDARY|SHIFT", action: act::HubToggleChanged, scope: "hub" },
         // the worktree question, else the query, else back to the tab shown before
@@ -117,6 +136,8 @@ pub fn init(config) {
         #{ event: #{ Up: #{ streak: 2, button: "Left" } }, action: act::KeepTab, scope: "tab" },
         // the menu config.tab_menus.main declares
         #{ event: #{ Down: #{ streak: 1, button: "Right" } }, action: act::ShowTabMenu("main"), scope: "tab" },
+        // the menu config.tree_menus.main declares, on the row and the files and folders selected with it
+        #{ event: #{ Down: #{ streak: 1, button: "Right" } }, action: act::ShowTreeMenu("main"), scope: "tree" },
 
         #{ event: #{ Up: #{ streak: 1, button: "Left" } }, action: act::ActivateRow, scope: "tree" },
         // opens the row's tab to stay, not temporary

@@ -67,7 +67,10 @@ Run it again to rebuild and reinstall.
 | Settings | Ctrl+, (Cmd+, on macOS), or the gear at the right of the tab row |
 | Switch or close tabs | click a tab; middle click, its × or Ctrl+Shift+W (Cmd+W on macOS) closes it, and closing a process tab keeps the process running (in Processes); Ctrl+W stays the program's (a shell deletes a word) |
 | Stop a process | Ctrl+Shift+Q (Cmd+Alt+W on macOS) on its tab, the tab menu's Stop, or the Stop button of its row: the tab closes at once and the row reads `stopping…`; the shell or run gets a hang-up and SIGTERM (to its process group and the foreground program's), SIGKILL 5 s later, and its row goes once it is gone (a run's configuration row goes back to ▷ Run). One still running 2 s after SIGKILL is left to itself: IVE forgets it and a tab names its pid. On any other tab Ctrl+Shift+Q just closes it |
-| Tab menu | right click on a tab (other clicks and menus: `config.tab_menus` in [Scripting](#scripting)): Keep Tab (a temporary tab), Stop (a process tab: as Ctrl+Shift+Q), Close, Close Other Tabs, Close Tabs to the Left / Right |
+| Tab menu | right click on a tab (other clicks and menus: `config.tab_menus` in [Scripting](#scripting)): Keep Tab (a temporary tab), Stop (a process tab: as Ctrl+Shift+Q), then for a file's tab (a file, a diff, a scratch) Send to Terminal, Find in Files, Copy Path, Open In and Git as in the tree menu, then Close, Close Other Tabs, Close Tabs to the Left / Right |
+| Tree menu | right click on a row (`config.tree_menus` in [Scripting](#scripting)): on a selected file or folder it applies to the whole selection, on another row to that row alone (a worktree or project row: its root folder; a changed file: the file). Send to Terminal ▸, Open in Terminal (a terminal in the folder), Run (a `.sh`, `.bash` or `.zsh` file as a shell scratch runs; a folder's `.run.toml` configurations), Find in Files…, Copy Path ▸ (absolute, relative to its worktree, file name; one per line), Open In ▸ (Reveal in Files / Finder, Open in Default App, Open in Browser for `.html`, `.htm`, `.svg`, Open in New Window), Git ▸ (Show Diff of an uncommitted file, Compare with Base Branch, Show History of a file or folder, following a renamed file, Add to .gitignore), Compare Files (two files). Items that do not apply are left out; ↑ ↓ Enter → ← Escape work in it |
+| Send to Terminal | the menu's submenu lists the terminals, most recently used first (shown or Enter pressed in it), then New Terminal in the worktree: the paths are pasted into the chosen one, which is shown, without Enter. They are relative to the terminal's current folder (`../` included) when the terminal works in the worktree of every path, else absolute; a drag onto a terminal and the hub's Alt+Enter type paths the same way |
+| Find in files | Ctrl+Shift+F (Cmd+Shift+F on macOS), or Find in Files… in a menu for the picked files and folders: the hub searching file contents, see [Hub](#hub-ctrlshifte) |
 | Temporary tabs | a project or a worktree's Processes clicked in the tree, Settings and the hub open in a temporary tab (italic title) that closes once another tab is shown; middle click on the row, or double click on the tab, keeps it; temporary tabs are not restored at the next start; see `config.temporary_tabs` in [Scripting](#scripting) |
 | Reorder tabs | drag a tab; a bar between tabs marks where it lands (past the last tab moves it last) |
 | Tab in its own window | drag a tab out of the tab row (a small picture of it follows the pointer) and release it: it opens in a window of its own under the pointer; the window's tab-row button (Move to main window) puts it back, closing the window closes the tab; detached tabs come back in the tab row at the next start |
@@ -130,14 +133,25 @@ Enter is pressed in one of its terminals or a run starts in it), so Enter, Enter
 | Enter | open the row, or ask its worktree; in the question, open there |
 | Shift+Enter | open behind: the hub stays, the tab opens right of it (to stay, even an overview) |
 | Alt+1 … Alt+9 | open the numbered row |
-| Alt+Enter | type the row's path, shell-quoted, into the last terminal (that of the most recently used worktree) |
+| Alt+Enter | paste the row's path (`path:line` for a contents line) into the most recently used terminal, relative to its folder when it works in that worktree |
 | Ctrl+Shift+Q (Cmd+Alt+W on macOS) | stop the process of a process row, or of a Recent row's open process tab, as Stop on its tab; the hub stays and the row reads `stopping…`; other rows do nothing |
 | Ctrl+Y | copy the row's project-relative path |
 | Ctrl+Shift+C (Cmd+Alt+C on macOS) | copy the row's absolute path |
 | Tab | scope: all projects → the shown tab's project → its worktree → a scope picked with `:`; Backspace on an empty query goes back to all |
 | Alt+I | search excluded (`config.excluded`) and gitignored files too; off at each Ctrl+Shift+E; while off, the key strip says how many are left out |
 | Ctrl+Shift+E again | only the changed files; the query filters them |
+| Ctrl+Shift+F (Cmd+Shift+F on macOS) | between searching file names and file contents |
+| Alt+R, Alt+W | a contents search's query as a regex; whole words only |
 | Escape | from the worktree question back to the list; else clear the query; else back to the tab shown before |
+
+**Contents.** Ctrl+Shift+F in the hub, or Find in Files from anywhere, searches the files' lines instead of their
+names: plain text from 2 characters, smart case (any capital makes it exact), Alt+R for a regex and Alt+W for whole
+words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line, marked, and the
+preview shows the lines around it. It searches the hub's scope (the worktrees of All, a project or a worktree, and
+their scratches), or the files and folders Find in Files was picked on, named above the rows (`Contents of src +1`);
+Backspace on an empty query drops them for the scope. Gitignored and excluded files are left out unless Alt+I, but a
+folder picked in the tree is searched even when it is ignored itself. Files over 8 MB and binary files are skipped,
+and the list stops at 2,000 lines. The counter reads `matches in files · ms`.
 
 Prefixes: `>` actions (New terminal, New scratch, Git log, project overview, Close Other Tabs, Settings, theme), `@`
 processes and run configurations (Enter shows a configuration's live run, or starts one), `#` worktrees and the
@@ -420,13 +434,37 @@ async fn restart(context) {
 - `config.open_folders` (`["processes", "uncommitted", "since-base", "commits"]`): a worktree's folders in the project tree
   that start open, any of these and `"files"`; the others start folded. A folder you fold or unfold stays as you
   left it; `config.open_folders.push("files");` starts them all open.
-- `config.tab_menus` (filled in with `ive.rn`'s, per menu name): menus that `act::ShowTabMenu(name)` opens, each a
-  list of tab actions (`act::KeepTab`, `act::StopProgram`, `act::KillProgram`, `act::CloseTab`,
-  `act::CloseOtherTabs`, `act::CloseTabsToTheLeft`, `act::CloseTabsToTheRight`) and `"Separator"`; at most 32 menus
-  of 32 items. `ive.rn` declares `main` (all but Kill) on the right press; `act::KillProgram` is Stop with SIGKILL at
-  once. A menu leaves out what the tab has no use for
-  (Keep Tab on a permanent tab, Stop and Kill on a tab that is not a process) and the separators left dangling, and
-  does not open when nothing is left. A different menu with Shift:
+- `config.tab_menus` and `config.tree_menus` (filled in with `ive.rn`'s, per menu name): menus that
+  `act::ShowTabMenu(name)` opens on a tab and `act::ShowTreeMenu(name)` on a tree row (a key in the `"tree"` scope:
+  on the selection); at most 32 menus of each, 32 items in a menu or submenu, submenus 4 deep. `ive.rn` declares
+  `main` of both on the right press. An item is:
+  - an action: the tab actions (`act::KeepTab`, `act::StopProgram`, `act::KillProgram`, Stop with SIGKILL at once,
+    `act::CloseTab`, `act::CloseOtherTabs`, `act::CloseTabsToTheLeft`, `act::CloseTabsToTheRight`; tab menus only),
+    the path actions in the table below, or `act::OpenHub`, `act::OpenSettings`, `act::OpenTerminal`,
+    `act::OpenTerminalIn`, `act::OpenFindInFiles`, `act::ToggleChangesLayout`;
+  - `"Separator"`;
+  - `#{ label, action, when }`: `action` an action (relabelled) or a function, which gets the menu's `context`
+    (below); `when` optional;
+  - `#{ label, items, when }`: a submenu.
+
+  A menu leaves out what does not apply (Keep Tab on a permanent tab, Stop and Kill on a tab that is not a process, a
+  path action on a terminal tab, Run on a file that does not run, Git Show Diff on an unchanged file), then the
+  separators left dangling and the submenus left empty, and does not open when nothing is left. `when` is an object,
+  a function, or both (`#{ kind: "folder", test: f }`, the function asked only where the rest holds):
+  `kind` (`"file"` or `"folder"`), `name` (a glob or a list of globs against the file name), `path` (the same
+  against the path relative to its worktree, absolute outside one), `count` (`"one"` or `"many"`) must all hold, the
+  first three for every path; a terminal tab has no paths, so they never hold there. A `test` function (async or
+  not) gets the `context` and holds when it answers `true` or `Ok(true)`: the menu opens at once with its item faded
+  (`…`), and the item turns usable or goes when it answers; one that takes over 5 s, or errs, counts as `false` and
+  the log says so. The same label twice with `kind` file and folder gives each its own action:
+
+  ```rune
+  config.tree_menus.main.push(#{ label: "Open in IntelliJ", action: idea_file, when: #{ kind: "file" } });
+  config.tree_menus.main.push(#{ label: "Open in IntelliJ", action: idea_folder, when: #{ kind: "folder" } });
+  config.tree_menus.main.push(#{ label: "Cargo", items: [#{ label: "Test", action: cargo_test }], when: #{ name: "Cargo.toml" } });
+  ```
+
+  A different tab menu with Shift:
 
   ```rune
   config.tab_menus.close = [act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight];
@@ -457,6 +495,14 @@ async fn restart(context) {
 | `act::StopProgram`, `act::KillProgram` | tab, window | SIGTERM or SIGKILL to the program in the clicked (a key: the shown) process tab's foreground, the shell staying; a run is stopped as its Stop does (SIGKILL 5 s later), or killed at once |
 | `act::CloseOtherTabs`, `act::CloseTabsToTheLeft`, `act::CloseTabsToTheRight` | tab, window | closes the row's other tabs, or those left or right of the clicked (a key: the shown) tab; detached tabs stay |
 | `act::ShowTabMenu(name)` | tab | opens menu `name` of `config.tab_menus` on the clicked tab, at the pointer (`"main"` on a right press by default) |
+| `act::ShowTreeMenu(name)` | tree | opens menu `name` of `config.tree_menus` on the clicked row (a key: on the selection), at the pointer (`"main"` on a right press by default) |
+| `act::SendPathsToTerminal` | tree, window, menus | the list of terminals for the paths (the tree's selection; a window key: the shown tab's file) |
+| `act::CopyRelativePath`, `act::CopyFileName` | tree, window, menus | paths relative to their worktree, or file names, one per line, to the clipboard |
+| `act::FindInFiles` | tree, window, menus | the hub searching the contents of the paths |
+| `act::OpenFindInFiles` | window, menus | the hub searching contents in its usual scope (Ctrl+Shift+F) |
+| `act::OpenTerminalHere`, `act::RevealInFileManager`, `act::OpenInNewWindow` | tree, window, menus | a terminal in the folder (a file: its folder); the OS file manager with it selected; the file in a window of its own |
+| `act::OpenWithDefaultApp`, `act::OpenInBrowser`, `act::RunFile`, `act::GitShowDiff`, `act::GitCompareWithBase`, `act::GitHistory`, `act::GitIgnore`, `act::CompareFiles` | menus | as the tree menu's items of those names |
+| `act::HubToggleContent`, `act::HubToggleRegex`, `act::HubToggleWholeWord` | hub | file names or contents; a contents query as a regex; whole words |
 | `act::ActivateRow`, `act::ToggleRow` | tree | the row's click (a project's overview, open the file, toggle a worktree or folder); expand or collapse it |
 | `act::ActivateRowToKeep` | tree | the row's click, its project tab kept rather than temporary (middle click by default); on other rows the same as `ActivateRow` |
 | `act::ToggleRowSelection`, `act::ExtendRowSelection` | tree | Ctrl+click (Cmd on macOS) adds a file or folder to the selection or takes it out; Shift+click selects the files and folders from the last clicked row; dragging a selected row onto a terminal types all their paths |
@@ -476,7 +522,9 @@ async fn restart(context) {
 | a function | any | runs on IVE's script thread with `context` (below) |
 
 - A function gets a `context`: for a key, the shown tab (`#{ tab, kind, checkout }`); for a click on a tab, that
-  tab; on a tree row, `#{ row, checkout }` (`row` is its `list_targets` name); in a terminal, its tab plus the
+  tab; on a tree row, `#{ row, checkout }` (`row` is its `list_targets` name); a menu's item or condition,
+  `#{ menu, paths, items, checkout, row or tab }` (`paths` absolute; `items` `#{ path, relative, kind }`, `relative` to
+  the worktree or `()`; `checkout` the one worktree of all paths or `()`); in a terminal, its tab plus the
   `column` and `line` clicked (from 0, as `read_screen`). It runs on IVE's script thread, so a slow one never holds
   up the window. Its `Err` goes to the log.
 - Functions call IVE through the `ive` module, with the MCP tools' names and arguments (all `async`, returning
@@ -685,6 +733,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Where | Targets |
 |---|---|
 | tab row | `restart` (with `--restart`: builds, then restarts IVE) |
+| menus | `tab-menu:<tab>` and `tree-menu:<row target>` (e.g. `tree-menu:entry:/r/src`) open a tab's or a row's `main` menu; then each line is `tab-menu:` or `tree-menu:` and the labels down to it joined by `/` (`tree-menu:Copy Path/Copy Relative Path`; a click on a submenu's line opens it); Send to Terminal's lines by process id (`tree-menu:Send to Terminal/<n>`, `…/new`), Run's by configuration key; a line waiting for its condition is listed as `<name> (pending)`; the tab actions also as `tab-menu:keep`, `tab-menu:stop`, `tab-menu:kill`, `tab-menu:close`, `tab-menu:close-others`, `tab-menu:close-left`, `tab-menu:close-right` |
 | sidebar header, welcome | `select-opened` (Select opened file: the shown tab's row), `open-project` (the + menu), `recent:<id>`, `open-folder` (the OS picker: use the `open_project` tool instead) |
 | project row | `project:<id>` (overview), `toggle:<id>` (chevron), `close-project:<id>` |
 | checkout row | `toggle:<id>/<label>` (`<label>@<path>` while two checkouts share a label, e.g. a worktree folder named like the main checkout's branch), `hide-worktree:<id>/<label>` (not on the main checkout) |
