@@ -11,6 +11,7 @@ use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy, mark_of_delta};
 
 pub use codeview::diff::{Cut, DiffBody, DiffLine, FileDiff, Hunk, LineKind};
 pub use codeview::diff::{FILE_LINE_LIMIT, MAX_FILE_BYTES, VIEW_LINE_LIMIT};
+use codeview::changes::ChangeBase;
 use codeview::document::Source;
 use codeview::syntax::MAX_HIGHLIGHT_BYTES;
 
@@ -188,6 +189,64 @@ fn checked_out_head(repo: &Repository, file: &FilePaths) -> Result<Vec<u8>, git2
         return Err(git2::Error::from_str(&format!("{} is too large in HEAD ({size} bytes)", name.display())));
     }
     blob_filter::checked_out(&repo.find_blob(entry.id())?, &file.path)
+}
+
+/// What change markers compare the work tree file at `path` with: its text in HEAD as a checkout writes it (as
+/// [`edited_uncommitted`] diffs it), with HEAD's commit id. [`ChangeBase::Untracked`] when no repository's work tree
+/// holds the file, HEAD lacks it (or there is no commit yet), or HEAD's entry is not a regular file, is binary or is
+/// larger than `MAX_HIGHLIGHT_BYTES`.
+pub fn change_base(path: &Path) -> Result<ChangeBase, GitError> {
+    let Some((repo, name)) = repository_of(path)? else {
+        return Ok(ChangeBase::Untracked);
+    };
+    let workdir = repo.workdir().map_or_else(|| path.to_path_buf(), Path::to_path_buf);
+    let fail = failed("read HEAD's text of a file", &workdir);
+    let Some((commit, entry)) = head_entry(&repo, &name).map_err(&fail)? else {
+        return Ok(ChangeBase::Untracked);
+    };
+    let blob = repo.find_blob(entry).map_err(&fail)?;
+    if blob.is_binary() {
+        return Ok(ChangeBase::Untracked);
+    }
+    let text = blob_filter::checked_out(&blob, &name).map_err(&fail)?;
+    if text.len() > MAX_HIGHLIGHT_BYTES {
+        return Ok(ChangeBase::Untracked);
+    }
+    Ok(ChangeBase::Tracked { head: Source::from_vec(text), head_id: commit.to_string() })
+}
+
+/// The repository whose work tree holds the file at `path`, found from its folder up, and the file's name in it;
+/// `None` when there is none.
+fn repository_of(path: &Path) -> Result<Option<(Repository, GitPath)>, GitError> {
+    let folder = path.parent().unwrap_or(path);
+    let repo = match Repository::discover(folder) {
+        Ok(repo) => repo,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
+        Err(error) => return Err(GitError::new("find the repository", folder, error)),
+    };
+    let (Some(workdir), Ok(file)) = (repo.workdir().and_then(|dir| fs::canonicalize(dir).ok()), fs::canonicalize(path)) else {
+        return Ok(None);
+    };
+    let name = file.strip_prefix(&workdir).ok().map(|relative| GitPath::from_bytes(relative.as_os_str().as_encoded_bytes()));
+    Ok(name.map(|name| (repo, name)))
+}
+
+/// HEAD's commit and the blob it holds at `name`, when that is a regular file small enough to diff; `None` without
+/// a commit or such a file.
+fn head_entry(repo: &Repository, name: &GitPath) -> Result<Option<(git2::Oid, git2::Oid)>, git2::Error> {
+    let commit = match repo.head() {
+        Ok(head) => head.peel_to_commit()?,
+        Err(error) if matches!(error.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let entry = match commit.tree()?.get_path(&relative_path(name.as_bytes())) {
+        Ok(entry) => entry,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let regular = entry.filemode() == i32::from(FileMode::Blob) || entry.filemode() == i32::from(FileMode::BlobExecutable);
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    Ok((regular && size <= MAX_HIGHLIGHT_BYTES).then(|| (commit.id(), entry.id())))
 }
 
 /// Where the work tree of the repository at `dir` keeps `path`.
@@ -817,6 +876,32 @@ mod tests {
             (LineKind::Removed, Some(2), None, "two".to_owned()),
             (LineKind::Added, None, Some(2), "TWO".to_owned()),
         ]);
+    }
+
+    #[test]
+    fn should_answer_the_head_text_in_working_tree_form() {
+        // given
+        let repo = TestRepo::init();
+        repo.write(".gitattributes", "*.txt text eol=crlf\n");
+        repo.write("a.txt", "one\ntwo\n");
+        repo.write("big.txt", &"x\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+        repo.commit("first");
+        repo.write("new.txt", "new\n");
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("plain.txt"), "plain\n").unwrap();
+
+        // when
+        let tracked = change_base(&repo.root.join("a.txt")).expect("read");
+        let others = ["new.txt", "big.txt"].map(|name| change_base(&repo.root.join(name)).expect("read"));
+        let plain = change_base(&outside.path().join("plain.txt")).expect("read");
+
+        // then
+        let ChangeBase::Tracked { head, head_id } = tracked else {
+            panic!("a.txt is in HEAD");
+        };
+        assert_eq!(head.as_bytes(), b"one\r\ntwo\r\n");
+        assert_eq!(head_id, repo.repo.head().unwrap().target().unwrap().to_string());
+        assert!(others.iter().chain([&plain]).all(|base| matches!(base, ChangeBase::Untracked)));
     }
 
     #[test]

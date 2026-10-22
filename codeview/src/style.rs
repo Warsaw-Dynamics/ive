@@ -28,6 +28,10 @@ pub struct ViewStyle {
     /// backgrounds of added and removed diff lines, 0xRRGGBBAA
     pub diff_added: u32,
     pub diff_removed: u32,
+    /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
+    pub change_added: u32,
+    pub change_modified: u32,
+    pub change_deleted: u32,
     /// 0xRRGGBBAA: translucent so the thumb reads over any background
     pub scrollbar_thumb: u32,
     pub scrollbar_thumb_hover: u32,
@@ -110,6 +114,9 @@ impl ViewStyle {
             tab_active_border: 0x3366ff,
             diff_added: 0x00ff0020,
             diff_removed: 0xff000020,
+            change_added: 0x00ff00,
+            change_modified: 0x0000ff,
+            change_deleted: 0x888888,
             scrollbar_thumb: 0xffffff40,
             scrollbar_thumb_hover: 0xffffff80,
             panels_radius: 0.,

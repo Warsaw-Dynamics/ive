@@ -85,6 +85,10 @@ pub struct Palette {
     pub mark_added: Rgb,
     pub mark_removed: Rgb,
     pub mark_modified: Rgb,
+    /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
+    pub change_added: Rgb,
+    pub change_modified: Rgb,
+    pub change_deleted: Rgb,
     pub close_hover: Rgb,
     pub scrollbar_thumb: Rgba,
     pub scrollbar_thumb_hover: Rgba,

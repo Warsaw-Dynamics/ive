@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use gpui::{
     AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, ParentElement, Render,
-    Styled, Subscription, Window, div,
+    Styled, Subscription, Task, Window, div,
 };
 
 pub use protocol::{
@@ -24,6 +24,7 @@ pub use protocol::{
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
 
+use crate::changes::{BaseChange, ChangeBase, ChangeHunks};
 use crate::code_view::CodeView;
 use crate::diff::texts::Parsed;
 use crate::diff::{DiffEvent, DiffView, FileDiff, Shape};
@@ -33,6 +34,9 @@ use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
 use saving::{Answer, BarActions, Blur, Discarded, Next, Saving, Then};
+
+/// The pause after the last edit before the change markers are diffed again.
+pub const CHANGE_DIFF_DELAY: Duration = Duration::from_millis(300);
 
 /// A text, a diff, or nothing yet; viewed or edited as the last [`Cast::Open`] said.
 pub struct Panel {
@@ -48,6 +52,8 @@ pub struct Panel {
     /// Edit mode's saves
     saving: Saving,
     blur: Blur,
+    /// the pause after the last edit before the change markers are diffed again
+    change_pause: Task<()>,
     /// the body's own events, passed on as the panel's
     _body_events: Vec<Subscription>,
 }
@@ -86,6 +92,7 @@ impl Panel {
             revision: 0,
             saving: Saving::new(Duration::ZERO, 0),
             blur: Blur::Unwatched,
+            change_pause: Task::ready(()),
             _body_events: Vec::new(),
         }
     }
@@ -116,6 +123,8 @@ impl Panel {
             }
             Cast::SetEditBase { generation, base } => self.set_edit_base(generation, base, cx),
             Cast::SetBaseDiff { base, diff } => self.set_base_diff(&base, diff, cx),
+            Cast::SetChangeBase { base } => self.set_change_base(base, cx),
+            Cast::ChangeDiff { revision, hunks } => self.change_diffed(revision, hunks, cx),
         }
         self.notice_state(cx);
         cx.notify();
@@ -221,6 +230,8 @@ impl Panel {
                 self.revision = editor.read(cx).revision();
                 self.saving = Saving::new(policy.save_delay, self.revision);
                 self.request_parse(cx);
+                cx.emit(Event::NeedChangeBase);
+                self.request_change_diff(cx);
             }
             (Content::Diff(input), Body::Diff(diff)) => diff.update(cx, |diff, cx| diff.set_files(input.files, cx)),
             (content @ Content::Lines { .. }, Body::View(_) | Body::Edit(_)) => {
@@ -263,6 +274,7 @@ impl Panel {
         self.revision = editor.read(cx).revision();
         self.body = Body::Edit(editor);
         self.request_parse(cx);
+        cx.emit(Event::NeedChangeBase);
     }
 
     fn build_diff(&mut self, input: DiffInput, cx: &mut Context<Self>) {
@@ -342,6 +354,7 @@ impl Panel {
             TextEditorEvent::Edited => {
                 self.edited(cx);
                 self.request_parse(cx);
+                self.restart_change_pause(cx);
             }
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
         }
@@ -357,6 +370,49 @@ impl Panel {
         if let Some(job) = job {
             cx.emit(Event::NeedParse(job));
         }
+    }
+
+    /// The change markers compare the edited text with `base` from now on: diffed now, unless it is the same HEAD.
+    fn set_change_base(&self, base: ChangeBase, cx: &mut Context<Self>) {
+        let Body::Edit(editor) = &self.body else {
+            return;
+        };
+        if editor.update(cx, |editor, cx| editor.set_change_base(base, cx)) == BaseChange::Moved {
+            self.request_change_diff(cx);
+        }
+    }
+
+    /// Asks the host for the diff of the edited text with the markers' base, unless one is in flight or not needed.
+    fn request_change_diff(&self, cx: &mut Context<Self>) {
+        let Body::Edit(editor) = &self.body else {
+            return;
+        };
+        if let Some(job) = editor.update(cx, |editor, _| editor.change_job()) {
+            cx.emit(Event::NeedChangeDiff(job));
+        }
+    }
+
+    /// A diff landed; edits made while it ran are diffed after the pause.
+    fn change_diffed(&mut self, revision: u64, hunks: ChangeHunks, cx: &mut Context<Self>) {
+        let Body::Edit(editor) = &self.body else {
+            return;
+        };
+        let current = editor.update(cx, |editor, cx| {
+            editor.change_diffed(revision, hunks, cx);
+            editor.has_current_changes()
+        });
+        if current {
+            return;
+        }
+        self.restart_change_pause(cx);
+    }
+
+    /// The edit that just happened starts the pause before the change markers are diffed again.
+    fn restart_change_pause(&mut self, cx: &mut Context<Self>) {
+        self.change_pause = cx.spawn(async move |panel, cx| {
+            cx.background_executor().timer(CHANGE_DIFF_DELAY).await;
+            panel.update(cx, |panel, cx| panel.request_change_diff(cx)).ok();
+        });
     }
 
     /// In View mode a parse of an older text is dropped, in Edit mode the editor takes it, a diff takes it for the
@@ -936,6 +992,56 @@ mod tests {
         // then
         assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)));
         assert_eq!(*discards.borrow(), 0);
+    }
+
+    /// What `panel` asks of its change markers' host: how often the base, and the diff jobs, in order.
+    fn change_asks_of(panel: &Entity<Panel>, cx: &mut TestAppContext) -> Rc<RefCell<(usize, Vec<crate::changes::ChangeDiffJob>)>> {
+        let asks: Rc<RefCell<(usize, Vec<crate::changes::ChangeDiffJob>)>> = Rc::default();
+        let seen = asks.clone();
+        cx.update(|cx| {
+            cx.subscribe(panel, move |_, event: &Event, _| match event {
+                Event::NeedChangeBase => seen.borrow_mut().0 += 1,
+                Event::NeedChangeDiff(job) => seen.borrow_mut().1.push(job.clone()),
+                _ => {}
+            })
+            .detach();
+        });
+        asks
+    }
+
+    fn head(text: &str, head_id: &str) -> Cast {
+        let head = Source::from_vec(text.as_bytes().to_vec());
+        Cast::SetChangeBase { base: ChangeBase::Tracked { head, head_id: head_id.to_owned() } }
+    }
+
+    #[gpui::test]
+    fn should_diff_the_changes_once_the_base_comes_and_again_after_typing_stops(cx: &mut TestAppContext) {
+        // given
+        let panel = cx.new(Panel::new);
+        let asks = change_asks_of(&panel, cx);
+        let policy = EditPolicy { save_delay: Duration::from_secs(10), limit: None };
+        let content = Content::Lines { source: Arc::new(TextSource::new("one\n")), language: None, edit: Some(policy) };
+        cast(&panel, Cast::Open(content), cx);
+        cx.run_until_parked();
+        let asked_for_base = asks.borrow().0;
+        cast(&panel, head("one\n", "a"), cx);
+        cast(&panel, head("one\n", "a"), cx);
+        let first = asks.borrow().1.clone();
+        let (revision, hunks) = (first[0].revision(), first[0].clone().run());
+        cast(&panel, Cast::ChangeDiff { revision, hunks }, cx);
+
+        // when
+        cast(&panel, typed("x"), cx);
+        wait(CHANGE_DIFF_DELAY / 2, cx);
+        cast(&panel, typed("y"), cx);
+        wait(CHANGE_DIFF_DELAY / 2, cx);
+        let while_typing = asks.borrow().1.len();
+        wait(CHANGE_DIFF_DELAY, cx);
+
+        // then
+        let revisions: Vec<u64> = asks.borrow().1.iter().map(crate::changes::ChangeDiffJob::revision).collect();
+        assert_eq!((asked_for_base, first.len(), while_typing), (1, 1, 1));
+        assert_eq!(revisions, [0, 2]);
     }
 
     #[gpui::test]

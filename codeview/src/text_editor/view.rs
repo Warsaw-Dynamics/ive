@@ -6,16 +6,17 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{
-    App, Bounds, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
+    AnyElement, App, Bounds, ClickEvent, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
     EntityInputHandler, EventEmitter, FocusHandle, Focusable, FontStyle, FontWeight, KeyDownEvent, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, TextRun, UTF16Selection, Window, canvas, div, fill,
-    point, prelude::*, px, rgb, size,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, TextRun, UTF16Selection, Window, canvas, div,
+    fill, point, prelude::*, px, rgb, size,
 };
 
 use super::colours::Colours;
 use super::keys::command;
 use super::layout::{Area, Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
+use crate::changes::{BaseChange, ChangeBase, ChangeDiffJob, ChangeHunk, ChangeHunks, ChangeMarkers, Marker};
 use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::line_view::{self, LineScroll, Metrics};
 use crate::panel::{Edit, LineSource, ParseJob};
@@ -30,6 +31,9 @@ use crate::syntax::{Highlight, Language, Syntax};
 const FIRST_FRAME_COLUMNS: usize = 400;
 /// Columns kept between the caret and the viewport's edge when scrolling sideways to it.
 const CARET_MARGIN_CHARS: f64 = 2.;
+/// The width of a change marker's bar, and the height of a deleted marker's triangle, in pixels.
+const CHANGE_BAR_WIDTH: f32 = 3.;
+const DELETED_MARKER_HEIGHT: f32 = 8.;
 
 pub enum TextEditorEvent {
     /// the text changed
@@ -47,6 +51,7 @@ pub struct Setup {
 pub struct TextEditor {
     model: EditorModel,
     colours: Colours,
+    markers: ChangeMarkers,
     focus_handle: FocusHandle,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
@@ -69,6 +74,7 @@ impl TextEditor {
             scroll,
             model,
             colours: Colours::new(setup.language),
+            markers: ChangeMarkers::new(),
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
             dragging: false,
@@ -115,14 +121,37 @@ impl TextEditor {
         cx.notify();
     }
 
-    /// Replaces the text after a reload: the history and the colours are dropped, the caret stays where it still
-    /// fits.
+    /// Replaces the text after a reload: the history, the colours and the change markers are dropped (the markers'
+    /// base stays), the caret stays where it still fits.
     pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {
         let caret = self.model.caret();
         self.model = EditorModel::new(table, setup.limit);
         self.model.set_caret(caret, Selecting::Move);
         self.colours = Colours::new(setup.language);
+        self.markers.reset();
         cx.notify();
+    }
+
+    /// What the change markers compare the text with from now on; see [`ChangeMarkers::set_base`].
+    pub fn set_change_base(&mut self, base: ChangeBase, cx: &mut Context<Self>) -> BaseChange {
+        cx.notify();
+        self.markers.set_base(base)
+    }
+
+    /// The diff of the current text with the markers' base; see [`ChangeMarkers::job`].
+    pub fn change_job(&mut self) -> Option<ChangeDiffJob> {
+        self.markers.job(self.model.revision(), self.model.table())
+    }
+
+    /// A diff of the text at `revision` landed; see [`ChangeMarkers::landed`].
+    pub fn change_diffed(&mut self, revision: u64, hunks: ChangeHunks, cx: &mut Context<Self>) {
+        self.markers.landed(revision, hunks);
+        cx.notify();
+    }
+
+    /// Whether the markers shown are the diff of the current text.
+    pub fn has_current_changes(&self) -> bool {
+        self.markers.is_current(self.model.revision())
     }
 
     /// The parse of the current text; see [`Colours::job`].
@@ -144,7 +173,9 @@ impl TextEditor {
     fn edit(&mut self, edit: impl FnOnce(&mut EditorModel) -> Result<(), EditError>, cx: &mut Context<Self>) -> Result<(), EditError> {
         let before = self.model.revision();
         let result = edit(&mut self.model);
-        self.colours.edited(self.model.revision(), self.model.take_replacements());
+        let replacements = self.model.take_replacements();
+        self.markers.edited(&replacements);
+        self.colours.edited(self.model.revision(), replacements);
         match &result {
             Err(error) => cx.emit(TextEditorEvent::Refused(error.to_string())),
             Ok(()) if self.model.revision() != before => cx.emit(TextEditorEvent::Edited),
@@ -290,6 +321,7 @@ impl TextEditor {
         let columns = first_column..first_column + visible_columns(self.scroll.viewport_width(), char_width) + 1;
         let highlights = self.highlights_of(rows.clone());
         Frame {
+            changes: self.markers.shown(rows.clone()).cloned().collect(),
             lines: visible_lines(&self.model, Area { rows, columns }, &highlights),
             caret: self.focus_handle.is_focused(window).then(|| self.model.caret()),
             top: self.scroll.top(),
@@ -352,6 +384,7 @@ impl Render for TextEditor {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_scroll_wheel(move |event, window, _cx| wheel.scroll_by_wheel(event, line_height, window))
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
+            .children(change_targets(&frame, cx))
             .child(text_canvas(frame, cx.entity()))
             .child(vertical_scrollbar(&self.scrollbars, &style))
             .child(horizontal_scrollbar(&self.scrollbars, &style))
@@ -362,6 +395,8 @@ impl Render for TextEditor {
 /// the text's place for the mouse and the input method.
 struct Frame {
     lines: Vec<VisibleLine>,
+    /// the change markers on the lines shown
+    changes: Vec<ChangeHunk>,
     /// `None` while the editor is not focused
     caret: Option<Position>,
     top: f64,
@@ -388,6 +423,11 @@ impl Frame {
             top: self.top,
             left: self.left,
         }
+    }
+
+    /// Where change markers stand: the last column of the gutter, right of the line numbers.
+    fn marker_x(&self, origin_x: Pixels) -> Pixels {
+        origin_x + self.metrics.gutter_width() - self.metrics.char_width / 2. - px(CHANGE_BAR_WIDTH / 2.)
     }
 
     fn line_top(&self, origin_y: Pixels, line: usize) -> Pixels {
@@ -449,11 +489,58 @@ fn paint_frame(frame: &Frame, bounds: Bounds<Pixels>, window: &mut Window, cx: &
         paint_text(frame, Glyphs { text: number, origin, runs }, window, cx);
         window.with_content_mask(mask, |window| paint_line(frame, line, point(text_area.origin.x, top), window, cx));
     }
+    let gutter = Bounds::new(bounds.origin, size(frame.metrics.gutter_width(), bounds.size.height));
+    window.with_content_mask(Some(ContentMask { bounds: gutter }), |window| paint_changes(frame, bounds.origin, window));
     if let Some(caret) = frame.caret {
         let at = point(frame.column_x(text_area.origin.x, caret.column), frame.line_top(text_area.origin.y, caret.line));
         let quad = fill(Bounds::new(at, size(px(frame.style.editor_caret_width), frame.metrics.line_height)), rgb(frame.style.text));
         window.with_content_mask(mask, |window| window.paint_quad(quad));
     }
+}
+
+/// Bars on added and changed lines, a triangle pointing at the text where lines were deleted.
+fn paint_changes(frame: &Frame, origin: Point<Pixels>, window: &mut Window) {
+    let x = frame.marker_x(origin.x);
+    for hunk in &frame.changes {
+        let (top, bottom) = (frame.line_top(origin.y, hunk.current.start), frame.line_top(origin.y, hunk.current.end));
+        let bar = Bounds::from_corners(point(x, top), point(x + px(CHANGE_BAR_WIDTH), bottom));
+        match hunk.marker() {
+            Marker::Added => window.paint_quad(fill(bar, rgb(frame.style.change_added))),
+            Marker::Changed => window.paint_quad(fill(bar, rgb(frame.style.change_modified))),
+            Marker::Deleted => paint_triangle(point(x, top), rgb(frame.style.change_deleted), window),
+        }
+    }
+}
+
+/// A triangle pointing right, its left side centred on `at`.
+fn paint_triangle(at: Point<Pixels>, colour: gpui::Rgba, window: &mut Window) {
+    let half = px(DELETED_MARKER_HEIGHT / 2.);
+    let mut path = PathBuilder::fill();
+    path.move_to(point(at.x, at.y - half));
+    path.line_to(point(at.x + half, at.y));
+    path.line_to(point(at.x, at.y + half));
+    path.close();
+    // fails only for a path lyon cannot tessellate, which three distinct points are not
+    if let Ok(path) = path.build() {
+        window.paint_path(path, colour);
+    }
+}
+
+/// An element over each change marker shown, registered as click target `change-marker:<line>` (its first line,
+/// from 1), where the change popup will open.
+fn change_targets(frame: &Frame, cx: &App) -> Vec<AnyElement> {
+    let (line_height, x) = (frame.metrics.line_height, frame.marker_x(px(0.)) - frame.metrics.char_width / 4.);
+    let width = px(CHANGE_BAR_WIDTH) + frame.metrics.char_width / 2.;
+    let element = |hunk: &ChangeHunk| {
+        let line = hunk.current.start;
+        let (top, lines) = match hunk.marker() {
+            Marker::Deleted => (frame.line_top(px(0.), line) - px(DELETED_MARKER_HEIGHT / 2.), px(DELETED_MARKER_HEIGHT)),
+            Marker::Added | Marker::Changed => (frame.line_top(px(0.), line), line_height * hunk.current.len() as f32),
+        };
+        let click = Host::click_target(format!("change-marker:{}", line + 1), |_: &ClickEvent, _window, _cx| {}, cx);
+        div().id(("change-marker", line)).absolute().left(x).top(top).w(width).h(lines).cursor_pointer().on_click(click).into_any_element()
+    };
+    frame.changes.iter().map(element).collect()
 }
 
 fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: &mut Window, cx: &mut App) {

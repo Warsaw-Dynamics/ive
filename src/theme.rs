@@ -43,6 +43,10 @@ pub struct Theme {
     pub mark_added: u32,
     pub mark_removed: u32,
     pub mark_modified: u32,
+    /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
+    pub change_added: u32,
+    pub change_modified: u32,
+    pub change_deleted: u32,
     /// background of the window close button under the mouse
     pub close_hover: u32,
     /// 0xRRGGBBAA: translucent so the thumb reads over any background
@@ -187,6 +191,9 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         mark_added: palette.mark_added.0,
         mark_removed: palette.mark_removed.0,
         mark_modified: palette.mark_modified.0,
+        change_added: palette.change_added.0,
+        change_modified: palette.change_modified.0,
+        change_deleted: palette.change_deleted.0,
         close_hover: palette.close_hover.0,
         scrollbar_thumb: palette.scrollbar_thumb.0,
         scrollbar_thumb_hover: palette.scrollbar_thumb_hover.0,
@@ -231,6 +238,9 @@ pub fn view_style(theme: &Theme) -> ViewStyle {
         tab_active_border: theme.tab_active_border,
         diff_added: theme.diff_added,
         diff_removed: theme.diff_removed,
+        change_added: theme.change_added,
+        change_modified: theme.change_modified,
+        change_deleted: theme.change_deleted,
         scrollbar_thumb: theme.scrollbar_thumb,
         scrollbar_thumb_hover: theme.scrollbar_thumb_hover,
         panels_radius: theme.panels.radius.0,

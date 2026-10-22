@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use tree_sitter::InputEdit;
 
 use super::state::PanelState;
+use crate::changes::{ChangeBase, ChangeDiffJob, ChangeHunks};
 use crate::diff::{FileDiff, Headers};
 use crate::document::{DisplayLine, Source};
 use crate::host::Command;
@@ -55,6 +56,12 @@ pub enum Cast {
     /// the file went away on disk; its text stays
     MarkDeleted,
     SetPolicy(EditPolicy),
+    /// the answer to [`Event::NeedChangeBase`], or a new base after HEAD moved: what the change markers compare the
+    /// edited text with; the same HEAD again changes nothing
+    SetChangeBase { base: ChangeBase },
+    /// the answer to [`Event::NeedChangeDiff`]: shown moved by the edits made since; dropped when it is not the diff
+    /// in flight, or its text or base was replaced since
+    ChangeDiff { revision: u64, hunks: ChangeHunks },
     /// a diff's: [`Editable::NewSide`] edits the new side once its text comes, asked for with
     /// [`TextPurpose::Editing`]; [`Editable::No`] makes it read-only, dropping the edited text and its history (the
     /// host sends it only while nothing is unsaved)
@@ -148,6 +155,11 @@ pub enum Event {
     /// saved any more) and the host closes, or opens the text again where the tab stays
     DiscardRequested,
     OpenAt { path: PathBuf, line: usize },
+    /// an edited text opened: the host answers [`Cast::SetChangeBase`] when it knows the file's base, and casts it
+    /// again when HEAD moves
+    NeedChangeBase,
+    /// the host runs the job on a background thread and answers [`Cast::ChangeDiff`]
+    NeedChangeDiff(ChangeDiffJob),
 }
 
 /// An ask for the texts of diff file `file`; each ask has a new `generation`, which its answer carries.

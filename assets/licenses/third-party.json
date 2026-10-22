@@ -1376,6 +1376,15 @@
   },
   {
    "name": "foldhash",
+   "version": "0.1.5",
+   "url": "https://github.com/orlp/foldhash",
+   "license": "Zlib",
+   "texts": [
+    182
+   ]
+  },
+  {
+   "name": "foldhash",
    "version": "0.2.0",
    "url": "https://github.com/orlp/foldhash",
    "license": "Zlib",
@@ -1808,6 +1817,15 @@
   },
   {
    "name": "hashbrown",
+   "version": "0.15.5",
+   "url": "https://github.com/rust-lang/hashbrown",
+   "license": "MIT OR Apache-2.0",
+   "texts": [
+    27
+   ]
+  },
+  {
+   "name": "hashbrown",
    "version": "0.16.1",
    "url": "https://github.com/rust-lang/hashbrown",
    "license": "MIT OR Apache-2.0",
@@ -2083,6 +2101,15 @@
    "license": "MIT",
    "texts": [
     132
+   ]
+  },
+  {
+   "name": "imara-diff",
+   "version": "0.2.0",
+   "url": "https://github.com/pascalkuthe/imara-diff",
+   "license": "Apache-2.0",
+   "texts": [
+    27
    ]
   },
   {

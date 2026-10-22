@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use codeview::changes::ChangeDiffJob;
 use codeview::diff::{FileDiff, Headers};
 use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
 use codeview::panel::{Cast, Content, DiffInput, DiffLayout, Editable, Event, Panel, ParseJob, TextsRequest};
@@ -87,13 +88,25 @@ fn command_of(builtin: Builtin) -> Option<Command> {
     })
 }
 
-/// Answers what every panel asks of IVE, whichever tab holds it: parses on the background executor. `name` (a
-/// path) says on stderr which text a failed parse was for. Call it before the panel's first [`Cast::Open`].
+/// Answers what every panel asks of IVE, whichever tab holds it: parses and change diffs on the background
+/// executor. `name` (a path) says on stderr which text a failed parse was for. Call it before the panel's first
+/// [`Cast::Open`].
 pub fn serve(panel: &Entity<Panel>, name: String, cx: &mut App) {
-    cx.subscribe(panel, move |panel, event: &Event, cx| {
-        if let Event::NeedParse(job) = event {
-            parse_in_background(panel.downgrade(), job.clone(), &name, cx);
-        }
+    cx.subscribe(panel, move |panel, event: &Event, cx| match event {
+        Event::NeedParse(job) => parse_in_background(panel.downgrade(), job.clone(), &name, cx),
+        Event::NeedChangeDiff(job) => diff_in_background(panel.downgrade(), job.clone(), cx),
+        _ => {}
+    })
+    .detach();
+}
+
+/// Runs a change markers' line diff off the UI thread and casts what it found to `panel`.
+fn diff_in_background(panel: WeakEntity<Panel>, job: ChangeDiffJob, cx: &mut App) {
+    let revision = job.revision();
+    let diffing = cx.background_executor().spawn(async move { job.run() });
+    cx.spawn(async move |cx| {
+        let hunks = diffing.await;
+        panel.update(cx, |panel, cx| panel.handle(Cast::ChangeDiff { revision, hunks }, cx)).ok();
     })
     .detach();
 }

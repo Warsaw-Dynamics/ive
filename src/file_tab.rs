@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use codeview::changes::ChangeBase;
 use codeview::document::{self, DocumentError, Reread, Stamp};
 use codeview::panel::{Cast, Content, EditPolicy, Edit, Editable, Event, Panel, Resolve, SaveFailure, SaveKind, SaveRequest};
 use gpui::{
@@ -18,6 +19,7 @@ use gpui::{
 };
 
 use crate::codeview_host;
+use crate::git;
 use crate::disk_text::{Disk, failure_note};
 use crate::document::Document;
 use crate::file_write::{self, Expected, Target, WriteError};
@@ -60,6 +62,11 @@ impl FileTab {
 
     pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
         self.file.update(cx, |file, cx| file.take_reread(reread, cx));
+    }
+
+    /// Something changed in a git dir: HEAD may have moved, so the change markers' base is read again.
+    pub fn git_changed(&self, cx: &mut App) {
+        self.file.update(cx, |file, cx| file.send_change_base(cx));
     }
 
     pub fn cast(&self, cast: Cast, cx: &mut App) {
@@ -167,6 +174,8 @@ pub(crate) struct EditedFile {
     writing: Writing,
     /// counts the changes of `base` and `disk`: a re-read started before the last change is stale
     version: u64,
+    /// counts the reads of the change markers' base: an answer to an earlier read is stale
+    change_reads: u64,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -244,7 +253,7 @@ impl EditedFile {
         let me = cx.weak_entity();
         cx.default_global::<OpenFiles>().0.entry(key.clone()).or_default().push(me);
         let disk = stamp.map_or(Disk::Unstamped, Disk::Read);
-        let file = Self { id, path, panel, shows, key, holding: Holding::Nothing, locked_by, base, disk, writing: Writing::Idle, version: 0, _subscriptions: subscriptions };
+        let file = Self { id, path, panel, shows, key, holding: Holding::Nothing, locked_by, base, disk, writing: Writing::Idle, version: 0, change_reads: 0, _subscriptions: subscriptions };
         file.show_first(cx);
         file
     }
@@ -346,6 +355,7 @@ impl EditedFile {
         match event {
             Event::SaveRequested(request) => self.save(request.clone(), cx),
             Event::ReloadRequested => self.reload(cx),
+            Event::NeedChangeBase => self.send_change_base(cx),
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
             // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged
@@ -354,6 +364,7 @@ impl EditedFile {
             | Event::LayoutToggled(_)
             | Event::NeedParse(_)
             | Event::NeedTexts(_)
+            | Event::NeedChangeDiff(_)
             | Event::OpenAt { .. } => {}
         }
         self.notice_holding(cx);
@@ -372,6 +383,22 @@ impl EditedFile {
             (SaveKind::Overwrite, _) => Expected::Anything,
         };
         Ok(WriteJob { path: self.path.clone(), base: self.base.clone(), expected, edits: request.edits })
+    }
+
+    /// Reads what the panel's change markers compare the file with (HEAD's text of it) off the UI thread and casts
+    /// it; a file whose base cannot be read gets no markers, with the reason on stderr.
+    pub(crate) fn send_change_base(&mut self, cx: &mut Context<Self>) {
+        self.change_reads += 1;
+        let (path, read) = (self.path.clone(), self.change_reads);
+        let reading = cx.background_executor().spawn(async move { git::diff::change_base(&path) });
+        cx.spawn(async move |file, cx| {
+            let base = reading.await.unwrap_or_else(|error| {
+                eprintln!("ive: no change markers: {error}");
+                ChangeBase::Untracked
+            });
+            file.update(cx, |file, cx| if file.change_reads == read { file.answer(Cast::SetChangeBase { base }, cx) }).ok();
+        })
+        .detach();
     }
 
     /// Writes the edits on the background executor and answers the panel.
