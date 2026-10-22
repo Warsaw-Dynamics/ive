@@ -265,7 +265,10 @@ impl Panel {
             Body::View(view) => view.update(cx, |view, cx| view.restore_scroll(state.scroll, cx)),
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.restore_view(state.caret.unwrap_or_default(), state.scroll, cx)),
             Body::Diff(diff) => diff.update(cx, |diff, cx| {
-                diff.restore_collapsed(&state.collapsed, cx);
+                // no saved list is the same as none known: the diff keeps the collapse its files started with
+                if !state.collapsed.is_empty() {
+                    diff.restore_collapsed(&state.collapsed, cx);
+                }
                 diff.restore_scroll(state.scroll, cx);
             }),
             Body::Empty => {}

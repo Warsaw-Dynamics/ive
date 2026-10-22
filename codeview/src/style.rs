@@ -82,6 +82,53 @@ impl ViewStyle {
         Self { mono_font: font, ..self }
     }
 
+    /// A style for tests that build views: plain colours and sizes, set as the global.
+    #[cfg(test)]
+    pub fn set_for_test(cx: &mut App) {
+        let diff = DiffSizes {
+            row_height: 20.,
+            text_size: 14.,
+            line_padding: 4.,
+            hunk_padding_left: 4.,
+            header_gap: 4.,
+            header_padding_x: 4.,
+            header_weight: FontWeight::BOLD,
+            number_padding_right: 4.,
+        };
+        cx.set_global(ViewStyle {
+            appearance: Appearance::Dark,
+            text: 0xffffff,
+            muted: 0x888888,
+            background: 0x000000,
+            border: 0x333333,
+            hover: 0x222222,
+            selected: 0x444444,
+            accent: 0x3366ff,
+            error: 0xff0000,
+            sidebar: 0x111111,
+            tab_active: 0x222222,
+            tab_active_border: 0x3366ff,
+            diff_added: 0x00ff0020,
+            diff_removed: 0xff000020,
+            scrollbar_thumb: 0xffffff40,
+            scrollbar_thumb_hover: 0xffffff80,
+            panels_radius: 0.,
+            panels_shown: false,
+            editor_text_size: 14.,
+            editor_line_height_factor: 1.4,
+            editor_caret_width: 2.,
+            editor_notice_padding_x: 4.,
+            editor_notice_padding_y: 2.,
+            editor_notice_text_size: 12.,
+            scrollbar_thickness: 8.,
+            scrollbar_min_thumb: 16.,
+            scrollbar_inset: 2.,
+            mono_font: "monospace".into(),
+            icon_size: 14.,
+            diff,
+        });
+    }
+
     pub fn get(cx: &App) -> &ViewStyle {
         cx.global::<ViewStyle>()
     }

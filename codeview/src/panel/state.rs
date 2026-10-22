@@ -28,8 +28,11 @@ mod tests {
     use gpui::{AppContext, Entity, TestAppContext};
 
     use super::*;
+    use crate::diff::rows::COLLAPSE_LINES;
+    use crate::diff::{DiffBody, DiffLine, FileDiff, GitPath, Headers, Hunk, LineKind, Mark};
     use crate::document::TextSource;
-    use crate::panel::{Cast, Content, EditPolicy, Panel};
+    use crate::style::ViewStyle;
+    use crate::panel::{Cast, Content, DiffInput, Editable, EditPolicy, Panel};
 
     /// `count` numbered lines, the last without a line break.
     fn numbered(count: usize) -> Arc<TextSource> {
@@ -96,5 +99,43 @@ mod tests {
 
         // then
         assert_eq!(state, scrolled_to(7.));
+    }
+
+    fn diff_file(name: &str, lines: usize) -> FileDiff {
+        let lines = (0..lines).map(|n| DiffLine { kind: LineKind::Added, old: None, new: Some(n as u32 + 1), text: n.to_string() }).collect();
+        let hunk = Hunk { header: "@@ -0,0 +1 @@".to_owned(), lines };
+        FileDiff { path: GitPath::from_bytes(name.as_bytes()), old_path: None, mark: Mark::Added, body: DiffBody::Text { hunks: vec![hunk], cut: None } }
+    }
+
+    fn commit_without_files() -> Content {
+        Content::Diff(DiffInput { files: Vec::new(), headers: Headers::Shown, editable: Editable::No })
+    }
+
+    #[gpui::test]
+    fn should_keep_the_default_collapse_when_restoring_a_state_without_a_collapsed_list(cx: &mut TestAppContext) {
+        // given
+        cx.update(ViewStyle::set_for_test);
+        let panel = cx.new(Panel::new);
+        let files = vec![diff_file("big.rs", COLLAPSE_LINES + 1), diff_file("small.rs", 3)];
+
+        // when
+        let state = cast(&panel, vec![Cast::Open(commit_without_files()), Cast::Restore(PanelState::default()), Cast::SetFiles(files)], cx);
+
+        // then
+        assert_eq!(state.collapsed, ["big.rs"]);
+    }
+
+    #[gpui::test]
+    fn should_report_a_restored_collapsed_list_while_the_files_are_not_there_yet(cx: &mut TestAppContext) {
+        // given
+        cx.update(ViewStyle::set_for_test);
+        let panel = cx.new(Panel::new);
+        let restored = PanelState { collapsed: vec!["a.rs".to_owned()], ..scrolled_to(5.) };
+
+        // when
+        let state = cast(&panel, vec![Cast::Open(commit_without_files()), Cast::Restore(restored.clone())], cx);
+
+        // then
+        assert_eq!(state, restored);
     }
 }
