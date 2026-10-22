@@ -271,13 +271,15 @@ impl DiffView {
         }
     }
 
-    /// Asks for the texts of the files showing lines on screen that it has not asked for yet. Run after a frame's
-    /// layout: the rows the list laid out to measure them are not all on screen.
+    /// Asks for the texts of the files showing lines on screen that it has not asked for yet, and for the text to
+    /// edit while it waits for one, rows or not (a diff with no changes left still edits its file). Run after a
+    /// frame's layout: the rows the list laid out to measure them are not all on screen.
     fn request_texts(&mut self, cx: &mut Context<Self>) {
         let shown = self.list.visible_rows(self.rows.len());
         let waiting = self.waits_for_text();
         let purpose = |file: usize| if waiting && file == 0 { TextPurpose::Editing } else { TextPurpose::Colours };
-        for request in self.texts.wanted(&self.rows[shown], &purpose) {
+        let to_edit = if waiting { self.texts.want(0, TextPurpose::Editing) } else { None };
+        for request in to_edit.into_iter().chain(self.texts.wanted(&self.rows[shown], &purpose)) {
             cx.emit(DiffEvent::NeedTexts(request));
         }
     }

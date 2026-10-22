@@ -346,3 +346,17 @@ fn should_leave_the_diff_read_only_when_its_new_side_cannot_be_read_to_edit(cx: 
     // asked for again, to colour the read-only diff
     assert_eq!(heard.borrow().texts.last().map(|request| request.purpose), Some(TextPurpose::Colours));
 }
+
+#[gpui::test]
+fn should_ask_for_the_text_to_edit_when_the_diff_has_no_rows(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    cast(&panel, Cast::Open(Content::Diff(editable(vec![file(Vec::new())], DiffLayout::Inline))), cx);
+
+    // when
+    draw(&panel, cx);
+
+    // then
+    let asked: Vec<(usize, TextPurpose)> = heard.borrow().texts.iter().map(|request| (request.file, request.purpose)).collect();
+    assert_eq!(asked, [(0, TextPurpose::Editing)]);
+}

@@ -814,6 +814,36 @@ mod editing_tests {
     }
 
     #[gpui::test]
+    fn should_show_and_edit_an_outside_change_after_the_diff_had_no_changes_left(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        // the caret starts on "TWO": typing "two" over it leaves no change, so no rows
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Delete(codeview::text_editor::Unit::Word)), cx));
+        type_and_save(&panel, "two", cx);
+        draw(&panel, cx);
+        let gone = new_lines(&panel, cx);
+
+        // when
+        repo.write("a.txt", "one\nTWO\nthree\n");
+        let stamp = cx.read(|cx| tab.edited_stamp(cx)).expect("the file is edited");
+        cx.update(|_, cx| tab.take_reread(codeview::document::reread(&repo.path().join("a.txt"), stamp), cx));
+        cx.run_until_parked();
+        draw(&panel, cx);
+        let shown = new_lines(&panel, cx);
+        type_and_save(&panel, "x", cx);
+
+        // then
+        assert_eq!(gone, Vec::<String>::new());
+        assert_eq!(shown, ["one", "TWO", "three"]);
+        assert_eq!(on_disk(&repo), "one\nxTWO\nthree\n");
+    }
+
+    #[gpui::test]
     fn should_leave_the_diff_read_only_with_a_note_when_its_file_cannot_be_read_to_edit(cx: &mut TestAppContext) {
         // given
         styled(cx);

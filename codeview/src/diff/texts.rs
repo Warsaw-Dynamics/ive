@@ -63,15 +63,21 @@ impl DiffTexts {
     pub(crate) fn wanted(&mut self, shown: &[DiffRow], purpose: &dyn Fn(usize) -> TextPurpose) -> Vec<TextsRequest> {
         let mut wanted = Vec::new();
         for row in shown {
-            if let DiffRow::Line { file, .. } | DiffRow::Pair { file, .. } = row
-                && !self.requested.contains_key(file)
-            {
-                self.generation += 1;
-                self.requested.insert(*file, self.generation);
-                wanted.push(TextsRequest { file: *file, generation: self.generation, purpose: purpose(*file) });
+            if let DiffRow::Line { file, .. } | DiffRow::Pair { file, .. } = row {
+                wanted.extend(self.want(*file, purpose(*file)));
             }
         }
         wanted
+    }
+
+    /// The ask for file `file`'s texts, for `purpose`, unless it was asked for already; it counts as asked now.
+    pub(crate) fn want(&mut self, file: usize, purpose: TextPurpose) -> Option<TextsRequest> {
+        if self.requested.contains_key(&file) {
+            return None;
+        }
+        self.generation += 1;
+        self.requested.insert(file, self.generation);
+        Some(TextsRequest { file, generation: self.generation, purpose })
     }
 
     /// Whether `generation` is the last ask for file `file`'s texts.
