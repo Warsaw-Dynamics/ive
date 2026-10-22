@@ -101,13 +101,14 @@ impl PieceTable {
         self.index.starts[at] + (buffer_start - piece.bytes.start)
     }
 
-    /// Replaces `bytes` (clamped) of the current text with `text`. Ranges are expected on character boundaries.
-    pub fn replace(&mut self, bytes: Range<u64>, text: &str) {
+    /// Replaces `bytes` (clamped) of the current text with `text`, stored as given. Ranges are expected on character
+    /// boundaries.
+    pub fn replace(&mut self, bytes: Range<u64>, text: impl AsRef<[u8]>) {
         let end = bytes.end.min(self.byte_len());
         let start = bytes.start.min(end);
         let first = self.split_at(start);
         let after = self.split_at(end);
-        let typed = self.type_text(text);
+        let typed = self.type_text(text.as_ref());
         let typed_count = typed.len();
         self.pieces.splice(first..after, typed);
         self.join_typed(first + typed_count);
@@ -189,11 +190,11 @@ impl PieceTable {
     }
 
     /// Appends `text` to the typed buffer; the piece showing it, if any.
-    fn type_text(&mut self, text: &str) -> Vec<Piece> {
+    fn type_text(&mut self, text: &[u8]) -> Vec<Piece> {
         if text.is_empty() {
             return Vec::new();
         }
-        let typed = self.added.push(text.as_bytes());
+        let typed = self.added.push(text);
         vec![self.piece(Buffer::Added, typed)]
     }
 
@@ -354,7 +355,7 @@ mod tests {
 
         // when
         for (offset, character) in (3..).zip(typed.chars()) {
-            table.replace(offset..offset, &character.to_string());
+            table.replace(offset..offset, character.to_string());
         }
 
         // then

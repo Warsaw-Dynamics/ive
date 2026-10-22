@@ -18,7 +18,7 @@ pub fn visible_lines(model: &EditorModel, rows: Range<usize>, columns: Range<usi
     let selection = model.selection();
     let rows = rows.start.min(model.line_count())..rows.end.min(model.line_count());
     rows.map(|line| {
-        let text = &model.lines()[line];
+        let text = model.line(line);
         let visible = text.chars().skip(columns.start).take(columns.len());
         VisibleLine {
             line,
@@ -69,10 +69,11 @@ impl Geometry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_editor::model::{Selecting, SizeLimit};
+    use crate::piece_table::PieceTable;
+    use crate::text_editor::model::Selecting;
 
     fn model(text: &str) -> EditorModel {
-        EditorModel::new(text, SizeLimit { max_bytes: 1024 * 1024, newline_bytes: 1 })
+        EditorModel::new(PieceTable::from_text(text), None)
     }
 
     #[test]

@@ -15,6 +15,8 @@ use super::keys::command;
 use super::layout::{Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
 use crate::line_view::{self, LineScroll, Metrics};
+use crate::panel::Edit;
+use crate::piece_table::PieceTable;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
@@ -47,8 +49,9 @@ pub struct TextEditor {
 impl EventEmitter<TextEditorEvent> for TextEditor {}
 
 impl TextEditor {
-    pub fn new(text: &str, limit: SizeLimit, cx: &mut Context<Self>) -> Self {
-        let model = EditorModel::new(text, limit);
+    /// Edits `table`; a scratch comes with its size limit, a file with none.
+    pub fn new(table: PieceTable, limit: Option<SizeLimit>, cx: &mut Context<Self>) -> Self {
+        let model = EditorModel::new(table, limit);
         let scroll = Rc::new(LineScroll::new(model.line_count()));
         Self {
             scrollbars: ScrollState::new(scroll.clone()),
@@ -61,8 +64,15 @@ impl TextEditor {
         }
     }
 
-    pub fn text(&self) -> String {
-        self.model.text()
+    /// The whole text of a scratch, for its host's own saving until the panel saves edits (Task 10); bounded by the
+    /// scratch's size limit. `None` for a file, whose text is never held whole.
+    pub fn text(&self) -> Option<String> {
+        self.model.scratch_text()
+    }
+
+    /// The changes since the text the editor was opened with.
+    pub fn edits_since_base(&self) -> Vec<Edit> {
+        self.model.edits_since_base()
     }
 
     pub fn revision(&self) -> u64 {
@@ -88,9 +98,9 @@ impl TextEditor {
     }
 
     /// Replaces the text after a reload: the history is dropped, the caret stays where it still fits.
-    pub fn reset(&mut self, text: &str, limit: SizeLimit, cx: &mut Context<Self>) {
+    pub fn reset(&mut self, table: PieceTable, limit: Option<SizeLimit>, cx: &mut Context<Self>) {
         let caret = self.model.caret();
-        self.model = EditorModel::new(text, limit);
+        self.model = EditorModel::new(table, limit);
         self.model.set_caret(caret, Selecting::Move);
         cx.notify();
     }
@@ -237,7 +247,7 @@ impl TextEditor {
         }
         let first = self.scroll.top().floor() as usize;
         let rows = first..(first + self.scroll.viewport_lines().ceil() as usize + 1).min(self.model.line_count());
-        let widest = self.model.lines()[rows.start.min(rows.end)..rows.end].iter().map(|line| line.chars().count()).max().unwrap_or(0);
+        let widest = (rows.start.min(rows.end)..rows.end).map(|line| self.model.line(line).chars().count()).max().unwrap_or(0);
         self.scroll.set_content_width(metrics.text_width(widest));
         if std::mem::take(&mut self.reveal_caret) {
             self.scroll.reveal_x(char_width * self.model.caret().column as f64, char_width * CARET_MARGIN_CHARS);

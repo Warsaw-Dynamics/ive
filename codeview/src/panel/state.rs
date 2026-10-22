@@ -89,6 +89,32 @@ mod tests {
         assert_eq!(state.caret, Some(CaretPosition { line: 9, column: 0 }));
     }
 
+    /// `text` viewed, or with `edit`, edited.
+    fn lines_of(text: &str, edit: Option<EditPolicy>) -> Content {
+        Content::Lines { source: Arc::new(TextSource::new(text)), language: None, edit }
+    }
+
+    #[gpui::test]
+    fn should_clamp_a_caret_on_the_editors_empty_last_line_to_each_mode(cx: &mut TestAppContext) {
+        // given
+        let panel = cx.new(Panel::new);
+        let policy = EditPolicy { save_delay: Duration::from_millis(500), limit: None };
+        // the editor shows "a\nb\n" as three lines, the last one empty; the viewer as two
+        let on_last_line = PanelState { caret: Some(CaretPosition { line: 2, column: 0 }), ..scrolled_to(2.) };
+
+        // when
+        let viewed = cast(&panel, vec![Cast::Open(lines_of("a\nb\n", None)), Cast::Restore(on_last_line.clone())], cx);
+        let to_editor = cast(&panel, vec![Cast::Open(lines_of("a\nb\n", Some(policy)))], cx);
+        let restored = cast(&panel, vec![Cast::Restore(on_last_line.clone())], cx);
+        let to_viewer = cast(&panel, vec![Cast::Open(lines_of("a\nb\n", None))], cx);
+
+        // then
+        assert_eq!(viewed, scrolled_to(1.));
+        assert_eq!(to_editor, PanelState { caret: Some(CaretPosition::default()), ..scrolled_to(1.) });
+        assert_eq!(restored, on_last_line);
+        assert_eq!(to_viewer, scrolled_to(1.));
+    }
+
     #[gpui::test]
     fn should_hold_a_restore_while_there_is_nothing_to_apply_it_to(cx: &mut TestAppContext) {
         // given

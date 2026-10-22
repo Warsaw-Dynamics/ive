@@ -1,6 +1,7 @@
 //! Undo history in groups: a run of typed characters is one group; any other edit starts a new one.
 
 use std::collections::VecDeque;
+use std::ops::Range;
 
 use super::model::{EditKind, Position};
 
@@ -12,12 +13,24 @@ pub struct Cursor {
     pub anchor: Option<Position>,
 }
 
-/// `removed` was at `start`, and `inserted` took its place.
+/// A replacement in the piece table: bytes `removed` were at byte `at`, and `inserted` took their place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Change {
-    pub start: Position,
-    pub removed: String,
-    pub inserted: String,
+    pub at: u64,
+    pub removed: Vec<u8>,
+    pub inserted: Vec<u8>,
+}
+
+impl Change {
+    /// Where the removed bytes were, before the change.
+    pub fn removed_bytes(&self) -> Range<u64> {
+        self.at..self.at + self.removed.len() as u64
+    }
+
+    /// Where the inserted bytes are, after the change.
+    pub fn inserted_bytes(&self) -> Range<u64> {
+        self.at..self.at + self.inserted.len() as u64
+    }
 }
 
 /// A change with the cursors around it.

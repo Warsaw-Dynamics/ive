@@ -20,7 +20,8 @@ use crate::code_view::CodeView;
 use crate::diff::{DiffView, FileDiff};
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
-use crate::text_editor::{SizeLimit, TextEditor, TextEditorEvent};
+use crate::piece_table::PieceTable;
+use crate::text_editor::{TextEditor, TextEditorEvent};
 
 /// A text, a diff, or nothing yet; viewed or edited as the last [`Cast::Open`] said.
 pub struct Panel {
@@ -108,10 +109,11 @@ impl Panel {
         false
     }
 
-    /// The edited text; `None` outside Edit mode. A bridge for the scratch tab's own saving until Task 10.
+    /// The whole edited text of a scratch (an [`EditPolicy`] with a size limit, which bounds it); `None` for a file
+    /// and outside Edit mode. A bridge for the scratch tab's own saving until Task 10; never for files.
     pub fn text(&self, cx: &App) -> Option<String> {
         match &self.body {
-            Body::Edit(editor) => Some(editor.read(cx).text()),
+            Body::Edit(editor) => editor.read(cx).text(),
             Body::Empty | Body::View(_) | Body::Diff(_) => None,
         }
     }
@@ -125,7 +127,9 @@ impl Panel {
         editor.update(cx, |editor, cx| editor.type_text(text, cx)).map_err(|error| error.to_string())
     }
 
-    /// New content replaces the body, except new text for the same mode, which keeps scroll and caret.
+    /// New content replaces the body, except new text for the same mode, which keeps scroll and caret, and text
+    /// switching between View and Edit mode, which keeps the scroll (and a caret staying in Edit mode), clamped to
+    /// the new mode's line count.
     fn open(&mut self, content: Content, cx: &mut Context<Self>) {
         match (content, self.body.clone()) {
             (Content::Lines { source, language, edit: None }, Body::View(view)) => {
@@ -134,11 +138,15 @@ impl Panel {
                 self.request_parse(cx);
             }
             (Content::Lines { source, edit: Some(policy), .. }, Body::Edit(editor)) => {
-                let text = whole_text(source.as_ref());
-                editor.update(cx, |editor, cx| editor.reset(&text, size_limit(policy), cx));
+                editor.update(cx, |editor, cx| editor.reset(PieceTable::new(source), policy.limit, cx));
                 self.revision = editor.read(cx).revision();
             }
             (Content::Diff(input), Body::Diff(diff)) => diff.update(cx, |diff, cx| diff.set_files(input.files, cx)),
+            (content @ Content::Lines { .. }, Body::View(_) | Body::Edit(_)) => {
+                let carried = self.observed_state(cx);
+                self.build(content, cx);
+                self.apply(&carried, cx);
+            }
             (content, _) => self.build(content, cx),
         }
         self.apply_pending(cx);
@@ -148,7 +156,7 @@ impl Panel {
         self._body_events.clear();
         match content {
             Content::Lines { source, language, edit: None } => self.build_view(source, language, cx),
-            Content::Lines { source, edit: Some(policy), .. } => self.build_edit(source.as_ref(), policy, cx),
+            Content::Lines { source, edit: Some(policy), .. } => self.build_edit(source, policy, cx),
             Content::Diff(input) => self.build_diff(input, cx),
         }
     }
@@ -163,10 +171,9 @@ impl Panel {
         self.request_parse(cx);
     }
 
-    /// Edit mode holds the whole text for now: scratch sizes only, until the piece table (Task 7).
-    fn build_edit(&mut self, source: &dyn LineSource, policy: EditPolicy, cx: &mut Context<Self>) {
-        let text = whole_text(source);
-        let editor = cx.new(|cx| TextEditor::new(&text, size_limit(policy), cx));
+    /// Edit mode reads `source` through a piece table: only the lines it shows or edits.
+    fn build_edit(&mut self, source: Arc<dyn LineSource>, policy: EditPolicy, cx: &mut Context<Self>) {
+        let editor = cx.new(|cx| TextEditor::new(PieceTable::new(source), policy.limit, cx));
         self._body_events.push(cx.subscribe(&editor, Self::on_editor_event));
         self.revision = editor.read(cx).revision();
         self.body = Body::Edit(editor);
@@ -302,16 +309,6 @@ impl Panel {
             }
         }
     }
-}
-
-/// The whole of `source` as text; invalid UTF-8 is replaced.
-fn whole_text(source: &dyn LineSource) -> String {
-    String::from_utf8_lossy(&source.bytes(0..source.byte_len())).into_owned()
-}
-
-/// A policy without a limit still needs one for the editor: none that a text in memory could reach.
-fn size_limit(policy: EditPolicy) -> SizeLimit {
-    policy.limit.unwrap_or(SizeLimit { max_bytes: usize::MAX, newline_bytes: 1 })
 }
 
 impl Focusable for Panel {
