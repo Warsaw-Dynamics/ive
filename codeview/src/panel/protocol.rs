@@ -122,6 +122,10 @@ pub trait LineSource: Send + Sync {
     /// Bytes `range` (clamped) as they are stored.
     fn bytes(&self, range: Range<u64>) -> Cow<'_, [u8]>;
     fn byte_len(&self) -> u64;
+    /// Byte offset where line `line` starts; past the last line, `byte_len`.
+    fn line_start(&self, line: usize) -> u64;
+    /// The line byte offset `byte` (clamped) is on: the number of newlines before it.
+    fn line_of(&self, byte: u64) -> usize;
 }
 
 /// A parse to run off the UI thread; see [`Event::NeedParse`].

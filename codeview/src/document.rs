@@ -219,9 +219,18 @@ impl Document {
 
 impl TextSource {
     pub fn new(text: &str) -> Self {
-        let bytes = Bytes::Owned(text.as_bytes().into());
-        let index = LineIndex::build(bytes.as_slice(), &|_| {});
-        Self(Text { bytes: Arc::new(bytes), index })
+        Self::from_bytes(text.as_bytes())
+    }
+
+    /// Bytes as they are stored, valid UTF-8 or not.
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self::from_source(Source(Arc::new(Bytes::Owned(bytes.into()))))
+    }
+
+    /// Shares `source`'s bytes without copying them.
+    pub fn from_source(source: Source) -> Self {
+        let index = LineIndex::build(source.as_bytes(), &|_| {});
+        Self(Text { bytes: source.0, index })
     }
 }
 
@@ -253,6 +262,22 @@ impl Text {
             start = memchr::memchr(b'\n', &bytes[start..]).map_or(bytes.len(), |at| start + at + 1);
         }
         start
+    }
+
+    /// Like [`Self::line_start`], but `line_count` and beyond map to the end of the text.
+    fn clamped_line_start(&self, line: usize) -> u64 {
+        if line >= self.index.line_count {
+            return self.bytes().len() as u64;
+        }
+        self.line_start(line) as u64
+    }
+
+    fn line_of(&self, byte: u64) -> usize {
+        let bytes = self.bytes();
+        let byte = usize::try_from(byte).unwrap_or(usize::MAX).min(bytes.len());
+        let checkpoint = self.index.checkpoints.partition_point(|&start| start <= byte) - 1;
+        let start = self.index.checkpoints[checkpoint];
+        checkpoint * LINES_PER_CHECKPOINT + memchr::memchr_iter(b'\n', &bytes[start..byte]).count()
     }
 
     /// The whole text, when it is small enough to highlight.
@@ -289,6 +314,14 @@ impl LineSource for Document {
     fn byte_len(&self) -> u64 {
         self.text.bytes().len() as u64
     }
+
+    fn line_start(&self, line: usize) -> u64 {
+        self.text.clamped_line_start(line)
+    }
+
+    fn line_of(&self, byte: u64) -> usize {
+        self.text.line_of(byte)
+    }
 }
 
 impl LineSource for TextSource {
@@ -310,6 +343,14 @@ impl LineSource for TextSource {
 
     fn byte_len(&self) -> u64 {
         self.0.bytes().len() as u64
+    }
+
+    fn line_start(&self, line: usize) -> u64 {
+        self.0.clamped_line_start(line)
+    }
+
+    fn line_of(&self, byte: u64) -> usize {
+        self.0.line_of(byte)
     }
 }
 
@@ -581,6 +622,25 @@ mod tests {
 
         // then
         assert_eq!(ranges, [0..2, 3..5]);
+    }
+
+    #[test]
+    fn should_map_between_lines_and_bytes_past_checkpoints() {
+        // given
+        let line_count = LINES_PER_CHECKPOINT * 3 + 5;
+        let source = TextSource::new(&"abc\n".repeat(line_count));
+        let line = LINES_PER_CHECKPOINT * 2 + 7;
+
+        // when
+        let start = source.line_start(line);
+
+        // then
+        assert_eq!(start, line as u64 * 4);
+        assert_eq!(source.line_of(start + 2), line);
+        assert_eq!(source.line_of(start), line);
+        assert_eq!(source.line_of(start - 1), line - 1);
+        assert_eq!(source.line_start(line_count), source.byte_len());
+        assert_eq!(source.line_of(u64::MAX), line_count);
     }
 
     #[test]

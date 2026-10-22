@@ -9,6 +9,7 @@ pub mod icons;
 pub mod line_view;
 pub mod panel;
 pub mod parallel;
+pub mod piece_table;
 pub mod position;
 pub mod scrollbar;
 pub mod style;
