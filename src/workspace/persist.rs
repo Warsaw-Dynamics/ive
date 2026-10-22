@@ -4,9 +4,11 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use codeview::panel::Event;
 use gpui::{App, Context};
 
 use super::Workspace;
+use crate::tabs::TabId;
 use crate::state::{SavedState, StateError, VERSION, Writer};
 
 const SAVE_DELAY: Duration = Duration::from_millis(500);
@@ -121,6 +123,20 @@ impl Workspace {
         if self.state.path.is_some() && self.state.saves.changed() {
             self.spawn_save(cx);
         }
+    }
+
+    /// Saves soon whenever the panel of tab `id` (a file, diff or commit tab) scrolls or changes layout, so a crash
+    /// does not lose it; the subscription ends with the panel.
+    pub(super) fn save_on_state_change(&self, id: TabId, cx: &mut Context<Self>) {
+        let Some(panel) = self.tabs.get(id).and_then(|tab| tab.saved_panel(cx)) else {
+            return;
+        };
+        cx.subscribe(&panel, |workspace, _panel, event: &Event, cx| {
+            if let Event::StateChanged = event {
+                workspace.schedule_save(cx);
+            }
+        })
+        .detach();
     }
 
     fn spawn_save(&mut self, cx: &mut Context<Self>) {

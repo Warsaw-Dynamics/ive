@@ -339,7 +339,7 @@ impl EditedFile {
             Event::ReloadRequested => self.reload(cx),
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
-            // parsing is `codeview_host::serve`'s; scroll and caret are saved with the tabs on redraw
+            // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged
             Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)

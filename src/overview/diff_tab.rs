@@ -171,6 +171,10 @@ impl DiffTab {
         self.body.read(cx).panel.read(cx).state()
     }
 
+    pub fn panel(&self, cx: &App) -> Entity<Panel> {
+        self.body.read(cx).panel.clone()
+    }
+
     /// The panel when the tab edits the new side: a diff of uncommitted changes.
     pub fn editing_panel(&self, cx: &App) -> Option<Entity<Panel>> {
         let body = self.body.read(cx);

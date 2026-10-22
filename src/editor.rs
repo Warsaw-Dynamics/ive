@@ -4,9 +4,10 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use codeview::document::{Reread, Stamp};
+use codeview::panel::Panel;
 
 use gpui::{
-    AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
+    AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, Entity, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
     Stateful, Window, WindowControlArea, div, img, prelude::*, px, rgb, size, transparent_black,
 };
 
@@ -210,6 +211,17 @@ impl Tab {
 
     /// What `state.toml` keeps to open this tab again; `None` for a tab that is not saved: a failed one, or a
     /// terminal that ends with IVE.
+    /// The panel whose scroll and layout the saved tab keeps, for a file, diff or commit tab (a scratch saves its
+    /// own).
+    pub fn saved_panel(&self, cx: &App) -> Option<Entity<Panel>> {
+        match self {
+            Self::Document(file) => Some(file.panel.clone()),
+            Self::Diff(tab) => Some(tab.panel(cx)),
+            Self::Commit(tab) => Some(tab.panel(cx)),
+            _ => None,
+        }
+    }
+
     pub fn saved(&self, workspace: &Workspace, cx: &App) -> Option<SavedTab> {
         let tab = match self {
             Self::Document(file) => SavedTab::File { path: file.path().to_path_buf(), panel: file.panel.read(cx).state() },

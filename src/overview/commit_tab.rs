@@ -35,6 +35,10 @@ impl CommitTab {
         self.body.read(cx).files.read(cx).state()
     }
 
+    pub fn panel(&self, cx: &App) -> Entity<Panel> {
+        self.body.read(cx).files.clone()
+    }
+
     /// Scrolls the files and collapses them as a saved tab had them, once they are read.
     pub fn restore(&self, state: PanelState, cx: &mut App) {
         let files = self.body.read(cx).files.clone();

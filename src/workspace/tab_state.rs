@@ -77,6 +77,7 @@ impl Workspace {
             return self.tab_shown(window, cx);
         };
         self.tabs.replace(id, tab);
+        self.save_on_state_change(id, cx);
         if let SavedTab::Settings { page } = &saved {
             self.show_settings_page(settings_page_named(page), cx);
         }
