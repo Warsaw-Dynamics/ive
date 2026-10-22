@@ -281,6 +281,8 @@ pub struct FolderBadge {
     /// `None` until the git data is read
     pub count: Option<usize>,
     pub shown: bool,
+    /// shown here and not in every worktree, or the other way round
+    pub apart: bool,
     /// `<checkout target>/<kind>`
     pub target: String,
 }
@@ -360,6 +362,8 @@ pub struct GitFolders<'a> {
     /// the checkout's click target name
     pub target: &'a str,
     pub folders: &'a CheckoutFolders,
+    /// the folders every worktree shows
+    pub every: &'a BTreeSet<FolderKind>,
     /// `None` until read
     pub git: Option<&'a CheckoutGit>,
     pub layout: FileLayout,
@@ -374,6 +378,7 @@ impl GitFolders<'_> {
             kind,
             count,
             shown: self.folders.is_shown(kind),
+            apart: self.folders.is_apart(kind, self.every),
             target: format!("{}/{}", self.target, kind.name()),
         };
         let git = [FolderKind::Uncommitted, FolderKind::SinceBase, FolderKind::Commits].map(|kind| badge(kind, self.git.and_then(|git| count_of(git, kind))));

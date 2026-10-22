@@ -133,6 +133,8 @@ pub struct Workspace {
     _api_calls: Task<()>,
     scripts: scripts::ScriptWatch,
     quit_prompt: Option<quit::QuitPrompt>,
+    /// the folders every worktree shows (the tree header's folders menu)
+    shown_folders: std::collections::BTreeSet<FolderKind>,
     on_quit: OnQuit,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
@@ -280,6 +282,7 @@ impl Workspace {
             _api_calls: api_requests::answer_calls(startup.api_calls, window, cx),
             scripts,
             quit_prompt: None,
+            shown_folders: startup.saved.shown_folders.as_ref().map_or_else(crate::sidebar::folders::default_shown, |kinds| kinds.iter().copied().collect()),
             on_quit: startup.on_quit,
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),

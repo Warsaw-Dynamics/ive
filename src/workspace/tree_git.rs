@@ -234,6 +234,46 @@ impl Workspace {
         self.schedule_save(cx);
     }
 
+    /// Alt+click on a badge, or its `act::ToggleFolderEverywhere` key: shows `kind` in every worktree, or hides it.
+    pub(crate) fn toggle_folder_everywhere(&mut self, kind: FolderKind, cx: &mut Context<Self>) {
+        let on = !self.shown_folders.contains(&kind);
+        self.show_folder_everywhere(kind, on, cx);
+    }
+
+    /// Shows `kind` in every worktree of every open project, or hides it, and in worktrees opened later; a git
+    /// folder switched on reads the git data of the checkouts the tree shows.
+    pub(crate) fn show_folder_everywhere(&mut self, kind: FolderKind, on: bool, cx: &mut Context<Self>) {
+        match on {
+            true => self.shown_folders.insert(kind),
+            false => self.shown_folders.remove(&kind),
+        };
+        for open in &mut self.projects {
+            open.show_folder_everywhere(kind, on);
+        }
+        if on && GIT_FOLDERS.contains(&kind) {
+            let shown: Vec<CheckoutRef> = self.projects.iter().flat_map(|open| open.shown_checkouts().into_iter().map(|checkout| open.project.checkout_ref(checkout))).collect();
+            for checkout in &shown {
+                self.want_tree_git(checkout, cx);
+            }
+        }
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// Every worktree shows every worktree's folders again.
+    pub(crate) fn reset_folders(&mut self, cx: &mut Context<Self>) {
+        for open in &mut self.projects {
+            open.reset_folders();
+        }
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// The worktrees whose folders differ from every worktree's, as `<project> · <worktree>`.
+    pub(crate) fn folders_set_apart(&self) -> Vec<String> {
+        self.projects.iter().flat_map(|open| open.set_apart().into_iter().map(|checkout| format!("{} · {}", open.project.name, checkout.label))).collect()
+    }
+
     /// A folder's chevron.
     pub(crate) fn toggle_folder_folded(&mut self, checkout: &CheckoutRef, kind: FolderKind, cx: &mut Context<Self>) {
         let Some(open) = self.open_project_mut(&checkout.project) else {

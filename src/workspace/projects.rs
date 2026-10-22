@@ -72,7 +72,9 @@ impl Workspace {
         for project in &saved.projects {
             // ids were validated when the file was read
             if let Ok(id) = ProjectId::parse(&project.id) {
-                self.projects.push(OpenProject::restored(project, id));
+                let mut open = OpenProject::restored(project, id);
+                open.set_every_folder(&self.shown_folders);
+                self.projects.push(open);
             }
         }
         self.refresh_all(cx);
@@ -168,7 +170,14 @@ impl Workspace {
                 self.apply_scan(&id, Scanned { number: new.number, result: Ok(new.scan) }, cx);
                 Ok(id)
             }
-            None => project_list::add(&mut self.projects, &mut self.recent, new),
+            None => {
+                let id = project_list::add(&mut self.projects, &mut self.recent, new)?;
+                let every = self.shown_folders.clone();
+                if let Some(open) = self.open_project_mut(&id) {
+                    open.set_every_folder(&every);
+                }
+                Ok(id)
+            }
         }
     }
 
