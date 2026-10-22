@@ -2,9 +2,10 @@
 
 Status: source analysis, not an implemented engine. Covers items 1–6 of
 [the handoff](../specs/2026-10-22-diagram-ports-handoff.md). The subsequent owner direction is a new Rust project,
-Mermaid first, then PlantUML, with pgui as its only external dependency. That supersedes the handoff's suggested
-extra crates and gpui-free workspace structure. Keep the engine's core independent of pgui types internally;
-put pgui font/drawing integration at its boundary. This document changes no product code.
+Mermaid first, then PlantUML, attempting full ports in stages, with a standalone viewer first. Other permissively
+licensed dependencies are allowed after provenance and licence review. Keep the headless engine crates
+GPUI-independent; put pgui font/drawing integration at the viewer boundary. Initial syntax slices are milestones,
+not a reduction of the full-port objective. This document changes no product code.
 
 All PlantUML inspection was confined to `/mnt/data/Projects/plantuml-mit/src`. No GPL PlantUML repository or
 other edition was consulted. Paths below, unless qualified, are relative to that tree; `p/` abbreviates
@@ -123,12 +124,13 @@ They are part of the measured 659,230 lines but not all are needed in an SVG-onl
 44 files under `themes/`, 200 under `stdlib/` (100 `.spm` files among them); sprites, emoji and OpenIconic assets
 also live elsewhere. A source-Java total says nothing about the size or rights of those data files.
 
-## 3. Platform capabilities and the pgui-only boundary
+## 3. Platform capabilities and the headless engine boundary
 
-Under the owner's updated dependency constraint, add **no external Rust crates other than pgui**. `std` plus
-code translated from approved permissive sources must supply the engine. Reusing a pgui dependency transitively
-does not make an otherwise undeclared crate usable as a direct dependency; do not quietly add regex, XML, layout,
-font-shaping, image or SVG crates. This constraint raises the implementation cost of broad parity.
+Under the owner's accepted scope, other permissive Rust dependencies may supply regex, XML, layout, font
+shaping, images or SVG capabilities after licence and provenance review. Prefer suitable existing libraries over
+rewriting these capabilities. Keep headless crates independent of pgui and expose text measurement through an
+interface; the standalone viewer supplies its platform adapter. External runtime tools and network access
+remain excluded.
 
 | Original capability and concrete source | Rust responsibility |
 |---|---|
@@ -142,7 +144,7 @@ font-shaping, image or SVG crates. This constraint raises the implementation cos
 | DOM/XML SVG generation — `p/svg/`, `p/klimt/drawing/svg/` | Write an escaped, structured SVG subset using `std::fmt::Write`; text and attribute escaping are distinct. No raw user XML or HTML insertion. Validate numbers are finite and enforce output-size limits. |
 | Java path, environment, clock, URL and include access — `p/tim/TContext.java:533,571,657,731`; `p/nio/`; `p/security/` | Immutable caller-owned resource map and explicit deterministic environment values. Disallow network and filesystem authority in the engine; builtins that reach them return descriptive unsupported errors. |
 | Rich text/Creole, tables, sprites, icons, emoji — `p/klimt/creole/`; `p/klimt/sprite/`; `p/openiconic/`; `p/emoji/` | Parse into typed inline/block elements; run text metrics per styled run and compose line baselines, table cells and image boxes locally. Sprite decoders and icon asset import are separate bounded, notice-reviewed work. |
-| Equation rendering — `p/math/LatexBuilder.java:143–162`, `p/math/ScientificEquationSafe.java` | Dedicated math implementation or explicit unsupported diagnostic. Do not inherit Java reflection, Swing icons or JS-based conversion. Owner's dependency constraint rules out silently adding a math crate. |
+| Equation rendering — `p/math/LatexBuilder.java:143–162`, `p/math/ScientificEquationSafe.java` | Use a provenance-reviewed permissive math crate or a dedicated native implementation; report deferred syntax explicitly. Do not inherit Java reflection, Swing icons or JS-based conversion. |
 | Dates/calendar/locales/compression/hash utilities — `gantt/time`, `code`, `zopfli`, `brotli` | Initially implement only required deterministic date/math helpers. Encoded URLs, QR, PNG and unrelated compression are outside SVG source rendering; no reason to translate them for the first slice. |
 
 Suggested SVG subset: `<svg viewBox>`, groups, paths, lines, polylines/polygons, rounded rectangles, ellipses,
@@ -151,7 +153,7 @@ Avoid `<foreignObject>`, browser CSS layout, scripts, event attributes, remote r
 fonts. pgui rendering compatibility must be checked in the target app; emitting valid XML alone is insufficient.
 If pgui exposes no suitable SVG drawing or export surface under the chosen build features, keep SVG export in
 the engine and let the preview paint the same scene with pgui primitives. Do not introduce another dependency to
-bridge that gap without owner direction.
+bridge that gap before checking its licence, provenance and fit with the headless engine boundary.
 
 ## 4. Text, fonts and all measurement paths
 
@@ -178,15 +180,11 @@ All observed pathways fall into the following boundaries:
 | Central interface and descent fallback | `p/klimt/font/StringBounder.java:115–128` | Width/height plus descent and output properties; default descent is font size / 4.5. A Rust interface needs actual baseline metrics, not just a scalar width. |
 | Deterministic tables | `p/klimt/drawing/font/StringBounderFromWidthTable.java:140–186`; `StringBounderEmbeddedFont.java`; `EmbeddedFontMetrics.java`; `LiberationSansMetrics.java` | Unicode code-point table widths scaled from 16 px; height equals size in the width-table implementation. It does not implement full kerning, ligatures, bidi or fallback shaping, so it is not interchangeable with AWT/pgui metrics. Preserve notices if tables are copied. |
 | TeaVM browser and C bridges | `p/teavm/js/StringBounderTeaVM.java:178–188`; `p/teavm/c/PngCanvas.java:272`; `p/teavm/c/demo/PngDemoC.java:160` | Platform callbacks and caches are replaced by the host measurement service. Do not import browser canvas or C runtime dependencies. |
-| Rich-text layout | `p/klimt/creole/Display.java`, `SheetBlock2.java`, `Fission.java`/`Fission`-related wrapping where present, `Fission` is not assumed as a checked path; actual inspected wrapping module is `Fission`-independent `Fission` replacement `Fission` pending source check; `p/klimt/creole/Fission` must not be used as a source reference. Verified modules are `p/klimt/creole/Fission`-free `Fission` audit described below. | See following paragraph for the verified modules and precise coverage. |
+| Rich-text layout | `p/klimt/creole/Display.java`, `SheetBlock2.java`, `SheetBuilder.java`, `atom/AtomTable.java`, `legacy/AtomText.java` | Compose measured styled runs, wrap lines and size table cells; preserve baselines and inline object dimensions. |
 | Diagram geometry | sequence Teoz/skin components; activity Ftile/Gtile; graph `svek`; gantt/timing; salt; EBNF; remaining family TextBlocks | Participant heads/feet, event labels and notes, class compartments, arrow labels, package captions, swimlane titles, calendars, axes and table widgets all consume the same measured text blocks before layout. |
 | Glyph outlines, not merely bounds | `p/klimt/font/UFont.java:247`; `p/klimt/shape/UText.java:169`; SVG `DriverTextAsPathSvg.java:127`, `DriverCenteredCharacterSvg.java:179` | Outlines require an additional host glyph/path capability or an explicitly deferred text-as-path feature. The measurer alone cannot satisfy them. |
 | Non-SVG native/diagnostic metrics | `p/Run.java:548`; `EmptyImageBuilder.java:186–211`; `Splash.java:306`; `p/swing/FontChecker.java:188,206`; `p/openpdf/`; EPS/G2D/TikZ text drivers | Excluded output/UI code need not be translated. If watermark/chrome enters the SVG engine, route its text through the same measurement interface. |
 | ASCII art image sizing | `org/stathissideris/ascii2image/graphics/FontMeasurer.java:125–169` | Independent AWT FontRenderContext, string bounds, FontMetrics and glyph-vector paths. A future Ditaa port needs the host boundary too, plus raster/vector work. |
-
-Verified rich-text source modules are `p/klimt/creole/Display.java`, `SheetBlock2.java`, `Fission` is not a verified
-module, and **`Fission` must not be treated as a source citation**. The actual enumerated line-breaking module is
-`p/klimt/creole/Fission`-independent **`Fission` pending removal**.
 
 The implementation needs one measured-run contract covering font family/fallback, size, weight, style, text,
 language/direction policy; returned advance, ascent, descent, line gap and ink bounds. Cache per render with a
@@ -310,8 +308,8 @@ can supply theme data after review; they are not a comprehensive diagram test su
 Record oracle jar hash/version, Java version, Graphviz version, layout pragma, installed/pinned font hashes,
 theme/options and generated SVG for each fixture. Use Java and `/usr/bin/dot` only in the developer fixture
 generator. Run it with a timeout, output/memory bounds and no network; production render tests verify no external
-process invocation. A pgui-only runtime dependency rule does not prevent external development/test tooling,
-but additions to that tooling must remain explicit.
+process invocation. Permissive library dependencies are allowed in production; Java, Node and Graphviz remain
+development/test tools only. Additions to reference-generation tooling must remain explicit.
 
 | Test level | Comparison / exit condition |
 |---|---|
