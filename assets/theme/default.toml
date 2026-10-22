@@ -426,7 +426,7 @@ scrollbar_inset = 2.0
 # a menu grows past this to fit its longest line
 min_width = "15rem"
 padding_y = "0.375rem"
-radius = 6.0
+radius = 0.0
 border = 1.0
 text_size = "0.8125rem"
 weight = "normal"

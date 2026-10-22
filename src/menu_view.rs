@@ -1,6 +1,8 @@
 //! Drawing the open menu of a tab or a tree row, its open submenus beside their lines, and its pending lines faded;
 //! what it offers is in `workspace::menu`.
 
+mod beside;
+
 use gpui::{AnyElement, Context, Div, Stateful, anchored, deferred, div, prelude::*, rgb};
 
 use crate::click_targets::target;
@@ -137,7 +139,10 @@ fn item(menu: &OpenMenu, shown: Shown, theme: Theme, cx: &mut Context<Workspace>
     };
     match shown.submenu {
         Some(Some(lines)) => {
-            let beside = div().absolute().top(-(sizes.padding_y.px() + sizes.border.px())).left_full().child(anchored().snap_to_window().child(panel(menu, lines, shown.path, theme, cx)));
+            // drawn over the parent, so no line of the parent crosses the submenu
+            let over = gpui::point(sizes.item_margin_x.px() + sizes.border.px(), sizes.padding_y.px() + sizes.border.px());
+            let submenu = beside::beside(panel(menu, lines, shown.path, theme, cx).flex_none().into_any_element(), over);
+            let beside = deferred(submenu).with_priority(shown.path.len() + 1);
             line.child(beside)
         }
         _ => line,

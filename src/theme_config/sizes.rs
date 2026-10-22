@@ -835,7 +835,7 @@ mod tests {
         let menu = defaults().sizes.menu;
 
         // then
-        assert_eq!((menu.min_width, menu.padding_y, menu.radius, menu.border), (Px(240.), Px(6.), Px(6.), Px(1.)));
+        assert_eq!((menu.min_width, menu.padding_y, menu.radius, menu.border), (Px(240.), Px(6.), Px(0.), Px(1.)));
         assert_eq!((menu.text_size, menu.weight), (FontPx(13.), Weight::Normal));
         assert_eq!(
             (menu.item_height, menu.item_margin_x, menu.item_padding_x, menu.item_radius),
