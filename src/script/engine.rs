@@ -1106,6 +1106,18 @@ mod tests {
     }
 
     #[test]
+    fn should_reject_a_bad_glob_in_when() {
+        // given
+        let init = r#"pub fn init(config) { config.tree_menus.main = [#{ label: "X", action: act::CopyFullPath, when: #{ name: "[a-" } }]; }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("tree_menus.main[0].when") && error.contains("[a-"), "{error}");
+    }
+
+    #[test]
     fn should_reject_show_tab_menu_on_a_key() {
         // given
         let init = r#"pub fn init(config) { config.keys = [#{ key: "m", mods: "ALT", action: act::ShowTabMenu("main") }]; }"#;

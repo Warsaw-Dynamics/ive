@@ -329,10 +329,13 @@ fn globs(value: Option<&Value>, field: &str) -> Result<Vec<String>, String> {
         return Ok(Vec::new());
     };
     if let Some(glob) = declare::string(value) {
+        crate::menu::when::check_globs(std::slice::from_ref(&glob)).map_err(|problem| format!("{field}: {problem}"))?;
         return Ok(vec![glob]);
     }
     let list = values(value).map_err(|_| format!("{field} must be a glob or a list of globs"))?;
-    list.iter().map(|glob| declare::string(glob).ok_or_else(|| format!("{field} must be a glob or a list of globs"))).collect()
+    let globs = list.iter().map(|glob| declare::string(glob).ok_or_else(|| format!("{field} must be a glob or a list of globs"))).collect::<Result<Vec<_>, _>>()?;
+    crate::menu::when::check_globs(&globs).map_err(|problem| format!("{field}: {problem}"))?;
+    Ok(globs)
 }
 
 /// An object's fields, borrowed: a menu `ive.rn` declared is shared with `init.rn`'s `config`, so it cannot be taken.

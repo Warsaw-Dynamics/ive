@@ -2834,6 +2834,7 @@ dependencies = [
  "futures",
  "getrandom 0.4.3",
  "git2",
+ "globset",
  "gpui",
  "gpui_platform",
  "http-body-util",

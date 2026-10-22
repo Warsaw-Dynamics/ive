@@ -23,6 +23,7 @@ mod line_view;
 mod memory_watch;
 mod mouse_binding;
 mod mcp;
+mod menu;
 mod open_project;
 mod overview;
 mod paging;
