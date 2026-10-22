@@ -91,6 +91,11 @@ impl DiffTexts {
         self.sides.retain(|target, _| file_of(*target) != file);
     }
 
+    /// Asks for file `file`'s texts again when shown; the sides known meanwhile colour the lines they still have.
+    pub(crate) fn ask_again(&mut self, file: usize) {
+        self.requested.remove(&file);
+    }
+
     /// Forgets what is known of the files whose diff differs between `before` and `after`: their texts may have
     /// changed, so they are asked for again when shown.
     pub(crate) fn forget_changed(&mut self, before: &[FileDiff], after: &[FileDiff]) {

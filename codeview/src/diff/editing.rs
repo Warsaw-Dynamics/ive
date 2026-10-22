@@ -299,8 +299,8 @@ impl DiffView {
         };
         side.base_diff = diff;
         let rows = side.refresh();
-        // the base's text may have moved: its colours are asked for again
-        self.texts.forget(0);
+        // the base's text may have moved: its colours are asked for again, the old ones kept until they come
+        self.texts.ask_again(0);
         self.show(vec![rows], cx);
         self.keep_caret(caret_row, cx);
     }

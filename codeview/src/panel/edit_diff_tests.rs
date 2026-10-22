@@ -19,6 +19,7 @@ struct Heard {
     texts: Vec<TextsRequest>,
     saves: Vec<SaveRequest>,
     edits: usize,
+    parses: Vec<ParseJob>,
 }
 
 /// A window showing a panel; its rows are 20 px high and it is 800 px wide.
@@ -36,6 +37,7 @@ fn window(cx: &mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Heard>>, &mut V
             Event::NeedTexts(request) => seen.borrow_mut().texts.push(*request),
             Event::SaveRequested(request) => seen.borrow_mut().saves.push(request.clone()),
             Event::Edited { .. } => seen.borrow_mut().edits += 1,
+            Event::NeedParse(job) => seen.borrow_mut().parses.push(job.clone()),
             _ => {}
         })
         .detach();
@@ -359,4 +361,51 @@ fn should_ask_for_the_text_to_edit_when_the_diff_has_no_rows(cx: &mut TestAppCon
     // then
     let asked: Vec<(usize, TextPurpose)> = heard.borrow().texts.iter().map(|request| (request.file, request.purpose)).collect();
     assert_eq!(asked, [(0, TextPurpose::Editing)]);
+}
+
+/// Runs the parses the panel asked for and answers them.
+fn answer_parses(panel: &Entity<Panel>, heard: &RefCell<Heard>, cx: &mut VisualTestContext) {
+    let jobs = std::mem::take(&mut heard.borrow_mut().parses);
+    for job in jobs {
+        let (target, revision, syntax) = (job.target(), job.revision(), job.run().unwrap());
+        cast(panel, Cast::Parsed { target, revision, syntax }, cx);
+    }
+}
+
+/// The colour keys of row `row`.
+fn colour_keys(panel: &Entity<Panel>, row: usize, cx: &mut VisualTestContext) -> Vec<String> {
+    let diff = diff_of(panel, cx);
+    diff.read_with(cx, |diff, _| diff.row_colours(row).iter().map(|(_, key)| key.id().to_owned()).collect())
+}
+
+#[gpui::test]
+fn should_keep_the_colours_after_a_save_until_the_texts_of_the_saved_file_come(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    let diff = FileDiff { path: GitPath::from_bytes(b"a.rs"), ..file(vec![hunk(vec![
+        line(LineKind::Context, Some(1), Some(1), "let one;"),
+        line(LineKind::Removed, Some(2), None, "let two;"),
+        line(LineKind::Added, None, Some(2), "let TWO;"),
+    ])]) };
+    opened(&panel, editable(vec![diff.clone()], DiffLayout::Inline), ("let one;\nlet two;\n", "let one;\nlet TWO;\n"), cx, &heard);
+    answer_parses(&panel, &heard, cx);
+    let coloured = colour_keys(&panel, 1, cx);
+    // the caret starts on "let TWO;"
+    cast(&panel, typed("x"), cx);
+    cast(&panel, Cast::Command(Command::Flush), cx);
+    let saved: Arc<dyn LineSource> = Arc::new(TextSource::new("let one;\nxlet TWO;\n"));
+    cast(&panel, Cast::Saved { revision: 1, source: saved.clone() }, cx);
+
+    // when
+    let rediffed = FileDiff { path: GitPath::from_bytes(b"a.rs"), ..file(vec![hunk(vec![
+        line(LineKind::Context, Some(1), Some(1), "let one;"),
+        line(LineKind::Removed, Some(2), None, "let two;"),
+        line(LineKind::Added, None, Some(2), "xlet TWO;"),
+    ])]) };
+    cast(&panel, Cast::SetBaseDiff { base: saved, diff: rediffed }, cx);
+
+    // then
+    assert_eq!(coloured.first().map(String::as_str), Some("RUST.KEYWORD"));
+    // the old texts colour the lines they still have until the new ones come
+    assert_eq!(colour_keys(&panel, 1, cx), coloured);
 }
