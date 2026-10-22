@@ -1,0 +1,11 @@
+@startuml
+node "Cluster" {
+  component Gateway
+  package "Worker pool" {
+    component Worker
+  }
+  database Store
+}
+Gateway --> Worker : dispatch
+Worker --> Store : save
+@enduml

@@ -93,7 +93,20 @@ fn finish(
 ) -> Result<Cli, String> {
     let language = values
         .remove(&OsString::from("--language"))
-        .unwrap_or_else(|| "mermaid".into())
+        .unwrap_or_else(|| {
+            if source
+                .as_ref()
+                .and_then(|p| p.extension())
+                .and_then(|s| s.to_str())
+                .is_some_and(|extension| {
+                    matches!(extension.to_ascii_lowercase().as_str(), "puml" | "plantuml")
+                })
+            {
+                "plantuml".into()
+            } else {
+                "mermaid".into()
+            }
+        })
         .into_string()
         .map_err(|value| format!("invalid language {value:?}"))?;
     if !matches!(language.as_str(), "mermaid" | "plantuml") {
@@ -128,7 +141,13 @@ fn finish(
             Some(path) => Input::File(path),
             None => Input::Example(
                 example
-                    .unwrap_or_else(|| "flowchart".into())
+                    .unwrap_or_else(|| {
+                        if language == "plantuml" {
+                            "plantuml-sequence".into()
+                        } else {
+                            "flowchart".into()
+                        }
+                    })
                     .into_string()
                     .map_err(|value| format!("invalid example name {value:?}"))?,
             ),
@@ -148,6 +167,29 @@ mod tests {
 
     fn arguments(args: &[&str]) -> Result<Cli, String> {
         parse(args.iter().map(OsString::from))
+    }
+
+    #[test]
+    fn should_select_plantuml_for_its_file_extensions_and_default_example() {
+        // given
+        let cases = [
+            ["--render", "input.puml", "--output", "out.svg"],
+            ["--render", "input.PLANTUML", "--output", "out.svg"],
+        ];
+        // when
+        for args in cases {
+            let parsed = arguments(&args).unwrap();
+            // then
+            assert_eq!(parsed.language, "plantuml");
+        }
+        // when
+        let explicit = arguments(&["--language", "mermaid", "input.puml"]).unwrap();
+        let example = arguments(&["--language", "plantuml"]).unwrap();
+        // then
+        assert_eq!(explicit.language, "mermaid");
+        assert!(
+            matches!(example.mode,Mode::View{source:Input::Example(name),..} if name=="plantuml-sequence")
+        );
     }
 
     #[test]

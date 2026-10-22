@@ -2,6 +2,7 @@ use std::{fmt, time::Duration};
 
 mod limits;
 mod mermaid;
+mod plantuml;
 mod resources;
 mod svg;
 
@@ -70,6 +71,7 @@ pub enum RenderError {
     SourceLimit { actual: usize, limit: usize },
     ExternalResource(String),
     UnsupportedLayout(String),
+    UnsupportedFeature(String),
     InvalidSource(String),
     Cancelled(String),
     Backend(String),
@@ -94,7 +96,10 @@ impl fmt::Display for RenderError {
                 f,
                 "diagram layout {value:?} is unavailable in the native backend"
             ),
-            Self::InvalidSource(message) => write!(f, "invalid Mermaid source: {message}"),
+            Self::UnsupportedFeature(message) => {
+                write!(f, "unsupported diagram feature: {message}")
+            }
+            Self::InvalidSource(message) => write!(f, "invalid diagram source: {message}"),
             Self::Cancelled(message) => write!(f, "diagram rendering cancelled: {message}"),
             Self::Backend(message) => write!(f, "native diagram rendering failed: {message}"),
             Self::UnsafeSvg(message) => write!(f, "diagram SVG rejected: {message}"),
@@ -109,6 +114,6 @@ impl std::error::Error for RenderError {}
 pub fn render(source: &str, options: &RenderOptions) -> Result<RenderedDiagram, RenderError> {
     match options.language {
         Language::Mermaid => mermaid::render(source, options),
-        Language::PlantUml => Err(RenderError::UnsupportedLanguage(Language::PlantUml)),
+        Language::PlantUml => plantuml::render(source, options),
     }
 }

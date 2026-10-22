@@ -1,6 +1,6 @@
 use crate::{
     cli::{Capture, Input},
-    examples::EXAMPLES,
+    examples,
     service::{Ready, Request, Response, Service},
     viewport::{Generation, Zoom},
 };
@@ -273,6 +273,9 @@ impl Viewer {
                 button("language-mermaid", "Mermaid", self.language == "mermaid").on_click(
                     cx.listener(|this, _, window, cx| {
                         this.language = "mermaid".into();
+                        if matches!(this.input, Input::Example(_)) {
+                            this.input = Input::Example("flowchart".into());
+                        }
                         this.request(window, cx);
                     }),
                 ),
@@ -281,6 +284,9 @@ impl Viewer {
                 button("language-plantuml", "PlantUML", self.language == "plantuml").on_click(
                     cx.listener(|this, _, window, cx| {
                         this.language = "plantuml".into();
+                        if matches!(this.input, Input::Example(_)) {
+                            this.input = Input::Example("plantuml-sequence".into());
+                        }
                         this.request(window, cx);
                     }),
                 ),
@@ -347,7 +353,11 @@ impl Viewer {
                     .py_3()
                     .text_xs()
                     .text_color(rgb(0x94a3b8))
-                    .child("CORPUS · 37 VARIANTS"),
+                    .child(if self.language == "plantuml" {
+                        "PLANTUML · 5 EXAMPLES"
+                    } else {
+                        "MERMAID · 37 VARIANTS"
+                    }),
             )
             .child(
                 div()
@@ -357,9 +367,12 @@ impl Viewer {
                     .flex_1()
                     .overflow_y_scroll()
                     .p_2()
-                    .children(EXAMPLES.iter().map(|example| {
-                        let name = example.name;
-                        button(
+                    .children(
+                        examples::for_language(&self.language)
+                            .iter()
+                            .map(|example| {
+                                let name = example.name;
+                                button(
                             SharedString::from(format!("example-{name}")),
                             name,
                             matches!(&self.input, Input::Example(current) if current == name),
@@ -373,7 +386,8 @@ impl Viewer {
                                 this.request(window, cx);
                             },
                         ))
-                    })),
+                            }),
+                    ),
             )
     }
 

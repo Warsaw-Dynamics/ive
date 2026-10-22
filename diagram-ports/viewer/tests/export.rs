@@ -4,6 +4,40 @@ use std::{
 };
 
 #[test]
+fn should_export_plantuml_by_extension_without_a_display() {
+    // given
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("sequence.puml");
+    let output = directory.path().join("out.svg");
+    std::fs::write(
+        &source,
+        include_str!("../../fixtures/plantuml/sequence.puml"),
+    )
+    .unwrap();
+    // when
+    let result = Command::new(env!("CARGO_BIN_EXE_diagram-viewer"))
+        .env_remove("DISPLAY")
+        .env_remove("WAYLAND_DISPLAY")
+        .arg("--render")
+        .arg(source)
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap();
+    // then
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(
+        std::fs::read_to_string(output)
+            .unwrap()
+            .contains("data-kind=\"lifeline\"")
+    );
+}
+
+#[test]
 fn should_export_svg_without_a_display_server() {
     // given
     let directory = tempfile::tempdir().unwrap();

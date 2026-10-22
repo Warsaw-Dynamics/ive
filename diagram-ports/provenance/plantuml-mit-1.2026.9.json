@@ -1,0 +1,448 @@
+{
+  "format": 1,
+  "edition": "PlantUML MIT",
+  "version": "1.2026.9",
+  "sourceRoot": "/mnt/data/Projects/plantuml-mit/src",
+  "artifact": {
+    "path": "/mnt/data/Projects/plantuml-mit/plantuml-mit-1.2026.9-sources.jar",
+    "sha256": "88e30e43639555a6963c270bc6245906b81e8cc65140645f416795d0e0bc71c3",
+    "verification": "Observed local artifact SHA-256; selected extracted files matched ZIP entries. Not an externally authenticated Maven checksum."
+  },
+  "sourceFiles": [
+    {
+      "path": "net/sourceforge/plantuml/BlockUmlBuilder.java",
+      "sha256": "2552980806b3267d81af99191723c110c46240816277b6fe6d5efca06994b0b1",
+      "rust": [
+        "engine/src/plantuml/source.rs"
+      ],
+      "behavior": "Single-block source admission and comment/wrapper boundaries; preprocessing/includes deliberately rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/core/DiagramType.java",
+      "sha256": "590d9685e213d5ad51bf6113239081c7a55973715a306f6f16a2a78480659483",
+      "rust": [
+        "engine/src/plantuml/source.rs"
+      ],
+      "behavior": "Recognize exact UML wrapper; other wrapper families remain unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/PSystemBuilder.java",
+      "sha256": "00383dd63082f93e471900cb70f44daee20899a862e4c3590fd95660b5d6e679",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Sequence-before-class/description factory precedence informs ambiguous actor/database admission.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/NameAndCodeParser.java",
+      "sha256": "edd811deef01b0a3de1be2c048875c918dfeb5a7a6ee4d4f6b08bc829be4bff8",
+      "rust": [
+        "engine/src/plantuml/lexer.rs"
+      ],
+      "behavior": "Quoted display/alias and qualified identifier grammar subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/sequencediagram/command/CommandParticipant.java",
+      "sha256": "c74459ee3f59a63cc9c17421bb32280cac43961870c528b3db5083fa38e49826",
+      "rust": [
+        "engine/src/plantuml/sequence.rs"
+      ],
+      "behavior": "Participant kinds and lifecycle declaration semantics; repeated declarations deliberately rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/sequencediagram/command/CommandParticipantA.java",
+      "sha256": "9727e6883fa7de1903c9ad13d81a1588a7f27561f6b9a3d05a4dfe147b113f97",
+      "rust": [
+        "engine/src/plantuml/sequence.rs"
+      ],
+      "behavior": "Unquoted and display/alias participant declaration syntax subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/sequencediagram/command/CommandArrow.java",
+      "sha256": "03761e98aa8f1be792613db723c8df549f1c4b4f35d681e1ba19d3ab08034bca",
+      "rust": [
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/arrow.rs"
+      ],
+      "behavior": "Directional/dashed/open/self messages and endpoint ownership subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/sequencediagram/command/CommandActivate.java",
+      "sha256": "fdafa6611415bc04ee783569cc4e0b8c79b7b762812d7ccebffed1f8af26da31",
+      "rust": [
+        "engine/src/plantuml/sequence.rs"
+      ],
+      "behavior": "Explicit activation/deactivation/create/destroy event vocabulary and balanced native stacks.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/sequencediagram/command/CommandGrouping.java",
+      "sha256": "42df2cf669c2654284ef41878601a8686e5395f85af286499073ce9d4b1faf7a",
+      "rust": [
+        "engine/src/plantuml/sequence.rs"
+      ],
+      "behavior": "Nested group/alt/else/loop/opt/par/break/critical event vocabulary; no parallel execution anchors.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/note/sequence/FactorySequenceNoteCommand.java",
+      "sha256": "4d42db46c6ec4441108c5e58ec87c735f19b766d25d341a19c484539dbdb0323",
+      "rust": [
+        "engine/src/plantuml/sequence.rs"
+      ],
+      "behavior": "Single-participant left/right/over note grammar and multiline labels.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/classdiagram/ClassDiagramFactory.java",
+      "sha256": "e8e4972b923ca7cbaf2eb2b2761fbdb2cf06c2c49c0ffd46af4007566960179e",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Class/object command-family admission and member body context.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/classdiagram/command/CommandCreateClass.java",
+      "sha256": "e4e44fa2ab8f54d79f9e9d5a6b6183997901c05a8b966985e5c50aca1c3aeec7",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Class/interface/enum/annotation/abstract declaration and alias subset; rich decorations rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/classdiagram/command/CommandCreateClassMultilines.java",
+      "sha256": "40f63e24e749d95966947961a6e988140b9a542289aa3da7732f5f31cc19f7a1",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Ordered member compartments and explicit static/abstract flags subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/classdiagram/command/CommandLinkClass.java",
+      "sha256": "a6236c4f5843c31567743832a41fa95c9d1165edbdfaaea14b2aae0786d7e260",
+      "rust": [
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/arrow.rs"
+      ],
+      "behavior": "Typed relation ends, labels and quoted multiplicity subset; ports/constraints/roles syntax rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques",
+        "* Contribution :  Hisashi Miyashita"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/objectdiagram/command/CommandCreateEntityObject.java",
+      "sha256": "c3547be863eaafcf1cbf1f20277081190036a25e966357a502b9ba61d3ef04f9",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Object identity/display declaration subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/objectdiagram/command/CommandCreateEntityObjectMultilines.java",
+      "sha256": "4c522783c4ea088b5dfe2af08165bfda0e0937ec27f31127e265a45cda1fd1ab",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Ordered object slot body subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/descdiagram/DescriptionDiagramFactory.java",
+      "sha256": "18ff38a4f03d7b396cad21f9fc0464280a54f682c195cc2a3df79acb710a14df",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Description-family shared component/deployment/usecase vocabulary.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/descdiagram/command/CommandCreateElementFull.java",
+      "sha256": "cd668ca6376603d82cb58fd9a47d0dcb18ef2a73ac1c9acf344b8f03372b2e0a",
+      "rust": [
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/shapes.rs"
+      ],
+      "behavior": "Explicit actor/usecase/component/database/node/rectangle declarations; original native symbol geometry.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques",
+        "* Contribution :  Hisashi Miyashita"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/descdiagram/command/CommandPackageWithUSymbol.java",
+      "sha256": "e62abf9de33ff07bb335439996e3fcfe04a03e3987b7d5e6011b8f14741abc9c",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Nested package/deployment ownership subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/descdiagram/command/CommandLinkElement.java",
+      "sha256": "b79ba21eaba2488472e6dafe40c4d8402aed11cf51dd822464bdff47150bdaad",
+      "rust": [
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/arrow.rs"
+      ],
+      "behavior": "Description relation grammar subset and extremity meaning.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques",
+        "* Contribution :  Hisashi Miyashita"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/note/CommandFactoryNote.java",
+      "sha256": "7dfae6720705bb480a2fbc474901576934cbd6f692f6d9b1c6fbd0b24db733b6",
+      "rust": [
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/shapes.rs"
+      ],
+      "behavior": "Named single-line graph notes with escaped newlines and explicit authored relations.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/font/StringBounder.java",
+      "sha256": "2e37ba857f5d3a88187b5580abee6c41dee0bf7d516ac5c72ee9b3c9e41eba1b",
+      "rust": [
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/svg.rs"
+      ],
+      "behavior": "Default descent approximation font_size / 4.5; not native ascent/descent or ink bounds.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cucadiagram/Member.java",
+      "sha256": "86a1cd2cf7d608d3d3c568be6e0d8f84a4817391ac247b9bd010ef93ea20603d",
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Prefix static/abstract member modifiers, preserved visibility text; no field/method regrouping.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cucadiagram/MethodsOrFieldsArea.java",
+      "sha256": "1c27fb34c3ea7a8ba7a71a8e6390183dccb8798a16abf1692b872b705fb164cc",
+      "rust": [
+        "engine/src/plantuml/graph.rs",
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Static underline and abstract italic painting semantics; original native compartment geometry.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "fixtures/plantuml/sequence.puml",
+      "sha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+      "oracleName": "sequence-group-activation-note",
+      "originalFamily": "sequence",
+      "expectedLabels": [
+        "Browser",
+        "Service",
+        "Checkout",
+        "Submit basket",
+        "Check stock",
+        "Accepted"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/class.puml",
+      "sha256": "529aa5fdcb31e465f26acb150b8b726d19847a3108e5acd54331194ca66e3b70",
+      "oracleName": "class-fields-inheritance-association",
+      "originalFamily": "class",
+      "expectedLabels": [
+        "Account",
+        "Premium",
+        "Ledger",
+        "owner",
+        "debit",
+        "records"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/object.puml",
+      "sha256": "b096f774dfdcaf21f8ae0cdbe278f8912e411bffd9cc511fae68e6eff9b1640b",
+      "oracleName": "object-slots-relation",
+      "originalFamily": "object",
+      "expectedLabels": [
+        "basket : Cart",
+        "line : Item",
+        "total",
+        "42",
+        "sku",
+        "A7",
+        "contains"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/deployment.puml",
+      "sha256": "643640442792223f4a39b1bc817dd47411683c602c853d812b57394a0cd58c76",
+      "oracleName": "component-deployment-groups",
+      "originalFamily": "component/deployment",
+      "expectedLabels": [
+        "Cluster",
+        "Worker pool",
+        "Gateway",
+        "Worker",
+        "Store",
+        "dispatch",
+        "save"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/usecase.puml",
+      "sha256": "342ad82873e6d41e18bbc20de8e4e46a506a9135bb5c2fc77c9d3d36fc9c1b8f",
+      "oracleName": "usecase-boundary-relations",
+      "originalFamily": "usecase",
+      "expectedLabels": [
+        "Shopper",
+        "Store",
+        "Place order",
+        "Pay invoice",
+        "includes"
+      ]
+    }
+  ],
+  "oracle": {
+    "jarSha256": "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd",
+    "version": "PlantUML version 1.2026.9 / 18d0aae [2026-10-17 08:34:41 UTC] (MIT source distribution)",
+    "javaVersion": "openjdk version \"26.0.2\" 2026-07-21\nOpenJDK Runtime Environment (build 26.0.2+10-55)\nOpenJDK 64-Bit Server VM (build 26.0.2+10-55, mixed mode, sharing)\n",
+    "graphvizVersion": "dot - graphviz version 2.43.0 (0)\n",
+    "javaArguments": [
+      "-Djava.awt.headless=true",
+      "-DPLANTUML_SECURITY_PROFILE=SANDBOX",
+      "-jar",
+      "/tmp/ive-diagram-oracles.JwN5H5/plantuml-mit-1.2026.9.jar",
+      "-charset",
+      "UTF-8",
+      "-SdefaultFontName=Liberation Sans",
+      "-tsvg",
+      "-pipe"
+    ],
+    "authorship": "Freshly authored in this task by independent reference-oracle agent; not copied from candidate or upstream examples.",
+    "claim": "Original admission and painted labels; not native geometry/pixel parity."
+  },
+  "nativeModules": [
+    "engine/src/plantuml/mod.rs",
+    "engine/src/plantuml/source.rs",
+    "engine/src/plantuml/lexer.rs",
+    "engine/src/plantuml/budget.rs",
+    "engine/src/plantuml/text.rs",
+    "engine/src/plantuml/scene.rs",
+    "engine/src/plantuml/svg.rs",
+    "engine/src/plantuml/arrow.rs",
+    "engine/src/plantuml/sequence.rs",
+    "engine/src/plantuml/uml.rs",
+    "engine/src/plantuml/graph.rs",
+    "engine/src/plantuml/shapes.rs"
+  ],
+  "implementationNotes": [
+    "Typed native ASTs and SVG scenes; no PlantUML-to-Mermaid source rewriting.",
+    "Dagre layout from separately audited dugong0.9.2, not PlantUML Graphviz/Smetana/ELK code.",
+    "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",
+    "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
+    "Actual statement-line locations and column1; precise token spans are not yet implemented."
+  ]
+}

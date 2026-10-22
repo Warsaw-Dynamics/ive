@@ -1,0 +1,9 @@
+@startuml
+actor Shopper
+rectangle Store {
+  usecase "Place order" as Order
+  usecase "Pay invoice" as Pay
+}
+Shopper --> Order
+Order ..> Pay : includes
+@enduml

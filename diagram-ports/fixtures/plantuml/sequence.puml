@@ -1,0 +1,11 @@
+@startuml
+participant Browser
+participant Service
+group Checkout
+Browser -> Service : Submit basket
+activate Service
+note right of Service : Check stock
+Service --> Browser : Accepted
+deactivate Service
+end
+@enduml

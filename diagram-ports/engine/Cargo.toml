@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 merman.workspace = true
+merman-render.workspace = true
+dugong.workspace = true
 roxmltree.workspace = true
 serde_json.workspace = true
 cssparser.workspace = true

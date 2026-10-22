@@ -58,6 +58,34 @@ fn should_drop_each_completed_native_render_cache_while_reusing_fonts() {
     assert!(shared_fonts.upgrade().is_none());
 }
 
+#[test]
+fn should_measure_plantuml_in_native_worker_and_release_each_cache() {
+    // given
+    let (_fonts, resources) = resources();
+    for source in [
+        include_str!("../../fixtures/plantuml/sequence.puml"),
+        include_str!("../../fixtures/plantuml/deployment.puml"),
+    ] {
+        let native = resources.start_render();
+        let cache = Arc::downgrade(&native);
+        let job = Job {
+            language: "plantuml".into(),
+            measurement: Measurement::Native(native),
+            ..Job::headless(source)
+        };
+        // when
+        let output = run(job).unwrap();
+        // then
+        eprintln!(
+            "PlantUML {}: native={}, fallback={}",
+            output.metadata.family, output.metadata.host_calls, output.metadata.fallback_calls
+        );
+        assert!(output.metadata.host_calls > 0);
+        assert_eq!(output.metadata.fallback_calls, 0);
+        assert!(cache.upgrade().is_none());
+    }
+}
+
 struct PausedNative {
     native: Arc<NativeText>,
     entered: mpsc::Sender<()>,

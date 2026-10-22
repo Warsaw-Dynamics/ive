@@ -183,7 +183,7 @@ fn should_reject_unavailable_requested_layout() {
 }
 
 #[test]
-fn should_report_plantuml_as_unsupported() {
+fn should_dispatch_plantuml_with_an_explicit_language() {
     // given
     let options = RenderOptions {
         language: Language::PlantUml,
@@ -192,10 +192,7 @@ fn should_report_plantuml_as_unsupported() {
     // when
     let result = render("@startuml\nAlice -> Bob\n@enduml", &options);
     // then
-    assert_eq!(
-        result.unwrap_err(),
-        RenderError::UnsupportedLanguage(Language::PlantUml)
-    );
+    assert_eq!(result.unwrap().family, "sequence");
 }
 
 #[test]

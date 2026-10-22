@@ -1,5 +1,11 @@
 # Third-party notices
 
+## Native PlantUML translation
+
+The native sequence/class/object/description checkpoint derives its grammar and behavioral subset exclusively from the authorized PlantUML MIT edition 1.2026.9 source artifact. Copyright 2009-2024 Arnaud Roques; selected declaration/link files additionally credit contributions by Hisashi Miyashita. The complete original generated MIT grant and distribution notice is retained in [provenance/LICENSE-PlantUML-MIT.txt](provenance/LICENSE-PlantUML-MIT.txt), incorporated here by reference. Exact unmodified source-file hashes, Rust destinations and translated behavior are recorded in [provenance/plantuml-mit-1.2026.9.json](provenance/plantuml-mit-1.2026.9.json).
+
+Some authorized generated MIT-edition files retain historical upstream GPL comment headers beneath the distribution's MIT grant; the manifest preserves their exact bytes and edition rather than inventing a cleaned history. No other edition, rejected candidate port, Graphviz/Smetana/ELK implementation, theme/icon/sprite/font asset or bundled third-party algorithm was imported from PlantUML. Native shape geometry, resource-budget glue and SVG writer are original implementations. Existing audited Dugong/Merman notices below continue to apply; their direct use adds no new crate version to the locked dependency closure. The five PlantUML fixtures were freshly authored for this task and were independently admitted by the original MIT renderer, not copied from upstream or candidate examples.
+
 The standalone diagram workspace includes the Rust crates below. Each selected licence text follows with its crates. Embedded translated-source and fixture notices follow in the second part.
 
 Rust dependency section generated with `cargo about generate --config ../about.toml ../tools/third-party-notices.hbs --offline --locked` from the standalone Cargo.lock. Regenerate after dependency changes.
