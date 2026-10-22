@@ -1,8 +1,8 @@
 use crate::{
     cli::Input,
     examples,
-    native_text::NativeText,
-    viewport::{self, Zoom},
+    native_text::NativeTextResources,
+    viewport::{self, Viewport, Zoom},
     worker::{self, Job, Measurement, Metadata},
 };
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
@@ -121,7 +121,7 @@ fn work(
     renderer: SvgRenderer,
     text: Arc<TextSystem>,
 ) {
-    let text = Arc::new(NativeText::new(text));
+    let text = NativeTextResources::new(text);
     let mut cache = Cache::Empty;
     while let Some((request, cancelled)) = next(&queue) {
         let source = match &request.input {
@@ -172,7 +172,7 @@ fn next(queue: &Arc<(Mutex<Queue>, Condvar)>) -> Option<(Request, Arc<AtomicBool
 
 struct RenderContext<'a> {
     renderer: &'a SvgRenderer,
-    text: &'a Arc<NativeText>,
+    text: &'a NativeTextResources,
     cancelled: Arc<AtomicBool>,
     cache: &'a mut Cache,
 }
@@ -180,13 +180,14 @@ struct RenderContext<'a> {
 fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result<Ready, String> {
     let same = matches!(context.cache, Cache::Parsed { source: cached, language, .. } if cached == source && language == &request.language);
     if !same {
+        let native = context.text.start_render();
         let executable = std::env::current_exe()
             .map_err(|error| format!("cannot locate diagram worker executable: {error}"))?;
         let job = Job {
             source: source.into(),
             language: request.language.clone(),
             cancelled: context.cancelled.clone(),
-            measurement: Measurement::Native(context.text.clone()),
+            measurement: Measurement::Native(native.clone()),
             ..Job::headless("")
         };
         let output = worker::run(&executable, job)?;
@@ -196,7 +197,7 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
             .parse_svg(output.svg.as_bytes())
             .map_err(|error| format!("cannot parse diagram SVG for display: {error}"))?;
         let mut metadata = output.metadata;
-        metadata.diagnostics.extend(context.text.report());
+        metadata.diagnostics.extend(native.report());
         *context.cache = Cache::Parsed {
             source: source.into(),
             language: request.language.clone(),
@@ -217,8 +218,18 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
     else {
         return Err("diagram cache is empty".into());
     };
-    let natural = (dimensions.0 * request.scale, dimensions.1 * request.scale);
-    let (width, height) = viewport::raster_size(natural, request.viewport, request.zoom)?;
+    let layout = viewport::layout(
+        *dimensions,
+        Viewport {
+            size: (
+                request.viewport.0 / request.scale,
+                request.viewport.1 / request.scale,
+            ),
+            device_scale: request.scale,
+        },
+        request.zoom,
+    )?;
+    let (width, height) = layout.raster_size;
     let image = context
         .renderer
         .render_parsed(
@@ -231,7 +242,7 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
         .map_err(|error| format!("cannot rasterize diagram SVG: {error}"))?;
     Ok(Ready {
         image,
-        logical_size: (width as f32 / request.scale, height as f32 / request.scale),
+        logical_size: layout.logical_size,
         metadata: metadata.clone(),
     })
 }

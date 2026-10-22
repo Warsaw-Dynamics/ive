@@ -441,6 +441,9 @@ impl Viewer {
                 .p_3()
                 .child(
                     div()
+                        .w(px(ready.logical_size.0))
+                        .h(px(ready.logical_size.1))
+                        .flex_none()
                         .min_w_full()
                         .min_h_full()
                         .flex()

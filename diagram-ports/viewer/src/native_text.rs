@@ -8,14 +8,31 @@ use std::{
 
 pub struct NativeText {
     system: WindowTextSystem,
-    names: Vec<String>,
+    names: Arc<[String]>,
     resolved: Mutex<BTreeSet<String>>,
 }
 
-impl NativeText {
+pub struct NativeTextResources {
+    system: Arc<TextSystem>,
+    names: Arc<[String]>,
+}
+
+impl NativeTextResources {
     pub fn new(system: Arc<TextSystem>) -> Self {
         Self {
-            names: system.all_font_names(),
+            names: system.all_font_names().into(),
+            system,
+        }
+    }
+    pub fn start_render(&self) -> Arc<NativeText> {
+        Arc::new(NativeText::new(self.system.clone(), self.names.clone()))
+    }
+}
+
+impl NativeText {
+    fn new(system: Arc<TextSystem>, names: Arc<[String]>) -> Self {
+        Self {
+            names,
             system: WindowTextSystem::new(system),
             resolved: Mutex::new(BTreeSet::new()),
         }
