@@ -24,8 +24,8 @@ pub enum Cast {
     Restore(PanelState),
     /// a diff reloaded: keeps the scroll and the collapsed files
     SetFiles(Vec<FileDiff>),
-    /// the answer to [`Event::NeedTexts`]
-    SetTexts { file: usize, old: Option<Source>, new: Option<Source> },
+    /// the answer to [`Event::NeedTexts`], with its `generation`: an answer to an older ask is dropped
+    SetTexts { file: usize, generation: u64, old: Option<Source>, new: Option<Source> },
     /// the answer to [`Event::NeedParse`]; in View mode one for an older revision than the panel's is dropped, in
     /// Edit mode it is shown moved by the edits made since
     Parsed { target: ParseTarget, revision: u64, syntax: Syntax },
@@ -116,7 +116,7 @@ pub enum Event {
     /// meanwhile; only a set [`ParseJob::cancel`] makes the answer unwanted
     NeedParse(ParseJob),
     /// a diff file came on screen: the host answers [`Cast::SetTexts`]
-    NeedTexts { file: usize },
+    NeedTexts(TextsRequest),
     /// the host writes the edits and answers [`Cast::Saved`] or [`Cast::SaveFailed`]; one at a time
     SaveRequested(SaveRequest),
     /// the user chose Reload on a conflict: the host opens the text again, dropping the edits
@@ -125,6 +125,13 @@ pub enum Event {
     /// saved any more) and the host closes, or opens the text again where the tab stays
     DiscardRequested,
     OpenAt { path: PathBuf, line: usize },
+}
+
+/// An ask for the texts of diff file `file`; each ask has a new `generation`, which its answer carries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextsRequest {
+    pub file: usize,
+    pub generation: u64,
 }
 
 /// `edits` turn the text of revision `base` into that of `revision`: sorted, non-overlapping, in `base`'s bytes.

@@ -166,7 +166,7 @@ impl EditedFile {
             | Event::StateChanged
             | Event::LayoutToggled(_)
             | Event::NeedParse(_)
-            | Event::NeedTexts { .. }
+            | Event::NeedTexts(_)
             | Event::OpenAt { .. } => {}
         }
     }

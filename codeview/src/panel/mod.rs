@@ -17,7 +17,7 @@ use gpui::{
 
 pub use protocol::{
     Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
-    SaveFailure, SaveKind, SaveRequest,
+    SaveFailure, SaveKind, SaveRequest, TextsRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
@@ -108,7 +108,9 @@ impl Panel {
             Cast::CloseWithdrawn => self.saving.withdraw_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
             Cast::Type(text) => self.type_text(&text, cx),
-            Cast::SetTexts { file, old, new } => self.set_texts([(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx),
+            Cast::SetTexts { file, generation, old, new } => {
+                self.set_texts(generation, [(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx);
+            }
         }
         self.notice_state(cx);
         cx.notify();
@@ -235,7 +237,7 @@ impl Panel {
 
     fn on_diff_event(&mut self, _diff: Entity<DiffView>, event: &DiffEvent, cx: &mut Context<Self>) {
         match event {
-            DiffEvent::NeedTexts { file } => cx.emit(Event::NeedTexts { file: *file }),
+            DiffEvent::NeedTexts(request) => cx.emit(Event::NeedTexts(*request)),
             DiffEvent::LayoutToggled(layout) => {
                 cx.emit(Event::LayoutToggled(*layout));
                 self.notice_state(cx);
@@ -243,13 +245,14 @@ impl Panel {
         }
     }
 
-    /// A diff file's sides, each the text of the side its target names; a missing side stays plain.
-    fn set_texts(&self, sides: [(ParseTarget, Option<Source>); 2], cx: &mut Context<Self>) {
+    /// A diff file's sides, each the text of the side its target names, answering ask `generation`; a missing side
+    /// stays plain.
+    fn set_texts(&self, generation: u64, sides: [(ParseTarget, Option<Source>); 2], cx: &mut Context<Self>) {
         let Body::Diff(diff) = &self.body else {
             return;
         };
         for (target, source) in sides {
-            let job = source.and_then(|source| diff.update(cx, |diff, cx| diff.set_text(target, source, cx)));
+            let job = source.and_then(|source| diff.update(cx, |diff, cx| diff.set_text(target, generation, source, cx)));
             if let Some(job) = job {
                 cx.emit(Event::NeedParse(job));
             }

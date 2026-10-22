@@ -2,7 +2,7 @@
 //! parses give the rows: inline, a removed line takes the old side's, an added or context line the new side's; side
 //! by side, each panel takes its own side's.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use super::rows::DiffRow;
 use super::side_by_side::Side;
 use crate::colors::ColorKey;
 use crate::document::{DisplayLine, Source, TextSource};
-use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous};
+use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous, TextsRequest};
 use crate::syntax::{self, Cancel, Language, Syntax};
 
 /// A row's text as coloured ranges of it.
@@ -27,7 +27,10 @@ pub struct Parsed {
 /// What a diff view knows of its files' full texts: which it asked for, and the sides that came.
 #[derive(Default)]
 pub(crate) struct DiffTexts {
-    requested: HashSet<usize>,
+    /// by file, the generation of the last ask: an answer to an older one is stale
+    requested: HashMap<usize, u64>,
+    /// counts the asks
+    generation: u64,
     /// by [`ParseTarget::DiffOld`] / [`ParseTarget::DiffNew`]; a side that is missing, binary or too large is absent
     sides: HashMap<ParseTarget, SideText>,
     /// the last revision a side's parse was tagged with
@@ -55,31 +58,39 @@ impl Drop for SideText {
 }
 
 impl DiffTexts {
-    /// The files that show a line in `shown` (rows on screen) and were not asked for yet; they count as asked now.
-    pub(crate) fn wanted(&mut self, shown: &[DiffRow]) -> Vec<usize> {
+    /// The asks for the files that show a line in `shown` (rows on screen) and were not asked for yet; they count
+    /// as asked now.
+    pub(crate) fn wanted(&mut self, shown: &[DiffRow]) -> Vec<TextsRequest> {
         let mut wanted = Vec::new();
         for row in shown {
             if let DiffRow::Line { file, .. } | DiffRow::Pair { file, .. } = row
-                && self.requested.insert(*file)
+                && !self.requested.contains_key(file)
             {
-                wanted.push(*file);
+                self.generation += 1;
+                self.requested.insert(*file, self.generation);
+                wanted.push(TextsRequest { file: *file, generation: self.generation });
             }
         }
         wanted
+    }
+
+    /// Whether `generation` is the last ask for file `file`'s texts.
+    pub(crate) fn awaits(&self, file: usize, generation: u64) -> bool {
+        self.requested.get(&file) == Some(&generation)
     }
 
     /// Forgets what is known of the files whose diff differs between `before` and `after`: their texts may have
     /// changed, so they are asked for again when shown.
     pub(crate) fn forget_changed(&mut self, before: &[FileDiff], after: &[FileDiff]) {
         let changed = |file: usize| before.get(file) != after.get(file);
-        self.requested.retain(|file| !changed(*file));
+        self.requested.retain(|file, _| !changed(*file));
         self.sides.retain(|target, _| !changed(file_of(*target)));
     }
 
-    /// Keeps `source` as the side `target` of `diff` (file `n` of the view), unless the view no longer waits for it;
-    /// the parse it needs when its language is known.
-    pub(crate) fn set(&mut self, target: ParseTarget, source: Source, diff: &FileDiff) -> Option<ParseJob> {
-        if !self.requested.contains(&file_of(target)) {
+    /// Keeps `source` as the side `target` of `diff` (file `n` of the view) when it answers the last ask, `generation`,
+    /// for that file; the parse it needs when its language is known.
+    pub(crate) fn set(&mut self, target: ParseTarget, generation: u64, source: Source, diff: &FileDiff) -> Option<ParseJob> {
+        if !self.awaits(file_of(target), generation) {
             return None;
         }
         self.revision += 1;
@@ -192,7 +203,8 @@ mod tests {
 
     /// `texts` with `text` set and parsed as side `target` of `diff`.
     fn parsed_side(texts: &mut DiffTexts, target: ParseTarget, text: &str, diff: &FileDiff) {
-        let job = texts.set(target, Source::from_vec(text.as_bytes().to_vec()), diff).expect("a Rust file is parsed");
+        let generation = texts.requested[&file_of(target)];
+        let job = texts.set(target, generation, Source::from_vec(text.as_bytes().to_vec()), diff).expect("a Rust file is parsed");
         let revision = job.revision();
         texts.parsed(Parsed { target, revision, syntax: job.run().unwrap() });
     }
@@ -278,13 +290,13 @@ mod tests {
         let added = line(LineKind::Added, None, Some(1), "let a;");
         let diff = rust_file(vec![added.clone()]);
         let mut texts = DiffTexts::default();
-        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
-        let first = texts.set(ParseTarget::DiffNew(0), Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
-        let second = texts.set(ParseTarget::DiffNew(0), Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
+        let generation = texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }])[0].generation;
+        let first = texts.set(ParseTarget::DiffNew(0), generation, Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
+        let second = texts.set(ParseTarget::DiffNew(0), generation, Source::from_vec(b"let a;\n".to_vec()), &diff).unwrap();
 
         // when
         let stale = texts.parsed(Parsed { target: ParseTarget::DiffNew(0), revision: first.revision(), syntax: second.run().unwrap() });
-        let unwanted = texts.set(ParseTarget::DiffNew(1), Source::from_vec(b"let a;\n".to_vec()), &diff);
+        let unwanted = texts.set(ParseTarget::DiffNew(1), generation, Source::from_vec(b"let a;\n".to_vec()), &diff);
 
         // then
         assert!(!stale && unwanted.is_none() && first.cancel().is_cancelled());
@@ -299,12 +311,13 @@ mod tests {
         after[1] = rust_file(vec![line(LineKind::Added, None, Some(1), "c")]);
         let shown = [DiffRow::Line { file: 0, hunk: 0, line: 0 }, DiffRow::Line { file: 1, hunk: 0, line: 0 }];
         let mut texts = DiffTexts::default();
-        let first = texts.wanted(&shown);
+        let files = |asks: Vec<TextsRequest>| asks.iter().map(|ask| ask.file).collect::<Vec<_>>();
+        let first = files(texts.wanted(&shown));
 
         // when
         texts.forget_changed(&before, &after);
 
         // then
-        assert_eq!((first, texts.wanted(&shown)), (vec![0, 1], vec![1]));
+        assert_eq!((first, files(texts.wanted(&shown))), (vec![0, 1], vec![1]));
     }
 }

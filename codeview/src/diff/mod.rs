@@ -23,7 +23,7 @@ use crate::code_view::HighlightCache;
 use crate::colors::ResolvedScheme;
 use crate::document::Source;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
-use crate::panel::{DiffLayout, ParseJob, ParseTarget};
+use crate::panel::{DiffLayout, ParseJob, ParseTarget, TextsRequest};
 use crate::icons;
 use crate::position::ScrollPosition;
 use crate::scrollbar::{
@@ -51,8 +51,8 @@ const HEADER_SLOTS: usize = 6;
 const SIGN_CHARS: f32 = 2.;
 
 pub enum DiffEvent {
-    /// file `file` showed lines on screen for the first time since its diff was read: the host answers with its texts
-    NeedTexts { file: usize },
+    /// a file showed lines on screen for the first time since its diff was read: the host answers with its texts
+    NeedTexts(TextsRequest),
     /// the user switched the layout
     LayoutToggled(DiffLayout),
 }
@@ -218,13 +218,14 @@ impl DiffView {
         cx.notify();
     }
 
-    /// Keeps `source` as side `target` of its file, if the view still waits for it; the parse that colours it.
-    pub fn set_text(&mut self, target: ParseTarget, source: Source, cx: &mut Context<Self>) -> Option<ParseJob> {
+    /// Keeps `source` as side `target` of its file when it answers the last ask, `generation`, for that file; the
+    /// parse that colours it.
+    pub fn set_text(&mut self, target: ParseTarget, generation: u64, source: Source, cx: &mut Context<Self>) -> Option<ParseJob> {
         let file = match target {
             ParseTarget::DiffOld(file) | ParseTarget::DiffNew(file) => self.files.get(file)?,
             ParseTarget::Text => return None,
         };
-        let job = self.texts.set(target, source, file);
+        let job = self.texts.set(target, generation, source, file);
         self.colours = HighlightCache::default();
         cx.notify();
         job
@@ -242,8 +243,8 @@ impl DiffView {
     /// layout: the rows the list laid out to measure them are not all on screen.
     fn request_texts(&mut self, cx: &mut Context<Self>) {
         let shown = self.list.visible_rows(self.rows.len());
-        for file in self.texts.wanted(&self.rows[shown]) {
-            cx.emit(DiffEvent::NeedTexts { file });
+        for request in self.texts.wanted(&self.rows[shown]) {
+            cx.emit(DiffEvent::NeedTexts(request));
         }
     }
 

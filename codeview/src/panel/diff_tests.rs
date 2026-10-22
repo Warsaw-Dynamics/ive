@@ -19,6 +19,7 @@ use crate::style::{Appearance, ViewStyle};
 #[derive(Default)]
 struct Asked {
     texts: Vec<usize>,
+    requests: Vec<TextsRequest>,
     parses: Vec<ParseJob>,
 }
 
@@ -34,7 +35,10 @@ fn window(cx: &mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Asked>>, &mut V
     let seen = asked.clone();
     cx.update(|_window, cx| {
         cx.subscribe(&panel, move |_, event: &Event, _| match event {
-            Event::NeedTexts { file } => seen.borrow_mut().texts.push(*file),
+            Event::NeedTexts(request) => {
+                seen.borrow_mut().texts.push(request.file);
+                seen.borrow_mut().requests.push(*request);
+            }
             Event::NeedParse(job) => seen.borrow_mut().parses.push(job.clone()),
             _ => {}
         })
@@ -99,7 +103,8 @@ fn should_colour_a_hunk_line_inside_a_block_comment(cx: &mut TestAppContext) {
 
     // when
     let (old, new) = (source("fn a() {}\n/* start\nold words\nend */\n"), source("fn a() {}\n/* start\nnew words\nend */\n"));
-    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, old, new }, cx));
+    let generation = asked.borrow().requests[0].generation;
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, generation, old, new }, cx));
     answer_parses(&panel, &asked, cx);
 
     // then
@@ -135,11 +140,32 @@ fn should_show_a_file_without_texts_uncoloured(cx: &mut TestAppContext) {
     draw(&panel, 10., cx);
 
     // when
-    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, old: None, new: None }, cx));
+    let generation = asked.borrow().requests[0].generation;
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, generation, old: None, new: None }, cx));
 
     // then
     assert_eq!((asked.borrow().texts.clone(), asked.borrow().parses.len()), (vec![0, 1], 0));
     assert_eq!((colours_of(&panel, 2, "let a = 1;", cx), colours_of(&panel, 5, "let b = 2;", cx)), (vec![], vec![]));
+}
+
+#[gpui::test]
+fn should_drop_texts_answering_an_older_ask(cx: &mut TestAppContext) {
+    // given
+    let (panel, asked, cx) = window(cx);
+    open(&panel, vec![file("a.rs", vec![line(LineKind::Added, None, Some(1), "let a = 1;")])], Headers::Hidden, cx);
+    draw(&panel, 10., cx);
+    let changed = file("a.rs", vec![line(LineKind::Added, None, Some(1), "let b = 2;")]);
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetFiles(vec![changed]), cx));
+    draw(&panel, 10., cx);
+    let (older, newer) = (asked.borrow().requests[0].generation, asked.borrow().requests[1].generation);
+
+    // when
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, generation: older, old: None, new: source("let a = 1;\n") }, cx));
+    let after_older = asked.borrow().parses.len();
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file: 0, generation: newer, old: None, new: source("let b = 2;\n") }, cx));
+
+    // then
+    assert_eq!((after_older, asked.borrow().parses.len()), (0, 1));
 }
 
 /// What `panel` told its host besides asking for texts and parses: the layouts toggled, and how often its state

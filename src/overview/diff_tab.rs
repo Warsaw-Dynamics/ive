@@ -191,8 +191,8 @@ impl DiffTabBody {
         serve(&panel, spec.request.file.path.display(), cx);
         // the texts as the request stands when they are asked for: a reload may move a Since diff's fork point
         cx.subscribe(&panel, |body: &mut Self, panel, event, cx| {
-            if let Event::NeedTexts { file } = event {
-                send_texts(&panel, WantedTexts { file: *file, origin: body.request.origin() }, cx);
+            if let Event::NeedTexts(request) = event {
+                send_texts(&panel, WantedTexts { request: *request, origin: body.request.origin() }, cx);
             }
         })
         .detach();
