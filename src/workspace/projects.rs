@@ -374,8 +374,30 @@ impl Workspace {
             .filter(|(_, tab)| tab.project(self).as_ref() == Some(id))
             .map(|(tab_id, _)| tab_id)
             .collect();
-        // file tabs with edits close once those are saved
+        // file tabs with edits close once those are saved, and the project with the last of its tabs
         self.close_tabs(tabs, window, cx);
+        if !self.waits.projects.contains(id) {
+            self.waits.projects.push(id.clone());
+        }
+        self.finish_closing_projects(window, cx);
+    }
+
+    /// Closes the projects whose closing was asked for and whose tabs are all closed now.
+    pub(super) fn finish_closing_projects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let asked = std::mem::take(&mut self.waits.projects);
+        let (ready, waiting): (Vec<_>, Vec<_>) = asked.into_iter().partition(|id| !self.has_tabs_of(id));
+        self.waits.projects = waiting;
+        for id in ready {
+            self.close_project_now(&id, window, cx);
+        }
+    }
+
+    fn has_tabs_of(&self, id: &ProjectId) -> bool {
+        self.tabs.iter().any(|(_, tab)| tab.project(self).as_ref() == Some(id))
+    }
+
+    /// Closes project `id`, which has no tabs left: its processes end and it moves to Recent.
+    fn close_project_now(&mut self, id: &ProjectId, window: &mut Window, cx: &mut Context<Self>) {
         let processes: Vec<_> = self.processes.in_project(id).iter().map(|process| process.id).collect();
         for process in processes {
             if let Some(found) = self.processes.get(process) {

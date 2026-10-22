@@ -158,8 +158,10 @@ impl EditedFile {
         match event {
             Event::SaveRequested(request) => self.save(request.clone(), cx),
             Event::ReloadRequested => self.reload(cx),
-            // parsing is `codeview_host::serve`'s; scroll and caret are saved with the tabs on redraw
-            Event::Edited { .. }
+            // parsing is `codeview_host::serve`'s; scroll and caret are saved with the tabs on redraw; the workspace
+            // closes the tab on a discard
+            Event::DiscardRequested
+            | Event::Edited { .. }
             | Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)
@@ -526,5 +528,29 @@ mod tests {
         // then
         let (base, stamp) = file.read_with(cx, |file, _| (file.base.bytes().to_vec(), file.disk.stamp()));
         assert_eq!((base, stamp), (fs::read(&path).unwrap(), document::stamp(&path)));
+    }
+
+    #[gpui::test]
+    fn should_fail_the_save_to_a_read_only_file_and_leave_it_unchanged(cx: &mut TestAppContext) {
+        // given
+        let (_dir, path, file) = edited_file(b"one\n", cx);
+        let panel = file.read_with(cx, |file, _| file.panel.clone());
+        let mut mode = fs::metadata(&path).unwrap().permissions();
+        mode.set_readonly(true);
+        fs::set_permissions(&path, mode).unwrap();
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type("x".to_owned()), cx));
+        panel.update(cx, |panel, cx| panel.handle(Cast::CloseAsked, cx));
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(codeview::host::Command::Flush), cx));
+        cx.run_until_parked();
+        let failed = panel.read_with(cx, |panel, cx| panel.has_unsaved(cx));
+
+        // when
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(codeview::host::Command::Flush), cx));
+        file.update(cx, |file, cx| file.flush(cx));
+        cx.run_until_parked();
+
+        // then
+        assert!(failed);
+        assert_eq!(fs::read(&path).unwrap(), b"one\n");
     }
 }

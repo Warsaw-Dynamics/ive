@@ -18,6 +18,17 @@ pub(super) struct Saving {
     flight: Flight,
     pause: Pause,
     problem: Problem,
+    close: Close,
+}
+
+/// Whether the host waits for the edits to close the tab or quit, and the user gave them up.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Close {
+    Unasked,
+    /// the host would close but for the unsaved edits: a bar offers closing without them
+    Asked,
+    /// the user chose to lose the edits: they count as saved, and nothing is written
+    Discarded,
 }
 
 /// The one save the host is writing.
@@ -57,6 +68,13 @@ pub(super) enum Choices {
     ReloadOrOverwrite,
 }
 
+/// Whether the edits were given up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Discarded {
+    Done,
+    Refused,
+}
+
 /// What the panel does about a save request.
 pub(super) enum Next {
     Nothing,
@@ -77,11 +95,32 @@ pub(super) enum Answer {
 impl Saving {
     /// Nothing unsaved in revision `saved`.
     pub(super) fn new(delay: Duration, saved: u64) -> Self {
-        Self { delay, saved, flight: Flight::Idle, pause: Pause::Idle, problem: Problem::Nothing }
+        Self { delay, saved, flight: Flight::Idle, pause: Pause::Idle, problem: Problem::Nothing, close: Close::Unasked }
     }
 
     pub(super) fn has_unsaved(&self, revision: u64) -> bool {
-        revision != self.saved
+        revision != self.saved && self.close != Close::Discarded
+    }
+
+    /// The host waits for the edits to close the tab or quit; ends with a save.
+    pub(super) fn ask_close(&mut self) {
+        self.close = Close::Asked;
+    }
+
+    /// The bar offers closing without saving: a close waits, and the last save failed or met a conflict, with no
+    /// save in flight.
+    pub(super) fn offers_discard(&self) -> bool {
+        self.close == Close::Asked && !self.is_in_flight() && self.problem != Problem::Nothing
+    }
+
+    /// The user chose closing without saving; no-op unless [`Self::offers_discard`]. Returns what happened.
+    pub(super) fn discard(&mut self) -> Discarded {
+        if !self.offers_discard() {
+            return Discarded::Refused;
+        }
+        self.close = Close::Discarded;
+        self.pause = Pause::Idle;
+        Discarded::Done
     }
 
     pub(super) fn is_in_flight(&self) -> bool {
@@ -103,6 +142,9 @@ impl Saving {
 
     /// An edit restarts the pause; `pause` is the timer that ends it.
     pub(super) fn restart_pause(&mut self, pause: Task<()>) {
+        if self.close == Close::Discarded {
+            self.close = Close::Unasked;
+        }
         self.pause = Pause::Running { _timer: pause };
     }
 
@@ -111,7 +153,7 @@ impl Saving {
     /// this one follow its answer.
     pub(super) fn next(&mut self, kind: SaveKind, revision: u64, edits: impl FnOnce() -> Vec<Edit>) -> Next {
         self.pause = Pause::Idle;
-        if self.is_held(kind) {
+        if self.close == Close::Discarded || self.is_held(kind) {
             return Next::Nothing;
         }
         if let Flight::Sent { then, .. } = &mut self.flight {
@@ -153,6 +195,7 @@ impl Saving {
         }
         self.saved = revision;
         self.problem = Problem::Nothing;
+        self.close = Close::Unasked;
         Answer::Saved { then }
     }
 
@@ -184,10 +227,11 @@ pub(super) type Action = Box<dyn Fn(&mut Window, &mut App)>;
 pub(super) struct BarActions {
     pub(super) reload: Action,
     pub(super) overwrite: Action,
+    pub(super) discard: Action,
 }
 
 /// The bar above the text while a save failed: the reason, or for a conflict the [`Saving::choices`]. Click targets
-/// `save-reload` and `save-overwrite`.
+/// `save-reload` and `save-overwrite`, and while a close waits, `save-discard`.
 pub(super) fn bar(saving: &Saving, actions: BarActions, cx: &App) -> Option<Div> {
     let style = ViewStyle::drawing(cx);
     let row = div()
@@ -202,16 +246,21 @@ pub(super) fn bar(saving: &Saving, actions: BarActions, cx: &App) -> Option<Div>
         .text_color(rgb(style.error));
     let row = match saving.problem() {
         Problem::Nothing => return None,
-        Problem::Failed(reason) => return Some(row.child(format!("not saved: {reason}"))),
+        Problem::Failed(reason) => row.child(format!("not saved: {reason}")),
         Problem::Conflict(_) => row.child("changed on disk; not saved"),
     };
     let reload = Button { name: "save-reload", label: "Reload", action: actions.reload };
     let overwrite = Button { name: "save-overwrite", label: "Overwrite", action: actions.overwrite };
-    Some(match saving.choices() {
+    let row = match saving.choices() {
         Choices::Nothing => row,
         Choices::Reload => row.child(button(reload, style, cx)),
         Choices::ReloadOrOverwrite => row.child(button(reload, style, cx)).child(button(overwrite, style, cx)),
-    })
+    };
+    if saving.offers_discard() {
+        let discard = Button { name: "save-discard", label: "Close without saving (edits are lost)", action: actions.discard };
+        return Some(row.child(button(discard, style, cx)));
+    }
+    Some(row)
 }
 
 /// A button of the bar; `name` is its element id and its click target.

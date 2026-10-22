@@ -1,20 +1,39 @@
 //! Edits reach the disk without the user saving: the workspace asks every editing panel to save now when the user
 //! turns away from it (another tab, another window), before a run, and before quitting or closing its tab, which
-//! wait for the saves.
+//! wait for the saves; edits that cannot be saved can be given up with the tab's "Close without saving".
 
 use std::time::Duration;
 
 use codeview::host::Command;
-use codeview::panel::{Cast, Panel};
+use codeview::panel::{Cast, Event, Panel};
 use gpui::{App, AsyncWindowContext, Context, Entity, WeakEntity, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
 use crate::file_tab;
+use crate::project::ProjectId;
 use crate::tabs::TabId;
 
 /// How often waiting for saves looks again.
 const SAVE_POLL: Duration = Duration::from_millis(20);
+
+/// What waits for edits that could not be saved, until the user closes without saving or a save lands.
+#[derive(Default)]
+pub struct Waits {
+    /// the tabs whose panels this workspace listens to for a discard
+    watched: Vec<TabId>,
+    quit: QuitWait,
+    /// projects whose closing waits for their tabs to close
+    pub(super) projects: Vec<ProjectId>,
+}
+
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+enum QuitWait {
+    #[default]
+    Idle,
+    /// a quit stopped at unsaved edits and goes on once they are saved or discarded
+    Waiting,
+}
 
 impl Workspace {
     /// Every editing panel saves its edits now instead of after its pause.
@@ -40,8 +59,13 @@ impl Workspace {
     }
 
     /// The first tab whose edits are not saved: a save failed or waits for the user.
+    #[cfg(target_os = "macos")]
     pub(super) fn unsaved_tab(&self, cx: &App) -> Option<TabId> {
-        self.editing_panels(cx).into_iter().find(|(_, panel)| panel.read(cx).has_unsaved(cx)).map(|(id, _)| id)
+        self.unsaved_tabs(cx).into_iter().next()
+    }
+
+    fn unsaved_tabs(&self, cx: &App) -> Vec<TabId> {
+        self.editing_panels(cx).into_iter().filter(|(_, panel)| panel.read(cx).has_unsaved(cx)).map(|(id, _)| id).collect()
     }
 
     /// Quits once every save landed; edits that could not be saved keep IVE open, their tab shown with the reason.
@@ -55,12 +79,47 @@ impl Workspace {
     }
 
     fn quit_unless_unsaved(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(tab) = self.unsaved_tab(cx) else {
+        let unsaved = self.unsaved_tabs(cx);
+        let Some(first) = unsaved.first().copied() else {
             return cx.quit();
         };
         self.quit_prompt = None;
         cx.cancel_quit();
-        self.activate_tab(tab, window, cx);
+        self.waits.quit = QuitWait::Waiting;
+        self.ask_close(&unsaved, window, cx);
+        self.activate_tab(first, window, cx);
+        cx.notify();
+    }
+
+    /// Tells the panels of tabs `ids` that a close waits for their edits, so their bars offer closing without
+    /// saving, and closes the tab or goes on quitting when the user does.
+    fn ask_close(&mut self, ids: &[TabId], window: &mut Window, cx: &mut Context<Self>) {
+        for (id, panel) in self.editing_panels(cx).into_iter().filter(|(id, _)| ids.contains(id)) {
+            panel.update(cx, |panel, cx| panel.handle(Cast::CloseAsked, cx));
+            if self.waits.watched.contains(&id) {
+                continue;
+            }
+            self.waits.watched.push(id);
+            cx.subscribe_in(&panel, window, move |workspace, _panel, event: &Event, window, cx| {
+                if let Event::DiscardRequested = event {
+                    workspace.discarded(id, window, cx);
+                }
+            })
+            .detach();
+        }
+    }
+
+    /// The user chose closing tab `id` without saving: its panel dropped the edits, so the close or quit goes on.
+    fn discarded(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(Tab::Document(_)) = self.tabs.get(id) {
+            self.tabs.close(id);
+        }
+        self.tab_shown(window, cx);
+        self.finish_closing_projects(window, cx);
+        if self.waits.quit == QuitWait::Waiting {
+            self.waits.quit = QuitWait::Idle;
+            self.quit_when_saved(window, cx);
+        }
         cx.notify();
     }
 
@@ -102,10 +161,12 @@ impl Workspace {
         for id in saved {
             self.tabs.close(id);
         }
+        self.ask_close(&unsaved, window, cx);
         match unsaved.first() {
             Some(tab) => self.activate_tab(*tab, window, cx),
             None => self.tab_shown(window, cx),
         }
+        self.finish_closing_projects(window, cx);
         cx.notify();
     }
 

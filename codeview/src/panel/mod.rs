@@ -26,7 +26,7 @@ use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
-use saving::{Answer, BarActions, Blur, Next, Saving, Then};
+use saving::{Answer, BarActions, Blur, Discarded, Next, Saving, Then};
 
 /// A text, a diff, or nothing yet; viewed or edited as the last [`Cast::Open`] said.
 pub struct Panel {
@@ -100,6 +100,7 @@ impl Panel {
             Cast::MarkDeleted => self.mark_deleted(cx),
             Cast::Saved { revision, source } => self.saved(revision, source, cx),
             Cast::SaveFailed { revision, reason } => self.save_failed(revision, reason),
+            Cast::CloseAsked => self.saving.ask_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
             Cast::Type(text) => self.type_text(&text, cx),
             // Task 11 fetches diff texts
@@ -313,6 +314,14 @@ impl Panel {
         }
     }
 
+    /// The user chose closing without saving: the edits count as saved, and the host is told to close.
+    fn discard_edits(&mut self, cx: &mut Context<Self>) {
+        if self.saving.discard() == Discarded::Done {
+            cx.emit(Event::DiscardRequested);
+            cx.notify();
+        }
+    }
+
     fn save_failed(&mut self, revision: u64, reason: SaveFailure) {
         // the bar shows the failure; the edits wait for the next pause or flush
         let _ = self.saving.failed(revision, reason);
@@ -408,9 +417,11 @@ impl Panel {
         }
         let this = cx.weak_entity();
         let other = this.clone();
+        let last = this.clone();
         let actions = BarActions {
             reload: Box::new(move |_window, cx| drop(this.update(cx, |_panel, cx| cx.emit(Event::ReloadRequested)))),
             overwrite: Box::new(move |_window, cx| drop(other.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx)))),
+            discard: Box::new(move |_window, cx| drop(last.update(cx, |panel, cx| panel.discard_edits(cx)))),
         };
         let Some(bar) = saving::bar(&self.saving, actions, cx) else {
             return editor.into_any_element();
@@ -667,6 +678,98 @@ mod tests {
         // then
         let choices = panel.read_with(cx, |panel, _| panel.saving.choices());
         assert_eq!((saves.borrow().len(), choices), (1, saving::Choices::Reload));
+    }
+
+    /// How often `panel` told its host to close after a discard.
+    fn discards_of(panel: &Entity<Panel>, cx: &mut TestAppContext) -> Rc<RefCell<usize>> {
+        let discards: Rc<RefCell<usize>> = Rc::default();
+        let seen = discards.clone();
+        cx.update(|cx| {
+            cx.subscribe(panel, move |_, event: &Event, _| {
+                if let Event::DiscardRequested = event {
+                    *seen.borrow_mut() += 1;
+                }
+            })
+            .detach();
+        });
+        discards
+    }
+
+    #[gpui::test]
+    fn should_offer_closing_without_saving_once_a_close_waits_on_a_failed_save(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        let offers = |panel: &Entity<Panel>, cx: &mut TestAppContext| panel.read_with(cx, |panel, _| panel.saving.offers_discard());
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Io("read-only".to_owned()) }, cx);
+        let before_close = offers(&panel, cx);
+
+        // when
+        cast(&panel, Cast::CloseAsked, cx);
+
+        // then
+        let conflict = {
+            cast(&panel, typed("b"), cx);
+            cast(&panel, Cast::Command(Command::Flush), cx);
+            cast(&panel, Cast::SaveFailed { revision: 2, reason: SaveFailure::Conflict(Resolve::Reload) }, cx);
+            offers(&panel, cx)
+        };
+        assert_eq!((before_close, offers(&panel, cx), conflict), (false, true, true));
+    }
+
+    #[gpui::test]
+    fn should_not_offer_closing_without_saving_when_nothing_failed_or_a_save_is_in_flight(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::CloseAsked, cx);
+        let unsent = panel.read_with(cx, |panel, _| panel.saving.offers_discard());
+
+        // when
+        cast(&panel, Cast::Command(Command::Flush), cx);
+
+        // then
+        let in_flight = panel.read_with(cx, |panel, _| panel.saving.offers_discard());
+        assert_eq!((unsent, in_flight), (false, false));
+    }
+
+    #[gpui::test]
+    fn should_drop_the_edits_and_close_when_closing_without_saving(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        let discards = discards_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Io("read-only".to_owned()) }, cx);
+        cast(&panel, Cast::CloseAsked, cx);
+
+        // when
+        panel.update(cx, |panel, cx| panel.discard_edits(cx));
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        wait(Duration::from_millis(500), cx);
+
+        // then
+        assert!(panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx)));
+        assert_eq!((*discards.borrow(), saves.borrow().len()), (1, 1));
+    }
+
+    #[gpui::test]
+    fn should_not_close_without_saving_when_no_close_waits(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let discards = discards_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Io("read-only".to_owned()) }, cx);
+
+        // when
+        panel.update(cx, |panel, cx| panel.discard_edits(cx));
+
+        // then
+        assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)));
+        assert_eq!(*discards.borrow(), 0);
     }
 
     #[gpui::test]

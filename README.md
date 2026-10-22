@@ -703,7 +703,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | scratch row | `scratch:<name>` (open it), `rename-scratch:<name>`, `delete-scratch:<name>` (its hover actions; Delete asks: `prompt:Delete`) |
 | scratch groups | `scratch-group:<group>` (expand or collapse Today / This week / This month / Older), `scratch-more:<group>` (Show 10 more), `scratch-all:<group>` (Show all) |
 | scratch tab (shown) | `run-scratch`, and its "changed on disk" / "deleted on disk" bar: `scratch-reload`, `scratch-overwrite`, `scratch-save-again`, `scratch-close` |
-| file or scratch tab (shown) whose save found the file changed on disk | `save-reload` (drop the edits, show the file), `save-overwrite` (write the edits over it; not for files over 8 MiB); neither while a save is being written |
+| file or scratch tab (shown) whose save found the file changed on disk | `save-reload` (drop the edits, show the file), `save-overwrite` (write the edits over it; not for files over 8 MiB); neither while a save is being written. While a close or quit waits for edits that could not be saved (the save failed, or a conflict is unanswered), also `save-discard` (Close without saving: the edits are lost, the tab closes, quitting or closing the project goes on) |
 | prompt | `prompt:<button label>`; the quit prompt's are `prompt:Keep running`, `prompt:Stop all`, `prompt:Cancel` |
 | window | `window:close` (the ×; with terminals running it shows the quit prompt) |
 

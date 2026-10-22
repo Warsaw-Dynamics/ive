@@ -287,7 +287,8 @@ impl ScratchView {
             Event::SaveRequested(request) => self.write_request(request.clone(), mode_of(request.kind), cx),
             Event::ReloadRequested => self.reload(cx),
             // parsing is `codeview_host::serve`'s
-            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::OpenAt { .. } => return,
+            // the workspace closes on a discard
+            Event::DiscardRequested | Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::OpenAt { .. } => return,
         }
         cx.notify();
     }

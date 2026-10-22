@@ -133,6 +133,8 @@ pub struct Workspace {
     _api_calls: Task<()>,
     scripts: scripts::ScriptWatch,
     quit_prompt: Option<quit::QuitPrompt>,
+    /// closes waiting for edits that could not be saved
+    waits: saves::Waits,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
     /// the tabs shown, for the hub's Recent rows
@@ -279,6 +281,7 @@ impl Workspace {
             _api_calls: api_requests::answer_calls(startup.api_calls, window, cx),
             scripts,
             quit_prompt: None,
+            waits: saves::Waits::default(),
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
