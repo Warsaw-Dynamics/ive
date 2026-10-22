@@ -6,7 +6,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use codeview::code_view::{self, CodeView, Reread, Stamp};
+use codeview::document::{self, Reread, Stamp};
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
 use gpui::{App, Context, Task, Window};
@@ -169,7 +169,7 @@ impl Workspace {
                     documents.insert(path);
                 }
                 Change::FileRemoved(path) => {
-                    self.update_document(&path, CodeView::mark_deleted, cx);
+                    self.take_reread(&path, Reread::Gone, cx);
                     self.scratch_changed_on_disk(&path, cx);
                 }
                 Change::Git(dir) => {
@@ -213,29 +213,24 @@ impl Workspace {
         files.collect()
     }
 
-    fn update_document(&self, path: &Path, update: impl FnOnce(&mut CodeView, &mut Context<CodeView>), cx: &mut App) {
-        if let Some(id) = self.tabs.find(|tab| tab.shows(path)) {
-            self.update_document_tab(id, update, cx);
-        }
-    }
-
-    /// A re-read document is parsed again for its new text.
-    fn rehighlight(&mut self, path: &Path, cx: &mut Context<Self>) {
-        if let Some(id) = self.tabs.find(|tab| tab.shows(path)) {
-            self.start_highlighting(id, cx);
+    /// Gives the tab showing the document at `path` what re-reading it found.
+    fn take_reread(&mut self, path: &Path, reread: Reread, cx: &mut App) {
+        let shown = self.tabs.find(|tab| tab.shows(path)).and_then(|id| self.tabs.get_mut(id));
+        if let Some(Tab::Document(file)) = shown {
+            file.take_reread(reread, cx);
         }
     }
 
     /// Re-reads the open documents at `paths` on the background executor; one whose size and modification time
     /// are unchanged is not read.
     fn reread_documents(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
-        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path, cx).map(|stamp| (path, stamp))).collect();
+        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path).map(|stamp| (path, stamp))).collect();
         if known.is_empty() {
             return;
         }
         let rereads = cx.background_executor().spawn(async move {
             known.into_iter().map(|(path, stamp)| {
-                let reread = code_view::reread(&path, stamp);
+                let reread = document::reread(&path, stamp);
                 (path, reread)
             }).collect::<Vec<(PathBuf, Reread)>>()
         });
@@ -243,11 +238,7 @@ impl Workspace {
             let rereads = rereads.await;
             this.update(cx, |workspace, cx| {
                 for (path, reread) in rereads {
-                    let changed = matches!(reread, Reread::Changed(..));
-                    workspace.update_document(&path, |view, cx| view.take_reread(reread, cx), cx);
-                    if changed {
-                        workspace.rehighlight(&path, cx);
-                    }
+                    workspace.take_reread(&path, reread, cx);
                 }
                 cx.notify();
             })
@@ -257,9 +248,9 @@ impl Workspace {
     }
 
     /// The stamp of the document `path` shows, while a tab shows it.
-    fn document_stamp(&self, path: &Path, cx: &App) -> Option<Option<Stamp>> {
+    fn document_stamp(&self, path: &Path) -> Option<Option<Stamp>> {
         match self.tabs.get(self.tabs.find(|tab| tab.shows(path))?) {
-            Some(Tab::Document(file)) => Some(file.view.read(cx).stamp()),
+            Some(Tab::Document(file)) => Some(file.stamp()),
             _ => None,
         }
     }

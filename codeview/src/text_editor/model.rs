@@ -22,7 +22,7 @@ impl Position {
 }
 
 /// The largest text accepted, counted in bytes as written to disk.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SizeLimit {
     pub max_bytes: usize,
     /// 2 for files written back with CRLF

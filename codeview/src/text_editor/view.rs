@@ -120,7 +120,8 @@ impl TextEditor {
         Ok(())
     }
 
-    fn run(&mut self, command: Command, cx: &mut Context<Self>) {
+    /// Runs `command` as its key would.
+    pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         // a refused edit was already reported through TextEditorEvent::Refused
         let _ = match command {
             Command::Move(motion, selecting) => self.navigate(|model| model.move_caret(motion, selecting), cx),

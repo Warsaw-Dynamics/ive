@@ -4,6 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
+use codeview::host::Command;
+use codeview::panel::Cast;
+use codeview::text_editor::{Motion, Selecting};
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{App, Context, KeyDownEvent, Task, Window};
@@ -137,9 +140,7 @@ impl Workspace {
             // the log could not be written either; its writer said why on stderr
             Err(reason) => return eprintln!("ive: cannot show the script log: {reason}"),
         };
-        if let Some(Tab::Document(file)) = self.tabs.get(shown) {
-            file.view.read(cx).reveal_end();
-        }
+        self.cast_to_document_tab(shown, Cast::Command(Command::Move(Motion::DocumentEnd, Selecting::Move)), cx);
     }
 
     /// A folder changed on disk; when it is the scripts folder, the script thread reloads if a script changed.
@@ -226,12 +227,12 @@ impl Workspace {
             }
             Builtin::SelectAll => {
                 if let Some(shown) = self.tabs.active_id() {
-                    self.update_document_tab(shown, |view, cx| view.select_all(cx), cx);
+                    self.cast_to_document_tab(shown, Cast::Command(Command::SelectAll), cx);
                 }
             }
             Builtin::CopyTo(target) => {
                 if let Some(shown) = self.tabs.active_id() {
-                    self.update_document_tab(shown, |view, cx| view.copy(target, cx), cx);
+                    self.cast_to_document_tab(shown, Cast::Command(Command::Copy(target)), cx);
                 }
             }
             // the keymap allows no other action in the window scope; a shown file ignores the editing ones

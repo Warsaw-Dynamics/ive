@@ -37,7 +37,7 @@ impl TabIdentity {
             SavedTab::WorktreeOverview { .. } => return None,
             SavedTab::GitLog { project, .. } => Self::GitLog(project.clone()),
             SavedTab::Commit { project, sha, .. } => Self::Commit { project: project.clone(), sha: sha.clone() },
-            SavedTab::Diff { checkout, request } => Self::Diff { checkout: checkout.clone(), path: request.path.clone() },
+            SavedTab::Diff { checkout, request, .. } => Self::Diff { checkout: checkout.clone(), path: request.path.clone() },
             SavedTab::Settings { .. } => Self::Settings,
             SavedTab::Hub => Self::Hub,
         };
@@ -138,11 +138,11 @@ impl WorktreeUse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::saved_tabs::ScrollPosition;
+    use crate::saved_tabs::PanelState;
 
     fn file(path: &str, shown_at: i64) -> Shown {
         let path = PathBuf::from(path);
-        let saved = SavedTab::File { path: path.clone(), scroll: ScrollPosition { top_line: 0., left: 0. } };
+        let saved = SavedTab::File { path: path.clone(), panel: PanelState::default() };
         Shown { identity: TabIdentity::File(path), saved: Some(saved), checkout: Some(PathBuf::from("/w")), title: String::new(), shown_at }
     }
 

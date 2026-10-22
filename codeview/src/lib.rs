@@ -7,6 +7,7 @@ pub mod document;
 pub mod host;
 pub mod icons;
 pub mod line_view;
+pub mod panel;
 pub mod parallel;
 pub mod position;
 pub mod scrollbar;

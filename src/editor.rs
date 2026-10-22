@@ -3,14 +3,17 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 
-use codeview::code_view::CodeView;
+use codeview::document::{Reread, Stamp};
+use codeview::panel::{Cast, Panel};
 use gpui::{
     AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, Entity, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
     Stateful, Window, WindowControlArea, div, img, prelude::*, px, rgb, size, transparent_black,
 };
 
 use crate::click_targets::target;
+use crate::codeview_host;
 use crate::colors::checkout_colour;
+use crate::disk_text::DiskText;
 use crate::document::Document;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
@@ -211,10 +214,9 @@ impl Tab {
     /// terminal that ends with IVE.
     pub fn saved(&self, workspace: &Workspace, cx: &App) -> Option<SavedTab> {
         let tab = match self {
-            Self::Document(file) => SavedTab::File { path: file.path().to_path_buf(), scroll: file.view.read(cx).scroll_position() },
+            Self::Document(file) => SavedTab::File { path: file.path().to_path_buf(), panel: file.panel.read(cx).state() },
             Self::Scratch(scratch) => {
-                let (caret, scroll) = scratch.view_state(cx);
-                SavedTab::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned(), caret, scroll }
+                SavedTab::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned(), panel: scratch.panel_state(cx) }
             }
             Self::Process(id) => SavedTab::Terminal { session: workspace.processes().get(*id)?.view.hosted_id()?.to_owned() },
             Self::ProjectOverview(overview) => {
@@ -222,9 +224,10 @@ impl Tab {
             }
             Self::GitLog(tab) => SavedTab::GitLog { project: tab.project.as_str().to_owned(), view: tab.body.read(cx).section_name().to_owned() },
             Self::Commit(tab) => {
-                SavedTab::Commit { project: tab.project.as_str().to_owned(), sha: tab.sha.as_str().to_owned(), title: tab.title.clone() }
+                let panel = tab.panel_state(cx);
+                SavedTab::Commit { project: tab.project.as_str().to_owned(), sha: tab.sha.as_str().to_owned(), title: tab.title.clone(), panel }
             }
-            Self::Diff(tab) => SavedTab::Diff { checkout: tab.checkout.path.clone(), request: tab.request.saved() },
+            Self::Diff(tab) => SavedTab::Diff { checkout: tab.checkout.path.clone(), request: tab.request.saved(), panel: tab.panel_state(cx) },
             Self::Settings(view) => SavedTab::Settings { page: view.page_name().to_owned() },
             Self::Hub(_) => SavedTab::Hub,
             Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) => return None,
@@ -412,7 +415,7 @@ impl Tab {
     fn render(&self, id: TabId, workspace: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> AnyElement {
         let theme = crate::theme::tabs(cx);
         match self {
-            Self::Document(file) => file.view.clone().into_any_element(),
+            Self::Document(file) => file.disk.render(&file.panel, theme),
             Self::Process(process) => match workspace.processes().get(*process) {
                 Some(process) => match process.link() {
                     Some(url) => div()
@@ -509,20 +512,37 @@ pub fn render_pane(workspace: &Workspace, window: &mut Window, cx: &mut Context<
         })
 }
 
-/// A file's tab: the file's path, which stays as the tab opened, and its view.
+/// A file's tab: the file's path, which stays as the tab opened, its panel, and what IVE knows of the file on disk.
 pub struct FileTab {
     path: PathBuf,
-    pub view: Entity<CodeView>,
+    pub panel: Entity<Panel>,
+    disk: DiskText,
 }
 
 impl FileTab {
     pub fn new(document: Document, cx: &mut App) -> Self {
         let path = document.path().to_path_buf();
-        Self { path, view: cx.new(|cx| CodeView::new(document, cx)) }
+        let panel = cx.new(Panel::new);
+        codeview_host::serve(&panel, path.display().to_string(), cx);
+        let disk = DiskText::show(document, &panel, cx);
+        Self { path, panel, disk }
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// What a re-read compares the file with.
+    pub fn stamp(&self) -> Option<Stamp> {
+        self.disk.stamp()
+    }
+
+    pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
+        self.disk.take(reread, &self.panel, cx);
+    }
+
+    pub fn cast(&self, cast: Cast, cx: &mut App) {
+        self.panel.update(cx, |panel, cx| panel.handle(cast, cx));
     }
 
     fn file_name(&self) -> String {
@@ -868,7 +888,7 @@ fn centered_message(message: impl Into<SharedString>, color: u32) -> Div {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::saved_tabs::ScrollPosition;
+    use crate::saved_tabs::PanelState;
 
     fn unloaded(saved: SavedTab) -> Tab {
         Tab::Unloaded(saved)
@@ -877,18 +897,13 @@ mod tests {
     #[test]
     fn should_count_restored_tabs_as_open_for_what_they_show() {
         // given
-        let file = unloaded(SavedTab::File { path: "/p/a.rs".into(), scroll: ScrollPosition::default() });
+        let file = unloaded(SavedTab::File { path: "/p/a.rs".into(), panel: PanelState::default() });
         let settings = unloaded(SavedTab::Settings { page: "Appearance".to_owned() });
         let overview = unloaded(SavedTab::ProjectOverview { project: "p".to_owned(), section: "Git".to_owned() });
-        let scratch = unloaded(SavedTab::Scratch {
-            project: "p".to_owned(),
-            name: "n.md".to_owned(),
-            caret: crate::saved_tabs::CaretPosition::default(),
-            scroll: ScrollPosition::default(),
-        });
+        let scratch = unloaded(SavedTab::Scratch { project: "p".to_owned(), name: "n.md".to_owned(), panel: PanelState::default() });
         let log = unloaded(SavedTab::GitLog { project: "p".to_owned(), view: "Log".to_owned() });
         let sha = "0123456789abcdef0123456789abcdef01234567";
-        let commit = unloaded(SavedTab::Commit { project: "p".to_owned(), sha: sha.to_owned(), title: "t".to_owned() });
+        let commit = unloaded(SavedTab::Commit { project: "p".to_owned(), sha: sha.to_owned(), title: "t".to_owned(), panel: PanelState::default() });
         let p = ProjectId::new("p");
 
         // when

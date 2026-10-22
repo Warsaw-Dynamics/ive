@@ -7,7 +7,9 @@ use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, 
 use super::git_event::CommitLink;
 use super::git_ui::{error_with_retry, muted};
 use crate::age::date_time;
-use codeview::diff::{DiffView, Headers};
+use crate::codeview_host::diff_panel;
+use codeview::diff::Headers;
+use codeview::panel::{Cast, Panel, PanelState};
 use crate::git::log::{self, CommitDetail, CommitInfo};
 use crate::git::repo::GitError;
 use crate::git::types::Sha;
@@ -28,6 +30,16 @@ impl CommitTab {
         Self { project, sha, title, body }
     }
 
+    pub fn panel_state(&self, cx: &App) -> PanelState {
+        self.body.read(cx).files.read(cx).state()
+    }
+
+    /// Scrolls the files and collapses them as a saved tab had them, once they are read.
+    pub fn restore(&self, state: PanelState, cx: &mut App) {
+        let files = self.body.read(cx).files.clone();
+        files.update(cx, |panel, cx| panel.handle(Cast::Restore(state), cx));
+    }
+
     pub fn open(link: &CommitLink, cx: &mut App) -> Self {
         let sha = link.commit.sha.clone();
         let body = cx.new(|cx| CommitView::new(link.dir.clone(), sha.clone(), cx));
@@ -45,7 +57,7 @@ pub struct CommitView {
     dir: PathBuf,
     sha: Sha,
     header: Option<Result<Header, String>>,
-    files: Entity<DiffView>,
+    files: Entity<Panel>,
     /// read once, when first shown: a commit never changes
     started: bool,
     _load: Option<Task<()>>,
@@ -54,7 +66,7 @@ pub struct CommitView {
 impl CommitView {
     /// Reads git once it is first shown.
     fn new(dir: PathBuf, sha: Sha, cx: &mut Context<Self>) -> Self {
-        let files = cx.new(|cx| DiffView::new(Headers::Shown, cx));
+        let files = diff_panel(Vec::new(), Headers::Shown, cx);
         Self { dir, sha, header: None, files, started: false, _load: None }
     }
 
@@ -79,7 +91,7 @@ impl CommitView {
     fn loaded(&mut self, result: Result<CommitDetail, GitError>, cx: &mut Context<Self>) {
         self.header = Some(match result {
             Ok(CommitDetail { info, message, files }) => {
-                self.files.update(cx, |view, cx| view.set_files(files, cx));
+                self.files.update(cx, |panel, cx| panel.handle(Cast::SetFiles(files), cx));
                 Ok(Header { info, message })
             }
             Err(error) => {

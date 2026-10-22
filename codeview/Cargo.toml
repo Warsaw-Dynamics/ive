@@ -80,4 +80,6 @@ tree-sitter-zig = "1.1.2"
 cc = "1.8.0"
 
 [dev-dependencies]
+# gpui's test app, for driving panels in unit tests
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["test-support"] }
 tempfile = "3"

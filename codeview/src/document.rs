@@ -1,16 +1,19 @@
+use std::borrow::Cow;
 use std::fmt;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use gpui::SharedString;
 use memmap2::Mmap;
 
 use crate::colors::ColorKey;
+use crate::panel::LineSource;
 use crate::parallel::in_parallel;
-use crate::syntax::Highlight;
+use crate::syntax::{Highlight, MAX_HIGHLIGHT_BYTES};
 
 /// Beyond this the line index alone could reach hundreds of MB; refuse instead.
 const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
@@ -28,6 +31,14 @@ const TAB_AS_SPACES: &str = "    ";
 /// costs one newline scan and only the lines on screen are ever decoded.
 pub struct Document {
     path: PathBuf,
+    text: Text,
+}
+
+/// Text held in memory and read by line ranges, like a [`Document`]: a scratch's text.
+pub struct TextSource(Text);
+
+/// Bytes and the index of their line starts.
+struct Text {
     bytes: Arc<Bytes>,
     index: LineIndex,
 }
@@ -45,6 +56,7 @@ impl Source {
 enum Bytes {
     Empty,
     Mapped(Mmap),
+    Owned(Box<[u8]>),
 }
 
 impl Bytes {
@@ -52,6 +64,7 @@ impl Bytes {
         match self {
             Self::Empty => &[],
             Self::Mapped(map) => map,
+            Self::Owned(bytes) => bytes,
         }
     }
 
@@ -169,11 +182,11 @@ impl Document {
             return Err(DocumentError::NotText(path.to_path_buf()));
         }
         let index = LineIndex::build(bytes.as_slice(), &|range| bytes.release_pages(range));
-        Ok(Self { path: path.to_path_buf(), bytes: Arc::new(bytes), index })
+        Ok(Self { path: path.to_path_buf(), text: Text { bytes: Arc::new(bytes), index } })
     }
 
     pub fn bytes(&self) -> &[u8] {
-        self.bytes.as_slice()
+        self.text.bytes()
     }
 
     pub fn byte_len(&self) -> usize {
@@ -181,7 +194,7 @@ impl Document {
     }
 
     pub fn source(&self) -> Source {
-        Source(self.bytes.clone())
+        Source(self.text.bytes.clone())
     }
 
     pub fn path(&self) -> &Path {
@@ -195,12 +208,31 @@ impl Document {
     }
 
     pub fn line_count(&self) -> usize {
-        self.index.line_count
+        self.text.index.line_count
     }
 
     /// Lines `range` (clamped to the document) ready to display.
     pub fn lines(&self, range: Range<usize>) -> Vec<DisplayLine> {
-        let range = range.start.min(self.line_count())..range.end.min(self.line_count());
+        self.text.lines(range)
+    }
+}
+
+impl TextSource {
+    pub fn new(text: &str) -> Self {
+        let bytes = Bytes::Owned(text.as_bytes().into());
+        let index = LineIndex::build(bytes.as_slice(), &|_| {});
+        Self(Text { bytes: Arc::new(bytes), index })
+    }
+}
+
+impl Text {
+    fn bytes(&self) -> &[u8] {
+        self.bytes.as_slice()
+    }
+
+    fn lines(&self, range: Range<usize>) -> Vec<DisplayLine> {
+        let line_count = self.index.line_count;
+        let range = range.start.min(line_count)..range.end.min(line_count);
         let bytes = self.bytes();
         let mut start = self.line_start(range.start);
         range
@@ -222,6 +254,95 @@ impl Document {
         }
         start
     }
+
+    /// The whole text, when it is small enough to highlight.
+    fn highlightable(&self) -> Option<Source> {
+        (self.bytes().len() <= MAX_HIGHLIGHT_BYTES).then(|| Source(self.bytes.clone()))
+    }
+
+    /// Bytes `range`, clamped to the text.
+    fn slice(&self, range: Range<u64>) -> &[u8] {
+        let bytes = self.bytes();
+        let clamp = |at: u64| usize::try_from(at).unwrap_or(usize::MAX).min(bytes.len());
+        let start = clamp(range.start);
+        &bytes[start..clamp(range.end).max(start)]
+    }
+}
+
+impl LineSource for Document {
+    fn line_count(&self) -> usize {
+        self.text.index.line_count
+    }
+
+    fn lines(&self, range: Range<usize>) -> Vec<DisplayLine> {
+        self.text.lines(range)
+    }
+
+    fn source(&self) -> Option<Source> {
+        self.text.highlightable()
+    }
+
+    fn bytes(&self, range: Range<u64>) -> Cow<'_, [u8]> {
+        Cow::Borrowed(self.text.slice(range))
+    }
+
+    fn byte_len(&self) -> u64 {
+        self.text.bytes().len() as u64
+    }
+}
+
+impl LineSource for TextSource {
+    fn line_count(&self) -> usize {
+        self.0.index.line_count
+    }
+
+    fn lines(&self, range: Range<usize>) -> Vec<DisplayLine> {
+        self.0.lines(range)
+    }
+
+    fn source(&self) -> Option<Source> {
+        self.0.highlightable()
+    }
+
+    fn bytes(&self, range: Range<u64>) -> Cow<'_, [u8]> {
+        Cow::Borrowed(self.0.slice(range))
+    }
+
+    fn byte_len(&self) -> u64 {
+        self.0.bytes().len() as u64
+    }
+}
+
+/// A file's size and modification time: when both are as before, the file is not read again.
+pub type Stamp = (u64, SystemTime);
+
+/// What re-reading an open document found.
+pub enum Reread {
+    /// size and modification time as when it was last read
+    Unchanged,
+    Changed(Document, Option<Stamp>),
+    Gone,
+    Failed(String),
+}
+
+/// Re-reads the document at `path` unless its stamp is still `known`. Reads the disk; run it on the background
+/// executor.
+pub fn reread(path: &Path, known: Option<Stamp>) -> Reread {
+    let now = stamp(path);
+    if now.is_some() && now == known {
+        return Reread::Unchanged;
+    }
+    match Document::open(path) {
+        Ok(document) => Reread::Changed(document, now),
+        Err(error) if path.exists() => Reread::Failed(error.to_string()),
+        Err(_) => Reread::Gone,
+    }
+}
+
+/// The stamp of the file at `path` now; `None` when it cannot be read.
+pub fn stamp(path: &Path) -> Option<Stamp> {
+    let metadata = fs::metadata(path).ok()?;
+    Some((metadata.len(), metadata.modified().ok()?))
 }
 
 fn looks_binary(bytes: &[u8]) -> bool {
@@ -555,6 +676,35 @@ mod tests {
 
         // then
         assert!(matches!(result, Err(DocumentError::NotText(_))));
+    }
+
+    #[test]
+    fn should_not_read_a_file_whose_size_and_modification_time_are_unchanged() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.md");
+        fs::write(&path, "one\n").unwrap();
+        let known = stamp(&path);
+
+        // when
+        let reread = reread(&path, known);
+
+        // then
+        assert!(matches!(reread, Reread::Unchanged));
+    }
+
+    #[test]
+    fn should_read_lines_and_bytes_of_text_in_memory() {
+        // given
+        let source = TextSource::new("one\n\ttwo\nthree");
+
+        // when
+        let lines = texts(LineSource::lines(&source, 1..9));
+        let bytes = source.bytes(4..100);
+
+        // then
+        assert_eq!((source.line_count(), lines), (3, vec!["    two".to_owned(), "three".to_owned()]));
+        assert_eq!((&*bytes, source.byte_len()), (&b"\ttwo\nthree"[..], 14));
     }
 
     /// Run with: IVE_BIG_FILE=/path/to/file cargo test --release -- --ignored --nocapture

@@ -1,9 +1,12 @@
-//! IVE's side of `codeview::host`: its key bindings and its clipboard.
+//! IVE's side of `codeview::host`: its key bindings and its clipboard; and what every panel asks of IVE.
 
 use std::rc::Rc;
 
+use codeview::diff::{FileDiff, Headers};
 use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
-use gpui::{App, IntoElement, KeyDownEvent};
+use codeview::panel::{Cast, Content, DiffInput, Editable, Event, Panel, ParseJob};
+use codeview::syntax::ParseError;
+use gpui::{App, AppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
 
 use crate::click_targets::ClickTargets;
 use crate::clipboard;
@@ -78,6 +81,48 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Redo => Command::Redo,
         _ => return None,
     })
+}
+
+/// Answers what every panel asks of IVE, whichever tab holds it: parses on the background executor. `name` (a
+/// path) says on stderr which text a failed parse was for. Call it before the panel's first [`Cast::Open`].
+pub fn serve(panel: &Entity<Panel>, name: String, cx: &mut App) {
+    cx.subscribe(panel, move |panel, event: &Event, cx| {
+        if let Event::NeedParse(job) = event {
+            parse_in_background(panel.downgrade(), job.clone(), &name, cx);
+        }
+    })
+    .detach();
+}
+
+/// A panel showing `files` read-only.
+pub fn diff_panel(files: Vec<FileDiff>, headers: Headers, cx: &mut App) -> Entity<Panel> {
+    let input = DiffInput { files, headers, editable: Editable::No };
+    cx.new(|cx| {
+        let mut panel = Panel::new(cx);
+        panel.handle(Cast::Open(Content::Diff(input)), cx);
+        panel
+    })
+}
+
+fn parse_in_background(panel: WeakEntity<Panel>, job: ParseJob, name: &str, cx: &mut App) {
+    let (target, revision, stale) = (job.target(), job.revision(), job.cancel());
+    let name = name.to_owned();
+    let parsing = cx.background_executor().spawn(async move { job.run() });
+    cx.spawn(async move |cx| {
+        let result = parsing.await;
+        // the text changed (or the panel went away) after the parse finished, before this update ran
+        if stale.is_cancelled() {
+            return;
+        }
+        match result {
+            Ok(syntax) => {
+                panel.update(cx, |panel, cx| panel.handle(Cast::Parsed { target, revision, syntax }, cx)).ok();
+            }
+            Err(ParseError::Cancelled) => {}
+            Err(error) => eprintln!("ive: {name} shown without highlighting: {error}"),
+        }
+    })
+    .detach();
 }
 
 #[cfg(test)]

@@ -6,7 +6,9 @@ use gpui::{App, Context, Entity, IntoElement, Render, Task, Window, div, prelude
 
 use super::git_ui::{mark_label, muted, toggle_button};
 use crate::click_targets::target;
-use codeview::diff::{DiffView, Headers};
+use crate::codeview_host::diff_panel;
+use codeview::diff::Headers;
+use codeview::panel::{Cast, Panel, PanelState};
 use crate::git::base::{ForkPoint, fork_point};
 use crate::git::diff::{self, FileDiff, FilePaths, SinceRange, Uncommitted};
 use crate::git::repo::GitError;
@@ -144,6 +146,16 @@ impl DiffTab {
         let body = cx.new(|cx| DiffTabBody::new(&spec, cx));
         Self { checkout: spec.checkout, request: spec.request, title, tooltip, body }
     }
+
+    pub fn panel_state(&self, cx: &App) -> PanelState {
+        self.body.read(cx).panel.read(cx).state()
+    }
+
+    /// Scrolls the diff back to where a saved tab had it.
+    pub fn restore(&self, state: PanelState, cx: &mut App) {
+        let panel = self.body.read(cx).panel.clone();
+        panel.update(cx, |panel, cx| panel.handle(Cast::Restore(state), cx));
+    }
 }
 
 enum BodyState {
@@ -158,20 +170,16 @@ pub struct DiffTabBody {
     request: DiffRequest,
     source: String,
     mark: Mark,
-    view: Entity<DiffView>,
+    panel: Entity<Panel>,
     state: BodyState,
     _reload: Option<Task<()>>,
 }
 
 impl DiffTabBody {
     fn new(spec: &DiffTabSpec, cx: &mut Context<Self>) -> Self {
-        let view = cx.new(|cx| {
-            let mut view = DiffView::new(Headers::Hidden, cx);
-            view.set_files(vec![spec.file.clone()], cx);
-            view
-        });
+        let panel = diff_panel(vec![spec.file.clone()], Headers::Hidden, cx);
         let source = source_text(&spec.request.source, &spec.label);
-        Self { request: spec.request.clone(), source, mark: spec.file.mark, view, state: BodyState::Shown, _reload: None }
+        Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, _reload: None }
     }
 
     fn reload(&mut self, cx: &mut Context<Self>) {
@@ -203,7 +211,7 @@ impl DiffTabBody {
                 return cx.notify();
             }
         };
-        self.view.update(cx, |view, cx| view.set_files(files, cx));
+        self.panel.update(cx, |panel, cx| panel.handle(Cast::SetFiles(files), cx));
         cx.notify();
     }
 }
@@ -233,7 +241,7 @@ impl Render for DiffTabBody {
             .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(self.source.clone()))
             .children(status)
             .child(toggle_button("reload-diff", icons::HISTORY, "Reload", theme).on_click(reload));
-        div().flex().flex_col().flex_1().min_h_0().child(header).child(self.view.clone())
+        div().flex().flex_col().flex_1().min_h_0().child(header).child(self.panel.clone())
     }
 }
 

@@ -111,6 +111,12 @@ impl ListScroll {
         rows_in_view(row_count, row_height, scrolled, f32::from(sizes.item.height))
     }
 
+    /// Scrolls to `offset` (negative, as gpui's), unclamped: before the first layout the list's size is unknown, and
+    /// its next layout keeps the offset inside the rows.
+    pub fn set_offset(&self, offset: Point<Pixels>) {
+        self.handle().set_offset(offset);
+    }
+
     fn handle(&self) -> ScrollHandle {
         self.list.0.borrow().base_handle.clone()
     }

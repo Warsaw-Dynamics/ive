@@ -84,8 +84,13 @@ impl LineScroll {
         self.scroll_to(Axis::Vertical, self.top.get());
     }
 
+    /// Before the first layout the viewport is unknown, so any line may still end up on top.
     fn max_top(&self) -> f64 {
-        (self.line_count.get() as f64 - self.viewport_lines()).max(0.)
+        let line_count = self.line_count.get() as f64;
+        match self.viewport_lines.get() {
+            Some(lines) => (line_count - lines).max(0.),
+            None => (line_count - 1.).max(0.),
+        }
     }
 
     fn max_left(&self) -> f64 {
@@ -239,6 +244,20 @@ mod tests {
 
         // then
         assert_eq!(scroll.top(), 60.);
+    }
+
+    #[test]
+    fn should_keep_a_restored_scroll_near_the_end_when_the_line_count_is_set_before_the_first_layout() {
+        // given
+        let scroll = LineScroll::new(301);
+        scroll.set_position(ScrollPosition { top_line: 271., left: 0. });
+
+        // when
+        scroll.set_line_count(301);
+        scroll.viewport_measured(30.);
+
+        // then
+        assert_eq!(scroll.top(), 271.);
     }
 
     #[test]

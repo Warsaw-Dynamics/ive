@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use codeview::code_view::CodeView;
+use codeview::panel::Cast;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
     AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, Render, SharedString,
@@ -16,7 +16,6 @@ use crate::hub::corpus::Corpus;
 use crate::hub::history::{History, Shown, WorktreeUse};
 use crate::hub::index::HubIndex;
 use crate::hub::sources::HubScope;
-use crate::syntax::{ParseError, Syntax};
 use crate::frame;
 use crate::icons;
 use crate::api::Call;
@@ -435,37 +434,8 @@ impl Workspace {
     pub fn open_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let temporary = tab.temporary_kind().is_some_and(|kind| cx.try_global::<TemporaryTabs>().is_some_and(|tabs| tabs.opens_temporary(kind)));
         let id = if temporary { self.tabs.open_temporary(tab) } else { self.tabs.open(tab) };
-        self.start_highlighting(id, cx);
         self.tab_shown(window, cx);
         id
-    }
-
-    fn start_highlighting(&mut self, id: TabId, cx: &mut Context<Self>) {
-        let Some(Tab::Document(file)) = self.tabs.get(id) else {
-            return;
-        };
-        let Some(job) = file.view.read(cx).parse_job() else {
-            return;
-        };
-        let path = file.path().to_path_buf();
-        let stale = job.cancel();
-        let parsing = cx.background_executor().spawn(async move { job.run() });
-        cx.spawn(async move |workspace, cx| {
-            let result = parsing.await;
-            // the text was re-read (or the tab closed) after the parse finished, before this update ran
-            let result = if stale.is_cancelled() { Err(ParseError::Cancelled) } else { result };
-            workspace.update(cx, |workspace, cx| workspace.finish_highlighting(id, &path, result, cx)).ok();
-        })
-        .detach();
-    }
-
-    /// The tab may be gone by now; then the result is dropped.
-    fn finish_highlighting(&mut self, id: TabId, path: &Path, result: Result<Syntax, ParseError>, cx: &mut Context<Self>) {
-        match (result, self.tabs.get(id)) {
-            (Ok(syntax), Some(Tab::Document(file))) => file.view.update(cx, |view, cx| view.set_syntax(syntax, cx)),
-            (Err(ParseError::Cancelled), _) | (Ok(_), _) => {}
-            (Err(error), _) => eprintln!("ive: {} shown without highlighting: {error}", path.display()),
-        }
     }
 
     /// Shows tab `id`; a detached one by bringing its window to the front.
@@ -535,10 +505,10 @@ impl Workspace {
         }
     }
 
-    /// Changes the view of document tab `id`; a closed tab or one of another kind is ignored.
-    pub fn update_document_tab(&self, id: TabId, update: impl FnOnce(&mut CodeView, &mut Context<CodeView>), cx: &mut App) {
+    /// Casts `cast` to the panel of document tab `id`; a closed tab or one of another kind is ignored.
+    pub fn cast_to_document_tab(&self, id: TabId, cast: Cast, cx: &mut App) {
         if let Some(Tab::Document(file)) = self.tabs.get(id) {
-            file.view.update(cx, update);
+            file.cast(cast, cx);
         }
     }
 

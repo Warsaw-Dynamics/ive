@@ -1,12 +1,11 @@
 //! The code view entity: a read-only view of a file that draws only the lines on screen, highlighted once parsed.
 
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::fs;
 use std::ops::Range;
-use std::path::Path;
 use std::rc::Rc;
-use std::time::SystemTime;
+use std::sync::Arc;
 
 use gpui::{
     App, Context, CursorStyle, DispatchPhase, Div, Entity, FocusHandle, Focusable, KeyDownEvent, MouseButton, MouseDownEvent,
@@ -14,13 +13,15 @@ use gpui::{
 };
 
 use crate::colors::{ColorKey, ResolvedScheme};
-use crate::document::{DisplayLine, Document, Source};
+use crate::document::DisplayLine;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::line_view::{self, LineScroll, Metrics};
+use crate::panel::{LineSource, ParseJob, ParseTarget};
 use crate::position::ScrollPosition;
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
-use crate::syntax::{self, Cancel, Highlight, Language, MAX_HIGHLIGHT_BYTES, PARSE_BUDGET, ParseError, Syntax};
+use crate::syntax::{self, Cancel, Highlight, Language, Syntax};
+use crate::text_editor::Motion;
 use crate::text_selection::{TextSelection, whole_line, word_around};
 
 /// Columns kept between the pointer and the view's edge when a selection drag scrolls sideways.
@@ -39,12 +40,11 @@ pub struct CodeView {
 
 /// What the view shows and where: everything but its gpui handles.
 struct State {
-    document: Document,
+    source: Arc<dyn LineSource>,
+    language: Option<Language>,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
-    /// size and modification time when read; a reload of an unchanged file is skipped
-    stamp: Option<Stamp>,
-    /// a bar above the text: "deleted on disk", or why a reload failed
+    /// a bar above the text: "deleted on disk"
     notice: Option<SharedString>,
     /// set once the background parse finished; plain text until then
     syntax: Option<Syntax>,
@@ -76,24 +76,6 @@ struct Hit {
     offset: usize,
 }
 
-/// A background parse of one document.
-pub struct ParseJob {
-    source: Source,
-    language: Language,
-    cancel: Cancel,
-}
-
-impl ParseJob {
-    /// Set when the view went away or re-read its text; a result finished before that is stale then.
-    pub fn cancel(&self) -> Cancel {
-        self.cancel.clone()
-    }
-
-    pub fn run(self) -> Result<Syntax, ParseError> {
-        syntax::parse(self.source.as_bytes(), self.language, &self.cancel, PARSE_BUDGET)
-    }
-}
-
 impl Drop for State {
     fn drop(&mut self) {
         self.cancel.cancel();
@@ -101,18 +83,14 @@ impl Drop for State {
 }
 
 impl CodeView {
-    /// A view of `document` where the mouse selects text.
-    pub fn new(document: Document, cx: &mut Context<Self>) -> Self {
-        Self { state: State::new(document), focus_handle: cx.focus_handle(), selectable: true }
+    /// A view of `source`, coloured as `language` once parsed, where the mouse selects text.
+    pub fn new(source: Arc<dyn LineSource>, language: Option<Language>, cx: &mut Context<Self>) -> Self {
+        Self { state: State::new(source, language), focus_handle: cx.focus_handle(), selectable: true }
     }
 
     /// This view without selecting by mouse.
     pub fn unselectable(self) -> Self {
         Self { selectable: false, ..self }
-    }
-
-    pub fn path(&self) -> &Path {
-        self.state.document.path()
     }
 
     /// Scrolls line `line` (from 1; past the end, the last) a third of the way down the view and marks it.
@@ -121,22 +99,20 @@ impl CodeView {
         cx.notify();
     }
 
-    /// Scrolls to the last line, where a log's newest lines are.
-    pub fn reveal_end(&self) {
-        self.state.scroll.reveal_line(self.state.document.line_count().saturating_sub(1));
-    }
-
     pub fn scroll_position(&self) -> ScrollPosition {
         self.state.scroll_position()
     }
 
-    pub fn restore_scroll(&self, position: ScrollPosition) {
+    /// Scrolls to `position`, kept inside the text.
+    pub fn restore_scroll(&mut self, position: ScrollPosition, cx: &mut Context<Self>) {
         self.state.scroll.set_position(position);
+        cx.notify();
     }
 
-    /// The parse this document needs, if it gets highlighting at all: a known language, at most 8 MB.
-    pub fn parse_job(&self) -> Option<ParseJob> {
-        self.state.parse_job()
+    /// The parse this text needs, tagged `revision`, if it gets highlighting at all: a known language, at most
+    /// `MAX_HIGHLIGHT_BYTES`.
+    pub fn parse_job(&self, revision: u64) -> Option<ParseJob> {
+        self.state.parse_job(revision)
     }
 
     pub fn set_syntax(&mut self, syntax: Syntax, cx: &mut Context<Self>) {
@@ -144,14 +120,9 @@ impl CodeView {
         cx.notify();
     }
 
-    /// What a re-read compares the file with; none while a notice shows, so the next re-read reads.
-    pub fn stamp(&self) -> Option<Stamp> {
-        self.state.stamp()
-    }
-
-    /// Takes what re-reading the file after a change on disk found; see [`State::take_reread`].
-    pub fn take_reread(&mut self, reread: Reread, cx: &mut Context<Self>) {
-        self.state.take_reread(reread);
+    /// Shows new text (the file changed on disk): the scroll stays, clamped; plain until parsed again.
+    pub fn replace_source(&mut self, source: Arc<dyn LineSource>, language: Option<Language>, cx: &mut Context<Self>) {
+        self.state.replace_source(source, language);
         cx.notify();
     }
 
@@ -161,8 +132,20 @@ impl CodeView {
         cx.notify();
     }
 
+    /// Copy, Select All, and the moves to the start or end of the text; the view ignores other commands.
+    pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
+        match command {
+            Command::Copy(target) => self.copy(target, cx),
+            Command::SelectAll => self.select_all(cx),
+            Command::Move(Motion::DocumentStart, _) => self.state.scroll.reveal_line(0),
+            Command::Move(Motion::DocumentEnd, _) => self.state.reveal_end(),
+            _ => return,
+        }
+        cx.notify();
+    }
+
     pub fn select_all(&mut self, cx: &mut Context<Self>) {
-        self.state.selection = Some(TextSelection::of(0..self.state.document.byte_len()));
+        self.state.selection = Some(TextSelection::of(0..self.state.source.byte_len() as usize));
         cx.notify();
     }
 
@@ -171,10 +154,10 @@ impl CodeView {
         let Some(selection) = self.state.selection else {
             return;
         };
-        match selection.text(self.state.document.bytes()) {
+        match selection.text(&self.state.text()) {
             Ok(text) if text.is_empty() => {}
             Ok(text) => Host::write_clipboard(target, text, cx),
-            Err(reason) => eprintln!("ive: {} not copied: {reason}", self.path().display()),
+            Err(reason) => eprintln!("selection not copied: {reason}"),
         }
     }
 
@@ -203,12 +186,12 @@ impl CodeView {
 }
 
 impl State {
-    fn new(document: Document) -> Self {
-        let scroll = Rc::new(LineScroll::new(document.line_count()));
+    fn new(source: Arc<dyn LineSource>, language: Option<Language>) -> Self {
+        let scroll = Rc::new(LineScroll::new(source.line_count()));
         let scrollbars = ScrollState::new(scroll.clone());
         Self {
-            stamp: stamp(document.path()),
-            document,
+            source,
+            language,
             scroll,
             scrollbars,
             notice: None,
@@ -222,11 +205,25 @@ impl State {
         }
     }
 
+    /// The text as stored; borrowed from a file or memory, so cheap for every source the host has today.
+    fn text(&self) -> Cow<'_, [u8]> {
+        self.source.bytes(0..self.source.byte_len())
+    }
+
+    fn last_line(&self) -> usize {
+        self.source.line_count().saturating_sub(1)
+    }
+
     fn reveal_line(&mut self, line: usize) {
-        let index = line.saturating_sub(1).min(self.document.line_count().saturating_sub(1));
+        let index = line.saturating_sub(1).min(self.last_line());
         let top = (index as f64 - self.scroll.viewport_lines() / 3.).max(0.).floor();
         self.scroll.set_position(ScrollPosition { top_line: top, left: 0. });
         self.marked = Some(index);
+    }
+
+    /// Scrolls to the last line, where a log's newest lines are.
+    fn reveal_end(&self) {
+        self.scroll.reveal_line(self.last_line());
     }
 
     /// The marked line, from 1.
@@ -242,10 +239,10 @@ impl State {
         let Some(hit) = self.hit(event.position) else {
             return;
         };
-        let bytes = self.document.bytes();
+        let bytes = self.text();
         let selection = match event.click_count {
-            2 => TextSelection::of(word_around(bytes, &hit.line, hit.offset)),
-            3.. => TextSelection::of(whole_line(bytes, &hit.line)),
+            2 => TextSelection::of(word_around(&bytes, &hit.line, hit.offset)),
+            3.. => TextSelection::of(whole_line(&bytes, &hit.line)),
             _ if event.modifiers.shift => self.selection.unwrap_or(TextSelection::at(hit.offset)).extended_to(hit.offset),
             _ => TextSelection::at(hit.offset),
         };
@@ -274,8 +271,8 @@ impl State {
     fn hit(&self, point: Point<Pixels>) -> Option<Hit> {
         let Placed { origin, metrics } = self.placed.get()?;
         let row = f64::from(f32::from(point.y - origin.y) / f32::from(metrics.line_height)) + self.scroll.top();
-        let index = (row.max(0.).floor() as usize).min(self.document.line_count().saturating_sub(1));
-        let line = self.document.lines(index..index + 1).pop()?;
+        let index = (row.max(0.).floor() as usize).min(self.last_line());
+        let line = self.source.lines(index..index + 1).pop()?;
         let x = f64::from(f32::from(point.x - origin.x - metrics.gutter_width())) + self.scroll.left();
         let column = (x / f64::from(f32::from(metrics.char_width))).max(0.).round() as usize;
         let offset = line.offset_at(column);
@@ -286,12 +283,13 @@ impl State {
         self.scroll.position()
     }
 
-    fn parse_job(&self) -> Option<ParseJob> {
-        let language = Language::for_path(self.document.path(), self.document.bytes())?;
-        (self.document.byte_len() <= MAX_HIGHLIGHT_BYTES).then(|| ParseJob {
-            source: self.document.source(),
-            language,
+    fn parse_job(&self, revision: u64) -> Option<ParseJob> {
+        Some(ParseJob {
+            language: self.language?,
+            source: self.source.source()?,
             cancel: self.cancel.clone(),
+            target: ParseTarget::Text,
+            revision,
         })
     }
 
@@ -307,33 +305,19 @@ impl State {
             return Rc::from([]);
         };
         let bytes = line.file_bytes();
-        self.highlights.get_or_query(bytes.start, || syntax::spans(syntax, self.document.bytes(), bytes.clone()))
-    }
-
-    fn stamp(&self) -> Option<Stamp> {
-        match self.notice {
-            Some(_) => None,
-            None => self.stamp,
-        }
+        self.highlights.get_or_query(bytes.start, || syntax::spans(syntax, &self.text(), bytes.clone()))
     }
 
     /// New text keeps the scroll position (clamped to the new length) and shows plain until it is parsed again
-    /// (`parse_job`); a file that is gone or cannot be read keeps the old text, with a note saying why.
-    fn take_reread(&mut self, reread: Reread) {
-        match reread {
-            Reread::Unchanged => {}
-            Reread::Changed(document, stamp) => {
-                self.scroll.set_line_count(document.line_count());
-                self.document = document;
-                self.stamp = stamp;
-                self.notice = None;
-                self.selection = None;
-                self.dragging = false;
-                self.forget_syntax();
-            }
-            Reread::Gone => self.mark_deleted(),
-            Reread::Failed(reason) => self.notice = Some(format!("cannot reload: {reason}").into()),
-        }
+    /// (`parse_job`).
+    fn replace_source(&mut self, source: Arc<dyn LineSource>, language: Option<Language>) {
+        self.scroll.set_line_count(source.line_count());
+        self.source = source;
+        self.language = language;
+        self.notice = None;
+        self.selection = None;
+        self.dragging = false;
+        self.forget_syntax();
     }
 
     /// The old tree's offsets do not fit new text, and a parse still running for it is stale.
@@ -357,11 +341,11 @@ impl State {
         interact: impl FnOnce(Stateful<Div>, Metrics) -> Stateful<Div>,
     ) -> Div {
         let scheme = cx.global::<ResolvedScheme>();
-        let metrics = Metrics::measure(window, cx, self.document.line_count());
+        let metrics = Metrics::measure(window, cx, self.source.line_count());
         let top = self.scroll.top();
         let first = top.floor() as usize;
         let visible = self.scroll.viewport_lines().ceil() as usize + 1;
-        let lines = self.document.lines(first..first + visible);
+        let lines = self.source.lines(first..first + visible);
         self.highlights.start_frame();
         let widest_chars = lines.iter().map(|line| line.text.chars().count()).max().unwrap_or(0);
         self.scroll.set_content_width(metrics.text_width(widest_chars));
@@ -496,37 +480,6 @@ impl HighlightCache {
     }
 }
 
-/// A file's size and modification time: when both are as before, the file is not read again.
-pub type Stamp = (u64, SystemTime);
-
-/// What re-reading an open document found.
-pub enum Reread {
-    /// size and modification time as when it was last read
-    Unchanged,
-    Changed(Document, Option<Stamp>),
-    Gone,
-    Failed(String),
-}
-
-/// Re-reads the document at `path` unless its stamp is still `known`. Reads the disk; run it on the background
-/// executor.
-pub fn reread(path: &Path, known: Option<Stamp>) -> Reread {
-    let now = stamp(path);
-    if now.is_some() && now == known {
-        return Reread::Unchanged;
-    }
-    match Document::open(path) {
-        Ok(document) => Reread::Changed(document, now),
-        Err(error) if path.exists() => Reread::Failed(error.to_string()),
-        Err(_) => Reread::Gone,
-    }
-}
-
-fn stamp(path: &Path) -> Option<Stamp> {
-    let metadata = fs::metadata(path).ok()?;
-    Some((metadata.len(), metadata.modified().ok()?))
-}
-
 fn styled_line(line: &DisplayLine, highlights: &[Highlight], scheme: &ResolvedScheme) -> StyledText {
     let styles = line.place(highlights).into_iter().map(|(range, key)| (range, scheme.get(key).highlight_style()));
     StyledText::new(line.text.clone()).with_highlights(styles)
@@ -577,14 +530,25 @@ fn selection_bar(columns: Range<usize>, metrics: &Metrics, theme: &ViewStyle) ->
 #[cfg(test)]
 mod tests {
     use std::cell::Cell;
+    use std::fs;
+    use std::path::Path;
 
     use super::*;
+    use crate::document::Document;
+    use crate::syntax::MAX_HIGHLIGHT_BYTES;
+
+    /// A view of the file at `path`, in the language its name says.
+    fn opened(path: &Path) -> State {
+        let document = Document::open(path).unwrap();
+        let language = Language::for_path(path, document.bytes());
+        State::new(Arc::new(document), language)
+    }
 
     fn editor_for(name: &str, text: &[u8]) -> (tempfile::TempDir, State) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(name);
         fs::write(&path, text).unwrap();
-        let editor = State::new(Document::open(&path).unwrap());
+        let editor = opened(&path);
         (dir, editor)
     }
 
@@ -639,7 +603,7 @@ mod tests {
         let log = editor_for("server.log", b"plain");
 
         // when
-        let jobs = [small.1.parse_job().is_some(), big.1.parse_job().is_some(), log.1.parse_job().is_some()];
+        let jobs = [small.1.parse_job(0).is_some(), big.1.parse_job(0).is_some(), log.1.parse_job(0).is_some()];
 
         // then
         assert_eq!(jobs, [true, false, false]);
@@ -649,10 +613,10 @@ mod tests {
     fn should_colour_java_line_with_tab_and_crlf() {
         // given
         let (_dir, mut editor) = editor_for("A.java", b"class A {\r\n\tint x;\r\n}\r\n");
-        editor.set_syntax(editor.parse_job().unwrap().run().unwrap());
+        editor.set_syntax(editor.parse_job(0).unwrap().run().unwrap());
 
         // when
-        let line = editor.document.lines(1..2).remove(0);
+        let line = editor.source.lines(1..2).remove(0);
         let placed = line.place(&editor.highlights_of(&line));
 
         // then
@@ -665,8 +629,8 @@ mod tests {
         // given
         let json = format!("[{}1]", "1, ".repeat(1_000_000));
         let (_dir, mut editor) = editor_for("long.json", json.as_bytes());
-        editor.set_syntax(editor.parse_job().unwrap().run().unwrap());
-        let line = editor.document.lines(0..1).remove(0);
+        editor.set_syntax(editor.parse_job(0).unwrap().run().unwrap());
+        let line = editor.source.lines(0..1).remove(0);
 
         // when
         let highlights = editor.highlights_of(&line);
@@ -678,38 +642,36 @@ mod tests {
     }
 
     #[test]
-    fn should_reload_a_changed_file_and_say_when_it_is_deleted() {
+    fn should_show_new_text_and_say_when_it_is_deleted() {
         // given
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("notes.md");
         fs::write(&path, "one\ntwo\n").unwrap();
-        let mut editor = State::new(Document::open(&path).unwrap());
+        let mut editor = opened(&path);
         fs::write(&path, "one\ntwo\nthree\nfour\n").unwrap();
 
         // when
-        editor.take_reread(reread(&path, editor.stamp()));
-        let lines = editor.document.line_count();
+        editor.replace_source(Arc::new(Document::open(&path).unwrap()), None);
+        let lines = editor.source.line_count();
         fs::remove_file(&path).unwrap();
-        editor.take_reread(reread(&path, editor.stamp()));
+        editor.mark_deleted();
 
         // then
         assert_eq!((lines, editor.notice.as_ref().map(SharedString::as_ref)), (4, Some("deleted on disk")));
-        assert_eq!(editor.document.line_count(), 4, "the text stays");
+        assert_eq!(editor.source.line_count(), 4, "the text stays");
     }
 
     #[test]
-    fn should_not_read_a_file_whose_size_and_modification_time_are_unchanged() {
+    fn should_cancel_the_parse_of_replaced_text() {
         // given
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("notes.md");
-        fs::write(&path, "one\n").unwrap();
-        let editor = State::new(Document::open(&path).unwrap());
+        let (dir, mut editor) = editor_for("a.json", b"{}");
+        let stale = editor.parse_job(0).unwrap().cancel();
 
         // when
-        let reread = reread(&path, editor.stamp());
+        editor.replace_source(Arc::new(Document::open(&dir.path().join("a.json")).unwrap()), None);
 
         // then
-        assert!(matches!(reread, Reread::Unchanged));
+        assert!(stale.is_cancelled());
     }
 
     #[test]
@@ -718,7 +680,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("a.txt");
         std::fs::write(&path, (1..=100).map(|line| format!("line {line}\n")).collect::<String>()).unwrap();
-        let mut editor = State::new(Document::open(&path).unwrap());
+        let mut editor = opened(&path);
 
         // when
         editor.reveal_line(42);
@@ -735,12 +697,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("a.txt");
         std::fs::write(&path, "one\ntwo\n").unwrap();
-        let mut editor = State::new(Document::open(&path).unwrap());
+        let mut editor = opened(&path);
 
         // when
         editor.reveal_line(500);
 
         // then
-        assert_eq!(editor.marked_line(), Some(editor.document.line_count()));
+        assert_eq!(editor.marked_line(), Some(editor.source.line_count()));
     }
 }

@@ -11,13 +11,14 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use gpui::{
-    App, Bounds, Context, CursorStyle, DispatchPhase, Div, FocusHandle, IntoElement, KeyDownEvent, ListHorizontalSizingBehavior,
+    App, Bounds, Context, CursorStyle, DispatchPhase, Div, FocusHandle, Focusable, IntoElement, KeyDownEvent, ListHorizontalSizingBehavior,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, SharedString, Stateful, Window, canvas, div,
-    img, prelude::*, px, rgb, rgba, uniform_list,
+    img, point, prelude::*, px, rgb, rgba, uniform_list,
 };
 
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::icons;
+use crate::position::ScrollPosition;
 use crate::scrollbar::{Axis, ListScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar, widest_row};
 use crate::style::{DiffSizes, ViewStyle};
 pub use data::{Cut, DiffBody, DiffLine, FILE_LINE_LIMIT, FileDiff, GitPath, Hunk, LineKind, MAX_FILE_BYTES, Mark, VIEW_LINE_LIMIT};
@@ -94,6 +95,47 @@ impl DiffView {
         self.files = files;
         self.rebuild();
         cx.notify();
+    }
+
+    pub fn has_files(&self) -> bool {
+        !self.files.is_empty()
+    }
+
+    /// The top row (with the fraction scrolled past) and the pixels scrolled sideways.
+    pub fn scroll_position(&self) -> ScrollPosition {
+        let top = self.list.extent(Axis::Vertical).scrolled / f64::from(self.sizes.row_height);
+        ScrollPosition { top_line: top, left: self.list.extent(Axis::Horizontal).scrolled }
+    }
+
+    /// Scrolls to `position`; the list keeps it inside the rows when it is next laid out.
+    pub fn restore_scroll(&mut self, position: ScrollPosition, cx: &mut Context<Self>) {
+        let top = position.top_line.max(0.) * f64::from(self.sizes.row_height);
+        self.list.set_offset(point(px(-(position.left.max(0.) as f32)), px(-(top as f32))));
+        cx.notify();
+    }
+
+    /// The collapsed files, by path.
+    pub fn collapsed_paths(&self) -> Vec<String> {
+        let mut paths: Vec<String> = self.collapsed.iter().map(|file| self.files[*file].path.display()).collect();
+        paths.sort();
+        paths
+    }
+
+    /// Collapses the files at `paths` and expands the others.
+    pub fn restore_collapsed(&mut self, paths: &[String], cx: &mut Context<Self>) {
+        let collapsed = self.files.iter().enumerate().filter(|(_, file)| paths.contains(&file.path.display()));
+        self.collapsed = collapsed.map(|(index, _)| index).collect();
+        self.rebuild();
+        cx.notify();
+    }
+
+    /// Copy and Select All; the diff ignores other commands.
+    pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
+        match command {
+            Command::Copy(target) => self.copy(target, cx),
+            Command::SelectAll => self.select_all(cx),
+            _ => {}
+        }
     }
 
     fn toggle(&mut self, file: usize, cx: &mut Context<Self>) {
@@ -352,6 +394,12 @@ fn largest_line_number(file: &FileDiff) -> u32 {
     match &file.body {
         DiffBody::Text { hunks, .. } => hunks.iter().flat_map(|hunk| &hunk.lines).flat_map(|line| line.old.into_iter().chain(line.new)).max().unwrap_or(1),
         DiffBody::Binary | DiffBody::TooLarge => 1,
+    }
+}
+
+impl Focusable for DiffView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 
