@@ -353,8 +353,19 @@ impl DiffTabBody {
         .detach();
     }
 
-    /// The diff of `base`, a text saved; the panel drops it if its edits apply to another text by now.
+    /// The diff of `base`, a text saved; dropped, header and all, if the edits apply to another text by now (a later
+    /// save or read: its own diff follows).
     fn rediffed(&mut self, base: Arc<Document>, diffed: Result<EditedDiff, GitError>, cx: &mut Context<Self>) {
+        let NewSide::Edited { file, .. } = &self.new_side else {
+            return;
+        };
+        if Arc::ptr_eq(&base, &file.read(cx).base()) {
+            self.take_rediff(base, diffed, cx);
+        }
+    }
+
+    /// The diff of `base`, the edited file's base, becomes the rows' and the header's.
+    fn take_rediff(&mut self, base: Arc<Document>, diffed: Result<EditedDiff, GitError>, cx: &mut Context<Self>) {
         let diff = match diffed {
             Ok(edited) => self.shown_diff(edited.body),
             Err(error) => {
@@ -841,6 +852,26 @@ mod editing_tests {
         assert_eq!(gone, Vec::<String>::new());
         assert_eq!(shown, ["one", "TWO", "three"]);
         assert_eq!(on_disk(&repo), "one\nxTWO\nthree\n");
+    }
+
+    #[gpui::test]
+    fn should_keep_the_header_when_the_diff_of_a_text_no_longer_edited_comes(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        let stale = Arc::new(Document::open(&repo.path().join("a.txt")).unwrap());
+        let no_changes = EditedDiff { old: None, body: DiffBody::Text { hunks: Vec::new(), cut: None } };
+
+        // when
+        tab.body.update(cx, |body, cx| body.rediffed(stale, Ok(no_changes), cx));
+
+        // then
+        assert!(tab.body.read_with(cx, |body, _| matches!(body.state, BodyState::Shown)));
+        assert_eq!(new_lines(&panel, cx), ["one", "TWO", "three"]);
     }
 
     #[gpui::test]
