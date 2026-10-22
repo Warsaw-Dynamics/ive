@@ -1,14 +1,9 @@
 //! Colour keys and schemes, modelled on IntelliJ's `TextAttributesKey`s and colour schemes.
 
-mod attributes;
 mod checkout;
-mod keys;
-mod scheme;
 
-pub use attributes::{Entry, RawEntry, TextAttributes};
 pub use checkout::{checkout_colour, fnv1a};
-pub use keys::ColorKey;
-pub use scheme::{Overrides, ResolvedScheme, Scheme};
+pub use codeview::colors::{ColorKey, Overrides, RawEntry, ResolvedScheme, Scheme};
 
 use gpui::App;
 
@@ -34,4 +29,29 @@ pub fn overrides(spec: &ThemeSpec, appearance: Appearance) -> Overrides {
         Appearance::Light => &spec.light.syntax,
     };
     syntax.iter().filter_map(|(id, raw)| Some((ColorKey::by_id(id)?, raw.to_entry(id).ok()?))).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use codeview::colors::Entry;
+
+    use super::*;
+
+    #[test]
+    fn should_resolve_theme_syntax_over_builtin_scheme() {
+        // given
+        let mut spec = crate::theme_config::defaults();
+        spec.dark.syntax.insert("CSS.COLOR".to_owned(), RawEntry { foreground: Some("FF0000".to_owned()), ..RawEntry::default() });
+
+        // when
+        let resolved = resolved(&spec, Appearance::Dark);
+
+        // then
+        let key = |id: &str| ColorKey::by_id(id).unwrap();
+        assert_eq!(resolved.get(key("CSS.COLOR")).foreground, Some(0xff0000));
+        assert_eq!(resolved.get(key("CSS.IMPORTANT")).foreground, Scheme::builtin(Appearance::Dark).entry(key("CSS.IMPORTANT")).and_then(|entry| match entry {
+            Entry::Own(attributes) => attributes.foreground,
+            Entry::Inherit => None,
+        }));
+    }
 }

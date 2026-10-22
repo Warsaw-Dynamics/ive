@@ -18,7 +18,7 @@ const NOT_REPEATABLE: [&str; 1] = ["Nix"];
 
 macro_rules! sample {
     ($language:literal, $path:literal) => {
-        ($language, include_str!(concat!("../../../assets/previews/", $path)))
+        ($language, include_str!(concat!("../../../../assets/previews/", $path)))
     };
 }
 

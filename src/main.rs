@@ -26,7 +26,6 @@ mod mcp;
 mod open_project;
 mod overview;
 mod paging;
-mod parallel;
 mod pasted;
 mod paths;
 mod process;
@@ -50,7 +49,6 @@ mod settings_page;
 #[cfg(unix)]
 mod signals;
 mod sidebar;
-mod syntax;
 mod state;
 mod tab_menu;
 mod tab_preview;
@@ -80,6 +78,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::{App, Bounds, prelude::*};
 
 use args::{Args, McpPort};
+use codeview::{parallel, syntax};
 use assets::Assets;
 use api::Call;
 use mcp::Token;

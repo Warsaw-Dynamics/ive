@@ -5,22 +5,16 @@ use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, Window
 use crate::settings::{SettingsStore, ThemePreference};
 use crate::theme_config::{GitColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Appearance {
-    Dark,
-    Light,
-}
+pub use codeview::style::Appearance;
 
-impl Appearance {
-    pub fn resolve(preference: ThemePreference, os: WindowAppearance) -> Self {
-        match (preference, os) {
-            (ThemePreference::Dark, _) => Self::Dark,
-            (ThemePreference::Light, _) => Self::Light,
-            (ThemePreference::System, WindowAppearance::Dark | WindowAppearance::VibrantDark) => Self::Dark,
-            (ThemePreference::System, WindowAppearance::Light | WindowAppearance::VibrantLight) => Self::Light,
-        }
+/// `preference`, with the OS's appearance for [`ThemePreference::System`].
+pub fn appearance(preference: ThemePreference, os: WindowAppearance) -> Appearance {
+    match (preference, os) {
+        (ThemePreference::Dark, _) => Appearance::Dark,
+        (ThemePreference::Light, _) => Appearance::Light,
+        (ThemePreference::System, WindowAppearance::Dark | WindowAppearance::VibrantDark) => Appearance::Dark,
+        (ThemePreference::System, WindowAppearance::Light | WindowAppearance::VibrantLight) => Appearance::Light,
     }
-
 }
 
 /// The active theme: colours as 0xRRGGBB (0xRRGGBBAA where noted) for the current appearance, and the sizes; built
@@ -235,7 +229,7 @@ pub fn intern(sizes: &Sizes) -> &'static Sizes {
 /// (gpui 0.2.2 re-borrows platform state the event loop already holds).
 pub fn apply(os: WindowAppearance, cx: &mut App) {
     let preference = cx.global::<SettingsStore>().current().theme;
-    let appearance = Appearance::resolve(preference, os);
+    let appearance = appearance(preference, os);
     if cx.try_global::<Theme>().is_some_and(|theme| theme.appearance == appearance) {
         return;
     }
@@ -343,7 +337,7 @@ mod tests {
         ];
 
         // when
-        let resolved: Vec<_> = cases.iter().map(|(preference, os, _)| Appearance::resolve(*preference, *os)).collect();
+        let resolved: Vec<_> = cases.iter().map(|(preference, os, _)| appearance(*preference, *os)).collect();
 
         // then
         let expected: Vec<_> = cases.iter().map(|(_, _, appearance)| *appearance).collect();

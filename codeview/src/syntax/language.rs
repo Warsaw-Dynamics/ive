@@ -32,7 +32,7 @@ impl Language {
     }
 
     /// The registry row named exactly `name`, e.g. `"Java"`.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     pub fn named(name: &str) -> Option<Self> {
         Self::find(|spec| spec.name == name)
     }

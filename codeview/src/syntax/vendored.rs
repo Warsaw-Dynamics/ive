@@ -34,7 +34,7 @@ mod tests {
             ("dockerfile", DOCKERFILE, "FROM alpine:3\nRUN echo hi\n"),
             ("fish", FISH, "function hi\n  echo hi\nend\n"),
             ("gomod", GOMOD, "module example.com/x\n\ngo 1.22\n"),
-            ("rune", RUNE, include_str!("../../assets/scripts/ive.rn")),
+            ("rune", RUNE, include_str!("../../../assets/scripts/ive.rn")),
             ("scss", SCSS, "$c: red;\n.a { .b { color: $c; } }\n"),
             ("sql", SQL, "SELECT id FROM users WHERE id = 1;\n"),
             ("vue", VUE, "<template><div>{{ x }}</div></template>\n"),

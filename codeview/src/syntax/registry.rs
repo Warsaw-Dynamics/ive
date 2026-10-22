@@ -22,7 +22,7 @@ pub struct LanguageSpec {
 
 macro_rules! query {
     ($($path:literal),+) => {
-        concat!($(include_str!(concat!("../../assets/queries/", $path)), "\n"),+)
+        concat!($(include_str!(concat!("../../../assets/queries/", $path)), "\n"),+)
     };
 }
 

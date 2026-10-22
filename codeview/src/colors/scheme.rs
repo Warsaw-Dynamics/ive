@@ -4,10 +4,10 @@ use std::sync::LazyLock;
 use gpui::Global;
 
 use super::{ColorKey, Entry, RawEntry, TextAttributes};
-use crate::theme::Appearance;
+use crate::style::Appearance;
 
-const DARK: &str = include_str!("../../assets/schemes/dark.toml");
-const LIGHT: &str = include_str!("../../assets/schemes/light.toml");
+const DARK: &str = include_str!("../../../assets/schemes/dark.toml");
+const LIGHT: &str = include_str!("../../../assets/schemes/light.toml");
 
 static DARK_SCHEME: LazyLock<Scheme> = LazyLock::new(|| Scheme::parse(DARK, "dark").expect("embedded dark scheme is valid"));
 static LIGHT_SCHEME: LazyLock<Scheme> =
@@ -87,23 +87,6 @@ mod tests {
 
     fn colored(color: u32) -> Entry {
         Entry::Own(TextAttributes { foreground: Some(color), ..TextAttributes::default() })
-    }
-
-    #[test]
-    fn should_resolve_theme_syntax_over_builtin_scheme() {
-        // given
-        let mut spec = crate::theme_config::defaults();
-        spec.dark.syntax.insert("CSS.COLOR".to_owned(), RawEntry { foreground: Some("FF0000".to_owned()), ..RawEntry::default() });
-
-        // when
-        let resolved = super::super::resolved(&spec, Appearance::Dark);
-
-        // then
-        assert_eq!(resolved.get(key("CSS.COLOR")).foreground, Some(0xff0000));
-        assert_eq!(resolved.get(key("CSS.IMPORTANT")).foreground, Scheme::builtin(Appearance::Dark).entry(key("CSS.IMPORTANT")).and_then(|entry| match entry {
-            Entry::Own(attributes) => attributes.foreground,
-            Entry::Inherit => None,
-        }));
     }
 
     fn scheme(text: &str) -> Scheme {

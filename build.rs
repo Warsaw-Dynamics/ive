@@ -1,30 +1,10 @@
-//! Compiles the tree-sitter grammars in `vendor/grammars/` that have no crate usable with IVE's tree-sitter, and lists
-//! the files under `assets/` for `src/assets.rs` to compile in.
+//! Lists the files under `assets/` for `src/assets.rs` to compile in.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// Each exports `tree_sitter_<name>`; `src/syntax/vendored.rs` declares them.
-const VENDORED: [&str; 7] = ["dockerfile", "fish", "gomod", "rune", "scss", "sql", "vue"];
-
 fn main() {
-    for name in VENDORED {
-        compile(name);
-    }
     write_assets();
-}
-
-/// One static library per grammar: each brings its own `tree_sitter/parser.h`.
-fn compile(name: &str) {
-    let src = Path::new("vendor/grammars").join(name).join("src");
-    let mut build = cc::Build::new();
-    build.include(&src).std("c11").warnings(false).file(src.join("parser.c"));
-    let scanner = src.join("scanner.c");
-    if scanner.exists() {
-        build.file(&scanner);
-    }
-    build.compile(&format!("ive-grammar-{name}"));
-    println!("cargo::rerun-if-changed={}", src.display());
 }
 
 /// `$OUT_DIR/assets.rs`: `&[("fonts/Inter.ttf", include_bytes!(…)), …]`, sorted by path so lookups can bisect.

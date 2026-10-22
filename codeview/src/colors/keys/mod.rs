@@ -186,7 +186,7 @@ impl ColorKey {
 mod tests {
     use super::*;
     use crate::colors::Scheme;
-    use crate::theme::Appearance;
+    use crate::style::Appearance;
     use std::collections::HashSet;
 
     #[test]
