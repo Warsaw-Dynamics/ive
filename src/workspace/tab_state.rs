@@ -3,11 +3,12 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use codeview::panel::Cast;
 use gpui::{App, Context, Window};
 
 use super::Workspace;
 use crate::document::Document;
-use crate::editor::{EditorView, Tab};
+use crate::editor::{FileTab, Tab};
 use crate::git::types::Sha;
 use crate::hub::model::HubState;
 use crate::overview::commit_tab::CommitTab;
@@ -15,7 +16,7 @@ use crate::overview::diff_tab::{DiffRequest, DiffTab, DiffTabSpec};
 use crate::overview::{ProjectOverview, ProjectSection};
 use crate::process::ProcessId;
 use crate::project::{self, CheckoutRef, ProjectId};
-use crate::saved_tabs::{MAX_TABS, SavedTab, SavedTabs, ScrollPosition};
+use crate::saved_tabs::{MAX_TABS, PanelState, SavedTab, SavedTabs};
 use crate::scratch::ScratchRef;
 use crate::settings_page::{SettingsPage, SettingsView, THIRD_PARTY_TITLE};
 use crate::tabs::{TabId, Tabs};
@@ -76,7 +77,8 @@ impl Workspace {
             return self.tab_shown(window, cx);
         };
         self.tabs.replace(id, tab);
-        self.start_highlighting(id, cx);
+        self.save_on_state_change(id, cx);
+        self.open_diff_on_request(id, window, cx);
         if let SavedTab::Settings { page } = &saved {
             self.show_settings_page(settings_page_named(page), cx);
         }
@@ -85,11 +87,11 @@ impl Workspace {
 
     pub(super) fn loaded_tab(&mut self, saved: &SavedTab, window: &mut Window, cx: &mut Context<Self>) -> Option<Tab> {
         let tab = match saved {
-            SavedTab::File { path, scroll } => file_tab(path, *scroll),
-            SavedTab::Scratch { project, name, caret, scroll } => {
+            SavedTab::File { path, panel } => file_tab(path, panel.clone(), cx),
+            SavedTab::Scratch { project, name, panel } => {
                 let scratch = ScratchRef { project: ProjectId::parse(project).ok()?, name: name.clone() };
                 let tab = self.scratch_tab_of(&scratch, cx).ok()?;
-                tab.restore_view(*caret, *scroll, cx);
+                tab.restore(panel.clone(), cx);
                 Tab::Scratch(tab)
             }
             SavedTab::Terminal { .. } | SavedTab::WorktreeOverview { .. } => return None,
@@ -104,18 +106,22 @@ impl Workspace {
                 tab.body.update(cx, |body, cx| body.show_named(view, cx));
                 Tab::GitLog(tab)
             }
-            SavedTab::Commit { project, sha, title } => {
+            SavedTab::Commit { project, sha, title, panel } => {
                 let id = ProjectId::parse(project).ok()?;
                 let dir = self.project(&id)?.root.clone();
-                Tab::Commit(CommitTab::reopen(id, dir, Sha::parse(sha)?, title.clone(), cx))
+                let tab = CommitTab::reopen(id, dir, Sha::parse(sha)?, title.clone(), cx);
+                tab.restore(panel.clone(), cx);
+                Tab::Commit(tab)
             }
-            SavedTab::Diff { checkout, request } => {
+            SavedTab::Diff { checkout, request, panel } => {
                 let checkout = self.listed_checkout(checkout)?;
                 let request = DiffRequest::from_saved(request)?;
                 // a diff that has no changes any more is not shown again
                 let file = request.load().ok()??;
                 let label = self.checkout_label(&checkout);
-                Tab::Diff(DiffTab::open(DiffTabSpec { checkout, label, request, file }, cx))
+                let tab = DiffTab::open(DiffTabSpec { checkout, label, request, file }, cx);
+                tab.restore(panel.clone(), cx);
+                Tab::Diff(tab)
             }
             SavedTab::Settings { .. } => {
                 let view = SettingsView::new(cx);
@@ -180,12 +186,12 @@ impl TabOwnership {
     }
 }
 
-fn file_tab(path: &Path, scroll: ScrollPosition) -> Tab {
-    match Document::open(path) {
-        Ok(document) => {
-            let editor = EditorView::new(document);
-            editor.restore_scroll(scroll);
-            Tab::Document(editor)
+fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
+    match Document::open_stamped(path) {
+        Ok(opened) => {
+            let file = FileTab::new(opened, cx);
+            file.cast(Cast::Restore(panel), cx);
+            Tab::Document(file)
         }
         Err(error) => Tab::Failed { title: project::folder_name(path), error: error.to_string().into() },
     }
@@ -257,7 +263,7 @@ mod tests {
     }
 
     fn file(name: &str) -> SavedTab {
-        SavedTab::File { path: PathBuf::from("/p").join(name), scroll: ScrollPosition::default() }
+        SavedTab::File { path: PathBuf::from("/p").join(name), panel: PanelState::default() }
     }
 
     fn terminal(session: &str) -> SavedTab {

@@ -4,6 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
+use codeview::host::Command;
+use codeview::panel::Cast;
+use codeview::text_editor::{Motion, Selecting};
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{App, Context, KeyDownEvent, Task, Window};
@@ -90,7 +93,9 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
     for family in &missing {
         cx.global::<ScriptState>().log().append(&format!("font {family:?} is not installed; IVE keeps the font it had"));
     }
+    let style = cx.global::<crate::theme::ViewStyle>().clone().with_mono_font(fonts.mono.clone());
     cx.set_global(fonts);
+    cx.set_global(style);
     !missing.is_empty()
 }
 
@@ -143,9 +148,7 @@ impl Workspace {
             // the log could not be written either; its writer said why on stderr
             Err(reason) => return eprintln!("ive: cannot show the script log: {reason}"),
         };
-        if let Some(Tab::Document(editor)) = self.tabs.get(shown) {
-            editor.reveal_end();
-        }
+        self.cast_to_document_tab(shown, Cast::Command(Command::Move(Motion::DocumentEnd, Selecting::Move)), cx);
     }
 
     /// A folder changed on disk; when it is the scripts folder, the script thread reloads if a script changed.
@@ -242,19 +245,12 @@ impl Workspace {
             }
             Builtin::SelectAll => {
                 if let Some(shown) = self.tabs.active_id() {
-                    self.update_document_tab(
-                        shown,
-                        |editor| {
-                            editor.select_all();
-                            true
-                        },
-                        cx,
-                    );
+                    self.cast_to_document_tab(shown, Cast::Command(Command::SelectAll), cx);
                 }
             }
             Builtin::CopyTo(target) => {
-                if let Some(Tab::Document(editor)) = self.tabs.active() {
-                    editor.copy(target, cx);
+                if let Some(shown) = self.tabs.active_id() {
+                    self.cast_to_document_tab(shown, Cast::Command(Command::Copy(target)), cx);
                 }
             }
             // the keymap allows no other action in the window scope; a shown file ignores the editing ones

@@ -7,7 +7,7 @@ use gpui::{App, Context, ExternalPaths, PathPromptOptions, PromptLevel, Task, Wi
 
 use super::Workspace;
 use crate::document::Document;
-use crate::editor::{EditorView, Tab};
+use crate::editor::{FileTab, Tab};
 use crate::file_tree::{Entry, EntryKind, FileTreeError, Listing, read_folder};
 use crate::open_project::{OpenProject, PagedList};
 use crate::overview::ProjectOverview;
@@ -393,9 +393,27 @@ impl Workspace {
             .filter(|(_, tab)| tab.project(self).as_ref() == Some(id))
             .map(|(tab_id, _)| tab_id)
             .collect();
-        for tab in tabs {
-            self.tabs.close(tab);
+        // file tabs with edits close once those are saved, and the project with the last of its tabs
+        let close = self.close_tabs(tabs, window, cx);
+        self.waits.close_project(close, id.clone());
+        self.finish_closing_projects(window, cx);
+    }
+
+    /// Closes the projects the live close waits for whose tabs are all closed now.
+    pub(super) fn finish_closing_projects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let ready: Vec<_> = self.waits.projects().into_iter().filter(|id| !self.has_tabs_of(id)).collect();
+        for id in ready {
+            self.waits.project_closed(&id);
+            self.close_project_now(&id, window, cx);
         }
+    }
+
+    fn has_tabs_of(&self, id: &ProjectId) -> bool {
+        self.tabs.iter().any(|(_, tab)| tab.project(self).as_ref() == Some(id))
+    }
+
+    /// Closes project `id`, which has no tabs left: its processes end and it moves to Recent.
+    fn close_project_now(&mut self, id: &ProjectId, window: &mut Window, cx: &mut Context<Self>) {
         let processes: Vec<_> = self.processes.in_project(id).iter().map(|process| process.id).collect();
         for process in processes {
             if let Some(found) = self.processes.get(process) {
@@ -542,8 +560,8 @@ impl Workspace {
             return self.activate_tab(open, window, cx);
         }
         let name = project::folder_name(path);
-        let tab = match Document::open(path) {
-            Ok(document) => Tab::Document(EditorView::new(document)),
+        let tab = match Document::open_stamped(path) {
+            Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
             Err(error) => Tab::Failed { title: name, error: error.to_string().into() },
         };
         self.open_tab(tab, window, cx);

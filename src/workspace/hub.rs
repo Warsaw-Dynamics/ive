@@ -16,9 +16,10 @@ use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Roo
 use crate::hub::rows::{List, Located, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
-use crate::diff_view::rows::Headers;
-use crate::diff_view::DiffView;
-use crate::git::diff::{FileDiff, FilePaths};
+use codeview::diff::Headers;
+use codeview::panel::Cast;
+use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
+use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
 use crate::git::repo::GitError;
 use crate::git::types::GitPath;
@@ -70,7 +71,7 @@ impl Wanted {
 /// A preview read off the UI thread.
 enum Loaded {
     Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
-    Diff { title: String, diff: FileDiff },
+    Diff { title: String, dir: PathBuf, diff: FileDiff },
     Message(String),
 }
 
@@ -378,7 +379,7 @@ impl Workspace {
             Target::File { path, .. } => in_checkout(path).map_or_else(|| message(item.title.clone()), |path| text(path, *line)),
             Target::Reopen(SavedTab::File { path, .. }) => text(path.clone(), *line),
             Target::Tab(id) => match self.tabs.get(*id) {
-                Some(Tab::Document(editor)) => text(editor.path().to_path_buf(), *line),
+                Some(Tab::Document(file)) => text(file.path().to_path_buf(), *line),
                 Some(Tab::Process(process)) => self.process_preview(*process),
                 _ => message(item.title.clone()),
             },
@@ -391,7 +392,7 @@ impl Workspace {
             Target::RunConfig { folder, key, .. } => self.config_preview(item, folder, key, sources),
             Target::Worktree(checkout) => self.worktree_preview(checkout, sources),
             Target::Line(number) => match sources.back.as_ref().and_then(|back| self.tabs.get(back.tab)) {
-                Some(Tab::Document(editor)) => text(editor.path().to_path_buf(), usize::try_from(*number).ok()),
+                Some(Tab::Document(file)) => text(file.path().to_path_buf(), usize::try_from(*number).ok()),
                 _ => message(crate::hub::rows::LINE_NEEDS_TEXT.to_owned()),
             },
             Target::Reopen(saved) => message(format!("{} · Enter opens it again", saved.title())),
@@ -556,7 +557,7 @@ impl Workspace {
             Wanted::Diff { title, dir, path } => cx.background_executor().spawn(async move {
                 let file = FilePaths { path: GitPath::from_bytes(path.as_bytes()), old_path: None };
                 match crate::git::diff::uncommitted(&dir, &file) {
-                    Ok(Some(diff)) => Loaded::Diff { title, diff },
+                    Ok(Some(diff)) => Loaded::Diff { title, dir, diff },
                     Ok(None) => Loaded::Message("No changes any more".to_owned()),
                     Err(error) => Loaded::Message(error.to_string()),
                 }
@@ -574,13 +575,13 @@ impl Workspace {
         let preview = match loaded {
             Loaded::Text { title, first, lines, line } => Preview::Text { title, first, lines, line },
             Loaded::Message(message) => Preview::Message(message),
-            Loaded::Diff { title, diff } => {
-                let view = cx.new(|cx| {
-                    let mut view = DiffView::new(Headers::Hidden, cx);
-                    view.set_files(vec![diff], cx);
-                    view
-                });
-                Preview::Diff { title, view }
+            Loaded::Diff { title, dir, diff } => {
+                let origin = DiffOrigin { dir, sides: Sides::Uncommitted };
+                let name = diff.path.display();
+                let panel = diff_panel(vec![diff], Headers::Hidden, cx);
+                serve(&panel, name, cx);
+                serve_texts(&panel, origin, cx);
+                Preview::Diff { title, panel }
             }
         };
         if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id)
@@ -1051,14 +1052,7 @@ impl Workspace {
     pub(crate) fn open_document_at(&mut self, path: &Path, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
         self.open_document(path, window, cx);
         if let (Some(line), Some(shown)) = (line, self.tabs.active_id()) {
-            self.update_document_tab(
-                shown,
-                |editor| {
-                    editor.reveal_line(line);
-                    true
-                },
-                cx,
-            );
+            self.cast_to_document_tab(shown, Cast::RevealLine(line), cx);
         }
     }
 
@@ -1159,14 +1153,7 @@ impl Workspace {
         let Some(back) = self.hub_back() else {
             return;
         };
-        self.update_document_tab(
-            back,
-            |editor| {
-                editor.reveal_line(line);
-                true
-            },
-            cx,
-        );
+        self.cast_to_document_tab(back, Cast::RevealLine(line), cx);
         self.activate_tab(back, window, cx);
     }
 
@@ -1292,7 +1279,7 @@ fn free_scratch_name(existing: &[String]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::saved_tabs::{SavedTab, ScrollPosition};
+    use crate::saved_tabs::{PanelState, SavedTab};
 
     fn shown(identity: TabIdentity, saved: Option<SavedTab>, checkout: Option<&str>, at: i64) -> Shown {
         Shown { identity, saved, checkout: checkout.map(PathBuf::from), title: format!("t{at}"), shown_at: at }
@@ -1301,7 +1288,7 @@ mod tests {
     #[test]
     fn should_leave_out_recent_rows_of_ended_processes_and_closed_projects() {
         // given
-        let deleted = SavedTab::File { path: PathBuf::from("/p/gone.rs"), scroll: ScrollPosition { top_line: 0., left: 0. } };
+        let deleted = SavedTab::File { path: PathBuf::from("/p/gone.rs"), panel: PanelState::default() };
         let mut history = History::default();
         history.shown(shown(TabIdentity::Terminal { session: "ended".to_owned() }, Some(SavedTab::Terminal { session: "ended".to_owned() }), Some("/p"), 1));
         history.shown(shown(TabIdentity::File(PathBuf::from("/closed/a.rs")), None, Some("/closed"), 2));
@@ -1356,7 +1343,7 @@ mod tests {
     #[test]
     fn should_place_a_recent_file_in_the_worktree_that_holds_it_now() {
         // given
-        let saved = SavedTab::File { path: PathBuf::from("/p/wt/src/a.rs"), scroll: ScrollPosition { top_line: 0., left: 0. } };
+        let saved = SavedTab::File { path: PathBuf::from("/p/wt/src/a.rs"), panel: PanelState::default() };
         let mut history = History::default();
         // recorded before the project's worktrees were read: the main checkout
         history.shown(shown(TabIdentity::File(PathBuf::from("/p/wt/src/a.rs")), Some(saved), Some("/p"), 1));

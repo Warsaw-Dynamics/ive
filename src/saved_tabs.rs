@@ -6,25 +6,16 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_TABS: usize = 200;
 
-/// Where a text view was scrolled: the first visible line (fractional) and the horizontal offset in pixels.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct ScrollPosition {
-    pub top_line: f64,
-    pub left: f64,
-}
+pub use codeview::panel::PanelState;
+pub use codeview::position::{CaretPosition, ScrollPosition};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CaretPosition {
-    pub line: usize,
-    pub column: usize,
-}
-
-/// One tab, by what opens it again. Sections, views and pages are their labels as shown.
+/// One tab, by what opens it again. Sections, views and pages are their labels as shown; `panel` is where a code
+/// panel was scrolled.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
+#[serde(tag = "kind", rename_all = "kebab-case", from = "ReadTab")]
 pub enum SavedTab {
-    File { path: PathBuf, scroll: ScrollPosition },
-    Scratch { project: String, name: String, caret: CaretPosition, scroll: ScrollPosition },
+    File { path: PathBuf, panel: PanelState },
+    Scratch { project: String, name: String, panel: PanelState },
     /// a hosted terminal, by its session id
     Terminal { session: String },
     ProjectOverview { project: String, section: String },
@@ -32,11 +23,48 @@ pub enum SavedTab {
     WorktreeOverview { checkout: PathBuf, section: String },
     GitLog { project: String, view: String },
     /// `title` as the tab showed it, since the subject is only known once git is read
-    Commit { project: String, sha: String, title: String },
-    Diff { checkout: PathBuf, request: SavedDiffRequest },
+    Commit { project: String, sha: String, title: String, panel: PanelState },
+    Diff { checkout: PathBuf, request: SavedDiffRequest, panel: PanelState },
     Settings { page: String },
     /// a kept hub, reopened with an empty query
     Hub,
+}
+
+/// A tab as `state.toml` may hold it: as written now, or by an IVE from before `panel`, with its own `scroll` and
+/// `caret` fields.
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+enum ReadTab {
+    File { path: PathBuf, panel: Option<PanelState>, scroll: Option<ScrollPosition> },
+    Scratch { project: String, name: String, panel: Option<PanelState>, caret: Option<CaretPosition>, scroll: Option<ScrollPosition> },
+    Terminal { session: String },
+    ProjectOverview { project: String, section: String },
+    WorktreeOverview { checkout: PathBuf, section: String },
+    GitLog { project: String, view: String },
+    Commit { project: String, sha: String, title: String, panel: Option<PanelState> },
+    Diff { checkout: PathBuf, request: SavedDiffRequest, panel: Option<PanelState> },
+    Settings { page: String },
+    Hub,
+}
+
+impl From<ReadTab> for SavedTab {
+    fn from(tab: ReadTab) -> Self {
+        let panel = |panel: Option<PanelState>, scroll: Option<ScrollPosition>, caret| {
+            panel.unwrap_or_else(|| PanelState { scroll: scroll.unwrap_or_default(), caret, ..PanelState::default() })
+        };
+        match tab {
+            ReadTab::File { path, panel: saved, scroll } => Self::File { path, panel: panel(saved, scroll, None) },
+            ReadTab::Scratch { project, name, panel: saved, caret, scroll } => Self::Scratch { project, name, panel: panel(saved, scroll, caret) },
+            ReadTab::Terminal { session } => Self::Terminal { session },
+            ReadTab::ProjectOverview { project, section } => Self::ProjectOverview { project, section },
+            ReadTab::WorktreeOverview { checkout, section } => Self::WorktreeOverview { checkout, section },
+            ReadTab::GitLog { project, view } => Self::GitLog { project, view },
+            ReadTab::Commit { project, sha, title, panel: saved } => Self::Commit { project, sha, title, panel: saved.unwrap_or_default() },
+            ReadTab::Diff { checkout, request, panel: saved } => Self::Diff { checkout, request, panel: saved.unwrap_or_default() },
+            ReadTab::Settings { page } => Self::Settings { page },
+            ReadTab::Hub => Self::Hub,
+        }
+    }
 }
 
 /// A diff tab's request; paths are git's bytes, which need not be UTF-8.
@@ -118,7 +146,7 @@ impl SavedTab {
     pub fn paths(&self) -> Vec<&PathBuf> {
         match self {
             Self::File { path, .. } | Self::WorktreeOverview { checkout: path, .. } => vec![path],
-            Self::Diff { checkout, request } => vec![checkout, &request.dir],
+            Self::Diff { checkout, request, .. } => vec![checkout, &request.dir],
             Self::Scratch { .. } | Self::Terminal { .. } | Self::ProjectOverview { .. } | Self::GitLog { .. } | Self::Commit { .. } | Self::Settings { .. } | Self::Hub => Vec::new(),
         }
     }
@@ -127,20 +155,29 @@ impl SavedTab {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use codeview::panel::DiffLayout;
 
     fn scroll() -> ScrollPosition {
         ScrollPosition { top_line: 12.5, left: 30. }
     }
 
+    fn scrolled() -> PanelState {
+        PanelState { scroll: scroll(), ..PanelState::default() }
+    }
+
     fn every_kind() -> Vec<SavedTab> {
         vec![
-            SavedTab::File { path: PathBuf::from("/p/src/main.rs"), scroll: scroll() },
-            SavedTab::Scratch { project: "p".to_owned(), name: "notes.md".to_owned(), caret: CaretPosition { line: 3, column: 7 }, scroll: scroll() },
+            SavedTab::File { path: PathBuf::from("/p/src/main.rs"), panel: scrolled() },
+            SavedTab::Scratch {
+                project: "p".to_owned(),
+                name: "notes.md".to_owned(),
+                panel: PanelState { caret: Some(CaretPosition { line: 3, column: 7 }), ..scrolled() },
+            },
             SavedTab::Terminal { session: "s-1".to_owned() },
             SavedTab::ProjectOverview { project: "p".to_owned(), section: "Scratches".to_owned() },
             SavedTab::WorktreeOverview { checkout: PathBuf::from("/p/wt"), section: "Processes".to_owned() },
             SavedTab::GitLog { project: "p".to_owned(), view: "Stashes".to_owned() },
-            SavedTab::Commit { project: "p".to_owned(), sha: "0123abcd".to_owned(), title: "0123abc Fix".to_owned() },
+            SavedTab::Commit { project: "p".to_owned(), sha: "0123abcd".to_owned(), title: "0123abc Fix".to_owned(), panel: PanelState { collapsed: vec!["src/a.rs".to_owned()], ..scrolled() } },
             SavedTab::Diff {
                 checkout: PathBuf::from("/p/wt"),
                 request: SavedDiffRequest {
@@ -149,6 +186,7 @@ mod tests {
                     old_path: Some(b"src/b.rs".to_vec()),
                     source: SavedDiffSource::Since { base: "main".to_owned(), reference: "refs/heads/main".to_owned(), fork: "0123abcd".to_owned(), with_uncommitted: true },
                 },
+                panel: PanelState { layout: Some(DiffLayout::SideBySide), ..scrolled() },
             },
             SavedTab::Settings { page: "Appearance".to_owned() },
         ]
@@ -194,7 +232,7 @@ mod tests {
     #[test]
     fn should_reject_relative_paths_in_tabs() {
         // given
-        let saved = SavedTabs { tabs: vec![SavedTab::File { path: PathBuf::from("src/main.rs"), scroll: scroll() }], active: None };
+        let saved = SavedTabs { tabs: vec![SavedTab::File { path: PathBuf::from("src/main.rs"), panel: scrolled() }], active: None };
 
         // when
         let checked = saved.validate();
@@ -225,5 +263,33 @@ mod tests {
 
         // then
         assert_eq!((tab.kind(), tab.title()), ("hub", "Hub".to_owned()));
+    }
+
+    #[test]
+    fn should_read_old_scroll_and_caret_into_panel_state() {
+        // given
+        let text = "kind = \"scratch\"\nproject = \"p\"\nname = \"notes.md\"\n\
+                    scroll = { top_line = 12.5, left = 30.0 }\ncaret = { line = 3, column = 7 }\n";
+
+        // when
+        let tab: SavedTab = toml::from_str(text).unwrap();
+
+        // then
+        let SavedTab::Scratch { panel, .. } = tab else {
+            panic!("read as {tab:?}");
+        };
+        assert_eq!((panel.scroll.top_line, panel.caret), (12.5, Some(CaretPosition { line: 3, column: 7 })));
+    }
+
+    #[test]
+    fn should_write_only_the_panel_state() {
+        // given
+        let tab = SavedTab::File { path: PathBuf::from("/p/a.rs"), panel: scrolled() };
+
+        // when
+        let text = toml::to_string(&tab).unwrap();
+
+        // then
+        assert_eq!(text, "kind = \"file\"\npath = \"/p/a.rs\"\n\n[panel.scroll]\ntop_line = 12.5\nleft = 30.0\n");
     }
 }

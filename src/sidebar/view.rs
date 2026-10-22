@@ -118,8 +118,8 @@ pub fn render(sidebar: Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace>) -
         .flex_1()
         .min_h_0()
         .child(div().size_full().capture_any_mouse_down(take_keys(sidebar_focus.clone())).child(rows))
-        .child(vertical_scrollbar(&tree.scroll, theme))
-        .child(horizontal_scrollbar(&tree.scroll, theme));
+        .child(vertical_scrollbar(&tree.scroll, &crate::theme::view_style(&theme)))
+        .child(horizontal_scrollbar(&tree.scroll, &crate::theme::view_style(&theme)));
     let header = render_header(&sidebar, theme, cx).capture_any_mouse_down(take_keys(sidebar_focus.clone()));
     let panel = div().relative().flex().flex_col().flex_none().w(px(sidebar.width)).h_full();
     let panel = match theme.panels.shown() {

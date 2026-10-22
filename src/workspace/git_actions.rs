@@ -104,7 +104,9 @@ impl Workspace {
         cx.spawn_in(window, async move |this, cx| {
             let loaded = loading.await;
             this.update_in(cx, |workspace, window, cx| match loaded {
-                Ok(Some(file)) => workspace.open_diff_tab(&DiffTabSpec { checkout, label, request, file }, window, cx),
+                Ok(Some(file)) => {
+                    workspace.open_diff_tab(&DiffTabSpec { checkout, label, request, file }, window, cx);
+                }
                 Ok(None) => {}
                 Err(error) => eprintln!("ive: {error}"),
             })

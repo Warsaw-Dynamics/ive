@@ -190,7 +190,7 @@ fn claim(dir: &Path, since: Instant) -> (Arc<OnceLock<Result<StatusRead, GitErro
 }
 
 /// git's path bytes as a relative path, without the `/` git puts after a folder.
-fn relative_path(bytes: &[u8]) -> PathBuf {
+pub(crate) fn relative_path(bytes: &[u8]) -> PathBuf {
     let bytes = bytes.strip_suffix(b"/").unwrap_or(bytes);
     PathBuf::from(OsStr::from_bytes(bytes))
 }

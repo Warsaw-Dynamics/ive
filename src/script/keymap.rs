@@ -109,12 +109,7 @@ pub enum SelectionMode {
     Line,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClipboardTarget {
-    Clipboard,
-    Primary,
-    Both,
-}
+pub use codeview::host::ClipboardTarget;
 
 /// What a terminal paste takes from the clipboard: `TextElseImage` is `act::PasteFrom`'s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -173,6 +168,8 @@ pub enum Builtin {
     Cut,
     Undo,
     Redo,
+    /// a diff inline or side by side; new diffs open in the layout last switched to
+    ToggleDiffLayout,
     CopyTo(ClipboardTarget),
     PasteFrom(ClipboardTarget),
     /// the terminal-only pastes besides `PasteFrom`
@@ -251,7 +248,7 @@ impl Builtin {
             }
             Self::ActivateTab => scope == Scope::Tab,
             Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection => scope == Scope::Tree,
-            Self::SelectAll | Self::Cut | Self::Undo | Self::Redo => scope == Scope::Editor,
+            Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout => scope == Scope::Editor,
             Self::CopyTo(_) | Self::PasteFrom(_) => matches!(scope, Scope::Terminal | Scope::Editor),
             Self::Paste(..) => scope == Scope::Terminal,
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,

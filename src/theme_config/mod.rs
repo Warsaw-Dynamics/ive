@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::colors::{ColorKey, RawEntry};
 
-pub use sizes::{DiffSizes, Sizes, TerminalSizes};
+pub use sizes::{Sizes, TerminalSizes};
 pub use values::{Factor, FontPx, Fraction, Height, Px, RootPx, Rgb, Rgba, RowStyle, Weight};
 
 /// IVE's default theme without its syntax colours, which come from the built-in schemes.
@@ -85,6 +85,10 @@ pub struct Palette {
     pub mark_added: Rgb,
     pub mark_removed: Rgb,
     pub mark_modified: Rgb,
+    /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
+    pub change_added: Rgb,
+    pub change_modified: Rgb,
+    pub change_deleted: Rgb,
     pub close_hover: Rgb,
     pub scrollbar_thumb: Rgba,
     pub scrollbar_thumb_hover: Rgba,

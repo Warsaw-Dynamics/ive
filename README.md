@@ -59,6 +59,8 @@ Run it again to rebuild and reinstall.
 | Edit a scratch | type in its tab; it saves itself half a second after you stop, and when the tab closes or IVE quits; a change made outside IVE reloads it, or asks (Reload / Overwrite) when you have unsaved edits |
 | Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh` |
 | Open a file | click it in the tree; an open file shows its existing tab; or Ctrl+Shift+E (see [Hub](#hub-ctrlshifte)) |
+| Edit an uncommitted change | in a diff tab of uncommitted changes, type on the new side (added and context lines; side by side, the right panel): the file in the work tree is edited and saved as a file tab saves it, and the rows are always the diff of the text you edit (HEAD as checked out against the text read or saved). A change made on disk outside IVE is taken in while nothing is unsaved; with unsaved edits the rows keep showing them and the next save meets the change. A file that cannot be read to edit leaves the diff read-only, saying why in its header (Reload tries again). Caret and undo outlive the new diff; when a change you undid disappears, the caret goes to the nearest line left. Since base and commit diffs, and the hub's preview, are read-only. While a file's tab and a diff tab of it are both open, one with unsaved edits makes the other read-only (it says why) until its edits are saved |
+| Edit a file | type in its tab; there is no save: edits reach the disk half a second after you stop (longer for files over 8 MiB), and when you switch tabs or windows, run something, close the tab or quit; closing and quitting wait for the save, and a tab whose edits cannot be saved stays open with the reason. A change made outside IVE reloads the tab, unless it holds edits: then the save stops with a bar (Reload / Overwrite; Reload only for files over 8 MiB). A symbolic link stays: the file it points at is written. In a file tracked by git, the gutter marks the lines changed since HEAD (as the Uncommitted diff shows them): green bars on added lines, blue on changed ones, a grey triangle where lines were deleted; they follow your typing and catch up a moment after you stop, after a change on disk and after a commit (no markers for untracked files, files over 8 MiB, scratches and diffs). Click a marker for its popup: the lines as they are in HEAD, ↑ / ↓ to the previous / next change (round from the last to the first), Rollback (puts HEAD's lines back as one edit; Ctrl+Z undoes it), Show diff (the file's Uncommitted diff at that change), Copy (HEAD's lines) and a "Commit this change" field: type a message, Enter (or the send button) commits that change alone, as it is in the editor, on HEAD; other changes and other staged files stay out, and hooks and signing apply (IVE runs `git` for it). It is refused, with the reason in the popup, with an empty message, while the file has staged changes or is staged as new, for a file with a git `filter` or `working-tree-encoding`, during a merge, rebase, cherry-pick or revert, and when HEAD moved since the markers were found (a commit landing while IVE commits is taken off again; the work tree is never touched). What goes wrong during the commit itself (IVE's commit taken off again, or left on another commit because taking it off failed, or made but not found in HEAD's reflog) shows in a bar above the text with what to run, until you dismiss it (✕) or a commit goes through. One commit at a time per file: the field waits for the answer, also after Esc and reopening; a failure shows in that change's popup, now or when it is next opened. Hooks that stash or rewrite files change them on disk during the commit, which the tab sees as an outside change. Esc, a click elsewhere or typing outside the change closes it |
 | Hub | Ctrl+Shift+E (Cmd+Shift+E on macOS): recent tabs, uncommitted changes, running processes, and a search over every file of every open project; see [Hub](#hub-ctrlshifte) |
 | Select and copy in a file or a diff | drag, double-click (a word), triple-click (a line) or Shift+click (extend); Ctrl+A selects all, Ctrl+C copies (Cmd on macOS); a diff copies its code lines, without line numbers and +/- |
 | Copy full paths | Ctrl+Shift+C (Cmd+Alt+C on macOS) in the tree copies the absolute paths of its selected files and folders (a click, Ctrl+click, Shift+click), one per line; in the hub, the selected row's |
@@ -241,7 +243,7 @@ polls instead.
 
 Git is read with libgit2 and never written, except by New worktree. A worktree's git folders in the tree follow
 changes on disk and re-read every 2 s while one is shown or its row is hovered; the Git log tab follows the repository's git dir; a commit tab shows its
-commit as read once; diff tabs stay as they opened until Reload.
+commit as read once; diff tabs stay as they opened until Reload; an uncommitted diff tab edits its file and follows it on disk.
 
 | In a terminal | How |
 |---|---|
@@ -517,6 +519,7 @@ async fn restart(context) {
 | `act::ActivateRowToKeep` | tree | the row's click, its project tab kept rather than temporary (middle click by default); on other rows the same as `ActivateRow` |
 | `act::ToggleRowSelection`, `act::ExtendRowSelection` | tree | Ctrl+click (Cmd on macOS) adds a file or folder to the selection or takes it out; Shift+click selects the files and folders from the last clicked row; dragging a selected row onto a terminal types all their paths |
 | `act::SelectAll`, `act::Cut`, `act::Undo`, `act::Redo` | editor | the scratch editor's commands |
+| `act::ToggleDiffLayout` | editor | a focused diff inline or side by side (no key by default); new diff and commit tabs open in the layout last switched to |
 | `act::OpenHub` | window | shows the hub (Ctrl+Shift+E) |
 | `act::OpenTerminalIn` | window | the hub asking where a new terminal goes: a checkout, or a branch that first gets its worktree (Ctrl+Shift+T) |
 | `act::HubDown`, `act::HubUp`, `act::HubPageDown`, `act::HubPageUp` | hub | move the selection |
@@ -725,7 +728,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `stop_tab` | as Ctrl+Shift+Q: a process tab's process ends for good and the tab closes; another tab just closes |
 | `open_hub` | show the hub, optionally in the state (`hub`) of a tab's `opened_from_hub`; answers `{ tab }` |
 | `detach_tab`, `attach_tab` | open a tab in a window of its own, or put it back into the tab row |
-| `send_text` | type text into a process tab or a scratch tab; end with `\r` to press Enter (a line break in a scratch) |
+| `send_text` | type text into a process, file, scratch or uncommitted diff tab (at the diff's caret); end with `\r` to press Enter (a line break in a file, scratch or diff) |
 | `send_keys` | press keys in a process tab, written like key bindings: `["ctrl-c"]`, `["up", "enter"]` |
 | `tab_mouse` | use the mouse on a tab of the tab row (`click`, `double_click`, `press`, `release`; button and Shift/Alt/Ctrl) through the tab mouse bindings, as a real click: a right click opens the tab's menu, a Shift+right click the one `init.rn` binds to it |
 | `send_mouse` | use the mouse in a process tab on a screen cell: `click`, `double_click`, `triple_click`, `press`, `release`, `move`, `scroll`; says whether it went to the program or to IVE |
@@ -765,12 +768,14 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
-| diff and commit tabs | `reload-diff`, `diff-file:<path>` |
+| diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |
+| file tab | `change-marker:<line>`: a change marker in the gutter, by its first line (from 1); it opens the change's popup. While the popup is open: `change-popup:prev`, `change-popup:next`, `change-popup:rollback`, `change-popup:diff`, `change-popup:copy`, `change-popup:message` (gives the commit message field the keyboard; then `window_text` types in it and `window_keys` `["enter"]` commits) and `change-popup:commit` |
 | Worktrees list | `worktree-filter` (focuses the filter: then `window_text`, `window_keys` `["down", "space"]`), `worktree-row:<path>`, `branch-row:<name>` (as Enter), `worktree-toggle:<path or name>` (Hide, Show, + Worktree), `worktree-hidden-group`, `branch-more`, `branch-all` |
 | Scratches section | `new-scratch` (the name input opens focused and takes `window_text`, Enter / Escape), `scratch-search` (focus the search field), `scratch-name` (focus the open name input, New scratch's or Rename's) |
 | scratch row | `scratch:<name>` (open it), `rename-scratch:<name>`, `delete-scratch:<name>` (its hover actions; Delete asks: `prompt:Delete`) |
 | scratch groups | `scratch-group:<group>` (expand or collapse Today / This week / This month / Older), `scratch-more:<group>` (Show 10 more), `scratch-all:<group>` (Show all) |
 | scratch tab (shown) | `run-scratch`, and its "changed on disk" / "deleted on disk" bar: `scratch-reload`, `scratch-overwrite`, `scratch-save-again`, `scratch-close` |
+| file or scratch tab (shown) whose save found the file changed on disk | `save-reload` (drop the edits, show the file), `save-overwrite` (write the edits over it; not for files over 8 MiB); neither while a save is being written. While a close or quit waits for edits that could not be saved (the save failed, or a conflict is unanswered), also `save-discard` (Close without saving: the edits are lost, the tab closes, quitting or closing the project goes on) |
 | prompt | `prompt:<button label>`; the quit prompt's are `prompt:Keep running`, `prompt:Stop all`, `prompt:Cancel` |
 | window | `window:close` (the ×; with terminals running it shows the quit prompt) |
 
@@ -833,7 +838,8 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 |---|---|
 | `src/workspace.rs`, `src/workspace/` | main window: projects, processes, tabs, saved state, actions |
 | `src/sidebar/` | the tree: rows (pure), drawing, width |
-| `src/editor.rs` | tab kinds, tab row, the coloured, read-only document view |
+| `src/editor.rs` | tab kinds, tab row, detached tabs' windows |
+| `src/file_tab.rs`, `src/file_write.rs` | a file tab: edited in `codeview`'s panel, its edits written in place or through a temporary file |
 | `src/line_view.rs` | scrolling and metrics shared by the document view and the editor |
 | `src/overview/` | the project overview tab, its Worktrees list, its Git section, the Git log, commit and diff tabs |
 | `src/git/` | reading repositories with git2 (libgit2): checkouts, status, changes, diffs, log, branches; New worktree, the one write |

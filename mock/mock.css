@@ -187,3 +187,23 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .mock-bar span { padding: 0 6px; opacity: 0.6; }
 .mock-bar button, .mock-bar a { padding: 4px 8px; border-radius: 4px; color: inherit; text-decoration: none; }
 .mock-bar button:hover, .mock-bar a:hover { background: #fff3; }
+
+/* Code view status line under an editor (codeview: language, saving, "over 8 MiB: no colours"). */
+.codestatus {
+  flex: none; display: flex; justify-content: flex-end; align-items: center; gap: 16px; height: 22px; padding: 0 12px;
+  border-top: 1px solid var(--border); font-size: 12px;
+}
+.codestatus__save { margin-right: auto; color: var(--muted); font-style: italic; }
+.mock-bar--save { bottom: 40px; }
+
+/* Syntax colours (codeview colour schemes; the mock's plausible, IntelliJ-like set). */
+:root { --syn-kw: #cf8e6d; --syn-str: #6aab73; --syn-com: #7a7e85; --syn-type: #56c1d6; --syn-num: #2aacb8; }
+:root[data-theme="light"] { --syn-kw: #0033b3; --syn-str: #067d17; --syn-com: #8c8c8c; --syn-type: #00627a; --syn-num: #1750eb; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --syn-kw: #0033b3; --syn-str: #067d17; --syn-com: #8c8c8c; --syn-type: #00627a; --syn-num: #1750eb; }
+}
+.syn-kw { color: var(--syn-kw); }
+.syn-str { color: var(--syn-str); }
+.syn-com { color: var(--syn-com); font-style: italic; }
+.syn-type { color: var(--syn-type); }
+.syn-num { color: var(--syn-num); }

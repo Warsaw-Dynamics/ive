@@ -19,9 +19,9 @@ use super::sources::HubScope;
 use crate::age::Clock;
 use crate::click_targets::target;
 use crate::colors::checkout_colour;
-use crate::diff_view::DiffView;
+use codeview::panel::Panel;
 use crate::icons;
-use crate::overview::git_ui::{mark_label, tag};
+use crate::overview::git_ui::{layout_switch, mark_label, tag};
 use crate::scratch::search::Generations;
 use crate::tabs::TabId;
 use crate::text_input::TextInput;
@@ -66,7 +66,7 @@ pub enum Preview {
     Loading,
     /// a file's lines from `first` (from 1), `line` marked
     Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
-    Diff { title: String, view: Entity<DiffView> },
+    Diff { title: String, panel: Entity<Panel> },
     /// a process's last lines, a run configuration's command, a worktree's summary
     Lines { title: String, lines: Vec<String>, mono: bool },
     Message(String),
@@ -217,7 +217,10 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
         Preview::None => pane,
         Preview::Loading => pane.child(title("…")),
         Preview::Message(message) => pane.child(div().px_3().py_2().text_color(rgb(theme.muted)).child(message.clone())),
-        Preview::Diff { title: name, view } => pane.child(title(name)).child(div().flex().flex_1().min_h_0().child(view.clone())),
+        Preview::Diff { title: name, panel } => {
+            let head = div().flex().flex_none().items_center().pr_3().child(title(name).flex_1().min_w_0()).child(layout_switch(panel, theme, cx));
+            pane.child(head).child(div().flex().flex_1().min_h_0().child(panel.clone()))
+        }
         Preview::Lines { title: name, lines, mono: is_mono } => {
             let body = div().flex().flex_col().px_3().text_xs().overflow_hidden();
             let body = if *is_mono { body.font_family(mono) } else { body };

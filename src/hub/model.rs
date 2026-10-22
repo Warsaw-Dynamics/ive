@@ -422,7 +422,7 @@ mod tests {
     use crate::hub::sources::{BackTab, FreeBranch, Item, NoStates, Place, ProjectInfo, Sources, Target, WorktreeInfo};
     use crate::process::ProcessId;
     use crate::project::{CheckoutRef, ProjectId};
-    use crate::saved_tabs::{SavedTab, ScrollPosition};
+    use crate::saved_tabs::{PanelState, SavedTab};
     use crate::scratch::search::Generations;
     use crate::script::keymap::Builtin;
     use crate::tabs::Tabs;
@@ -456,7 +456,7 @@ mod tests {
     }
 
     fn file(path: &str) -> SavedTab {
-        SavedTab::File { path: PathBuf::from(path), scroll: ScrollPosition { top_line: 0., left: 0. } }
+        SavedTab::File { path: PathBuf::from(path), panel: PanelState::default() }
     }
 
     fn sources() -> Sources {

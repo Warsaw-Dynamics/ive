@@ -258,6 +258,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "Cut" => Builtin::Cut,
         "Undo" => Builtin::Undo,
         "Redo" => Builtin::Redo,
+        "ToggleDiffLayout" => Builtin::ToggleDiffLayout,
         "OpenHub" => Builtin::OpenHub,
         "HubDown" => Builtin::HubDown,
         "HubUp" => Builtin::HubUp,

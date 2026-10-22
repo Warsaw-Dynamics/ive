@@ -2,20 +2,20 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+use codeview::panel::Cast;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, SharedString,
+    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, Render, SharedString,
     ScrollHandle, Stateful, Subscription, Svg, Task, Window, canvas, div, img, prelude::*, rgb, svg,
 };
 
 use crate::click_targets::{ClickTargets, target};
 use crate::age::Clock;
-use crate::editor::{self, EditorView, Tab};
+use crate::editor::{self, Tab};
 use crate::hub::corpus::Corpus;
 use crate::hub::history::{History, Shown, WorktreeUse};
 use crate::hub::index::HubIndex;
 use crate::hub::sources::HubScope;
-use crate::syntax::{ParseError, Syntax};
 use crate::frame;
 use crate::icons;
 use crate::api::Call;
@@ -53,6 +53,8 @@ mod projects;
 mod quit;
 mod restart;
 mod runs;
+mod saves;
+mod waits;
 mod scratches;
 mod scripts;
 mod settings_actions;
@@ -145,6 +147,8 @@ pub struct Workspace {
     /// the open projects the tree and the hub leave out (the tree header's picker)
     hidden_projects: std::collections::BTreeSet<ProjectId>,
     on_quit: OnQuit,
+    /// closes waiting for edits that could not be saved
+    waits: waits::Waits,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
     /// the tabs shown, for the hub's Recent rows
@@ -231,8 +235,9 @@ impl Workspace {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
                 if window.is_window_active() {
-                    workspace.refresh_on_activation(cx);
+                    return workspace.refresh_on_activation(cx);
                 }
+                workspace.flush_edits(cx);
             }),
             cx.observe_window_visibility(window, |workspace, visibility, window, _cx| {
                 if visibility.is_visible() {
@@ -297,6 +302,7 @@ impl Workspace {
             hidden_projects: startup.saved.hidden_projects.iter().filter_map(|id| ProjectId::parse(id).ok()).collect(),
             shown_folders: startup.saved.shown_folders.as_ref().map_or_else(crate::sidebar::folders::default_shown, |kinds| kinds.iter().copied().collect()),
             on_quit: startup.on_quit,
+            waits: waits::Waits::default(),
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
@@ -455,44 +461,16 @@ impl Workspace {
     pub fn open_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let temporary = tab.temporary_kind().is_some_and(|kind| cx.try_global::<TemporaryTabs>().is_some_and(|tabs| tabs.opens_temporary(kind)));
         let id = if temporary { self.tabs.open_temporary(tab) } else { self.tabs.open(tab) };
-        self.start_highlighting(id, cx);
+        self.save_on_state_change(id, cx);
+        self.open_diff_on_request(id, window, cx);
+        self.went_to_tab(id, cx);
         self.tab_shown(window, cx);
         id
     }
 
-    fn start_highlighting(&mut self, id: TabId, cx: &mut Context<Self>) {
-        let Some(Tab::Document(editor)) = self.tabs.get(id) else {
-            return;
-        };
-        let Some(job) = editor.parse_job() else {
-            return;
-        };
-        let path = editor.path().to_path_buf();
-        let stale = job.cancel();
-        let parsing = cx.background_executor().spawn(async move { job.run() });
-        cx.spawn(async move |workspace, cx| {
-            let result = parsing.await;
-            // the text was re-read (or the tab closed) after the parse finished, before this update ran
-            let result = if stale.is_cancelled() { Err(ParseError::Cancelled) } else { result };
-            workspace.update(cx, |workspace, cx| workspace.finish_highlighting(id, &path, result, cx)).ok();
-        })
-        .detach();
-    }
-
-    /// The tab may be gone by now; then the result is dropped.
-    fn finish_highlighting(&mut self, id: TabId, path: &Path, result: Result<Syntax, ParseError>, cx: &mut Context<Self>) {
-        match (result, self.tabs.get_mut(id)) {
-            (Ok(syntax), Some(Tab::Document(editor))) => {
-                editor.set_syntax(syntax);
-                cx.notify();
-            }
-            (Err(ParseError::Cancelled), _) | (Ok(_), _) => {}
-            (Err(error), _) => eprintln!("ive: {} shown without highlighting: {error}", path.display()),
-        }
-    }
-
     /// Shows tab `id`; a detached one by bringing its window to the front.
     pub fn activate_tab(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        self.went_to_tab(id, cx);
         if self.activate_tab_window(id, cx) {
             return;
         }
@@ -500,9 +478,9 @@ impl Workspace {
         self.tab_shown(window, cx);
     }
 
+    /// Closes tab `id`; a file tab once its edits are saved, see [`Self::close_tabs`].
     pub fn close_tab(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
-        self.tabs.close(id);
-        self.tab_shown(window, cx);
+        self.close_tabs(vec![id], window, cx);
     }
 
     /// Makes temporary tab `id` stay when another is shown.
@@ -558,26 +536,10 @@ impl Workspace {
         }
     }
 
-    /// A left press in document tab `id`: the workspace takes the keys (a sidebar field may have had them), so the
-    /// editor scope's Copy and Select All reach the document.
-    pub fn press_document(&mut self, id: TabId, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        window.focus(&self.focus_handle, cx);
-        self.update_document_tab(
-            id,
-            |editor| {
-                editor.press(event);
-                true
-            },
-            cx,
-        );
-    }
-
-    /// Changes document tab `id`; redraws when `update` says it changed what shows.
-    pub fn update_document_tab(&mut self, id: TabId, update: impl FnOnce(&mut EditorView) -> bool, cx: &mut Context<Self>) {
-        if let Some(Tab::Document(editor)) = self.tabs.get_mut(id)
-            && update(editor)
-        {
-            cx.notify();
+    /// Casts `cast` to the panel of document tab `id`; a closed tab or one of another kind is ignored.
+    pub fn cast_to_document_tab(&self, id: TabId, cast: Cast, cx: &mut App) {
+        if let Some(Tab::Document(file)) = self.tabs.get(id) {
+            file.cast(cast, cx);
         }
     }
 
@@ -593,6 +555,8 @@ impl Workspace {
     /// of an overview, and the windows of detached tabs. `window` may be a detached tab's, whose content opened a
     /// tab: the main window then comes to the front.
     fn tab_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // the tab left behind saves now; a closed one saved as it went
+        self.flush_edits(cx);
         self.close_stale_tab_windows(cx);
         if window.window_handle() == self.main_window {
             self.focus_active_tab(window, cx);
@@ -663,7 +627,7 @@ impl Workspace {
     /// The tree row standing for `tab`, selected while it is shown.
     fn tree_key_of(&self, tab: &Tab) -> Option<TreeKey> {
         match tab {
-            Tab::Document(editor) => Some(TreeKey::Entry(editor.path().to_path_buf())),
+            Tab::Document(file) => Some(TreeKey::Entry(file.path().to_path_buf())),
             Tab::Process(id) => match self.processes.get(*id).and_then(|process| process.run.as_ref()) {
                 Some(_) => Some(TreeKey::LiveRun(RunId::Process(*id))),
                 None => Some(TreeKey::Process(*id)),

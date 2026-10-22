@@ -521,8 +521,14 @@ impl Workspace {
             Builtin::CloseTabsToTheRight => Beside::Right,
             _ => return,
         };
-        self.tabs.close_beside(tab, beside);
+        // file tabs with edits close once those are saved
+        let closing = self.tabs.ids_beside(tab, beside);
+        let ticket = self.begin_close(&closing, cx);
+        let waiting: Vec<_> = closing.into_iter().filter(|id| self.is_unsettled(*id, cx)).collect();
+        self.tabs.close_beside(tab, beside, &waiting);
         self.tab_shown(window, cx);
+        self.close_when_saved(waiting, ticket, window, cx);
+        self.finish_closing_projects(window, cx);
     }
 }
 

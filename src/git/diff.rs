@@ -1,71 +1,24 @@
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, Patch, Repository};
+use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree};
 
+use super::blob_filter;
 use super::repo::{self, GitError};
-use super::status::Change;
-use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy};
+use super::status::{Change, relative_path};
+use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy, mark_of_delta};
 
-pub const FILE_LINE_LIMIT: usize = 20_000;
-pub const VIEW_LINE_LIMIT: usize = 200_000;
-/// Larger files are not loaded: libgit2 marks them binary, IVE says "file too large".
-pub const MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+pub use codeview::diff::{Cut, DiffBody, DiffLine, FileDiff, Hunk, LineKind};
+pub use codeview::diff::{FILE_LINE_LIMIT, MAX_FILE_BYTES, VIEW_LINE_LIMIT};
+use codeview::changes::ChangeBase;
+use codeview::document::Source;
+use codeview::syntax::MAX_HIGHLIGHT_BYTES;
+
 const CONTEXT_LINES: u32 = 3;
 const TAB: &str = "    ";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FileDiff {
-    pub path: GitPath,
-    pub old_path: Option<GitPath>,
-    pub mark: Mark,
-    pub body: DiffBody,
-}
-
-impl FileDiff {
-    pub fn line_count(&self) -> usize {
-        match &self.body {
-            DiffBody::Text { hunks, .. } => hunks.iter().map(|hunk| hunk.lines.len()).sum(),
-            DiffBody::Binary | DiffBody::TooLarge => 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DiffBody {
-    Text { hunks: Vec<Hunk>, cut: Option<Cut> },
-    Binary,
-    TooLarge,
-}
-
-/// Why a text diff stops early, with the limit that was reached.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cut {
-    FileLimit(usize),
-    ViewLimit(usize),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Hunk {
-    pub header: String,
-    pub lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiffLine {
-    pub kind: LineKind,
-    pub old: Option<u32>,
-    pub new: Option<u32>,
-    pub text: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LineKind {
-    Context,
-    Added,
-    Removed,
-    NoNewline,
-}
+/// Like git, a NUL byte in the first 8000 bytes marks a file as binary.
+const BINARY_SNIFF_BYTES: usize = 8000;
 
 /// Whether a diff from a tree reaches into the work tree (staged, unstaged and untracked changes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,6 +144,269 @@ pub fn commit_changes(dir: &Path, sha: &Sha) -> Result<Vec<Change>, GitError> {
     commit_deltas(&repo, &commit).map(sorted).map_err(&fail)
 }
 
+/// Which two texts a diff's files are diffed between.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Sides {
+    /// HEAD → the work tree
+    Uncommitted,
+    /// the fork point → HEAD, or → the work tree
+    Since(SinceRange),
+    /// the commit's first parent (nothing for a root commit) → the commit
+    Commit(Sha),
+    /// Compare Files: two files anywhere, as on disk
+    Files { left: PathBuf, right: PathBuf },
+}
+
+/// The whole old and new text of `file` between `sides`, for colouring its diff; a side is `None` when the file is
+/// missing there, binary, or larger than `MAX_HIGHLIGHT_BYTES`.
+pub fn texts(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<Source>, Option<Source>), GitError> {
+    if let Sides::Files { left, right } = sides {
+        return Ok((file_text(left), file_text(right)));
+    }
+    let fail = failed("read the texts of a diff", dir);
+    let repo = repo::open(dir)?;
+    let (old_tree, new_side) = side_trees(&repo, sides).map_err(&fail)?;
+    let old = blob_text(&repo, old_tree.as_ref(), file.old_path.as_ref().unwrap_or(&file.path)).map_err(&fail)?;
+    let new = match new_side {
+        NewSide::Tree(tree) => blob_text(&repo, tree.as_ref(), &file.path).map_err(&fail)?,
+        NewSide::WorkTree => work_tree_text(&repo, &file.path),
+    };
+    Ok((old, new))
+}
+
+/// An uncommitted diff of a file as IVE edits it: HEAD's text of it against the text IVE read or saved.
+pub struct EditedDiff {
+    /// HEAD's text, when it is one to colour
+    pub old: Option<Source>,
+    pub body: DiffBody,
+}
+
+/// The uncommitted diff of `file` whose work tree text is `new` (as IVE read or saved it, not as the work tree holds it
+/// now): against HEAD's text as a checkout writes it (its filters applied), so a line `new` did not change is context.
+/// A file HEAD lacks is all added; one HEAD has as other than a regular file, or too large, is an error.
+pub fn edited_uncommitted(dir: &Path, file: &FilePaths, new: &[u8]) -> Result<EditedDiff, GitError> {
+    let fail = failed("diff the edited text with HEAD", dir);
+    let repo = repo::open(dir)?;
+    let old = checked_out_head(&repo, file).map_err(&fail)?;
+    let body = buffers_body(&old, new).map_err(&fail)?;
+    let binary = memchr::memchr(0, &old[..old.len().min(BINARY_SNIFF_BYTES)]).is_some();
+    let colourable = old.len() <= MAX_HIGHLIGHT_BYTES && !binary;
+    Ok(EditedDiff { old: colourable.then(|| Source::from_vec(old)), body })
+}
+
+/// The diff of two texts of one file, as [`uncommitted`] reads it.
+fn buffers_body(old: &[u8], new: &[u8]) -> Result<DiffBody, git2::Error> {
+    let patch = Patch::from_buffers(old, None, new, None, Some(&mut options()))?;
+    patch_body(&patch, Budget { lines: FILE_LINE_LIMIT, cut: Cut::FileLimit(FILE_LINE_LIMIT) })
+}
+
+/// HEAD's text of `file` (by its name before a rename) as a checkout to its name writes it; empty when HEAD lacks it.
+fn checked_out_head(repo: &Repository, file: &FilePaths) -> Result<Vec<u8>, git2::Error> {
+    let Some(tree) = head_tree(repo)? else {
+        return Ok(Vec::new());
+    };
+    let name = file.old_path.as_ref().unwrap_or(&file.path);
+    let entry = match tree.get_path(&relative_path(name.as_bytes())) {
+        Ok(entry) => entry,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    if entry.filemode() != i32::from(FileMode::Blob) && entry.filemode() != i32::from(FileMode::BlobExecutable) {
+        return Err(git2::Error::from_str(&format!("{} is not a regular file in HEAD", name.display())));
+    }
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size as u64 > MAX_FILE_BYTES {
+        return Err(git2::Error::from_str(&format!("{} is too large in HEAD ({size} bytes)", name.display())));
+    }
+    blob_filter::checked_out(&repo.find_blob(entry.id())?, &file.path)
+}
+
+/// What change markers compare the work tree file at `path` with: its text in HEAD as a checkout writes it (as
+/// [`edited_uncommitted`] diffs it), with HEAD's commit id. A file staged as new (HEAD, or an unborn branch, lacks
+/// it and the index has it) has an empty text, so every line shows as added, as in the Uncommitted diff.
+/// [`ChangeBase::Untracked`] when no repository's work tree holds the file, neither HEAD nor the index has it, or
+/// HEAD's entry is not a regular file, is binary or is larger than `MAX_HIGHLIGHT_BYTES`.
+#[cfg(test)]
+pub fn change_base(path: &Path) -> Result<ChangeBase, GitError> {
+    match change_base_since(path, &BaseAsk { known: "", git_dir: None })? {
+        BaseRead::Read(base) => Ok(base),
+        BaseRead::SameHead | BaseRead::OtherRepository => Ok(ChangeBase::Untracked),
+    }
+}
+
+/// What [`change_base_since`] is asked.
+pub struct BaseAsk<'a> {
+    /// the `head_id` the caller last got: an answer with the same one is skipped
+    pub known: &'a str,
+    /// the git dir that changed: a file of another repository is skipped
+    pub git_dir: Option<&'a Path>,
+}
+
+/// What [`change_base_since`] found.
+pub enum BaseRead {
+    /// the base, as [`change_base`] reads it
+    Read(ChangeBase),
+    /// HEAD (and whether it holds the file) is as the caller last saw it, told without reading HEAD's blob
+    SameHead,
+    /// the file is of another git dir than the one asked about; nothing was read
+    OtherRepository,
+}
+
+/// [`change_base`], unless `ask` says the caller has the answer.
+pub fn change_base_since(path: &Path, ask: &BaseAsk<'_>) -> Result<BaseRead, GitError> {
+    let Some((repo, name)) = repository_of(path)? else {
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
+    };
+    if ask.git_dir.is_some_and(|dir| !is_git_dir_of(&repo, dir)) {
+        return Ok(BaseRead::OtherRepository);
+    }
+    let workdir = repo.workdir().map_or_else(|| path.to_path_buf(), Path::to_path_buf);
+    let fail = failed("read HEAD's text of a file", &workdir);
+    let (head_id, blob) = match head_entry(&repo, &name).map_err(&fail)? {
+        HeadEntry::Absent => return Ok(BaseRead::Read(ChangeBase::Untracked)),
+        HeadEntry::StagedNew { head_id } if head_id == ask.known => return Ok(BaseRead::SameHead),
+        HeadEntry::StagedNew { head_id } => return Ok(BaseRead::Read(ChangeBase::Tracked { head: Source::from_vec(Vec::new()), head_id })),
+        HeadEntry::Blob { head_id, .. } if head_id == ask.known => return Ok(BaseRead::SameHead),
+        HeadEntry::Blob { head_id, blob } => (head_id, blob),
+    };
+    let blob = repo.find_blob(blob).map_err(&fail)?;
+    if blob.is_binary() {
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
+    }
+    let text = blob_filter::checked_out(&blob, &name).map_err(&fail)?;
+    if text.len() > MAX_HIGHLIGHT_BYTES {
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
+    }
+    Ok(BaseRead::Read(ChangeBase::Tracked { head: Source::from_vec(text), head_id }))
+}
+
+/// Whether `dir` is the git dir of `repo`, or of the repository a linked work tree belongs to.
+fn is_git_dir_of(repo: &Repository, dir: &Path) -> bool {
+    let wanted = fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    [repo.path(), repo.commondir()].iter().any(|own| fs::canonicalize(own).is_ok_and(|own| own == wanted))
+}
+
+/// The repository whose work tree holds the file at `path`, found from its folder up, and the file's name in it;
+/// `None` when there is none.
+fn repository_of(path: &Path) -> Result<Option<(Repository, GitPath)>, GitError> {
+    let folder = path.parent().unwrap_or(path);
+    let repo = match Repository::discover(folder) {
+        Ok(repo) => repo,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
+        Err(error) => return Err(GitError::new("find the repository", folder, error)),
+    };
+    let (Some(workdir), Ok(file)) = (repo.workdir().and_then(|dir| fs::canonicalize(dir).ok()), fs::canonicalize(path)) else {
+        return Ok(None);
+    };
+    let name = file.strip_prefix(&workdir).ok().map(|relative| GitPath::from_bytes(relative.as_os_str().as_encoded_bytes()));
+    Ok(name.map(|name| (repo, name)))
+}
+
+/// What HEAD and the index hold at a file's name.
+enum HeadEntry {
+    /// a regular file small enough to diff in HEAD, with HEAD's commit id
+    Blob { head_id: String, blob: git2::Oid },
+    /// not in HEAD (or there is no commit yet) but in the index; `head_id` is HEAD's commit id, or `unborn`
+    StagedNew { head_id: String },
+    Absent,
+}
+
+fn head_entry(repo: &Repository, name: &GitPath) -> Result<HeadEntry, git2::Error> {
+    let commit = match repo.head() {
+        Ok(head) => Some(head.peel_to_commit()?),
+        Err(error) if matches!(error.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound) => None,
+        Err(error) => return Err(error),
+    };
+    let head_id = commit.as_ref().map_or_else(|| "unborn".to_owned(), |commit| commit.id().to_string());
+    let entry = match &commit {
+        Some(commit) => match commit.tree()?.get_path(&relative_path(name.as_bytes())) {
+            Ok(entry) => Some(entry),
+            Err(error) if error.code() == ErrorCode::NotFound => None,
+            Err(error) => return Err(error),
+        },
+        None => None,
+    };
+    let Some(entry) = entry else {
+        let staged = repo.index()?.get_path(&relative_path(name.as_bytes()), 0).is_some();
+        return Ok(if staged { HeadEntry::StagedNew { head_id } } else { HeadEntry::Absent });
+    };
+    let regular = entry.filemode() == i32::from(FileMode::Blob) || entry.filemode() == i32::from(FileMode::BlobExecutable);
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    Ok(if regular && size <= MAX_HIGHLIGHT_BYTES { HeadEntry::Blob { head_id, blob: entry.id() } } else { HeadEntry::Absent })
+}
+
+/// Where the work tree of the repository at `dir` keeps `path`.
+pub fn work_tree_path(dir: &Path, path: &GitPath) -> Result<PathBuf, GitError> {
+    let repo = repo::open(dir)?;
+    let workdir = repo.workdir().ok_or_else(|| GitError::new("find the work tree", dir, git2::Error::from_str("a bare repository has none")))?;
+    Ok(workdir.join(relative_path(path.as_bytes())))
+}
+
+/// Where a diff's new side is.
+enum NewSide<'r> {
+    /// `None`: no tree at all, as before the first commit
+    Tree(Option<Tree<'r>>),
+    WorkTree,
+}
+
+/// The old side's tree (`None` before a root commit or the first commit) and where the new side is.
+fn side_trees<'r>(repo: &'r Repository, sides: &Sides) -> Result<(Option<Tree<'r>>, NewSide<'r>), git2::Error> {
+    let commit_tree = |sha: &Sha| repo.find_commit(sha.oid()?)?.tree();
+    Ok(match sides {
+        Sides::Uncommitted => (head_tree(repo)?, NewSide::WorkTree),
+        Sides::Since(SinceRange { fork, uncommitted: Uncommitted::Included }) => (Some(commit_tree(fork)?), NewSide::WorkTree),
+        Sides::Since(SinceRange { fork, uncommitted: Uncommitted::Excluded }) => (Some(commit_tree(fork)?), NewSide::Tree(head_tree(repo)?)),
+        Sides::Files { .. } => (None, NewSide::Tree(None)),
+        Sides::Commit(sha) => {
+            let commit = repo.find_commit(sha.oid()?)?;
+            let parent = match commit.parent_count() {
+                0 => None,
+                _ => Some(commit.parent(0)?.tree()?),
+            };
+            (parent, NewSide::Tree(Some(commit.tree()?)))
+        }
+    })
+}
+
+/// The text of the file at `path` in `tree`, when it is one to colour: a regular file, not binary, small enough.
+fn blob_text(repo: &Repository, tree: Option<&Tree<'_>>, path: &GitPath) -> Result<Option<Source>, git2::Error> {
+    let Some(tree) = tree else {
+        return Ok(None);
+    };
+    let entry = match tree.get_path(&relative_path(path.as_bytes())) {
+        Ok(entry) => entry,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    // a symbolic link's blob is its target, a submodule's entry a commit
+    if entry.filemode() != i32::from(FileMode::Blob) && entry.filemode() != i32::from(FileMode::BlobExecutable) {
+        return Ok(None);
+    }
+    // the size first: a blob too large to colour is not read at all
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size > MAX_HIGHLIGHT_BYTES {
+        return Ok(None);
+    }
+    let blob = repo.find_blob(entry.id())?;
+    Ok((!blob.is_binary()).then(|| Source::from_vec(blob.content().to_vec())))
+}
+
+/// The work tree's file at `path`, when it is one to colour; `None` also when it cannot be read (it went away).
+fn work_tree_text(repo: &Repository, path: &GitPath) -> Option<Source> {
+    file_text(&repo.workdir()?.join(relative_path(path.as_bytes())))
+}
+
+/// The file at `file`, when it is one to colour; `None` also when it cannot be read.
+fn file_text(file: &Path) -> Option<Source> {
+    let metadata = fs::symlink_metadata(file).ok()?;
+    if !metadata.is_file() || metadata.len() > MAX_HIGHLIGHT_BYTES as u64 {
+        return None;
+    }
+    let bytes = fs::read(file).ok()?;
+    let binary = memchr::memchr(0, &bytes[..bytes.len().min(BINARY_SNIFF_BYTES)]).is_some();
+    (bytes.len() <= MAX_HIGHLIGHT_BYTES && !binary).then(|| Source::from_vec(bytes))
+}
+
 /// One file of a commit, read when it is shown.
 pub fn commit_file(dir: &Path, sha: &Sha, file: &FilePaths) -> Result<Option<FileDiff>, GitError> {
     let fail = failed("read the diff of a commit", dir);
@@ -256,7 +472,7 @@ fn changes_of(diff: &Diff<'_>) -> Vec<Change> {
     diff.deltas()
         .map(|delta| {
             let (path, old_path) = names(&delta);
-            Change { mark: Mark::of_delta(delta.status()), path, old_path }
+            Change { mark: mark_of_delta(delta.status()), path, old_path }
         })
         .collect()
 }
@@ -303,7 +519,7 @@ fn collect(diff: &Diff<'_>, limits: Limits) -> Result<Vec<FileDiff>, git2::Error
         };
         let body = body(diff, index, budget)?;
         let (path, old_path) = names(&delta);
-        let file = FileDiff { path, old_path, mark: Mark::of_delta(delta.status()), body };
+        let file = FileDiff { path, old_path, mark: mark_of_delta(delta.status()), body };
         left -= file.line_count();
         files.push(file);
     }
@@ -332,12 +548,16 @@ fn body(diff: &Diff<'_>, index: usize, budget: Budget) -> Result<DiffBody, git2:
     let Some(patch) = Patch::from_diff(diff, index)? else {
         return Ok(diff.get_delta(index).map_or(DiffBody::Text { hunks: Vec::new(), cut: None }, |delta| binary_or_empty(&delta)));
     };
+    patch_body(&patch, budget)
+}
+
+fn patch_body(patch: &Patch<'_>, budget: Budget) -> Result<DiffBody, git2::Error> {
     let delta = patch.delta();
     if delta.flags().is_binary() {
         let size = delta.new_file().size().max(delta.old_file().size());
         return Ok(if size > MAX_FILE_BYTES { DiffBody::TooLarge } else { DiffBody::Binary });
     }
-    text(&patch, budget)
+    text(patch, budget)
 }
 
 fn binary_or_empty(delta: &DiffDelta<'_>) -> DiffBody {
@@ -755,5 +975,203 @@ mod tests {
         let after = (fs::read(&index).expect("index"), fs::metadata(&index).and_then(|meta| meta.modified()).expect("mtime"));
         assert!(before == after, "the index changed");
         assert!(!repo.repo.path().join("index.lock").exists());
+    }
+
+    fn edited_lines(diff: EditedDiff) -> Vec<(LineKind, Option<u32>, Option<u32>, String)> {
+        lines(&FileDiff { path: path("a.txt"), old_path: None, mark: Mark::Modified, body: diff.body })
+    }
+
+    #[test]
+    fn should_diff_an_edited_text_against_heads_text_as_a_checkout_writes_it() {
+        // given
+        let repo = TestRepo::init();
+        repo.write(".gitattributes", "*.txt text eol=crlf\n");
+        repo.write("a.txt", "one\ntwo\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"one\r\nTWO\r\n").expect("diff");
+
+        // then
+        let old = found.old.as_ref().map(|old| old.as_bytes().to_vec());
+        assert_eq!(old, Some(b"one\r\ntwo\r\n".to_vec()));
+        assert_eq!(edited_lines(found), [
+            (LineKind::Context, Some(1), Some(1), "one".to_owned()),
+            (LineKind::Removed, Some(2), None, "two".to_owned()),
+            (LineKind::Added, None, Some(2), "TWO".to_owned()),
+        ]);
+    }
+
+    #[test]
+    fn should_answer_the_head_text_in_working_tree_form() {
+        // given
+        let repo = TestRepo::init();
+        repo.write(".gitattributes", "*.txt text eol=crlf\n");
+        repo.write("a.txt", "one\ntwo\n");
+        repo.write("big.txt", &"x\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+        repo.commit("first");
+        repo.write("new.txt", "new\n");
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("plain.txt"), "plain\n").unwrap();
+
+        // when
+        let tracked = change_base(&repo.root.join("a.txt")).expect("read");
+        let others = ["new.txt", "big.txt"].map(|name| change_base(&repo.root.join(name)).expect("read"));
+        let plain = change_base(&outside.path().join("plain.txt")).expect("read");
+
+        // then
+        let ChangeBase::Tracked { head, head_id } = tracked else {
+            panic!("a.txt is in HEAD");
+        };
+        assert_eq!(head.as_bytes(), b"one\r\ntwo\r\n");
+        assert_eq!(head_id, repo.repo.head().unwrap().target().unwrap().to_string());
+        assert!(others.iter().chain([&plain]).all(|base| matches!(base, ChangeBase::Untracked)));
+    }
+
+    #[test]
+    fn should_mark_every_line_of_a_staged_new_file_as_added() {
+        // given
+        let unborn = TestRepo::init();
+        unborn.write("staged.txt", "one\n");
+        unborn.stage("staged.txt");
+        unborn.write("loose.txt", "two\n");
+        let born = TestRepo::init();
+        born.write("a.txt", "a\n");
+        let first = born.commit("first");
+        born.write("staged.txt", "one\n");
+        born.stage("staged.txt");
+
+        // when
+        let before_commit = change_base(&unborn.root.join("staged.txt")).expect("read");
+        let loose = change_base(&unborn.root.join("loose.txt")).expect("read");
+        let after_commit = change_base(&born.root.join("staged.txt")).expect("read");
+
+        // then
+        let ChangeBase::Tracked { head, head_id } = before_commit else {
+            panic!("a staged file is tracked");
+        };
+        assert_eq!((head.as_bytes(), head_id.as_str()), (b"".as_slice(), "unborn"));
+        assert!(matches!(loose, ChangeBase::Untracked));
+        let ChangeBase::Tracked { head, head_id } = after_commit else {
+            panic!("a staged file is tracked");
+        };
+        assert_eq!((head.as_bytes(), head_id), (b"".as_slice(), first.to_string()));
+    }
+
+    #[test]
+    fn should_skip_the_head_text_when_the_head_id_is_known_or_the_git_dir_is_another() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "a\n");
+        let head = repo.commit("first").to_string();
+        let other = TestRepo::init();
+        let file = repo.root.join("a.txt");
+        let ask = |known: &str, git_dir: Option<&Path>| change_base_since(&file, &BaseAsk { known, git_dir }).expect("read");
+
+        // when
+        let known = ask(&head, None);
+        let stale = ask("old", Some(repo.repo.path()));
+        let elsewhere = ask("old", Some(other.repo.path()));
+
+        // then
+        assert!(matches!((known, elsewhere), (BaseRead::SameHead, BaseRead::OtherRepository)));
+        assert!(matches!(stale, BaseRead::Read(ChangeBase::Tracked { .. })));
+    }
+
+    #[test]
+    fn should_diff_an_edited_text_head_lacks_as_all_added() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("other.txt", "x\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"new\n").expect("diff");
+
+        // then
+        assert_eq!(edited_lines(found), [(LineKind::Added, None, Some(1), "new".to_owned())]);
+    }
+
+    #[test]
+    fn should_diff_an_edited_text_against_a_binary_head_as_binary() {
+        // given
+        let repo = TestRepo::init();
+        repo.write_bytes(Path::new("a.txt"), b"one\0two\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"one\n").expect("diff");
+
+        // then
+        assert_eq!((found.old.is_none(), found.body), (true, DiffBody::Binary));
+    }
+
+    /// Both sides of `paths` between `sides`, as text; `None` for a side without one.
+    fn both(repo: &TestRepo, sides: &Sides, paths: &FilePaths) -> (Option<String>, Option<String>) {
+        let text = |side: Option<Source>| side.map(|source| String::from_utf8(source.as_bytes().to_vec()).expect("utf-8"));
+        let (old, new) = texts(repo.path(), sides, paths).expect("texts");
+        (text(old), text(new))
+    }
+
+    #[test]
+    fn should_read_the_old_and_new_text_of_each_source() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "fork\n");
+        let root = Sha::of(repo.commit("root"));
+        repo.write("a.txt", "head\n");
+        let head = Sha::of(repo.commit("head"));
+        repo.write("a.txt", "work tree\n");
+        let since = |uncommitted| Sides::Since(SinceRange { fork: root.clone(), uncommitted });
+
+        // when
+        let found = [Sides::Uncommitted, since(Uncommitted::Excluded), since(Uncommitted::Included), Sides::Commit(head), Sides::Commit(root.clone())]
+            .map(|sides| both(&repo, &sides, &file("a.txt")));
+
+        // then
+        let pair = |old: Option<&str>, new: &str| (old.map(str::to_owned), Some(new.to_owned()));
+        assert_eq!(found, [
+            pair(Some("head\n"), "work tree\n"),
+            pair(Some("fork\n"), "head\n"),
+            pair(Some("fork\n"), "work tree\n"),
+            pair(Some("fork\n"), "head\n"),
+            pair(None, "fork\n"),
+        ]);
+    }
+
+    #[test]
+    fn should_read_a_renamed_files_old_side_by_its_old_name_and_leave_out_a_missing_side() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("old.txt", "kept\n");
+        repo.write("gone.txt", "deleted\n");
+        repo.commit("first");
+        repo.rename("old.txt", "new.txt");
+        repo.remove("gone.txt");
+        repo.write("added.txt", "added\n");
+
+        // when
+        let found = [renamed("old.txt", "new.txt"), file("gone.txt"), file("added.txt")].map(|paths| both(&repo, &Sides::Uncommitted, &paths));
+
+        // then
+        let text = |text: &str| Some(text.to_owned());
+        assert_eq!(found, [(text("kept\n"), text("kept\n")), (text("deleted\n"), None), (None, text("added\n"))]);
+    }
+
+    #[test]
+    fn should_leave_out_binary_sides_and_sides_too_large_to_colour() {
+        // given
+        let repo = TestRepo::init();
+        repo.write_bytes(Path::new("data.bin"), &[0, 1, 2, 0, 3]);
+        repo.write("big.txt", &"x\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+        repo.commit("first");
+        repo.write_bytes(Path::new("data.bin"), &[0, 1, 2, 0, 4]);
+        repo.write("big.txt", &"y\n".repeat(MAX_HIGHLIGHT_BYTES / 2 + 1));
+
+        // when
+        let found = [file("data.bin"), file("big.txt")].map(|paths| both(&repo, &Sides::Uncommitted, &paths));
+
+        // then
+        assert_eq!(found, [(None, None), (None, None)]);
     }
 }

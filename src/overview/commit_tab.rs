@@ -5,10 +5,12 @@ use std::path::PathBuf;
 use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, div, prelude::*, rgb};
 
 use super::git_event::CommitLink;
-use super::git_ui::{error_with_retry, muted};
+use super::git_ui::{error_with_retry, layout_switch, muted};
 use crate::age::date_time;
-use crate::diff_view::DiffView;
-use crate::diff_view::rows::Headers;
+use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
+use crate::git::diff::Sides;
+use codeview::diff::Headers;
+use codeview::panel::{Cast, Panel, PanelState};
 use crate::git::log::{self, CommitDetail, CommitInfo};
 use crate::git::repo::GitError;
 use crate::git::types::Sha;
@@ -29,6 +31,20 @@ impl CommitTab {
         Self { project, sha, title, body }
     }
 
+    pub fn panel_state(&self, cx: &App) -> PanelState {
+        self.body.read(cx).files.read(cx).state()
+    }
+
+    pub fn panel(&self, cx: &App) -> Entity<Panel> {
+        self.body.read(cx).files.clone()
+    }
+
+    /// Scrolls the files and collapses them as a saved tab had them, once they are read.
+    pub fn restore(&self, state: PanelState, cx: &mut App) {
+        let files = self.body.read(cx).files.clone();
+        files.update(cx, |panel, cx| panel.handle(Cast::Restore(state), cx));
+    }
+
     pub fn open(link: &CommitLink, cx: &mut App) -> Self {
         let sha = link.commit.sha.clone();
         let body = cx.new(|cx| CommitView::new(link.dir.clone(), sha.clone(), cx));
@@ -46,7 +62,7 @@ pub struct CommitView {
     dir: PathBuf,
     sha: Sha,
     header: Option<Result<Header, String>>,
-    files: Entity<DiffView>,
+    files: Entity<Panel>,
     /// read once, when first shown: a commit never changes
     started: bool,
     _load: Option<Task<()>>,
@@ -55,7 +71,9 @@ pub struct CommitView {
 impl CommitView {
     /// Reads git once it is first shown.
     fn new(dir: PathBuf, sha: Sha, cx: &mut Context<Self>) -> Self {
-        let files = cx.new(|cx| DiffView::new(Headers::Shown, cx));
+        let files = diff_panel(Vec::new(), Headers::Shown, cx);
+        serve(&files, format!("commit {}", sha.short()), cx);
+        serve_texts(&files, DiffOrigin { dir: dir.clone(), sides: Sides::Commit(sha.clone()) }, cx);
         Self { dir, sha, header: None, files, started: false, _load: None }
     }
 
@@ -80,7 +98,7 @@ impl CommitView {
     fn loaded(&mut self, result: Result<CommitDetail, GitError>, cx: &mut Context<Self>) {
         self.header = Some(match result {
             Ok(CommitDetail { info, message, files }) => {
-                self.files.update(cx, |view, cx| view.set_files(files, cx));
+                self.files.update(cx, |panel, cx| panel.handle(Cast::SetFiles(files), cx));
                 Ok(Header { info, message })
             }
             Err(error) => {
@@ -116,7 +134,8 @@ impl Render for CommitView {
             .child(div().font_family(theme::mono_font(cx)).text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(header.info.sha.as_str().to_owned()))
             .child(div().text_size(theme.sizes.git.text_size.px()).child(format!("{} · {}", header.info.author, date_time(header.info.when))))
             .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).font_weight(theme.sizes.git.commit_subject_weight.font_weight()).child(header.message.clone()))
-            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(parents));
+            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(parents))
+            .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).flex().child(layout_switch(&self.files, theme, cx)));
         div().flex().flex_col().flex_1().min_h_0().child(top).child(self.files.clone())
     }
 }

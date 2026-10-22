@@ -6,13 +6,15 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use codeview::panel::{Cast, Event};
 use gpui::{App, Context, Window, prelude::*};
 
 use super::Workspace;
+use crate::editor::Tab;
 use crate::git::base;
 use crate::git::diff::{self, FilePaths, Uncommitted};
 use crate::git::status::Change;
-use crate::git::types::Sha;
+use crate::git::types::{GitPath, Sha};
 use crate::git::worktree_data::{SinceData, WorktreeData, load_worktree};
 use crate::overview::diff_tab::{DiffRequest, DiffSource, DiffTabSpec};
 use crate::overview::file_list::FileOrder;
@@ -21,6 +23,7 @@ use crate::script::open_folders::{OpenFolders, ALL_OPEN};
 use crate::settings::SettingsStore;
 use crate::sidebar::folders::{ChangeSource, CheckoutGit, FolderKind};
 use crate::sidebar::rows::TreeItem;
+use crate::tabs::TabId;
 
 /// What is known, asked for and changed since, by checkout path.
 #[derive(Debug, Default)]
@@ -397,7 +400,43 @@ impl Workspace {
             return;
         };
         let request = DiffRequest { dir: checkout.path.clone(), file: FilePaths::of(change), source };
-        let (checkout, label) = (checkout.clone(), self.checkout_label(checkout));
+        self.load_diff_tab(DiffAsk { checkout: checkout.clone(), request, scroll: DiffScroll::Kept }, window, cx);
+    }
+
+    /// Opens the uncommitted diff of the file in tab `id` when its change popup asks; the subscription ends with the
+    /// panel. Other tabs ask for none.
+    pub(super) fn open_diff_on_request(&self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(Tab::Document(file)) = self.tabs.get(id) else {
+            return;
+        };
+        cx.subscribe_in(&file.panel.clone(), window, move |workspace, _panel, event: &Event, window, cx| {
+            let (Event::OpenDiff { line }, Some(Tab::Document(file))) = (event, workspace.tabs.get(id)) else {
+                return;
+            };
+            let path = file.path().to_path_buf();
+            workspace.open_uncommitted_diff(&path, *line, window, cx);
+        })
+        .detach();
+    }
+
+    /// The uncommitted diff of the file at `path` in a tab, its hunk showing the file's line `line` (from 1) at the
+    /// top. A file outside the open projects' checkouts has none; nor has one without changes.
+    pub(crate) fn open_uncommitted_diff(&mut self, path: &Path, line: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((checkout, relative)) = self.checkout_of_path(path).and_then(|checkout| {
+            let relative = path.strip_prefix(&checkout.path).ok()?.to_path_buf();
+            Some((checkout, relative))
+        }) else {
+            return eprintln!("ive: no uncommitted diff for {}: it is not in an open project's checkout", path.display());
+        };
+        let file = FilePaths { path: GitPath::from_bytes(relative.as_os_str().as_encoded_bytes()), old_path: None };
+        let request = DiffRequest { dir: checkout.path.clone(), file, source: DiffSource::Uncommitted };
+        self.load_diff_tab(DiffAsk { checkout, request, scroll: DiffScroll::ToLine(line) }, window, cx);
+    }
+
+    /// Reads the diff `ask` names in the background and shows it in its tab.
+    fn load_diff_tab(&mut self, ask: DiffAsk, window: &mut Window, cx: &mut Context<Self>) {
+        let DiffAsk { checkout, request, scroll } = ask;
+        let label = self.checkout_label(&checkout);
         let loading = cx.background_executor().spawn({
             let request = request.clone();
             async move { request.load() }
@@ -405,7 +444,10 @@ impl Workspace {
         cx.spawn_in(window, async move |this, cx| {
             let loaded = loading.await;
             this.update_in(cx, |workspace, window, cx| match loaded {
-                Ok(Some(file)) => workspace.open_diff_tab(&DiffTabSpec { checkout, label, request, file }, window, cx),
+                Ok(Some(file)) => {
+                    let id = workspace.open_diff_tab(&DiffTabSpec { checkout, label, request, file }, window, cx);
+                    workspace.scroll_diff_tab(id, scroll, cx);
+                }
                 // the file has no changes any more: the tree catches up on the next read
                 Ok(None) => {}
                 Err(error) => eprintln!("ive: {error}"),
@@ -413,6 +455,13 @@ impl Workspace {
             .ok();
         })
         .detach();
+    }
+
+    fn scroll_diff_tab(&self, id: TabId, scroll: DiffScroll, cx: &mut Context<Self>) {
+        let (DiffScroll::ToLine(line), Some(Tab::Diff(tab))) = (scroll, self.tabs.get(id)) else {
+            return;
+        };
+        tab.panel(cx).update(cx, |panel, cx| panel.handle(Cast::RevealLine(line), cx));
     }
 
     fn diff_source(&self, checkout: &Path, source: &ChangeSource) -> Option<DiffSource> {
@@ -447,6 +496,22 @@ impl Workspace {
             eprintln!("ive: cannot save the git file order: {error}");
         }
     }
+}
+
+/// A diff to show in its tab, and where to scroll it.
+struct DiffAsk {
+    checkout: CheckoutRef,
+    request: DiffRequest,
+    scroll: DiffScroll,
+}
+
+/// Where a diff tab scrolls once shown.
+#[derive(Clone, Copy)]
+enum DiffScroll {
+    /// where it is: at the top when new
+    Kept,
+    /// the hunk showing new-side line `.0` (from 1) at the top
+    ToLine(usize),
 }
 
 #[cfg(test)]

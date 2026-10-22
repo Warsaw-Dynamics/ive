@@ -6,6 +6,13 @@
     <div class="committab__by" x-text="c.author + ' · ' + c.date"></div>
     <div class="committab__message" x-text="c.message"></div>
     <div class="committab__parents" x-text="c.parents"></div>
+    <div class="committab__tools">
+      <span class="muted" title="A commit's files are read-only">read-only</span>
+      <div class="segmented" role="group" aria-label="Diff layout">
+        <button type="button" :aria-pressed="String(layoutOf(tab) === 'inline')" @click="setLayout(tab, 'inline')">Inline</button>
+        <button type="button" :aria-pressed="String(layoutOf(tab) === 'side')" @click="setLayout(tab, 'side')">Side by side</button>
+      </div>
+    </div>
   </div>
   <div class="diff">
     <template x-for="f in c.files" :key="f.path">
@@ -17,7 +24,7 @@
           <span class="muted" x-text="counted(f.diff.filter(l => l.startsWith('@@') === false).length, 'line', 'lines')"></span>
         </div>
         <template x-if="collapsedFiles.includes(key) === false">
-          <div x-data="{ get rows() { return diffRows(f.diff); } }" x-include="components/checkouts/diff-lines.html"></div>
+          <div x-data="{ get rows() { return diffRows(f.diff, f.path); } }" x-include="components/checkouts/diff-lines.html"></div>
         </template>
       </div>
     </template>

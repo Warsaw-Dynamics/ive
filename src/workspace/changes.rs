@@ -6,12 +6,13 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use codeview::document::{self, Reread, Stamp};
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
-use gpui::{Context, Task, Window};
+use gpui::{App, Context, Task, Window};
 
 use super::Workspace;
-use crate::editor::{self, EditorView, Reread, Tab};
+use crate::tabs::TabId;
 use crate::open_project::OpenProject;
 use crate::project::{CheckoutRef, ProjectId, Statuses};
 use crate::script::state::ScriptState;
@@ -168,10 +169,11 @@ impl Workspace {
                     documents.insert(path);
                 }
                 Change::FileRemoved(path) => {
-                    self.update_document(&path, EditorView::mark_deleted);
+                    self.take_removed(&path, cx);
                     self.scratch_changed_on_disk(&path, cx);
                 }
                 Change::Git(dir) => {
+                    self.tabs.iter().for_each(|(_, tab)| tab.git_changed(&dir, cx));
                     self.tree_git_changed(&dir);
                     self.git_dir_changed(&dir, cx);
                     self.hub_git_changed(&dir, cx);
@@ -212,43 +214,37 @@ impl Workspace {
         files.collect()
     }
 
-    fn update_document(&mut self, path: &Path, update: impl FnOnce(&mut EditorView)) {
-        if let Some(id) = self.tabs.find(|tab| tab.shows(path))
-            && let Some(Tab::Document(editor)) = self.tabs.get_mut(id)
-        {
-            update(editor);
+    /// Tells the tabs editing the file at `path` that it went away.
+    fn take_removed(&mut self, path: &Path, cx: &mut App) {
+        for (id, _) in self.document_stamps(path, cx) {
+            self.take_reread(id, Reread::Gone, cx);
         }
     }
 
-    /// A re-read document is parsed again for its new text.
-    fn rehighlight(&mut self, path: &Path, cx: &mut Context<Self>) {
-        if let Some(id) = self.tabs.find(|tab| tab.shows(path)) {
-            self.start_highlighting(id, cx);
+    /// Gives tab `id` what re-reading the file it edits found.
+    fn take_reread(&mut self, id: TabId, reread: Reread, cx: &mut App) {
+        if let Some(tab) = self.tabs.get_mut(id) {
+            tab.take_reread(reread, cx);
         }
     }
 
-    /// Re-reads the open documents at `paths` on the background executor; one whose size and modification time
-    /// are unchanged is not read.
+    /// Re-reads the open documents at `paths` on the background executor, once for each tab editing one (a file tab
+    /// and a diff tab may have read it at different times); one whose size and modification time are unchanged is
+    /// not read.
     fn reread_documents(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
-        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path).map(|stamp| (path, stamp))).collect();
+        let known: Vec<(TabId, PathBuf, Option<Stamp>)> =
+            paths.into_iter().flat_map(|path| self.document_stamps(&path, cx).into_iter().map(move |(id, stamp)| (id, path.clone(), stamp))).collect();
         if known.is_empty() {
             return;
         }
         let rereads = cx.background_executor().spawn(async move {
-            known.into_iter().map(|(path, stamp)| {
-                let reread = editor::reread(&path, stamp);
-                (path, reread)
-            }).collect::<Vec<(PathBuf, Reread)>>()
+            known.into_iter().map(|(id, path, stamp)| (id, document::reread(&path, stamp))).collect::<Vec<(TabId, Reread)>>()
         });
         cx.spawn(async move |this, cx| {
             let rereads = rereads.await;
             this.update(cx, |workspace, cx| {
-                for (path, reread) in rereads {
-                    let changed = matches!(reread, Reread::Changed(..));
-                    workspace.update_document(&path, |editor| editor.take_reread(reread));
-                    if changed {
-                        workspace.rehighlight(&path, cx);
-                    }
+                for (id, reread) in rereads {
+                    workspace.take_reread(id, reread, cx);
                 }
                 cx.notify();
             })
@@ -257,12 +253,9 @@ impl Workspace {
         .detach();
     }
 
-    /// The stamp of the document `path` shows, while a tab shows it.
-    fn document_stamp(&self, path: &Path) -> Option<Option<editor::Stamp>> {
-        match self.tabs.get(self.tabs.find(|tab| tab.shows(path))?) {
-            Some(Tab::Document(editor)) => Some(editor.stamp()),
-            _ => None,
-        }
+    /// The tabs editing the document at `path`, each with the stamp it last read or wrote it with.
+    fn document_stamps(&self, path: &Path, cx: &App) -> Vec<(TabId, Option<Stamp>)> {
+        self.tabs.iter().filter_map(|(id, tab)| tab.edited_stamp(path, cx).map(|stamp| (id, stamp))).collect()
     }
 
     fn git_dir_changed(&mut self, dir: &Path, cx: &mut Context<Self>) {

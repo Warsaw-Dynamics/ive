@@ -131,7 +131,9 @@ impl Workspace {
     #[cfg(target_os = "macos")]
     pub(super) fn quit_requested_by_system(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let seconds = self.quit_prompt.as_ref().map(|prompt| prompt.seconds);
-        if self.on_quit.apply(next_step(self.hosted_process_count(), seconds, QuitEvent::CloseRequested)) == QuitStep::QuitNow {
+        // unsaved edits quit through the workspace, which saves them first
+        let quits = self.on_quit.apply(next_step(self.hosted_process_count(), seconds, QuitEvent::CloseRequested)) == QuitStep::QuitNow;
+        if quits && self.unsaved_tab(cx).is_none() {
             return true;
         }
         self.request_quit(window, cx);
@@ -142,11 +144,11 @@ impl Workspace {
         let seconds = self.quit_prompt.as_ref().map(|prompt| prompt.seconds);
         match self.on_quit.apply(next_step(self.hosted_process_count(), seconds, event)) {
             // dropping the hosted sessions detaches them; their shells keep running
-            QuitStep::QuitNow => cx.quit(),
+            QuitStep::QuitNow => self.quit_when_saved(window, cx),
             QuitStep::ShowPrompt => self.show_quit_prompt(window, cx),
             QuitStep::StopAllThenQuit => {
                 self.stop_all_processes(window, cx);
-                cx.quit();
+                self.quit_when_saved(window, cx);
             }
             QuitStep::Countdown(left) => {
                 if let Some(prompt) = self.quit_prompt.as_mut() {

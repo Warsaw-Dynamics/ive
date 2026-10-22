@@ -5,22 +5,16 @@ use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, Window
 use crate::settings::{SettingsStore, ThemePreference};
 use crate::theme_config::{GitColors, MenuColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Appearance {
-    Dark,
-    Light,
-}
+pub use codeview::style::{Appearance, ViewStyle};
 
-impl Appearance {
-    pub fn resolve(preference: ThemePreference, os: WindowAppearance) -> Self {
-        match (preference, os) {
-            (ThemePreference::Dark, _) => Self::Dark,
-            (ThemePreference::Light, _) => Self::Light,
-            (ThemePreference::System, WindowAppearance::Dark | WindowAppearance::VibrantDark) => Self::Dark,
-            (ThemePreference::System, WindowAppearance::Light | WindowAppearance::VibrantLight) => Self::Light,
-        }
+/// `preference`, with the OS's appearance for [`ThemePreference::System`].
+pub fn appearance(preference: ThemePreference, os: WindowAppearance) -> Appearance {
+    match (preference, os) {
+        (ThemePreference::Dark, _) => Appearance::Dark,
+        (ThemePreference::Light, _) => Appearance::Light,
+        (ThemePreference::System, WindowAppearance::Dark | WindowAppearance::VibrantDark) => Appearance::Dark,
+        (ThemePreference::System, WindowAppearance::Light | WindowAppearance::VibrantLight) => Appearance::Light,
     }
-
 }
 
 /// The active theme: colours as 0xRRGGBB (0xRRGGBBAA where noted) for the current appearance, and the sizes; built
@@ -49,6 +43,10 @@ pub struct Theme {
     pub mark_added: u32,
     pub mark_removed: u32,
     pub mark_modified: u32,
+    /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
+    pub change_added: u32,
+    pub change_modified: u32,
+    pub change_deleted: u32,
     /// background of the window close button under the mouse
     pub close_hover: u32,
     /// 0xRRGGBBAA: translucent so the thumb reads over any background
@@ -163,6 +161,7 @@ impl Global for TabsTheme {}
 pub fn set_tabs(window: &Window, cx: &mut App) -> Theme {
     let theme = for_panel(Panel::Tabs, window, cx);
     cx.set_global(TabsTheme(theme));
+    cx.set_global(codeview::style::PanelStyle(view_style(&theme).with_mono_font(mono_font(cx))));
     theme
 }
 
@@ -193,6 +192,9 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         mark_added: palette.mark_added.0,
         mark_removed: palette.mark_removed.0,
         mark_modified: palette.mark_modified.0,
+        change_added: palette.change_added.0,
+        change_modified: palette.change_modified.0,
+        change_deleted: palette.change_deleted.0,
         close_hover: palette.close_hover.0,
         scrollbar_thumb: palette.scrollbar_thumb.0,
         scrollbar_thumb_hover: palette.scrollbar_thumb_hover.0,
@@ -219,6 +221,56 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
     }
 }
 
+/// What the code views draw with: `theme`'s colours and sizes they read, in the default monospace font until
+/// [`ViewStyle::with_mono_font`] names the one in use.
+pub fn view_style(theme: &Theme) -> ViewStyle {
+    let (editor, controls, diff) = (&theme.sizes.editor, &theme.sizes.controls, &theme.sizes.diff);
+    ViewStyle {
+        appearance: theme.appearance,
+        text: theme.text,
+        muted: theme.muted,
+        background: theme.background,
+        border: theme.border,
+        hover: theme.hover,
+        selected: theme.selected,
+        accent: theme.accent,
+        error: theme.error,
+        sidebar: theme.sidebar,
+        tab_active: theme.tab_active,
+        tab_active_border: theme.tab_active_border,
+        diff_added: theme.diff_added,
+        diff_removed: theme.diff_removed,
+        change_added: theme.change_added,
+        change_modified: theme.change_modified,
+        change_deleted: theme.change_deleted,
+        scrollbar_thumb: theme.scrollbar_thumb,
+        scrollbar_thumb_hover: theme.scrollbar_thumb_hover,
+        panels_radius: theme.panels.radius.0,
+        panels_shown: theme.panels.shown(),
+        editor_text_size: editor.text_size.0,
+        editor_line_height_factor: editor.line_height_factor.0,
+        editor_caret_width: editor.caret_width.0,
+        editor_notice_padding_x: editor.notice_padding_x.0,
+        editor_notice_padding_y: editor.notice_padding_y.0,
+        editor_notice_text_size: editor.notice_text_size.0,
+        scrollbar_thickness: controls.scrollbar_thickness.0,
+        scrollbar_min_thumb: controls.scrollbar_min_thumb.0,
+        scrollbar_inset: controls.scrollbar_inset.0,
+        mono_font: MONOSPACE.into(),
+        icon_size: theme.sizes.icon.0,
+        diff: codeview::style::DiffSizes {
+            row_height: diff.row_height.0,
+            text_size: diff.text_size.0,
+            line_padding: diff.line_padding.0,
+            hunk_padding_left: diff.hunk_padding_left.0,
+            header_gap: diff.header_gap.0,
+            header_padding_x: diff.header_padding_x.0,
+            header_weight: diff.header_weight.font_weight(),
+            number_padding_right: diff.number_padding_right.0,
+        },
+    }
+}
+
 /// `sizes` as a reference that lives as long as IVE, so [`Theme`] stays `Copy`; each distinct value is kept once, so
 /// saving `init.rn` again and again does not grow memory.
 pub fn intern(sizes: &Sizes) -> &'static Sizes {
@@ -237,7 +289,7 @@ pub fn intern(sizes: &Sizes) -> &'static Sizes {
 /// (gpui 0.2.2 re-borrows platform state the event loop already holds).
 pub fn apply(os: WindowAppearance, cx: &mut App) {
     let preference = cx.global::<SettingsStore>().current().theme;
-    let appearance = Appearance::resolve(preference, os);
+    let appearance = appearance(preference, os);
     if cx.try_global::<Theme>().is_some_and(|theme| theme.appearance == appearance) {
         return;
     }
@@ -253,6 +305,7 @@ pub fn reapply(cx: &mut App) {
 fn set(appearance: Appearance, cx: &mut App) {
     let theme = from_spec(cx.global::<ThemeSpec>(), appearance);
     let unfocused = unfocused_from_spec(cx.global::<ThemeSpec>(), appearance);
+    cx.set_global(view_style(&theme).with_mono_font(mono_font(cx)));
     cx.set_global(theme);
     cx.set_global(UnfocusedTheme(unfocused));
     crate::colors::apply(cx);
@@ -345,7 +398,7 @@ mod tests {
         ];
 
         // when
-        let resolved: Vec<_> = cases.iter().map(|(preference, os, _)| Appearance::resolve(*preference, *os)).collect();
+        let resolved: Vec<_> = cases.iter().map(|(preference, os, _)| appearance(*preference, *os)).collect();
 
         // then
         let expected: Vec<_> = cases.iter().map(|(_, _, appearance)| *appearance).collect();
@@ -385,6 +438,20 @@ mod tests {
 
         // then
         assert!(std::ptr::eq(first, second));
+    }
+
+    #[test]
+    fn should_build_view_style_from_theme() {
+        // given
+        let theme = from_spec(&defaults(), Appearance::Dark);
+
+        // when
+        let style = view_style(&theme);
+
+        // then
+        assert_eq!(style.text, theme.text);
+        assert_eq!(style.diff_added, theme.diff_added);
+        assert_eq!(style.editor_text_size, theme.sizes.editor.text_size.0);
     }
 
     #[test]

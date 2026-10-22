@@ -134,14 +134,15 @@ impl Workspace {
         }
     }
 
-    /// Shows the tab of this diff when one is open, else opens one.
-    pub(super) fn open_diff_tab(&mut self, spec: &DiffTabSpec, window: &mut Window, cx: &mut Context<Self>) {
+    /// Shows the tab of this diff when one is open, else opens one; returns the tab.
+    pub(super) fn open_diff_tab(&mut self, spec: &DiffTabSpec, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let open = self.tabs.find(|tab| matches!(tab, Tab::Diff(diff) if diff.checkout == spec.checkout && diff.request.same_diff(&spec.request)));
         if let Some(id) = open {
-            return self.activate_tab(id, window, cx);
+            self.activate_tab(id, window, cx);
+            return id;
         }
         let tab = DiffTab::open(spec.clone(), cx);
-        self.open_tab(Tab::Diff(tab), window, cx);
+        self.open_tab(Tab::Diff(tab), window, cx)
     }
 
     fn open_commit_tab(&mut self, link: &CommitLink, window: &mut Window, cx: &mut Context<Self>) {

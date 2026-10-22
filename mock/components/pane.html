@@ -29,6 +29,10 @@
     </div>
   </template>
 
+  <template x-if="pane.kind === 'document' && pane.lineCount > 100000">
+    <div class="codestatus"><span class="muted">over 8 MiB: shown without colours</span></div>
+  </template>
+
   <template x-if="pane.kind === 'settings'">
     <div class="settings">
       <h2>Appearance</h2>
