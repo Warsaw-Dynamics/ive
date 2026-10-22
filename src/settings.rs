@@ -33,6 +33,30 @@ impl ThemePreference {
     }
 }
 
+/// Whether a release build updates itself from GitHub Releases.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AutoUpdate {
+    #[default]
+    On,
+    Off,
+}
+
+impl AutoUpdate {
+    pub const ALL: [Self; 2] = [Self::On, Self::Off];
+
+    pub fn is_on(&self) -> bool {
+        *self == Self::On
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::On => "On",
+            Self::Off => "Off",
+        }
+    }
+}
+
 /// User settings, stored as TOML; keys missing from the file take their defaults.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -46,6 +70,8 @@ pub struct Settings {
     /// how the git views list changed files
     #[serde(skip_serializing_if = "FileOrder::is_default")]
     pub git_files: FileOrder,
+    #[serde(skip_serializing_if = "AutoUpdate::is_on")]
+    pub auto_update: AutoUpdate,
 }
 
 impl Settings {
@@ -59,6 +85,10 @@ impl Settings {
 
     pub fn with_git_files(&self, git_files: FileOrder) -> Self {
         Self { git_files, ..self.clone() }
+    }
+
+    pub fn with_auto_update(&self, auto_update: AutoUpdate) -> Self {
+        Self { auto_update, ..self.clone() }
     }
 
     pub fn with_diff_layout(&self, diff_layout: DiffLayout) -> Self {
@@ -238,6 +268,48 @@ mod tests {
         assert!(result.is_ok(), "{result:?}");
         assert_eq!(store.load_error(), None);
         assert!(fs::read_to_string(&path).unwrap().contains("light"));
+    }
+
+    #[test]
+    fn should_default_auto_update_to_on() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        fs::write(&path, "theme = \"dark\"\n").unwrap();
+
+        // when
+        let loaded = Settings::load(&path).unwrap();
+
+        // then
+        assert_eq!(loaded.auto_update, AutoUpdate::On);
+    }
+
+    #[test]
+    fn should_save_and_load_auto_update_off() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+
+        // when
+        Settings::default().with_auto_update(AutoUpdate::Off).save(&path).unwrap();
+        let loaded = Settings::load(&path).unwrap();
+
+        // then
+        assert!(fs::read_to_string(&path).unwrap().contains("auto_update = \"off\""));
+        assert_eq!(loaded.auto_update, AutoUpdate::Off);
+    }
+
+    #[test]
+    fn should_leave_auto_update_out_of_the_file_while_on() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+
+        // when
+        Settings::default().with_auto_update(AutoUpdate::On).save(&path).unwrap();
+
+        // then
+        assert!(!fs::read_to_string(&path).unwrap().contains("auto_update"));
     }
 
     #[test]
