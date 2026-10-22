@@ -4,7 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use gpui::{
-    Entity, IntoElement, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point, Styled, TestAppContext,
+    Entity, IntoElement, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point, ScrollDelta, ScrollWheelEvent, Styled,
+    TestAppContext,
     VisualTestContext, div, point, px, size,
 };
 
@@ -12,6 +13,7 @@ use super::*;
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
 use crate::host::{ClipboardTarget, Host, KeyOutcome};
 use crate::diff::texts::Placed;
+use crate::diff::shared_max_scroll;
 use crate::diff::{DiffBody, DiffLine, GitPath, Headers, Hunk, LineKind, Mark};
 use crate::style::{Appearance, ViewStyle};
 
@@ -323,4 +325,67 @@ fn should_put_the_divider_back_in_the_middle_on_a_double_click(cx: &mut TestAppC
 
     // then
     assert_eq!(*copied.borrow(), ["old"]);
+}
+
+/// A side-by-side diff drawn 800 px wide whose old side is a 300 character line and whose new side is `new`.
+fn wide_old_side<'a>(new: &str, cx: &'a mut TestAppContext) -> (Entity<Panel>, &'a mut VisualTestContext) {
+    let (panel, _asked, cx) = window(cx);
+    let lines = vec![line(LineKind::Removed, Some(1), None, &"o".repeat(300)), line(LineKind::Added, None, Some(1), new)];
+    show(&panel, DiffInput { files: vec![file("a.rs", lines)], headers: Headers::Hidden, layout: DiffLayout::SideBySide, editable: Editable::No }, cx);
+    // the second frame sizes the scroll from the first one's bounds
+    draw(&panel, 10., cx);
+    draw(&panel, 10., cx);
+    (panel, cx)
+}
+
+/// Wheels `dx` px sideways at window x `x` over the panel's diff and returns the text offset after.
+fn wheel_at(panel: &Entity<Panel>, x: Pixels, dx: f32, cx: &mut VisualTestContext) -> f64 {
+    let Body::Diff(diff) = panel.read_with(cx, |panel, _| panel.body.clone()) else { panic!("not a diff") };
+    let wheel = ScrollWheelEvent { position: point(x, px(30.)), delta: ScrollDelta::Pixels(point(px(-dx), px(0.))), ..Default::default() };
+    cx.update(|window, cx| diff.update(cx, |diff, cx| diff.on_window_wheel(&wheel, window, cx)));
+    draw(panel, 10., cx);
+    diff.read_with(cx, |diff, _| diff.text_offset())
+}
+
+#[gpui::test]
+fn should_scroll_both_panels_sideways_together(cx: &mut TestAppContext) {
+    // given
+    let (panel, cx) = wide_old_side("new", cx);
+
+    // when
+    let over_left = wheel_at(&panel, px(100.), 40., cx);
+    let then_over_right = wheel_at(&panel, px(700.), 10., cx);
+
+    // then
+    // one offset moves both panels' text: the right panel, whose own text is short, follows the left
+    assert_eq!((over_left, then_over_right), (40., 50.));
+}
+
+#[gpui::test]
+fn should_stop_scrolling_at_the_end_of_the_widest_side_even_when_the_other_is_shorter(cx: &mut TestAppContext) {
+    // given
+    let (panel, cx) = wide_old_side("new", cx);
+
+    // when
+    let far = wheel_at(&panel, px(700.), 100_000., cx);
+
+    // then
+    // the new side alone would not scroll at all
+    assert!(far > 0.);
+    assert_eq!(wheel_at(&panel, px(100.), 100_000., cx), far);
+}
+
+#[test]
+fn should_limit_the_shared_scroll_by_the_side_that_overflows_most_in_its_own_viewport() {
+    // given
+    // an uneven split: the old viewport is 200 px, the new one 500
+    let (old, new) = ((200., 600.), (500., 700.));
+
+    // when
+    let wider_old = shared_max_scroll([old, (500., 100.)]);
+    let wider_new = shared_max_scroll([(200., 100.), new]);
+    let both_fit = shared_max_scroll([(200., 100.), (500., 100.)]);
+
+    // then
+    assert_eq!((wider_old, wider_new, both_fit), (400., 200., 0.));
 }

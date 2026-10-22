@@ -580,7 +580,7 @@ impl DiffView {
     fn edit_scroll(&self) -> (&dyn Scrollable, Pixels) {
         match self.shape.layout {
             DiffLayout::Inline => (&self.list, self.text_start()),
-            DiffLayout::SideBySide => (&self.panels.new.offset, px(0.)),
+            DiffLayout::SideBySide => (&self.panels.offset, px(0.)),
         }
     }
 

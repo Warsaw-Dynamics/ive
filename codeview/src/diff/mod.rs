@@ -76,7 +76,7 @@ pub struct DiffView {
     list: ListScroll,
     scrollbars: ScrollState,
     /// side by side, each panel's own sideways scroll
-    panels: Panels,
+    panels: PanelScroll,
     /// side by side, how the width is shared between the panels
     split: Split,
     focus_handle: FocusHandle,
@@ -113,7 +113,7 @@ enum Pressed {
     Divider,
 }
 
-/// A side-by-side panel's sideways scroll and the scrollbar that moves it.
+/// The sideways scroll both side-by-side panels share and the scrollbars that move it.
 struct PanelScroll {
     offset: OffsetScroll,
     bar: ScrollState,
@@ -126,18 +126,10 @@ impl PanelScroll {
     }
 }
 
-struct Panels {
-    old: PanelScroll,
-    new: PanelScroll,
-}
-
-impl Panels {
-    fn on(&self, side: Side) -> &PanelScroll {
-        match side {
-            Side::Old => &self.old,
-            Side::New => &self.new,
-        }
-    }
+/// How far the panels can scroll sideways together: far enough to see the end of the widest text on either side.
+/// Each side is its viewport's and its widest text's width.
+pub(crate) fn shared_max_scroll(sides: [(f64, f64); 2]) -> f64 {
+    sides.into_iter().map(|(viewport, content)| content - viewport).fold(0., f64::max)
 }
 
 impl EventEmitter<DiffEvent> for DiffView {}
@@ -154,7 +146,7 @@ impl DiffView {
             number_width: 1,
             list,
             scrollbars,
-            panels: Panels { old: PanelScroll::new(), new: PanelScroll::new() },
+            panels: PanelScroll::new(),
             split: Split::default(),
             focus_handle: cx.focus_handle(),
             selection: None,
@@ -378,11 +370,17 @@ impl DiffView {
         }
     }
 
+    /// How far the side-by-side panels' text is scrolled sideways, which is the same for both.
+    #[cfg(test)]
+    pub(crate) fn text_offset(&self) -> f64 {
+        self.panels.offset.scrolled()
+    }
+
     /// What scrolls the selection's text sideways.
     fn sideways(&self) -> &dyn Scrollable {
         match self.shape.layout {
             DiffLayout::Inline => &self.list,
-            DiffLayout::SideBySide => &self.panels.on(self.side).offset,
+            DiffLayout::SideBySide => &self.panels.offset,
         }
     }
 
@@ -487,17 +485,17 @@ impl DiffView {
         }
     }
 
-    /// Side by side, a sideways wheel (or Shift+wheel) over a panel scrolls that panel.
-    fn on_window_wheel(&mut self, event: &ScrollWheelEvent, window: &Window, cx: &mut Context<Self>) {
-        let Some(bounds) = self.bounds.get().filter(|bounds| bounds.contains(&event.position)) else {
+    /// Side by side, a sideways wheel (or Shift+wheel) over either panel scrolls both.
+    pub(crate) fn on_window_wheel(&mut self, event: &ScrollWheelEvent, window: &Window, cx: &mut Context<Self>) {
+        if !self.bounds.get().is_some_and(|bounds| bounds.contains(&event.position)) {
             return;
-        };
+        }
         let delta = event.delta.pixel_delta(window.line_height());
         let (sideways, _) = wheel_axes(f32::from(delta.x), f32::from(delta.y), event.modifiers.shift);
         if sideways == 0. {
             return;
         }
-        let offset = &self.panels.on(self.side_at(event.position.x, bounds)).offset;
+        let offset = &self.panels.offset;
         offset.scroll_to(Axis::Horizontal, offset.scrolled() - f64::from(sideways));
         if delta.x == px(0.) {
             // a Shift+wheel turned sideways: keep the list from also scrolling down
@@ -578,19 +576,20 @@ impl DiffView {
         &self.hunk(file, at.hunk).lines[at.line]
     }
 
-    /// Fits each side-by-side panel's sideways scroll to the widest text it shows now.
+    /// Fits the sideways scroll the side-by-side panels share to the widest text either shows now. Its viewport is the
+    /// new panel's, which the caret is kept in; the old panel's text may end sooner or later than that.
     fn size_panels(&self) {
         let Some(bounds) = self.bounds.get() else {
             return;
         };
         let shown = self.list.visible_rows(self.rows.len());
-        for side in [Side::Old, Side::New] {
+        let [old, new] = [Side::Old, Side::New].map(|side| {
             let viewport = f64::from(f32::from(bounds.size.width * self.split.share(side) - self.text_start()));
             let chars = shown.clone().map(|row| self.cell_chars(row, side)).max().unwrap_or(0);
             // one column more for a selection that goes on past the end
-            let content = f64::from(f32::from(self.char_width)) * (chars + 1) as f64;
-            self.panels.on(side).offset.set_size(viewport, content);
-        }
+            (viewport, f64::from(f32::from(self.char_width)) * (chars + 1) as f64)
+        });
+        self.panels.offset.set_size(new.0, new.0 + shared_max_scroll([old, new]));
     }
 
     fn render_rows(&self, range: Range<usize>, theme: &ViewStyle, cx: &mut Context<Self>) -> Vec<Stateful<Div>> {
@@ -690,7 +689,7 @@ impl DiffView {
             .absolute()
             .top_0()
             .h_full()
-            .left(-px(self.panels.on(cell.side).offset.scrolled() as f32))
+            .left(-px(self.panels.offset.scrolled() as f32))
             .flex()
             .items_center()
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
@@ -750,10 +749,10 @@ impl DiffView {
         .size_full()
     }
 
-    /// The horizontal scrollbars: the list's inline, each panel's side by side.
+    /// The horizontal scrollbars: the list's inline, one under each panel side by side.
     fn horizontal_scrollbars(&self, theme: &ViewStyle) -> Vec<AnyElement> {
         let under = |side: Side| {
-            let bar = horizontal_scrollbar(&self.panels.on(side).bar, theme);
+            let bar = horizontal_scrollbar(&self.panels.bar, theme);
             div().absolute().top_0().bottom_0().w(relative(self.split.share(side))).child(bar)
         };
         match self.shape.layout {
