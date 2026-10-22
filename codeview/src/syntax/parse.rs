@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use tree_sitter::{ParseOptions, ParseState, Parser, Range, Tree};
+use tree_sitter::{InputEdit, ParseOptions, ParseState, Parser, Range, Tree};
 
 use super::Language;
 use super::injection::{Injection, injections};
@@ -17,12 +17,15 @@ pub const PARSE_BUDGET: Duration = Duration::from_secs(2);
 /// Embedded code nested deeper than this below the file's own language shows in its parent layer's colours.
 pub const MAX_INJECTION_DEPTH: usize = 3;
 
-/// A parsed document: the host tree, then one layer per piece of embedded code, parents before children.
+/// A parsed document: the host tree, then one layer per piece of embedded code, parents before children. A clone
+/// shares the trees.
+#[derive(Clone)]
 pub struct Syntax {
     layers: Vec<Layer>,
 }
 
 /// One parse: of the whole document (depth 0), or of embedded code within `ranges`.
+#[derive(Clone)]
 pub struct Layer {
     pub language: Language,
     pub tree: Tree,
@@ -119,13 +122,36 @@ pub fn parse(source: &[u8], language: Language, cancel: &Cancel, budget: Duratio
         return Err(ParseError::TooLarge { bytes: source.len() });
     }
     let deadline = Deadline { cancel, started: Instant::now(), budget };
-    let tree = parse_ranges(source, language, &[], &deadline)?;
-    let mut layers = vec![Layer { language, tree, depth: 0, ranges: Vec::new() }];
+    let tree = parse_text(&Text { source, language, ranges: &[] }, None, &deadline)?;
+    with_embedded(Layer { language, tree, depth: 0, ranges: Vec::new() }, source, &deadline)
+}
+
+/// Parses `source`, the text `old` was parsed from changed by `edits` (in order, each in the offsets the ones before
+/// it left), reusing what the edits left of `old`'s host tree; the embedded code is found and parsed afresh. Gives up
+/// as [`parse`] does.
+pub fn reparse(old: &Syntax, edits: &[InputEdit], source: &[u8], cancel: &Cancel, budget: Duration) -> Result<Syntax, ParseError> {
+    if source.len() > MAX_HIGHLIGHT_BYTES {
+        return Err(ParseError::TooLarge { bytes: source.len() });
+    }
+    let language = old.layers[0].language;
+    let mut edited = old.layers[0].tree.clone();
+    for edit in edits {
+        edited.edit(edit);
+    }
+    let deadline = Deadline { cancel, started: Instant::now(), budget };
+    let tree = parse_text(&Text { source, language, ranges: &[] }, Some(&edited), &deadline)?;
+    with_embedded(Layer { language, tree, depth: 0, ranges: Vec::new() }, source, &deadline)
+}
+
+/// `host` and the layers of the code embedded in it, parents before children.
+fn with_embedded(host: Layer, source: &[u8], deadline: &Deadline) -> Result<Syntax, ParseError> {
+    let language = host.language;
+    let mut layers = vec![host];
     let mut next = 0;
     while let Some(parent) = layers.get(next) {
         let depth = parent.depth + 1;
         for injection in embedded_in(parent, source, depth) {
-            match parse_injection(source, &injection, &deadline) {
+            match parse_injection(source, &injection, deadline) {
                 Ok(tree) => layers.push(Layer { language: injection.language, tree, depth, ranges: injection.ranges }),
                 Err(ParseError::Cancelled) => return Err(ParseError::Cancelled),
                 Err(error @ ParseError::OverBudget { .. }) => return Ok(stopped(layers, &error)),
@@ -142,7 +168,7 @@ fn parse_injection(source: &[u8], injection: &Injection, deadline: &Deadline) ->
     if deadline.is_over() {
         return Err(deadline.error());
     }
-    parse_ranges(source, injection.language, &injection.ranges, deadline)
+    parse_text(&Text { source, language: injection.language, ranges: &injection.ranges }, None, deadline)
 }
 
 /// The injections of `parent` that may still nest at `depth`.
@@ -161,8 +187,16 @@ fn stopped(layers: Vec<Layer>, error: &ParseError) -> Syntax {
     Syntax { layers }
 }
 
-/// Parses the `ranges` of `source` as one document; no ranges is the whole source.
-fn parse_ranges(source: &[u8], language: Language, ranges: &[Range], deadline: &Deadline) -> Result<Tree, ParseError> {
+/// What to parse: the `ranges` of `source` as one document in `language`; no ranges is the whole source.
+struct Text<'a> {
+    source: &'a [u8],
+    language: Language,
+    ranges: &'a [Range],
+}
+
+/// Parses `text`, reusing what is still valid of `old`, a tree already edited to fit it.
+fn parse_text(text: &Text, old: Option<&Tree>, deadline: &Deadline) -> Result<Tree, ParseError> {
+    let Text { source, language, ranges } = *text;
     let grammar = language.grammar().map_err(|reason| ParseError::Grammar(reason.to_owned()))?;
     let mut parser = Parser::new();
     parser.set_language(&grammar.language).map_err(|error| ParseError::Grammar(error.to_string()))?;
@@ -174,14 +208,16 @@ fn parse_ranges(source: &[u8], language: Language, ranges: &[Range], deadline: &
         ControlFlow::Continue(())
     };
     let options = ParseOptions::new().progress_callback(&mut progress);
-    let tree = parser.parse_with_options(&mut |at, _| source.get(at..).unwrap_or_default(), None, Some(options));
+    let tree = parser.parse_with_options(&mut |at, _| source.get(at..).unwrap_or_default(), old, Some(options));
     tree.ok_or_else(|| deadline.error())
 }
 
 #[cfg(test)]
 mod tests {
+    use tree_sitter::Point;
+
     use super::*;
-    use crate::syntax::lang;
+    use crate::syntax::{lang, spans};
 
     /// About 3 MB of Java: long enough that tree-sitter checks progress several times.
     fn big_java() -> Vec<u8> {
@@ -198,6 +234,32 @@ mod tests {
 
         // then
         assert_eq!(syntax.map(|syntax| syntax.language()).ok(), Some(lang("Rust")));
+    }
+
+    #[test]
+    fn should_colour_a_reparse_like_a_fresh_parse() {
+        // given
+        let old_text = "fn main() {\n    let n = 1;\n    call(n);\n}\n";
+        let old = parse(old_text.as_bytes(), lang("Rust"), &Cancel::default(), PARSE_BUDGET).unwrap();
+        let at = old_text.find("call").unwrap();
+        let new_text = format!("{}// {}", &old_text[..at], &old_text[at..]);
+        let point = Point { row: 2, column: 4 };
+        let edit = InputEdit {
+            start_byte: at,
+            old_end_byte: at,
+            new_end_byte: at + 3,
+            start_position: point,
+            old_end_position: point,
+            new_end_position: Point { row: 2, column: 7 },
+        };
+
+        // when
+        let reparsed = reparse(&old, &[edit], new_text.as_bytes(), &Cancel::default(), PARSE_BUDGET).unwrap();
+
+        // then
+        let fresh = parse(new_text.as_bytes(), lang("Rust"), &Cancel::default(), PARSE_BUDGET).unwrap();
+        let whole = 0..new_text.len();
+        assert_eq!(spans(&reparsed, new_text.as_bytes(), whole.clone()), spans(&fresh, new_text.as_bytes(), whole));
     }
 
     #[test]

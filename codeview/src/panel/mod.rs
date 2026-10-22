@@ -14,6 +14,7 @@ use gpui::{
 pub use protocol::{
     Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, SaveFailure,
 };
+pub(crate) use protocol::Previous;
 pub use state::PanelState;
 
 use crate::code_view::CodeView;
@@ -21,7 +22,7 @@ use crate::diff::{DiffView, FileDiff};
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
-use crate::text_editor::{TextEditor, TextEditorEvent};
+use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
 
 /// A text, a diff, or nothing yet; viewed or edited as the last [`Cast::Open`] said.
 pub struct Panel {
@@ -137,9 +138,11 @@ impl Panel {
                 self.revision += 1;
                 self.request_parse(cx);
             }
-            (Content::Lines { source, edit: Some(policy), .. }, Body::Edit(editor)) => {
-                editor.update(cx, |editor, cx| editor.reset(PieceTable::new(source), policy.limit, cx));
+            (Content::Lines { source, language, edit: Some(policy) }, Body::Edit(editor)) => {
+                let setup = Setup { limit: policy.limit, language };
+                editor.update(cx, |editor, cx| editor.reset(PieceTable::new(source), setup, cx));
                 self.revision = editor.read(cx).revision();
+                self.request_parse(cx);
             }
             (Content::Diff(input), Body::Diff(diff)) => diff.update(cx, |diff, cx| diff.set_files(input.files, cx)),
             (content @ Content::Lines { .. }, Body::View(_) | Body::Edit(_)) => {
@@ -156,7 +159,9 @@ impl Panel {
         self._body_events.clear();
         match content {
             Content::Lines { source, language, edit: None } => self.build_view(source, language, cx),
-            Content::Lines { source, edit: Some(policy), .. } => self.build_edit(source, policy, cx),
+            Content::Lines { source, language, edit: Some(policy) } => {
+                self.build_edit(source, Setup { limit: policy.limit, language }, cx);
+            }
             Content::Diff(input) => self.build_diff(input, cx),
         }
     }
@@ -172,11 +177,12 @@ impl Panel {
     }
 
     /// Edit mode reads `source` through a piece table: only the lines it shows or edits.
-    fn build_edit(&mut self, source: Arc<dyn LineSource>, policy: EditPolicy, cx: &mut Context<Self>) {
-        let editor = cx.new(|cx| TextEditor::new(PieceTable::new(source), policy.limit, cx));
+    fn build_edit(&mut self, source: Arc<dyn LineSource>, setup: Setup, cx: &mut Context<Self>) {
+        let editor = cx.new(|cx| TextEditor::new(PieceTable::new(source), setup, cx));
         self._body_events.push(cx.subscribe(&editor, Self::on_editor_event));
         self.revision = editor.read(cx).revision();
         self.body = Body::Edit(editor);
+        self.request_parse(cx);
     }
 
     fn build_diff(&mut self, input: DiffInput, cx: &mut Context<Self>) {
@@ -193,16 +199,20 @@ impl Panel {
             TextEditorEvent::Edited => {
                 self.revision = editor.read(cx).revision();
                 cx.emit(Event::Edited { revision: self.revision });
+                self.request_parse(cx);
             }
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
         }
     }
 
+    /// Asks the host for the parse of the text as it is now; in Edit mode, it cancels the one asked for before.
     fn request_parse(&self, cx: &mut Context<Self>) {
-        let Body::View(view) = &self.body else {
-            return;
+        let job = match &self.body {
+            Body::View(view) => view.read(cx).parse_job(self.revision),
+            Body::Edit(editor) => editor.update(cx, |editor, _| editor.parse_job()),
+            Body::Empty | Body::Diff(_) => None,
         };
-        if let Some(job) = view.read(cx).parse_job(self.revision) {
+        if let Some(job) = job {
             cx.emit(Event::NeedParse(job));
         }
     }
@@ -213,6 +223,7 @@ impl Panel {
             (Body::View(view), ParseTarget::Text) if revision == self.revision => {
                 view.update(cx, |view, cx| view.set_syntax(syntax, cx));
             }
+            (Body::Edit(editor), ParseTarget::Text) => editor.update(cx, |editor, cx| editor.parsed(revision, syntax, cx)),
             _ => {}
         }
     }

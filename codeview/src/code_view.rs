@@ -16,7 +16,7 @@ use crate::colors::{ColorKey, ResolvedScheme};
 use crate::document::DisplayLine;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::panel::{LineSource, ParseJob, ParseTarget};
+use crate::panel::{LineSource, ParseJob, ParseTarget, Previous};
 use crate::position::ScrollPosition;
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
@@ -290,6 +290,7 @@ impl State {
             cancel: self.cancel.clone(),
             target: ParseTarget::Text,
             revision,
+            previous: Previous::Nothing,
         })
     }
 

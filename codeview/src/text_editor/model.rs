@@ -8,6 +8,8 @@
 use std::fmt;
 use std::ops::Range;
 
+use tree_sitter::InputEdit;
+
 use super::history::{Change, Cursor, Edit, History};
 use crate::panel;
 use crate::piece_table::PieceTable;
@@ -124,6 +126,8 @@ pub struct EditorModel {
     /// a scratch's; files have none
     limit: Option<SizeLimit>,
     revision: u64,
+    /// the replacements in the piece table since [`EditorModel::take_replacements`]
+    replacements: Vec<InputEdit>,
 }
 
 impl EditorModel {
@@ -137,12 +141,27 @@ impl EditorModel {
             history: History::default(),
             limit,
             revision: 0,
+            replacements: Vec::new(),
         }
     }
 
     /// Line `index` (clamped) as shown; see the module doc.
     pub fn line(&self, index: usize) -> String {
         shown(&self.table.line(index))
+    }
+
+    /// Line `index` (clamped) as stored, without its `\n`, and the byte offset it starts at.
+    pub fn stored_line(&self, index: usize) -> (u64, Vec<u8>) {
+        (self.table.line_start(index), self.table.line(index))
+    }
+
+    pub fn table(&self) -> &PieceTable {
+        &self.table
+    }
+
+    /// The replacements in the text since the last call, in order, for re-parsing it incrementally.
+    pub fn take_replacements(&mut self) -> Vec<InputEdit> {
+        std::mem::take(&mut self.replacements)
     }
 
     /// Editor rules: a text ending in `\n` has an empty last line.
@@ -352,7 +371,8 @@ impl EditorModel {
             return false;
         };
         for change in group.changes.iter().rev() {
-            self.table.replace(change.inserted_bytes(), &change.removed);
+            let replaced = self.table.replace(change.inserted_bytes(), &change.removed);
+            self.replacements.push(replaced);
         }
         self.restore(group.before);
         self.history.push_redo(group);
@@ -364,7 +384,8 @@ impl EditorModel {
             return false;
         };
         for change in &group.changes {
-            self.table.replace(change.removed_bytes(), &change.inserted);
+            let replaced = self.table.replace(change.removed_bytes(), &change.inserted);
+            self.replacements.push(replaced);
         }
         self.restore(group.after);
         self.history.push_undone(group);
@@ -411,7 +432,8 @@ impl EditorModel {
         let (removed, inserted) = (self.table.bytes(bytes.clone()), self.stored_form(range.start.line, text));
         self.check_size(&removed, &inserted)?;
         let before = self.cursor();
-        self.table.replace(bytes.clone(), &inserted);
+        let replaced = self.table.replace(bytes.clone(), &inserted);
+        self.replacements.push(replaced);
         self.caret = end_of(range.start, text);
         self.anchor = None;
         self.goal_column = None;
@@ -546,12 +568,12 @@ fn normalize(text: &str) -> String {
 }
 
 /// A stored line as shown; see the module doc.
-fn shown(stored: &[u8]) -> String {
+pub(super) fn shown(stored: &[u8]) -> String {
     String::from_utf8_lossy(content(stored)).into_owned()
 }
 
 /// A stored line without the `\r` of a CRLF ending.
-fn content(stored: &[u8]) -> &[u8] {
+pub(super) fn content(stored: &[u8]) -> &[u8] {
     stored.strip_suffix(b"\r").unwrap_or(stored)
 }
 
@@ -563,7 +585,7 @@ fn stored_byte_of(stored: &[u8], column: usize) -> usize {
 
 /// Where each shown character starts in `content`: each valid one, and each invalid sequence, which
 /// `String::from_utf8_lossy` shows as one U+FFFD.
-fn shown_char_starts(content: &[u8]) -> impl Iterator<Item = usize> + '_ {
+pub(super) fn shown_char_starts(content: &[u8]) -> impl Iterator<Item = usize> + '_ {
     let mut offset = 0;
     content.utf8_chunks().flat_map(move |chunk| {
         let start = offset;

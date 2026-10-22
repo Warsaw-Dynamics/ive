@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use tree_sitter::InputEdit;
 
 use super::state::PanelState;
 use crate::diff::{FileDiff, Headers};
@@ -136,6 +137,15 @@ pub struct ParseJob {
     pub(crate) cancel: Cancel,
     pub(crate) target: ParseTarget,
     pub(crate) revision: u64,
+    pub(crate) previous: Previous,
+}
+
+/// What a parse may reuse.
+#[derive(Clone)]
+pub(crate) enum Previous {
+    Nothing,
+    /// the parse of an older text, which `edits` turned into this one
+    Edited { syntax: Syntax, edits: Vec<InputEdit> },
 }
 
 impl ParseJob {
@@ -153,6 +163,10 @@ impl ParseJob {
     }
 
     pub fn run(self) -> Result<Syntax, ParseError> {
-        syntax::parse(self.source.as_bytes(), self.language, &self.cancel, PARSE_BUDGET)
+        let source = self.source.as_bytes();
+        match &self.previous {
+            Previous::Nothing => syntax::parse(source, self.language, &self.cancel, PARSE_BUDGET),
+            Previous::Edited { syntax, edits } => syntax::reparse(syntax, edits, source, &self.cancel, PARSE_BUDGET),
+        }
     }
 }

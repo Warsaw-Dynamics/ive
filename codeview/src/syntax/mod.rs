@@ -11,7 +11,7 @@ mod vendored;
 
 pub use highlight::{Highlight, spans};
 pub use language::{Grammar, Language};
-pub use parse::{Cancel, MAX_HIGHLIGHT_BYTES, PARSE_BUDGET, ParseError, Syntax, parse};
+pub use parse::{Cancel, MAX_HIGHLIGHT_BYTES, PARSE_BUDGET, ParseError, Syntax, parse, reparse};
 
 /// The registry row named `name`; for tests, where a wrong name is a typo.
 #[cfg(any(test, feature = "test-support"))]

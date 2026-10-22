@@ -8,6 +8,8 @@ use std::mem;
 use std::ops::Range;
 use std::sync::Arc;
 
+use tree_sitter::{InputEdit, Point};
+
 use crate::document::TextSource;
 use crate::panel::{Edit, LineSource};
 
@@ -102,10 +104,11 @@ impl PieceTable {
     }
 
     /// Replaces `bytes` (clamped) of the current text with `text`, stored as given. Ranges are expected on character
-    /// boundaries.
-    pub fn replace(&mut self, bytes: Range<u64>, text: impl AsRef<[u8]>) {
+    /// boundaries. Returns the replacement as tree-sitter describes an edit, for re-parsing incrementally.
+    pub fn replace(&mut self, bytes: Range<u64>, text: impl AsRef<[u8]>) -> InputEdit {
         let end = bytes.end.min(self.byte_len());
         let start = bytes.start.min(end);
+        let (start_position, old_end_position) = (self.point_of(start), self.point_of(end));
         let first = self.split_at(start);
         let after = self.split_at(end);
         let typed = self.type_text(text.as_ref());
@@ -113,6 +116,32 @@ impl PieceTable {
         self.pieces.splice(first..after, typed);
         self.join_typed(first + typed_count);
         self.reindex();
+        let new_end = start + text.as_ref().len() as u64;
+        InputEdit {
+            start_byte: start as usize,
+            old_end_byte: end as usize,
+            new_end_byte: new_end as usize,
+            start_position,
+            old_end_position,
+            new_end_position: self.point_of(new_end),
+        }
+    }
+
+    /// Where byte `offset` (at most the length) is as tree-sitter counts: line, and bytes into it.
+    fn point_of(&self, offset: u64) -> Point {
+        let row = self.line_of(offset);
+        Point { row, column: (offset - self.line_start(row)) as usize }
+    }
+
+    /// The line byte `offset` (at most the length) is on: the newlines before it.
+    fn line_of(&self, offset: u64) -> usize {
+        if offset >= self.byte_len() {
+            return self.index.newlines;
+        }
+        let at = self.piece_at(offset);
+        let piece = &self.pieces[at];
+        let within = self.buffer_line_of(piece.buffer, piece.bytes.start + (offset - self.index.starts[at]));
+        self.index.lines_before[at] + within - piece.first_line
     }
 
     /// Bytes `range` (clamped) of the current text.
@@ -390,6 +419,31 @@ mod tests {
         // then
         assert_eq!(table.edits_since_base(), []);
         assert_eq!(text(&table), b"abc\n");
+    }
+
+    #[test]
+    fn should_describe_a_replacement_in_bytes_and_points() {
+        // given
+        let mut table = PieceTable::from_text("ab\ncd\nef");
+        table.replace(4..4, "X\nY");
+
+        // when
+        let edit = table.replace(1..7, "12\n345");
+
+        // then
+        assert_eq!(text(&table), b"a12\n345d\nef");
+        let point = |row, column| Point { row, column };
+        assert_eq!(
+            edit,
+            InputEdit {
+                start_byte: 1,
+                old_end_byte: 7,
+                new_end_byte: 7,
+                start_position: point(0, 1),
+                old_end_position: point(2, 1),
+                new_end_position: point(1, 3),
+            }
+        );
     }
 
     #[test]

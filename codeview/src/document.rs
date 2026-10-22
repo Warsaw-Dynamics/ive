@@ -48,6 +48,11 @@ struct Text {
 pub struct Source(Arc<Bytes>);
 
 impl Source {
+    /// Takes `bytes`; copies them only to drop spare capacity.
+    pub fn from_vec(bytes: Vec<u8>) -> Self {
+        Self(Arc::new(Bytes::Owned(bytes.into_boxed_slice())))
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_slice()
     }

@@ -6,21 +6,24 @@ use std::rc::Rc;
 
 use gpui::{
     App, Bounds, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
-    EntityInputHandler, EventEmitter, FocusHandle, Focusable, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Point, TextRun, UTF16Selection, Window, canvas, div, fill, point,
-    prelude::*, px, rgb, size,
+    EntityInputHandler, EventEmitter, FocusHandle, Focusable, FontStyle, FontWeight, KeyDownEvent, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, TextRun, UTF16Selection, Window, canvas, div, fill,
+    point, prelude::*, px, rgb, size,
 };
 
+use super::colours::Colours;
 use super::keys::command;
-use super::layout::{Geometry, VisibleLine, visible_lines};
+use super::layout::{Area, Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
+use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::panel::Edit;
+use crate::panel::{Edit, ParseJob};
 use crate::piece_table::PieceTable;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
+use crate::syntax::{Language, Syntax};
 
 /// Columns assumed visible before the first layout reports the viewport width.
 const FIRST_FRAME_COLUMNS: usize = 400;
@@ -34,8 +37,15 @@ pub enum TextEditorEvent {
     Refused(String),
 }
 
+/// What an editor is opened with: a scratch's size limit (files have none), and the language colouring the text.
+pub struct Setup {
+    pub limit: Option<SizeLimit>,
+    pub language: Option<Language>,
+}
+
 pub struct TextEditor {
     model: EditorModel,
+    colours: Colours,
     focus_handle: FocusHandle,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
@@ -49,14 +59,15 @@ pub struct TextEditor {
 impl EventEmitter<TextEditorEvent> for TextEditor {}
 
 impl TextEditor {
-    /// Edits `table`; a scratch comes with its size limit, a file with none.
-    pub fn new(table: PieceTable, limit: Option<SizeLimit>, cx: &mut Context<Self>) -> Self {
-        let model = EditorModel::new(table, limit);
+    /// Edits `table`, plain until the first [`TextEditor::parse_job`] lands.
+    pub fn new(table: PieceTable, setup: Setup, cx: &mut Context<Self>) -> Self {
+        let model = EditorModel::new(table, setup.limit);
         let scroll = Rc::new(LineScroll::new(model.line_count()));
         Self {
             scrollbars: ScrollState::new(scroll.clone()),
             scroll,
             model,
+            colours: Colours::new(setup.language),
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
             dragging: false,
@@ -97,11 +108,24 @@ impl TextEditor {
         cx.notify();
     }
 
-    /// Replaces the text after a reload: the history is dropped, the caret stays where it still fits.
-    pub fn reset(&mut self, table: PieceTable, limit: Option<SizeLimit>, cx: &mut Context<Self>) {
+    /// Replaces the text after a reload: the history and the colours are dropped, the caret stays where it still
+    /// fits.
+    pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {
         let caret = self.model.caret();
-        self.model = EditorModel::new(table, limit);
+        self.model = EditorModel::new(table, setup.limit);
         self.model.set_caret(caret, Selecting::Move);
+        self.colours = Colours::new(setup.language);
+        cx.notify();
+    }
+
+    /// The parse of the current text; see [`Colours::job`].
+    pub fn parse_job(&mut self) -> Option<ParseJob> {
+        self.colours.job(self.model.revision(), self.model.table())
+    }
+
+    /// A parse of the text at `revision` landed; a stale one is dropped.
+    pub fn parsed(&mut self, revision: u64, syntax: Syntax, cx: &mut Context<Self>) {
+        self.colours.parsed(revision, syntax);
         cx.notify();
     }
 
@@ -113,6 +137,7 @@ impl TextEditor {
     fn edit(&mut self, edit: impl FnOnce(&mut EditorModel) -> Result<(), EditError>, cx: &mut Context<Self>) -> Result<(), EditError> {
         let before = self.model.revision();
         let result = edit(&mut self.model);
+        self.colours.edited(self.model.take_replacements());
         match &result {
             Err(error) => cx.emit(TextEditorEvent::Refused(error.to_string())),
             Ok(()) if self.model.revision() != before => cx.emit(TextEditorEvent::Edited),
@@ -254,8 +279,9 @@ impl TextEditor {
         }
         let first_column = (self.scroll.left() / char_width).floor() as usize;
         let columns = first_column..first_column + visible_columns(self.scroll.viewport_width(), char_width) + 1;
+        let highlights = self.colours.highlights(self.bytes_of(rows.clone()));
         Frame {
-            lines: visible_lines(&self.model, rows, columns),
+            lines: visible_lines(&self.model, Area { rows, columns }, &highlights),
             caret: self.focus_handle.is_focused(window).then(|| self.model.caret()),
             top: self.scroll.top(),
             left: self.scroll.left(),
@@ -264,6 +290,15 @@ impl TextEditor {
             focus: self.focus_handle.clone(),
             geometry: self.geometry.clone(),
         }
+    }
+}
+
+impl TextEditor {
+    /// The bytes lines `rows` take, line breaks included.
+    fn bytes_of(&self, rows: Range<usize>) -> Range<u64> {
+        let table = self.model.table();
+        let end = if rows.end < table.line_count() { table.line_start(rows.end) } else { table.byte_len() };
+        table.line_start(rows.start)..end
     }
 }
 
@@ -343,6 +378,25 @@ impl Frame {
     fn column_x(&self, origin_x: Pixels, column: usize) -> Pixels {
         origin_x + self.metrics.char_width * column as f32 - px(self.left as f32)
     }
+
+    /// `len` bytes in the editor's font, looking as `attributes` say; in the text colour where they set none.
+    fn run(&self, len: usize, attributes: TextAttributes) -> TextRun {
+        let mut font = gpui::font(self.style.mono_font.clone());
+        if attributes.bold {
+            font.weight = FontWeight::BOLD;
+        }
+        if attributes.italic {
+            font.style = FontStyle::Italic;
+        }
+        TextRun {
+            len,
+            font,
+            color: rgb(attributes.foreground.unwrap_or(self.style.text)).into(),
+            background_color: attributes.background.map(|background| rgb(background).into()),
+            underline: None,
+            strikethrough: None,
+        }
+    }
 }
 
 /// Paints the frame; while focused, takes the platform's text input (IME included); follows a drag past the edges.
@@ -372,7 +426,8 @@ fn paint_frame(frame: &Frame, bounds: Bounds<Pixels>, window: &mut Window, cx: &
         let top = frame.line_top(bounds.origin.y, line.line);
         let number = format!("{:>width$}", line.line + 1, width = frame.metrics.number_chars);
         let origin = point(bounds.origin.x + frame.metrics.char_width, top);
-        paint_text(frame, Glyphs { text: number, origin, color: frame.style.muted }, window, cx);
+        let runs = vec![frame.run(number.len(), TextAttributes { foreground: Some(frame.style.muted), ..TextAttributes::default() })];
+        paint_text(frame, Glyphs { text: number, origin, runs }, window, cx);
         window.with_content_mask(mask, |window| paint_line(frame, line, point(text_area.origin.x, top), window, cx));
     }
     if let Some(caret) = frame.caret {
@@ -392,27 +447,38 @@ fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: 
         return;
     }
     let origin = point(frame.column_x(origin.x, line.first_column), origin.y);
-    paint_text(frame, Glyphs { text: line.text.clone(), origin, color: frame.style.text }, window, cx);
+    let runs = coloured_runs(frame, line, cx.global::<ResolvedScheme>());
+    paint_text(frame, Glyphs { text: line.text.clone(), origin, runs }, window, cx);
 }
 
-/// Text to paint at a place, in one colour.
+/// `line`'s text in runs: its colours from the scheme, plain text between them.
+fn coloured_runs(frame: &Frame, line: &VisibleLine, scheme: &ResolvedScheme) -> Vec<TextRun> {
+    let plain = |len| frame.run(len, TextAttributes::default());
+    let mut runs = Vec::new();
+    let mut at = 0;
+    for (bytes, key) in &line.colours {
+        if bytes.start > at {
+            runs.push(plain(bytes.start - at));
+        }
+        runs.push(frame.run(bytes.len(), scheme.get(*key)));
+        at = bytes.end;
+    }
+    if line.text.len() > at {
+        runs.push(plain(line.text.len() - at));
+    }
+    runs
+}
+
+/// Text to paint at a place, in runs covering it.
 struct Glyphs {
     text: String,
     origin: Point<Pixels>,
-    color: u32,
+    runs: Vec<TextRun>,
 }
 
 /// Glyphs are pinned to the character grid, so a column's x position is exact.
 fn paint_text(frame: &Frame, glyphs: Glyphs, window: &mut Window, cx: &mut App) {
-    let run = TextRun {
-        len: glyphs.text.len(),
-        font: gpui::font(frame.style.mono_font.clone()),
-        color: rgb(glyphs.color).into(),
-        background_color: None,
-        underline: None,
-        strikethrough: None,
-    };
-    let shaped = window.text_system().shape_line(glyphs.text.into(), frame.metrics.font_size, &[run], Some(frame.metrics.char_width));
+    let shaped = window.text_system().shape_line(glyphs.text.into(), frame.metrics.font_size, &glyphs.runs, Some(frame.metrics.char_width));
     // fails only when a glyph cannot be rasterized; the rest is still worth drawing
     let _ = shaped.paint(glyphs.origin, frame.metrics.line_height, gpui::TextAlign::Left, None, window, cx);
 }
