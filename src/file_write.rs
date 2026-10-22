@@ -245,15 +245,16 @@ fn kernel_copy(_from: &File, _to: &mut File, _range: Range<u64>) -> io::Result<u
     Ok(0)
 }
 
-/// Clones the whole blocks of `range` when it starts the file into the empty `to`, sharing them with the original;
-/// 0, with `to` left empty, where the file system cannot (ext4).
+/// Clones the whole blocks of `range` when it starts the file and `to` is still empty, sharing them with the
+/// original; 0, with `to` as it was, where there is nothing to clone or the file system cannot (ext4).
 #[cfg(target_os = "linux")]
 fn clone_start(from: &File, to: &File, range: &Range<u64>) -> io::Result<u64> {
     use std::os::unix::fs::MetadataExt;
     use std::os::unix::io::AsRawFd;
     let length = clone_length(range, from.metadata().map_or(0, |metadata| metadata.blksize()));
-    // a length of 0 would clone up to the end of `from`
-    if length == 0 {
+    // a length of 0 would clone up to the end of `from`; a clone lands at the start of `to`, which an edit at the
+    // start of the file has already written
+    if length == 0 || to.metadata()?.len() > 0 {
         return Ok(0);
     }
     let clone = libc::file_clone_range { src_fd: i64::from(from.as_raw_fd()), src_offset: 0, src_length: length, dest_offset: 0 };
@@ -502,6 +503,22 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
+    fn should_clone_nothing_into_a_staging_file_already_written() {
+        // given
+        let (dir, path, _stamp) = file_of(&vec![b'a'; 3 * 4096]);
+        let original = File::open(&path).unwrap();
+        let mut staging = OpenOptions::new().write(true).create_new(true).open(dir.path().join("staging")).unwrap();
+        staging.write_all(b"A").unwrap();
+
+        // when
+        let cloned = clone_start(&original, &staging, &(0..3 * 4096)).unwrap();
+
+        // then
+        assert_eq!((cloned, fs::read(dir.path().join("staging")).unwrap()), (0, b"A".to_vec()));
+    }
+
+    #[test]
     fn should_shrink_a_file_of_several_blocks_by_an_edit_at_its_start() {
         // given
         let base: Vec<u8> = (0..5 * 4096u32).map(|at| b"abcdefghij\n"[(at % 11) as usize]).collect();
@@ -513,6 +530,20 @@ mod tests {
         // then
         assert!(written.is_ok(), "{written:?}");
         assert!(fs::read(&path).unwrap() == base[100..], "the file is not the base without its first 100 bytes");
+    }
+
+    #[test]
+    fn should_insert_at_the_start_of_a_file_of_several_blocks() {
+        // given
+        let base: Vec<u8> = (0..5 * 4096u32).map(|at| b"abcdefghij\n"[(at % 11) as usize]).collect();
+        let (_dir, path, stamp) = file_of(&base);
+
+        // when
+        let written = apply_edits(&Target { path: &path, base: &base, expected: Expected::Stamp(stamp) }, &[edit(0..0, b"A")]);
+
+        // then
+        assert!(written.is_ok(), "{written:?}");
+        assert!(fs::read(&path).unwrap() == [b"A", &base[..]].concat(), "the file is not the base after an A");
     }
 
     #[test]
