@@ -1,6 +1,7 @@
 //! All git access, through libgit2 (`git2`); IVE never runs the `git` command.
 
 pub mod base;
+mod blob_filter;
 pub mod diff;
 pub mod files;
 pub mod log;
