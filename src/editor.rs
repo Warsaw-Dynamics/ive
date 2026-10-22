@@ -367,9 +367,9 @@ impl Tab {
     }
 
     /// Something changed in a git dir: a file tab reads its change markers' base again, as HEAD may have moved.
-    pub fn git_changed(&self, cx: &mut App) {
+    pub fn git_changed(&self, git_dir: &Path, cx: &mut App) {
         if let Self::Document(file) = self {
-            file.git_changed(cx);
+            file.git_changed(git_dir, cx);
         }
     }
 

@@ -192,27 +192,56 @@ fn checked_out_head(repo: &Repository, file: &FilePaths) -> Result<Vec<u8>, git2
 }
 
 /// What change markers compare the work tree file at `path` with: its text in HEAD as a checkout writes it (as
-/// [`edited_uncommitted`] diffs it), with HEAD's commit id. [`ChangeBase::Untracked`] when no repository's work tree
-/// holds the file, HEAD lacks it (or there is no commit yet), or HEAD's entry is not a regular file, is binary or is
-/// larger than `MAX_HIGHLIGHT_BYTES`.
+/// [`edited_uncommitted`] diffs it), with HEAD's commit id. A file staged as new (HEAD, or an unborn branch, lacks
+/// it and the index has it) has an empty text, so every line shows as added, as in the Uncommitted diff.
+/// [`ChangeBase::Untracked`] when no repository's work tree holds the file, neither HEAD nor the index has it, or
+/// HEAD's entry is not a regular file, is binary or is larger than `MAX_HIGHLIGHT_BYTES`.
+#[cfg(test)]
 pub fn change_base(path: &Path) -> Result<ChangeBase, GitError> {
+    Ok(change_base_since(path, &BaseAsk { known: "", git_dir: None })?.unwrap_or(ChangeBase::Untracked))
+}
+
+/// What [`change_base_since`] is asked.
+pub struct BaseAsk<'a> {
+    /// the `head_id` the caller last got: an answer with the same one is skipped
+    pub known: &'a str,
+    /// the git dir that changed: a file of another repository is skipped
+    pub git_dir: Option<&'a Path>,
+}
+
+/// [`change_base`], or `None` when `ask` says the caller has the answer: the file is of another git dir, or HEAD
+/// (and whether it holds the file) is as the caller last saw it, which is told without reading HEAD's blob.
+pub fn change_base_since(path: &Path, ask: &BaseAsk<'_>) -> Result<Option<ChangeBase>, GitError> {
     let Some((repo, name)) = repository_of(path)? else {
-        return Ok(ChangeBase::Untracked);
+        return Ok(Some(ChangeBase::Untracked));
     };
+    if ask.git_dir.is_some_and(|dir| !is_git_dir_of(&repo, dir)) {
+        return Ok(None);
+    }
     let workdir = repo.workdir().map_or_else(|| path.to_path_buf(), Path::to_path_buf);
     let fail = failed("read HEAD's text of a file", &workdir);
-    let Some((commit, entry)) = head_entry(&repo, &name).map_err(&fail)? else {
-        return Ok(ChangeBase::Untracked);
+    let (head_id, blob) = match head_entry(&repo, &name).map_err(&fail)? {
+        HeadEntry::Absent => return Ok(Some(ChangeBase::Untracked)),
+        HeadEntry::StagedNew { head_id } if head_id == ask.known => return Ok(None),
+        HeadEntry::StagedNew { head_id } => return Ok(Some(ChangeBase::Tracked { head: Source::from_vec(Vec::new()), head_id })),
+        HeadEntry::Blob { head_id, .. } if head_id == ask.known => return Ok(None),
+        HeadEntry::Blob { head_id, blob } => (head_id, blob),
     };
-    let blob = repo.find_blob(entry).map_err(&fail)?;
+    let blob = repo.find_blob(blob).map_err(&fail)?;
     if blob.is_binary() {
-        return Ok(ChangeBase::Untracked);
+        return Ok(Some(ChangeBase::Untracked));
     }
     let text = blob_filter::checked_out(&blob, &name).map_err(&fail)?;
     if text.len() > MAX_HIGHLIGHT_BYTES {
-        return Ok(ChangeBase::Untracked);
+        return Ok(Some(ChangeBase::Untracked));
     }
-    Ok(ChangeBase::Tracked { head: Source::from_vec(text), head_id: commit.to_string() })
+    Ok(Some(ChangeBase::Tracked { head: Source::from_vec(text), head_id }))
+}
+
+/// Whether `dir` is the git dir of `repo`, or of the repository a linked work tree belongs to.
+fn is_git_dir_of(repo: &Repository, dir: &Path) -> bool {
+    let wanted = fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    [repo.path(), repo.commondir()].iter().any(|own| fs::canonicalize(own).is_ok_and(|own| own == wanted))
 }
 
 /// The repository whose work tree holds the file at `path`, found from its folder up, and the file's name in it;
@@ -231,22 +260,37 @@ fn repository_of(path: &Path) -> Result<Option<(Repository, GitPath)>, GitError>
     Ok(name.map(|name| (repo, name)))
 }
 
-/// HEAD's commit and the blob it holds at `name`, when that is a regular file small enough to diff; `None` without
-/// a commit or such a file.
-fn head_entry(repo: &Repository, name: &GitPath) -> Result<Option<(git2::Oid, git2::Oid)>, git2::Error> {
+/// What HEAD and the index hold at a file's name.
+enum HeadEntry {
+    /// a regular file small enough to diff in HEAD, with HEAD's commit id
+    Blob { head_id: String, blob: git2::Oid },
+    /// not in HEAD (or there is no commit yet) but in the index; `head_id` is HEAD's commit id, or `unborn`
+    StagedNew { head_id: String },
+    Absent,
+}
+
+fn head_entry(repo: &Repository, name: &GitPath) -> Result<HeadEntry, git2::Error> {
     let commit = match repo.head() {
-        Ok(head) => head.peel_to_commit()?,
-        Err(error) if matches!(error.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound) => return Ok(None),
+        Ok(head) => Some(head.peel_to_commit()?),
+        Err(error) if matches!(error.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound) => None,
         Err(error) => return Err(error),
     };
-    let entry = match commit.tree()?.get_path(&relative_path(name.as_bytes())) {
-        Ok(entry) => entry,
-        Err(error) if error.code() == ErrorCode::NotFound => return Ok(None),
-        Err(error) => return Err(error),
+    let head_id = commit.as_ref().map_or_else(|| "unborn".to_owned(), |commit| commit.id().to_string());
+    let entry = match &commit {
+        Some(commit) => match commit.tree()?.get_path(&relative_path(name.as_bytes())) {
+            Ok(entry) => Some(entry),
+            Err(error) if error.code() == ErrorCode::NotFound => None,
+            Err(error) => return Err(error),
+        },
+        None => None,
+    };
+    let Some(entry) = entry else {
+        let staged = repo.index()?.get_path(&relative_path(name.as_bytes()), 0).is_some();
+        return Ok(if staged { HeadEntry::StagedNew { head_id } } else { HeadEntry::Absent });
     };
     let regular = entry.filemode() == i32::from(FileMode::Blob) || entry.filemode() == i32::from(FileMode::BlobExecutable);
     let (size, _) = repo.odb()?.read_header(entry.id())?;
-    Ok((regular && size <= MAX_HIGHLIGHT_BYTES).then(|| (commit.id(), entry.id())))
+    Ok(if regular && size <= MAX_HIGHLIGHT_BYTES { HeadEntry::Blob { head_id, blob: entry.id() } } else { HeadEntry::Absent })
 }
 
 /// Where the work tree of the repository at `dir` keeps `path`.
@@ -902,6 +946,56 @@ mod tests {
         assert_eq!(head.as_bytes(), b"one\r\ntwo\r\n");
         assert_eq!(head_id, repo.repo.head().unwrap().target().unwrap().to_string());
         assert!(others.iter().chain([&plain]).all(|base| matches!(base, ChangeBase::Untracked)));
+    }
+
+    #[test]
+    fn should_mark_every_line_of_a_staged_new_file_as_added() {
+        // given
+        let unborn = TestRepo::init();
+        unborn.write("staged.txt", "one\n");
+        unborn.stage("staged.txt");
+        unborn.write("loose.txt", "two\n");
+        let born = TestRepo::init();
+        born.write("a.txt", "a\n");
+        let first = born.commit("first");
+        born.write("staged.txt", "one\n");
+        born.stage("staged.txt");
+
+        // when
+        let before_commit = change_base(&unborn.root.join("staged.txt")).expect("read");
+        let loose = change_base(&unborn.root.join("loose.txt")).expect("read");
+        let after_commit = change_base(&born.root.join("staged.txt")).expect("read");
+
+        // then
+        let ChangeBase::Tracked { head, head_id } = before_commit else {
+            panic!("a staged file is tracked");
+        };
+        assert_eq!((head.as_bytes(), head_id.as_str()), (b"".as_slice(), "unborn"));
+        assert!(matches!(loose, ChangeBase::Untracked));
+        let ChangeBase::Tracked { head, head_id } = after_commit else {
+            panic!("a staged file is tracked");
+        };
+        assert_eq!((head.as_bytes(), head_id), (b"".as_slice(), first.to_string()));
+    }
+
+    #[test]
+    fn should_skip_the_head_text_when_the_head_id_is_known_or_the_git_dir_is_another() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "a\n");
+        let head = repo.commit("first").to_string();
+        let other = TestRepo::init();
+        let file = repo.root.join("a.txt");
+        let ask = |known: &str, git_dir: Option<&Path>| change_base_since(&file, &BaseAsk { known, git_dir }).expect("read");
+
+        // when
+        let known = ask(&head, None);
+        let stale = ask("old", Some(repo.repo.path()));
+        let elsewhere = ask("old", Some(other.repo.path()));
+
+        // then
+        assert!(known.is_none() && elsewhere.is_none());
+        assert!(matches!(stale, Some(ChangeBase::Tracked { .. })));
     }
 
     #[test]

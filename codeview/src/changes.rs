@@ -140,8 +140,9 @@ impl ChangeMarkers {
 
     /// Compares the text with `base` from now on; the same HEAD again changes nothing.
     pub(crate) fn set_base(&mut self, base: ChangeBase) -> BaseChange {
-        if let (Base::Tracked { head_id: known, .. }, ChangeBase::Tracked { head_id, .. }) = (&self.base, &base)
-            && known == head_id
+        if let (Base::Tracked { head: known, head_id: known_id }, ChangeBase::Tracked { head, head_id }) = (&self.base, &base)
+            && known_id == head_id
+            && known.as_bytes() == head.as_bytes()
         {
             return BaseChange::Same;
         }
@@ -161,7 +162,7 @@ impl ChangeMarkers {
     /// `edits` changed the text: the markers move with them.
     pub(crate) fn edited(&mut self, edits: &[InputEdit]) {
         for edit in edits {
-            self.hunks = self.hunks.iter().map(|hunk| shifted(hunk, edit)).filter(is_change).collect();
+            self.hunks = merged(self.hunks.iter().map(|hunk| shifted(hunk, edit)).filter(is_change));
         }
         if let Flight::Diffing { .. } = self.flight {
             self.since.extend_from_slice(edits);
@@ -198,7 +199,7 @@ impl ChangeMarkers {
         }
         let since = std::mem::take(&mut self.since);
         let moved = diff.hunks.into_iter().map(|hunk| since.iter().fold(hunk, |hunk, edit| shifted(&hunk, edit)));
-        self.hunks = moved.filter(is_change).collect();
+        self.hunks = merged(moved.filter(is_change));
         self.landed = Landed::Diff { revision };
         self.flight = Flight::Idle;
     }
@@ -248,6 +249,23 @@ fn shifted(hunk: &ChangeHunk, edit: &InputEdit) -> ChangeHunk {
         _ => start,
     };
     ChangeHunk { base: hunk.base.clone(), current: start..end }
+}
+
+/// `hunks`, in order, with those an edit brought together made one: a hunk that starts on or before the end of the
+/// one before, or on its first line, joins it. What is left starts on distinct lines, in order, and does not
+/// overlap, so the end of the hunks grows with the start.
+fn merged(hunks: impl Iterator<Item = ChangeHunk>) -> Vec<ChangeHunk> {
+    let mut merged: Vec<ChangeHunk> = Vec::new();
+    for hunk in hunks {
+        match merged.last_mut() {
+            Some(last) if hunk.current.start < last.current.end || hunk.current.start == last.current.start => {
+                last.base = last.base.start.min(hunk.base.start)..last.base.end.max(hunk.base.end);
+                last.current = last.current.start..last.current.end.max(hunk.current.end);
+            }
+            _ => merged.push(hunk),
+        }
+    }
+    merged
 }
 
 /// Whether `hunk` still changes something: an added one whose lines were all deleted does not.
@@ -377,6 +395,39 @@ mod tests {
         let next = markers.job(3, &table).unwrap();
         markers.landed(3, next.run());
         assert_eq!(kinds(&markers), [(0..2, Marker::Added), (3..6, Marker::Changed)]);
+    }
+
+    #[test]
+    fn should_merge_hunks_an_edit_joined() {
+        // given
+        let base = "a\nb\nc\nd\ne\n";
+        let mut table = PieceTable::from_text("A\nb\nC\nd\ne\n");
+        let mut markers = landed(base, &table);
+        let before = kinds(&markers);
+
+        // when
+        let end = table.line_start(2) + 1;
+        let joined = table.replace(1..end, "");
+        markers.edited(&[joined]);
+
+        // then
+        assert_eq!(before, [(0..1, Marker::Changed), (2..3, Marker::Changed)]);
+        assert_eq!(markers.hunks(), [hunk(0..3, 0..1)]);
+        assert_eq!(markers.shown(0..5).count(), 1);
+    }
+
+    #[test]
+    fn should_move_markers_when_only_the_base_bytes_changed() {
+        // given
+        let mut markers = ChangeMarkers::new();
+        markers.set_base(tracked("a\n", "head"));
+
+        // when
+        let same = markers.set_base(tracked("a\n", "head"));
+        let filtered = markers.set_base(tracked("a\r\n", "head"));
+
+        // then
+        assert_eq!((same, filtered), (BaseChange::Same, BaseChange::Moved));
     }
 
     #[test]

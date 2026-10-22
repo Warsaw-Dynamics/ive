@@ -65,8 +65,9 @@ impl FileTab {
     }
 
     /// Something changed in a git dir: HEAD may have moved, so the change markers' base is read again.
-    pub fn git_changed(&self, cx: &mut App) {
-        self.file.update(cx, |file, cx| file.send_change_base(cx));
+    pub fn git_changed(&self, git_dir: &Path, cx: &mut App) {
+        let git_dir = git_dir.to_path_buf();
+        self.file.update(cx, |file, cx| file.send_change_base(Some(git_dir), cx));
     }
 
     pub fn cast(&self, cast: Cast, cx: &mut App) {
@@ -176,7 +177,46 @@ pub(crate) struct EditedFile {
     version: u64,
     /// counts the reads of the change markers' base: an answer to an earlier read is stale
     change_reads: u64,
+    /// what the change markers were last given and why a read failed, so a read with the same HEAD is skipped and a
+    /// failure is logged once
+    change_sent: ChangeSent,
     _subscriptions: Vec<Subscription>,
+}
+
+/// What the change markers of a file were last given, and the last failure to read it.
+#[derive(Default)]
+struct ChangeSent {
+    /// the `head_id` of the base last cast; empty when there is none (no markers)
+    head_id: String,
+    /// the message of the failure last logged; empty after a read that worked
+    failure: String,
+}
+
+impl ChangeSent {
+    /// What to cast for a read's result, if anything: a skipped read and a failure already logged cast nothing.
+    fn took(&mut self, read: Result<Option<ChangeBase>, git::repo::GitError>) -> Option<ChangeBase> {
+        match read {
+            Ok(None) => None,
+            Ok(Some(base)) => {
+                self.failure.clear();
+                self.head_id = match &base {
+                    ChangeBase::Tracked { head_id, .. } => head_id.clone(),
+                    ChangeBase::Untracked => String::new(),
+                };
+                Some(base)
+            }
+            Err(error) => {
+                let message = error.to_string();
+                self.head_id.clear();
+                if message == self.failure {
+                    return None;
+                }
+                eprintln!("ive: no change markers: {message}");
+                self.failure = message;
+                Some(ChangeBase::Untracked)
+            }
+        }
+    }
 }
 
 /// Whether IVE is writing the file: its own change on disk is no reason to reload, and nothing replaces the base
@@ -253,7 +293,7 @@ impl EditedFile {
         let me = cx.weak_entity();
         cx.default_global::<OpenFiles>().0.entry(key.clone()).or_default().push(me);
         let disk = stamp.map_or(Disk::Unstamped, Disk::Read);
-        let file = Self { id, path, panel, shows, key, holding: Holding::Nothing, locked_by, base, disk, writing: Writing::Idle, version: 0, change_reads: 0, _subscriptions: subscriptions };
+        let file = Self { id, path, panel, shows, key, holding: Holding::Nothing, locked_by, base, disk, writing: Writing::Idle, version: 0, change_reads: 0, change_sent: ChangeSent::default(), _subscriptions: subscriptions };
         file.show_first(cx);
         file
     }
@@ -355,7 +395,7 @@ impl EditedFile {
         match event {
             Event::SaveRequested(request) => self.save(request.clone(), cx),
             Event::ReloadRequested => self.reload(cx),
-            Event::NeedChangeBase => self.send_change_base(cx),
+            Event::NeedChangeBase => self.send_change_base(None, cx),
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
             // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged
@@ -386,17 +426,26 @@ impl EditedFile {
     }
 
     /// Reads what the panel's change markers compare the file with (HEAD's text of it) off the UI thread and casts
-    /// it; a file whose base cannot be read gets no markers, with the reason on stderr.
-    pub(crate) fn send_change_base(&mut self, cx: &mut Context<Self>) {
+    /// it; a file whose base cannot be read gets no markers, with the reason on stderr once. With `git_dir`, only a
+    /// file of that git dir is read, and only when HEAD is not the one the markers were last given.
+    pub(crate) fn send_change_base(&mut self, git_dir: Option<PathBuf>, cx: &mut Context<Self>) {
         self.change_reads += 1;
         let (path, read) = (self.path.clone(), self.change_reads);
-        let reading = cx.background_executor().spawn(async move { git::diff::change_base(&path) });
+        let known = if git_dir.is_some() { self.change_sent.head_id.clone() } else { String::new() };
+        let reading = cx.background_executor().spawn(async move {
+            git::diff::change_base_since(&path, &git::diff::BaseAsk { known: &known, git_dir: git_dir.as_deref() })
+        });
         cx.spawn(async move |file, cx| {
-            let base = reading.await.unwrap_or_else(|error| {
-                eprintln!("ive: no change markers: {error}");
-                ChangeBase::Untracked
-            });
-            file.update(cx, |file, cx| if file.change_reads == read { file.answer(Cast::SetChangeBase { base }, cx) }).ok();
+            let read_base = reading.await;
+            file.update(cx, |file, cx| {
+                if file.change_reads != read {
+                    return;
+                }
+                if let Some(base) = file.change_sent.took(read_base) {
+                    file.answer(Cast::SetChangeBase { base }, cx);
+                }
+            })
+            .ok();
         })
         .detach();
     }

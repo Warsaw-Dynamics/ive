@@ -173,7 +173,7 @@ impl Workspace {
                     self.scratch_changed_on_disk(&path, cx);
                 }
                 Change::Git(dir) => {
-                    self.tabs.iter().for_each(|(_, tab)| tab.git_changed(cx));
+                    self.tabs.iter().for_each(|(_, tab)| tab.git_changed(&dir, cx));
                     self.tree_git_changed(&dir);
                     self.git_dir_changed(&dir, cx);
                     self.hub_git_changed(&dir, cx);
