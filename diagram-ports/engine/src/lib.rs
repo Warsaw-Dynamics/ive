@@ -2,6 +2,7 @@ use std::{fmt, time::Duration};
 
 mod limits;
 mod mermaid;
+mod resources;
 mod svg;
 
 pub use merman::OperationControl as RenderControl;

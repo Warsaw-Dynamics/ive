@@ -12,8 +12,76 @@ fn text_content(svg: &str) -> String {
     }));
     document
         .descendants()
-        .filter_map(|node| node.is_text().then(|| node.text()).flatten())
+        .filter(|node| node.is_text() && node.ancestors().any(|parent| parent.has_tag_name("text")))
+        .filter_map(|node| node.text())
         .collect()
+}
+
+#[test]
+fn should_render_metadata_as_literal_label_text() {
+    // given
+    let source = "flowchart LR\n A[\"metadata: loaded\"] --> B[Done]";
+    // when
+    let diagram = render(source, &RenderOptions::default()).expect("metadata label renders");
+    // then
+    assert!(text_content(&diagram.svg).contains("metadata: loaded"));
+}
+
+#[test]
+fn should_ignore_url_in_comment() {
+    // given
+    let source = "flowchart LR\n %% See https://example.invalid/docs\n A[Start] --> B[Done]";
+    // when
+    let diagram = render(source, &RenderOptions::default()).expect("URL comment is inert");
+    // then
+    assert!(text_content(&diagram.svg).contains("Start"));
+    assert!(text_content(&diagram.svg).contains("Done"));
+}
+
+#[test]
+fn should_render_url_as_literal_label_text() {
+    // given
+    let source = "flowchart LR\n A[\"https://example.invalid/docs\"] --> B[Done]";
+    // when
+    let diagram = render(source, &RenderOptions::default()).expect("URL label renders");
+    // then
+    assert!(text_content(&diagram.svg).contains("https://example.invalid/docs"));
+}
+
+#[test]
+fn should_render_image_metadata_tokens_as_literal_label_text() {
+    // given
+    let source = "flowchart LR\n A[\"img: example.png; file: README; data: loaded\"] --> B[Done]";
+    // when
+    let diagram = render(source, &RenderOptions::default()).expect("resource words in text render");
+    // then
+    assert!(text_content(&diagram.svg).contains("img: example.png"));
+    assert!(text_content(&diagram.svg).contains("file: README"));
+    assert!(text_content(&diagram.svg).contains("data: loaded"));
+}
+
+#[test]
+fn should_reject_external_navigation_link() {
+    // given
+    let source =
+        "flowchart LR\n A[Docs] --> B[Done]\n click A href \"https://example.invalid/docs\"";
+    // when
+    let result = render(source, &RenderOptions::default());
+    // then
+    assert!(matches!(result, Err(RenderError::ExternalResource(_))));
+}
+
+#[test]
+fn should_reject_external_css_paint_resource() {
+    // given
+    let source = "flowchart LR\n A[Start] --> B[Done]\n style A fill:url(https://example.invalid/paint.svg#red)";
+    // when
+    let result = render(source, &RenderOptions::default());
+    // then
+    assert!(
+        matches!(result, Err(RenderError::ExternalResource(_))),
+        "{result:?}"
+    );
 }
 
 #[test]

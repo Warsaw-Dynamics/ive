@@ -29,7 +29,7 @@ fn verify_diagram(svg: &str, expected_label: &str) {
     assert!(view_box[2] > 0.0 && view_box[3] > 0.0);
     let text = document
         .descendants()
-        .filter(roxmltree::Node::is_text)
+        .filter(|node| node.is_text() && node.ancestors().any(|parent| parent.has_tag_name("text")))
         .filter_map(|node| node.text())
         .collect::<Vec<_>>()
         .join(" ");

@@ -1,6 +1,6 @@
 //! Adapter for Merman 0.9.2 (Mermaid 12.1.0); no upstream implementation is copied here.
 
-use crate::{Language, RenderError, RenderOptions, RenderedDiagram, limits, svg};
+use crate::{Language, RenderError, RenderOptions, RenderedDiagram, limits, resources, svg};
 use merman::svg::SvgPipeline;
 use merman::{
     Engine, MermaidConfig, ParseOptions, RenderOutput, RenderTarget, Renderer, SvgEnvironment,
@@ -21,13 +21,13 @@ pub(crate) fn render(
     control
         .checkpoint()
         .map_err(|error| RenderError::Cancelled(error.to_string()))?;
-    reject_resources(source)?;
     let renderer = create_renderer().with_resource_policy(*policy.input_policy());
     let semantic = renderer
         .prepare_semantic(source, control.clone())
         .map_err(map_error)?
         .ok_or_else(|| RenderError::InvalidSource("no Mermaid diagram was detected".into()))?;
     validate_layout(semantic.metadata().config.as_value())?;
+    resources::validate_model(&semantic.compatibility_json().map_err(map_error)?)?;
     let family = semantic.diagram_type().to_owned();
     if family == "flowchart-elk" {
         return Err(RenderError::UnsupportedLayout("flowchart-elk".into()));
@@ -36,7 +36,9 @@ pub(crate) fn render(
         .without_math_renderer()
         .with_resource_policy(policy)
         .with_text_measurement_policy(options.text_measurement.clone());
-    let pipeline = SvgPipeline::resvg_safe().with_postprocessor(svg::NormalizeOutput::new(control));
+    let pipeline = SvgPipeline::resvg_safe()
+        .with_postprocessor(resources::ResourceAdmission::new(control.clone()))
+        .with_postprocessor(svg::NormalizeOutput::new(control));
     let request = SvgRequest {
         environment,
         pipeline: Some(pipeline),
@@ -59,32 +61,6 @@ fn create_renderer() -> Renderer {
         .with_engine(Engine::new().with_site_config(config))
         .with_runtime_policy(merman::runtime::RuntimePolicy::deterministic())
         .with_parse_options(ParseOptions::strict())
-}
-
-fn reject_resources(source: &str) -> Result<(), RenderError> {
-    let lower = source.to_ascii_lowercase();
-    for token in [
-        "://",
-        "file:",
-        "data:",
-        "javascript:",
-        "<img",
-        "<image",
-        "@import",
-        "href=",
-        "src=",
-    ] {
-        if lower.contains(token) {
-            return Err(RenderError::ExternalResource(token.into()));
-        }
-    }
-    let compact: String = lower.split_whitespace().collect();
-    if compact.contains("img:") {
-        return Err(RenderError::ExternalResource(
-            "image metadata (img:)".into(),
-        ));
-    }
-    Ok(())
 }
 
 fn validate_layout(value: &Value) -> Result<(), RenderError> {
@@ -138,6 +114,11 @@ fn map_error(error: merman::RenderError) -> RenderError {
             RenderError::InvalidSource("no Mermaid diagram was detected".into())
         }
         merman::RenderError::Cancelled(error) => RenderError::Cancelled(error.to_string()),
+        merman::RenderError::Svg(merman::svg::RenderError::SvgPostprocess { pass, message })
+            if pass == "admit-native-resources" =>
+        {
+            RenderError::ExternalResource(message)
+        }
         error => RenderError::Backend(error.to_string()),
     }
 }

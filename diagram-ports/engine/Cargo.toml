@@ -9,6 +9,7 @@ license.workspace = true
 merman.workspace = true
 roxmltree.workspace = true
 serde_json.workspace = true
+cssparser.workspace = true
 
 [dev-dependencies]
 usvg = { version = "=0.46.0", default-features = false, features = ["text"] }

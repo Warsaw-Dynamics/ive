@@ -184,6 +184,7 @@ dependencies = [
 name = "diagram-engine"
 version = "0.1.0"
 dependencies = [
+ "cssparser 0.38.0",
  "merman",
  "roxmltree",
  "serde_json",
