@@ -1,16 +1,15 @@
 //! Drawing the open menu of a tab or a tree row, its open submenus beside their lines, and its pending lines faded;
 //! what it offers is in `workspace::menu`.
 
-use gpui::{AnyElement, Context, Div, Stateful, anchored, deferred, div, prelude::*, px, rgb};
+use gpui::{AnyElement, Context, Div, Stateful, anchored, deferred, div, prelude::*, rgb};
 
 use crate::click_targets::target;
+use crate::icons;
+use crate::menu::keys::shortcut;
 use crate::menu::resolve::{ItemId, Line, LineAction, LineState};
 use crate::script::menus::ItemAction;
 use crate::theme::Theme;
-use crate::workspace::{OpenMenu, Workspace, line_target, tab_action_target};
-
-/// How faded a pending line is.
-const PENDING_OPACITY: f32 = 0.5;
+use crate::workspace::{OpenMenu, Workspace, line_target, mask_icon, tab_action_target};
 
 /// The open menu at the pointer, kept inside the window, over a layer that closes it on a press outside.
 pub fn render_menu(workspace: &Workspace, theme: Theme, window: &gpui::Window, cx: &mut Context<Workspace>) -> Option<impl IntoElement> {
@@ -28,38 +27,42 @@ pub fn render_menu(workspace: &Workspace, theme: Theme, window: &gpui::Window, c
 }
 
 fn panel(menu: &OpenMenu, lines: &[Line], labels: &[String], theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let sizes = &theme.sizes.tree;
+    let sizes = &theme.sizes.menu;
     let name = format!("menu-{}", labels.join("/"));
     let rows: Vec<AnyElement> = lines.iter().map(|line| row(menu, line, labels, theme, cx)).collect();
     div()
         .id(gpui::SharedString::from(name))
-        .p(sizes.menu_padding.px())
-        .rounded(sizes.menu_radius.px())
+        .min_w(sizes.min_width.px())
+        .py(sizes.padding_y.px())
+        .rounded(sizes.radius.px())
         .border(sizes.border.px())
-        .border_color(rgb(theme.border))
-        .bg(rgb(theme.sidebar))
+        .border_color(rgb(theme.menu.border.0))
+        .bg(rgb(theme.menu.background.0))
         .shadow_lg()
         .occlude()
         // a press inside a panel is not a press outside the menu
         .on_any_mouse_down(|_event, _window, cx| cx.stop_propagation())
-        .text_size(sizes.menu_text_size.px())
-        .font_weight(sizes.menu_weight.font_weight())
-        .text_color(rgb(theme.text))
+        .text_size(sizes.text_size.px())
+        .font_weight(sizes.weight.font_weight())
+        .text_color(rgb(theme.menu.text.0))
         .children(rows)
 }
 
 fn row(menu: &OpenMenu, line: &Line, labels: &[String], theme: Theme, cx: &mut Context<Workspace>) -> AnyElement {
-    let sizes = &theme.sizes.tree;
+    let sizes = &theme.sizes.menu;
     match line {
-        Line::Separator => div().my(sizes.menu_padding.px()).h(px(sizes.border.0)).bg(rgb(theme.border)).into_any_element(),
+        Line::Separator => {
+            div().my(sizes.separator_margin_y.px()).mx(sizes.separator_inset_x.px()).h(sizes.border.px()).bg(rgb(theme.menu.separator.0)).into_any_element()
+        }
         Line::Item { id, label, action, state, enabled } => {
             let path = [labels, &[target_label(label, action)]].concat();
-            item(menu, Shown { id, path: &path, label, state: *state, enabled: *enabled, submenu: None }, theme, cx).into_any_element()
+            let key = crate::script::state::keymap(cx).and_then(|keymap| shortcut(keymap, menu.kind, action));
+            item(menu, Shown { id, path: &path, label, key, state: *state, enabled: *enabled, submenu: None }, theme, cx).into_any_element()
         }
         Line::Submenu { id, label, lines, state } => {
             let path = [labels, std::slice::from_ref(label)].concat();
             let open = menu.nav.open().contains(id).then_some(lines.as_slice());
-            item(menu, Shown { id, path: &path, label, state: *state, enabled: true, submenu: Some(open) }, theme, cx).into_any_element()
+            item(menu, Shown { id, path: &path, label, key: None, state: *state, enabled: true, submenu: Some(open) }, theme, cx).into_any_element()
         }
     }
 }
@@ -69,40 +72,47 @@ struct Shown<'a> {
     id: &'a ItemId,
     path: &'a [String],
     label: &'a str,
+    /// the key bound to its action, drawn on its right
+    key: Option<String>,
     state: LineState,
     enabled: bool,
     submenu: Option<Option<&'a [Line]>>,
 }
 
 fn item(menu: &OpenMenu, shown: Shown, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let sizes = &theme.sizes.tree;
+    let sizes = &theme.sizes.menu;
     let id = shown.id.clone();
-    let highlighted = menu.nav.highlighted() == Some(shown.id);
+    // as IntelliJ, a submenu's line stays highlighted while the submenu is open
+    let highlighted = menu.nav.highlighted() == Some(shown.id) || matches!(shown.submenu, Some(Some(_)));
     let text = match shown.state {
         LineState::Pending => format!("{} …", shown.label),
         LineState::Ready => shown.label.to_owned(),
     };
-    let arrow = shown.submenu.is_some().then(|| div().pl(sizes.menu_item_padding_x.px()).text_color(rgb(theme.muted)).child("▸"));
+    let key_colour = if shown.enabled { theme.menu.shortcut } else { theme.menu.disabled };
+    let key = shown.key.map(|key| div().flex_none().ml(sizes.shortcut_gap.px()).text_color(rgb(key_colour.0)).child(key));
+    let arrow = shown.submenu.is_some().then(|| div().flex_none().ml(sizes.shortcut_gap.px()).child(mask_icon(theme, icons::CHEVRON_RIGHT)));
     let line = div()
         .id(gpui::SharedString::from(format!("menu-line-{:?}", shown.id)))
         .relative()
         .flex()
         .items_center()
         .justify_between()
-        .h(sizes.menu_item_height.px())
-        .px(sizes.menu_item_padding_x.px())
-        .rounded(sizes.menu_item_radius.px())
+        .h(sizes.item_height.px())
+        .mx(sizes.item_margin_x.px())
+        .px(sizes.item_padding_x.px())
+        .rounded(sizes.item_radius.px())
         .whitespace_nowrap()
-        .when(highlighted, |line| line.bg(rgb(theme.hover)))
+        .when(highlighted, |line| line.bg(rgb(theme.menu.highlight.0)).text_color(rgb(theme.menu.highlight_text.0)))
         .child(text)
+        .children(key)
         .children(arrow);
     let name = line_target(menu.kind, shown.path);
     if shown.state == LineState::Pending {
         drop(target(format!("{name} (pending)"), |_, _, _| {}, cx));
-        return line.opacity(PENDING_OPACITY);
+        return line.opacity(sizes.pending_opacity.0);
     }
     if !shown.enabled {
-        return line.text_color(rgb(theme.muted));
+        return line.text_color(rgb(theme.menu.disabled.0));
     }
     let hovered = id.clone();
     let line = line.cursor_pointer().on_hover(cx.listener(move |workspace, hovering: &bool, _window, cx| {
@@ -127,7 +137,7 @@ fn item(menu: &OpenMenu, shown: Shown, theme: Theme, cx: &mut Context<Workspace>
     };
     match shown.submenu {
         Some(Some(lines)) => {
-            let beside = div().absolute().top(-sizes.menu_padding.px()).left_full().child(anchored().snap_to_window().child(panel(menu, lines, shown.path, theme, cx)));
+            let beside = div().absolute().top(-(sizes.padding_y.px() + sizes.border.px())).left_full().child(anchored().snap_to_window().child(panel(menu, lines, shown.path, theme, cx)));
             line.child(beside)
         }
         _ => line,

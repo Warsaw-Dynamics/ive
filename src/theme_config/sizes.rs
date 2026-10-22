@@ -22,6 +22,32 @@ pub struct Sizes {
     pub git: GitSizes,
     pub settings: SettingsSizes,
     pub controls: ControlsSizes,
+    pub menu: MenuSizes,
+}
+
+/// The menus of tabs and tree rows (IntelliJ's popup menus): their panel, lines, keys and separators.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MenuSizes {
+    /// a panel grows past this to fit its longest line
+    pub min_width: Px,
+    pub padding_y: Px,
+    pub radius: Px,
+    pub border: Px,
+    pub text_size: FontPx,
+    pub weight: Weight,
+    pub item_height: Height,
+    /// the highlight's distance from the panel's sides
+    pub item_margin_x: Px,
+    pub item_padding_x: Px,
+    pub item_radius: Px,
+    /// at least this between a line's label and its key
+    pub shortcut_gap: Px,
+    pub separator_margin_y: Px,
+    /// a separator's distance from the panel's sides
+    pub separator_inset_x: Px,
+    /// a line waiting for its `when` predicate
+    pub pending_opacity: Fraction,
 }
 
 /// Controls used everywhere: prompts, tooltips, text fields, paging, progress bars and scrollbars.
@@ -801,6 +827,22 @@ mod tests {
         assert_eq!((tree.folder_count_padding_x, tree.folder_count_text_size), (Px(2.), FontPx(11.)));
         assert_eq!((tree.action_padding, tree.action_radius), (Px(2.), Px(4.)));
         assert_eq!((tree.resize_handle_width, tree.default_width), (Px(6.), Px(288.)));
+    }
+
+    #[test]
+    fn should_default_menu_sizes_to_intellij_popups() {
+        // when
+        let menu = defaults().sizes.menu;
+
+        // then
+        assert_eq!((menu.min_width, menu.padding_y, menu.radius, menu.border), (Px(240.), Px(6.), Px(6.), Px(1.)));
+        assert_eq!((menu.text_size, menu.weight), (FontPx(13.), Weight::Normal));
+        assert_eq!(
+            (menu.item_height, menu.item_margin_x, menu.item_padding_x, menu.item_radius),
+            (Height(26.), Px(6.), Px(10.), Px(4.))
+        );
+        assert_eq!((menu.shortcut_gap, menu.separator_margin_y, menu.separator_inset_x), (Px(32.), Px(4.), Px(10.)));
+        assert_eq!(menu.pending_opacity, Fraction(0.5));
     }
 
     #[test]

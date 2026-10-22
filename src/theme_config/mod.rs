@@ -99,6 +99,7 @@ pub struct Palette {
     pub git: GitColors,
     pub tree_states: TreeStates,
     pub virtual_folders: VirtualFolders,
+    pub menu: MenuColors,
     /// colour key id → entry, over the built-in scheme
     pub syntax: BTreeMap<String, RawEntry>,
 }
@@ -135,6 +136,23 @@ pub struct TreeStates {
     pub active: RowStyle,
     pub selected: RowStyle,
     pub secondary: RowStyle,
+}
+
+/// The menus of tabs and tree rows.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MenuColors {
+    pub background: Rgb,
+    pub border: Rgb,
+    pub text: Rgb,
+    /// a line's key, on its right
+    pub shortcut: Rgb,
+    /// a line that does not apply to what was clicked
+    pub disabled: Rgb,
+    /// the line under the pointer or the arrow keys
+    pub highlight: Rgb,
+    pub highlight_text: Rgb,
+    pub separator: Rgb,
 }
 
 /// The chips of the tree's rows that are not on disk.
@@ -286,6 +304,19 @@ mod tests {
             assert_eq!(palette.terminal.ansi.map(|colour| colour.0), old.terminal_ansi, "{appearance:?}");
             assert_eq!(palette.checkout_hues.map(|colour| colour.0), old.checkout_hues, "{appearance:?}");
         }
+    }
+
+    #[test]
+    fn should_default_menu_colours_to_intellij_popups() {
+        // when
+        let spec = defaults();
+
+        // then
+        let (dark, light) = (spec.dark.menu, spec.light.menu);
+        assert_eq!((dark.background, dark.border, dark.separator), (Rgb(0x2b2d30), Rgb(0x43454a), Rgb(0x43454a)));
+        assert_eq!((dark.text, dark.shortcut, dark.disabled), (Rgb(0xdfe1e5), Rgb(0x868a91), Rgb(0x6f737a)));
+        assert_eq!((dark.highlight, dark.highlight_text), (Rgb(0x2e436e), Rgb(0xdfe1e5)));
+        assert_eq!((light.background, light.highlight, light.shortcut), (Rgb(0xffffff), Rgb(0xd5e1ff), Rgb(0x818594)));
     }
 
     #[test]

@@ -420,6 +420,29 @@ scrollbar_thickness = 10.0
 scrollbar_min_thumb = 24.0
 scrollbar_inset = 2.0
 
+# The menus of tabs and tree rows, as IntelliJ's popup menus: lines with their keys on the right; colours in
+# `dark.menu` and `light.menu`.
+[sizes.menu]
+# a menu grows past this to fit its longest line
+min_width = "15rem"
+padding_y = "0.375rem"
+radius = 6.0
+border = 1.0
+text_size = "0.8125rem"
+weight = "normal"
+item_height = "1.625rem"
+# the highlight's distance from the menu's sides
+item_margin_x = "0.375rem"
+item_padding_x = "0.625rem"
+item_radius = 4.0
+# at least this between a line's label and its key
+shortcut_gap = "2rem"
+separator_margin_y = "0.25rem"
+# a separator's distance from the menu's sides
+separator_inset_x = "0.625rem"
+# a line waiting for its `when` predicate
+pending_opacity = 0.5
+
 # The tree and the editor as separate rounded panels on the frame colour, with the project glow behind the header
 # rows, as IntelliJ's Islands theme; 0 and 0 is the flat layout.
 [panels]
@@ -512,6 +535,18 @@ hidden = { text = "#868A91", background = "#393B4080", italic = true }
 
 # What a panel (the sidebar, or the tabs and what they show) draws with while it does not have the keyboard, or the
 # window is not active: any key of this palette, over its value above. IntelliJ Islands Dark's unfocused greys.
+# The menus of tabs and tree rows (IntelliJ New UI Dark's popups): `shortcut` is a line's key, `disabled` a line that
+# does not apply, `highlight` the line under the pointer or the arrow keys.
+[dark.menu]
+background = "#2B2D30"
+border = "#43454A"
+text = "#DFE1E5"
+shortcut = "#868A91"
+disabled = "#6F737A"
+highlight = "#2E436E"
+highlight_text = "#DFE1E5"
+separator = "#43454A"
+
 [dark.unfocused]
 selected = "#33353B"
 tab_active = "#26282C"
@@ -580,6 +615,16 @@ secondary = { text = "#818594" }
 [light.virtual_folders]
 chip = { background = "#DFE1E5FF", italic = true }
 hidden = { text = "#818594", background = "#DFE1E580", italic = true }
+
+[light.menu]
+background = "#FFFFFF"
+border = "#DFE1E5"
+text = "#000000"
+shortcut = "#818594"
+disabled = "#A8ADBD"
+highlight = "#D5E1FF"
+highlight_text = "#000000"
+separator = "#EBECF0"
 
 # IntelliJ Islands Light's unfocused greys.
 [light.unfocused]

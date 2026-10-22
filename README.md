@@ -450,6 +450,10 @@ async fn restart(context) {
     (below); `when` optional;
   - `#{ label, items, when }`: a submenu.
 
+  A line shows on its right the key bound to its action in `config.keys` (a tree menu: the `"tree"` scope's first,
+  then the window's; a tab menu: the window's), as `Ctrl+Shift+C`; a function item shows the key bound to the same
+  function. Lines without a key show none.
+
   A menu leaves out what does not apply (Keep Tab on a permanent tab, Stop and Kill on a tab that is not a process, a
   path action on a terminal tab, Run on a file that does not run, Git Show Diff on an unchanged file), then the
   separators left dangling and the submenus left empty, and does not open when nothing is left. `when` is an object,
@@ -620,7 +624,7 @@ pub fn init(config) {
 - Colours are per theme, in `config.theme.dark` and `config.theme.light`: `"#RRGGBB"`, or `"#RRGGBBAA"` where a
   colour is see-through (`diff_added`, `scrollbar_thumb`, row backgrounds).
 - Sizes are shared by both themes, in `config.theme.sizes`, grouped by where they are drawn: `tree`, `tabs`, `window`,
-  `editor`, `diff`, `terminal`, `overview`, `git`, `settings`, `controls`, and `icon` for every icon. A size is
+  `editor`, `diff`, `terminal`, `overview`, `git`, `settings`, `controls`, `menu`, and `icon` for every icon. A size is
   pixels, written with a decimal point (`26.0`: Rune does not mix whole and decimal numbers) or as `"26px"`, or rem,
   as `"1.625rem"`: that many times `config.theme.sizes.rem` (16 px by default), rounded to whole pixels. Most
   defaults are in rem, so changing `sizes.rem` zooms the UI, text without a size of its own included; lines and
@@ -651,6 +655,12 @@ pub fn init(config) {
   default, as IntelliJ, the selection (`selected`, `tree_states.selected`) and the shown tab (`tab_active`,
   `tab_active_border`) turn grey; `config.theme.dark.unfocused.selected = config.theme.dark.selected;` keeps a
   colour. Syntax colours do not change with focus.
+- The tab and tree menus are drawn as IntelliJ's popup menus, by `config.theme.sizes.menu` (`min_width`,
+  `padding_y`, `radius`, `border`, `text_size`, `weight`, `item_height`, `item_margin_x` (the highlight's distance
+  from the sides), `item_padding_x`, `item_radius`, `shortcut_gap` (at least this between a label and its key),
+  `separator_margin_y`, `separator_inset_x`, `pending_opacity`) and `config.theme.dark.menu` (and `light.menu`):
+  `background`, `border`, `text`, `shortcut` (a line's key), `disabled`, `highlight` and `highlight_text` (the line
+  under the pointer or the arrow keys), `separator`.
 - `config.theme.sizes.tree.selection_radius` and `selection_inset` round a highlighted row and keep it off the
   panel's sides (IntelliJ: `8.0` and `12.0`).
 - `config.theme.panels.gap` and `radius` (5 and 8 by default; 0 and 0 for the flat layout) draw the tree and the
