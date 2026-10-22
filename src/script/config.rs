@@ -6,12 +6,13 @@ use std::collections::HashMap;
 use rune::{Any, ContextError, Module, Value};
 
 /// Actions without an argument: in WezTerm's Lua these are plain strings, and so they are here.
-const UNIT_ACTIONS: [&str; 39] = [
+const UNIT_ACTIONS: [&str; 58] = [
     "Nop", "DisableDefaultAssignment", "OpenSettings", "OpenTerminal", "ActivateTab", "CloseTab", "KeepTab", "StopProgram", "KillProgram",
     "CloseOtherTabs", "CloseTabsToTheLeft", "CloseTabsToTheRight", "ToggleChangesLayout", "OpenTerminalIn", "ActivateRow", "ActivateRowToKeep",
     "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "SelectAll", "Cut", "Undo", "Redo",
     "OpenHub", "HubDown", "HubUp", "HubPageDown", "HubPageUp", "HubOpen", "HubOpenBehind", "HubTypePath", "HubCopyPath",
     "HubStop", "CopyFullPath", "HubCycleScope", "HubWiden", "HubToggleExcluded", "HubToggleChanged", "HubBack",
+    "SendPathsToTerminal", "CopyRelativePath", "CopyFileName", "FindInFiles", "OpenFindInFiles", "OpenTerminalHere", "RevealInFileManager", "OpenWithDefaultApp", "OpenInBrowser", "RunFile", "GitShowDiff", "GitCompareWithBase", "GitHistory", "GitIgnore", "CompareFiles", "OpenInNewWindow", "HubToggleContent", "HubToggleRegex", "HubToggleWholeWord",
 ];
 
 /// `config` in `pub fn init(config)`: the lists of bindings, as WezTerm's `config.keys` and `config.mouse_bindings`,

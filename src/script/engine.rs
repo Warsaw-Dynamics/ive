@@ -907,13 +907,13 @@ mod tests {
     #[test]
     fn should_reject_a_tab_menu_item_that_is_not_a_tab_action() {
         // given
-        let init = "pub fn init(config) { config.tab_menus.mine = [act::CloseTab, act::OpenSettings]; }";
+        let init = "pub fn init(config) { config.tab_menus.mine = [act::CloseTab, act::ActivateTab]; }";
 
         // when
         let error = load(init).1.err().unwrap();
 
         // then
-        assert!(error.contains("mine") && error.contains("OpenSettings"), "{error}");
+        assert!(error.contains("mine") && error.contains("ActivateTab"), "{error}");
     }
 
     #[test]
@@ -1066,6 +1066,43 @@ mod tests {
         // then
         let MenuItem::Action { action: ItemAction::Invoke { function, .. }, .. } = &loaded.menus.get(MenuKind::Tree, "main").unwrap()[0] else { panic!() };
         assert_eq!(loaded.menus.function_label(*function).as_deref(), Some("Mine"));
+    }
+
+    #[test]
+    fn should_reject_hub_action_in_a_menu() {
+        // given
+        let init = "pub fn init(config) { config.tree_menus.main = [act::HubDown]; }";
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("tree_menus.main[0]") && error.contains("HubDown"), "{error}");
+    }
+
+    #[test]
+    fn should_read_new_path_actions_in_a_tree_menu() {
+        // given
+        let init = "pub fn init(config) { config.tree_menus.main = [act::SendPathsToTerminal, act::GitIgnore, act::OpenHub]; }";
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let expected = [item(Builtin::SendPathsToTerminal), item(Builtin::GitIgnore), item(Builtin::OpenHub)];
+        assert_eq!(loaded.menus.get(MenuKind::Tree, "main"), Some(&expected[..]));
+    }
+
+    #[test]
+    fn should_bind_copy_relative_path_to_a_tree_key() {
+        // given
+        let init = r#"pub fn init(config) { config.keys = [#{ key: "y", mods: "ALT", action: act::CopyRelativePath, scope: "tree" }]; }"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        assert_eq!(loaded.keymap.find_key(&pressed("alt-y"), Place::Tree).cloned(), builtin(Builtin::CopyRelativePath));
     }
 
     #[test]
