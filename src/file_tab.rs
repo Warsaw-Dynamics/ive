@@ -475,12 +475,14 @@ impl EditedFile {
         let committing = cx.background_executor().spawn(async move { commit_block(&Git::installed(), &commit) });
         cx.spawn(async move |file, cx| {
             let committed = committing.await;
-            file.update(cx, |file, cx| match committed {
-                Ok(()) => {
-                    file.answer(Cast::ChangeCommitted, cx);
-                    file.send_change_base(None, cx);
-                }
-                Err(refusal) => file.answer(Cast::ChangeCommitFailed(refusal.to_string()), cx),
+            file.update(cx, |file, cx| {
+                let answer = match committed {
+                    Ok(()) => Cast::ChangeCommitted,
+                    Err(refusal) => Cast::ChangeCommitFailed(refusal.to_string()),
+                };
+                file.answer(answer, cx);
+                // HEAD moved with a commit, and may have with a refusal (another commit landed)
+                file.send_change_base(None, cx);
             })
             .ok();
         })
