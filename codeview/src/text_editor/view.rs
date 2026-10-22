@@ -3,6 +3,7 @@
 use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{
     App, Bounds, ContentMask, Context, CursorStyle, DispatchPhase, ElementInputHandler, Entity,
@@ -17,7 +18,7 @@ use super::layout::{Area, Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
 use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::panel::{Edit, ParseJob};
+use crate::panel::{Edit, LineSource, ParseJob};
 use crate::piece_table::PieceTable;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
@@ -75,15 +76,14 @@ impl TextEditor {
         }
     }
 
-    /// The whole text of a scratch, for its host's own saving until the panel saves edits (Task 10); bounded by the
-    /// scratch's size limit. `None` for a file, whose text is never held whole.
-    pub fn text(&self) -> Option<String> {
-        self.model.scratch_text()
-    }
-
-    /// The changes since the text the editor was opened with.
+    /// The changes since the base: the text as opened or last saved.
     pub fn edits_since_base(&self) -> Vec<Edit> {
         self.model.edits_since_base()
+    }
+
+    /// `saved` was written: `base` holds the text they made, and becomes the base; see [`PieceTable::rebase`].
+    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) {
+        self.model.rebase(base, saved);
     }
 
     pub fn revision(&self) -> u64 {
@@ -182,6 +182,8 @@ impl TextEditor {
                 },
                 cx,
             ),
+            // saving is the panel's
+            Command::Flush => Ok(()),
         };
     }
 

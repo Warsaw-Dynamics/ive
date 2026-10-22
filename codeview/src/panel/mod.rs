@@ -2,17 +2,20 @@
 //! answers, and hears its events; see the spec's "The interface: actor-style messages".
 
 mod protocol;
+mod saving;
 mod state;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::{
-    AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, Render, Subscription,
-    Window, div,
+    AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, ParentElement, Render,
+    Styled, Subscription, Window, div,
 };
 
 pub use protocol::{
     Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, SaveFailure,
+    SaveKind, SaveRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
@@ -23,6 +26,7 @@ use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
+use saving::{Answer, BarActions, Blur, Next, Saving, Then};
 
 /// A text, a diff, or nothing yet; viewed or edited as the last [`Cast::Open`] said.
 pub struct Panel {
@@ -35,6 +39,9 @@ pub struct Panel {
     pending: Pending,
     /// the text's revision: counts new texts in View mode, edits in Edit mode
     revision: u64,
+    /// Edit mode's saves
+    saving: Saving,
+    blur: Blur,
     /// the body's own events, passed on as the panel's
     _body_events: Vec<Subscription>,
 }
@@ -71,6 +78,8 @@ impl Panel {
             seen: PanelState::default(),
             pending: Pending::Nothing,
             revision: 0,
+            saving: Saving::new(Duration::ZERO, 0),
+            blur: Blur::Unwatched,
             _body_events: Vec::new(),
         }
     }
@@ -89,8 +98,12 @@ impl Panel {
             Cast::Command(command) => self.run(command, cx),
             Cast::RevealLine(line) => self.reveal_line(line, cx),
             Cast::MarkDeleted => self.mark_deleted(cx),
-            // Task 11 fetches diff texts; Task 10 saves edits and takes a new policy
-            Cast::SetTexts { .. } | Cast::Saved { .. } | Cast::SaveFailed { .. } | Cast::SetPolicy(_) => {}
+            Cast::Saved { revision, source } => self.saved(revision, source, cx),
+            Cast::SaveFailed { revision, reason } => self.save_failed(revision, reason),
+            Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
+            Cast::Type(text) => self.type_text(&text, cx),
+            // Task 11 fetches diff texts
+            Cast::SetTexts { .. } => {}
         }
         self.notice_state(cx);
         cx.notify();
@@ -105,27 +118,27 @@ impl Panel {
         self.revision
     }
 
-    /// Edits not saved yet; none until Task 10, while the host saves edits itself.
-    pub fn has_unsaved(&self) -> bool {
-        false
-    }
-
-    /// The whole edited text of a scratch (an [`EditPolicy`] with a size limit, which bounds it); `None` for a file
-    /// and outside Edit mode. A bridge for the scratch tab's own saving until Task 10; never for files.
-    pub fn text(&self, cx: &App) -> Option<String> {
+    /// Edits not saved yet: in flight, waiting for the pause, or kept after a failed save.
+    pub fn has_unsaved(&self, cx: &App) -> bool {
         match &self.body {
-            Body::Edit(editor) => editor.read(cx).text(),
-            Body::Empty | Body::View(_) | Body::Diff(_) => None,
+            Body::Edit(editor) => self.saving.has_unsaved(editor.read(cx).revision()),
+            Body::Empty | Body::View(_) | Body::Diff(_) => false,
         }
     }
 
-    /// Types `text` at the caret as the keyboard would, `\r` a line break; for the host's automation. Fails
-    /// outside Edit mode or over the size limit.
-    pub fn type_text(&mut self, text: &str, cx: &mut Context<Self>) -> Result<(), String> {
-        let Body::Edit(editor) = &self.body else {
-            return Err("the panel is not editable".to_owned());
-        };
-        editor.update(cx, |editor, cx| editor.type_text(text, cx)).map_err(|error| error.to_string())
+    /// A save is in flight: the host has not answered it yet.
+    pub fn is_saving(&self) -> bool {
+        self.saving.is_in_flight()
+    }
+
+    /// The save the panel would ask for now, handed over instead of emitted, for a host that must write before going
+    /// on (a scratch closing, or about to run). It counts as in flight until answered; `None` when there is nothing
+    /// to save, a save is in flight already, or a [`SaveKind::Checked`] one waits for the user after a conflict.
+    pub fn take_save(&mut self, kind: SaveKind, cx: &mut Context<Self>) -> Option<SaveRequest> {
+        match self.next_save(kind, cx) {
+            Next::Send(request) => Some(request),
+            Next::Nothing | Next::AlreadySaved => None,
+        }
     }
 
     /// New content replaces the body, except new text for the same mode, which keeps scroll and caret, and text
@@ -142,6 +155,7 @@ impl Panel {
                 let setup = Setup { limit: policy.limit, language };
                 editor.update(cx, |editor, cx| editor.reset(PieceTable::new(source), setup, cx));
                 self.revision = editor.read(cx).revision();
+                self.saving = Saving::new(policy.save_delay, self.revision);
                 self.request_parse(cx);
             }
             (Content::Diff(input), Body::Diff(diff)) => diff.update(cx, |diff, cx| diff.set_files(input.files, cx)),
@@ -157,10 +171,12 @@ impl Panel {
 
     fn build(&mut self, content: Content, cx: &mut Context<Self>) {
         self._body_events.clear();
+        self.blur = Blur::Unwatched;
         match content {
             Content::Lines { source, language, edit: None } => self.build_view(source, language, cx),
             Content::Lines { source, language, edit: Some(policy) } => {
                 self.build_edit(source, Setup { limit: policy.limit, language }, cx);
+                self.saving = Saving::new(policy.save_delay, self.revision);
             }
             Content::Diff(input) => self.build_diff(input, cx),
         }
@@ -200,6 +216,7 @@ impl Panel {
                 self.revision = editor.read(cx).revision();
                 cx.emit(Event::Edited { revision: self.revision });
                 self.request_parse(cx);
+                self.restart_pause(cx);
             }
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
         }
@@ -240,13 +257,65 @@ impl Panel {
         self.apply_pending(cx);
     }
 
-    fn run(&self, command: Command, cx: &mut Context<Self>) {
+    fn run(&mut self, command: Command, cx: &mut Context<Self>) {
+        if command == Command::Flush {
+            return self.request_save(SaveKind::Checked, cx);
+        }
         match &self.body {
             Body::View(view) => view.update(cx, |view, cx| view.run(command, cx)),
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.run(command, cx)),
             Body::Diff(diff) => diff.update(cx, |diff, cx| diff.run(command, cx)),
             Body::Empty => {}
         }
+    }
+
+    /// Types `text` at the caret; a refusal is reported as [`Event::Refused`], and outside Edit mode nothing happens.
+    fn type_text(&self, text: &str, cx: &mut Context<Self>) {
+        if let Body::Edit(editor) = &self.body {
+            // a refused edit was already reported through TextEditorEvent::Refused
+            let _ = editor.update(cx, |editor, cx| editor.type_text(text, cx));
+        }
+    }
+
+    /// The edit that just happened starts the pause before a save again.
+    fn restart_pause(&mut self, cx: &mut Context<Self>) {
+        let delay = self.saving.delay;
+        let pause = cx.spawn(async move |panel, cx| {
+            cx.background_executor().timer(delay).await;
+            panel.update(cx, |panel, cx| panel.request_save(SaveKind::Checked, cx)).ok();
+        });
+        self.saving.restart_pause(pause);
+    }
+
+    /// Asks the host to save the edits, unless one save is in flight already: then right after its answer.
+    fn request_save(&mut self, kind: SaveKind, cx: &mut Context<Self>) {
+        if let Next::Send(request) = self.next_save(kind, cx) {
+            cx.emit(Event::SaveRequested(request));
+        }
+        cx.notify();
+    }
+
+    fn next_save(&mut self, kind: SaveKind, cx: &mut Context<Self>) -> Next {
+        let Body::Edit(editor) = &self.body else {
+            return Next::Nothing;
+        };
+        let editor = editor.read(cx);
+        self.saving.next(kind, editor.revision(), || editor.edits_since_base())
+    }
+
+    fn saved(&mut self, revision: u64, source: Arc<dyn LineSource>, cx: &mut Context<Self>) {
+        let (Body::Edit(editor), Answer::Saved { edits, then }) = (&self.body, self.saving.saved(revision)) else {
+            return;
+        };
+        editor.update(cx, |editor, _cx| editor.rebase(source, &edits));
+        if then == Then::SaveAgain {
+            self.request_save(SaveKind::Checked, cx);
+        }
+    }
+
+    fn save_failed(&mut self, revision: u64, reason: SaveFailure) {
+        // the bar shows the failure; the edits wait for the next pause or flush
+        let _ = self.saving.failed(revision, reason);
     }
 
     fn reveal_line(&self, line: usize, cx: &mut Context<Self>) {
@@ -327,6 +396,27 @@ impl Panel {
     }
 }
 
+impl Panel {
+    /// The editor under the bar of a failed save; watches the editor's focus to save when it leaves.
+    fn render_edit(&mut self, editor: Entity<TextEditor>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if let Blur::Unwatched = self.blur {
+            let focus = editor.focus_handle(cx);
+            let watch = cx.on_blur(&focus, window, |panel, _window, cx| panel.request_save(SaveKind::Checked, cx));
+            self.blur = Blur::Watched { _subscription: watch };
+        }
+        let this = cx.weak_entity();
+        let other = this.clone();
+        let actions = BarActions {
+            reload: Box::new(move |_window, cx| drop(this.update(cx, |_panel, cx| cx.emit(Event::ReloadRequested)))),
+            overwrite: Box::new(move |_window, cx| drop(other.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx)))),
+        };
+        let Some(bar) = saving::bar(self.saving.problem(), actions, cx) else {
+            return editor.into_any_element();
+        };
+        div().flex().flex_col().flex_1().min_h_0().child(bar).child(editor).into_any_element()
+    }
+}
+
 impl Focusable for Panel {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
         match &self.body {
@@ -339,14 +429,14 @@ impl Focusable for Panel {
 }
 
 impl Render for Panel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // the body scrolls and moves its caret without telling the panel; each frame catches up
         self.notice_state(cx);
-        let body: AnyElement = match &self.body {
+        let body: AnyElement = match self.body.clone() {
             Body::Empty => div().into_any_element(),
-            Body::View(view) => view.clone().into_any_element(),
-            Body::Edit(editor) => editor.clone().into_any_element(),
-            Body::Diff(diff) => diff.clone().into_any_element(),
+            Body::View(view) => view.into_any_element(),
+            Body::Edit(editor) => self.render_edit(editor, window, cx),
+            Body::Diff(diff) => diff.into_any_element(),
         };
         body
     }
@@ -389,8 +479,8 @@ mod tests {
         let content = Content::Lines { source, language: Some(lang("Rust")), edit: Some(policy) };
         panel.update(cx, |panel, cx| panel.handle(Cast::Open(content), cx));
         panel.update(cx, |panel, cx| {
-            panel.type_text("a", cx).unwrap();
-            panel.type_text("b", cx).unwrap();
+            panel.handle(Cast::Type("a".to_owned()), cx);
+            panel.handle(Cast::Type("b".to_owned()), cx);
         });
         let asked_while_parsing = jobs.borrow().len();
 
@@ -402,5 +492,144 @@ mod tests {
         // then
         let revisions: Vec<u64> = jobs.borrow().iter().map(ParseJob::revision).collect();
         assert_eq!((asked_while_parsing, revisions), (1, vec![0, 2]));
+    }
+
+    /// The saves `panel` asks for, in order.
+    fn saves_of(panel: &Entity<Panel>, cx: &mut TestAppContext) -> Rc<RefCell<Vec<SaveRequest>>> {
+        let saves: Rc<RefCell<Vec<SaveRequest>>> = Rc::default();
+        let seen = saves.clone();
+        cx.update(|cx| {
+            cx.subscribe(panel, move |_, event: &Event, _| {
+                if let Event::SaveRequested(request) = event {
+                    seen.borrow_mut().push(request.clone());
+                }
+            })
+            .detach();
+        });
+        saves
+    }
+
+    /// A panel editing `text`, saved after a pause of 500 ms.
+    fn editing(text: &str, cx: &mut TestAppContext) -> Entity<Panel> {
+        let panel = cx.new(Panel::new);
+        let policy = EditPolicy { save_delay: Duration::from_millis(500), limit: None };
+        let content = Content::Lines { source: Arc::new(TextSource::new(text)), language: None, edit: Some(policy) };
+        panel.update(cx, |panel, cx| panel.handle(Cast::Open(content), cx));
+        panel
+    }
+
+    fn cast(panel: &Entity<Panel>, cast: Cast, cx: &mut TestAppContext) {
+        panel.update(cx, |panel, cx| panel.handle(cast, cx));
+    }
+
+    fn typed(text: &str) -> Cast {
+        Cast::Type(text.to_owned())
+    }
+
+    fn wait(duration: Duration, cx: &mut TestAppContext) {
+        cx.executor().advance_clock(duration);
+        cx.run_until_parked();
+    }
+
+    fn edit(bytes: std::ops::Range<u64>, text: &str) -> Edit {
+        Edit { bytes, text: text.as_bytes().to_vec() }
+    }
+
+    #[gpui::test]
+    fn should_request_one_save_after_the_pause(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        wait(Duration::from_millis(400), cx);
+        cast(&panel, typed("b"), cx);
+        wait(Duration::from_millis(400), cx);
+        let during_typing = saves.borrow().len();
+
+        // when
+        wait(Duration::from_millis(200), cx);
+
+        // then
+        let expected = SaveRequest { base: 0, revision: 2, edits: vec![edit(0..0, "ab")], kind: SaveKind::Checked };
+        assert_eq!((during_typing, saves.borrow().clone()), (0, vec![expected]));
+        assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx) && panel.is_saving()));
+    }
+
+    #[gpui::test]
+    fn should_hold_edits_typed_while_a_save_is_in_flight(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, typed("b"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        let while_in_flight = saves.borrow().len();
+
+        // when
+        cast(&panel, Cast::Saved { revision: 1, source: Arc::new(TextSource::new("atext\n")) }, cx);
+
+        // then
+        let second = SaveRequest { base: 1, revision: 2, edits: vec![edit(1..1, "b")], kind: SaveKind::Checked };
+        assert_eq!((while_in_flight, saves.borrow().last().cloned()), (1, Some(second)));
+        cast(&panel, Cast::Saved { revision: 2, source: Arc::new(TextSource::new("abtext\n")) }, cx);
+        assert!(panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx) && !panel.is_saving()));
+    }
+
+    #[gpui::test]
+    fn should_keep_edits_after_a_failed_save(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+
+        // when
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Io("disk full".to_owned()) }, cx);
+        let kept = panel.read_with(cx, |panel, cx| (panel.has_unsaved(cx), panel.is_saving(), panel.saving.problem().clone()));
+        cast(&panel, typed("b"), cx);
+        wait(Duration::from_millis(500), cx);
+
+        // then
+        assert_eq!(kept, (true, false, saving::Problem::Failed("disk full".to_owned())));
+        let retried = SaveRequest { base: 0, revision: 2, edits: vec![edit(0..0, "ab")], kind: SaveKind::Checked };
+        assert_eq!(saves.borrow().last().cloned(), Some(retried));
+    }
+
+    #[gpui::test]
+    fn should_wait_for_the_user_after_a_conflict_and_overwrite_when_asked(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Conflict }, cx);
+        cast(&panel, typed("b"), cx);
+        wait(Duration::from_millis(500), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        let while_conflicting = saves.borrow().len();
+
+        // when
+        panel.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx));
+
+        // then
+        let overwrite = SaveRequest { base: 0, revision: 2, edits: vec![edit(0..0, "ab")], kind: SaveKind::Overwrite };
+        assert_eq!((while_conflicting, saves.borrow().last().cloned()), (1, Some(overwrite)));
+    }
+
+    #[gpui::test]
+    fn should_count_edits_undone_back_to_the_saved_text_as_saved(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Undo), cx);
+
+        // when
+        wait(Duration::from_millis(500), cx);
+
+        // then
+        assert_eq!(saves.borrow().len(), 0);
+        assert!(panel.read_with(cx, |panel, cx| !panel.has_unsaved(cx)));
     }
 }

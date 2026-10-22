@@ -28,6 +28,8 @@ pub enum Command {
     Delete(Unit),
     Newline,
     Indent,
+    /// saves unsaved edits now instead of after the pause
+    Flush,
 }
 
 /// What the host made of a key press.

@@ -232,27 +232,19 @@ impl PieceTable {
         folded
     }
 
-    /// Appends the typed run `typed` found where base bytes `gap` are: its pieces at either end that hold the same
-    /// bytes as the gap there become those base bytes.
+    /// Appends the typed run `typed` found where base bytes `gap` are: as much of its start and its end as holds
+    /// the same bytes as the gap there becomes those base bytes.
     fn fold_run(&self, folded: &mut Vec<(Buffer, Range<u64>)>, typed: Vec<Range<u64>>, gap: Range<u64>) {
-        let (mut first, mut last) = (0, typed.len());
-        let (mut start, mut end) = (gap.start, gap.end);
-        while first < last && span(&typed[first]) <= end - start && self.is_base_at(&typed[first], start) {
-            start += span(&typed[first]);
-            first += 1;
-        }
-        while first < last && span(&typed[last - 1]) <= end - start && self.is_base_at(&typed[last - 1], end - span(&typed[last - 1])) {
-            end -= span(&typed[last - 1]);
-            last -= 1;
-        }
-        push_joined(folded, Buffer::Base, gap.start..start);
-        folded.extend(typed[first..last].iter().map(|bytes| (Buffer::Added, bytes.clone())));
-        push_joined(folded, Buffer::Base, end..gap.end);
-    }
-
-    /// Whether typed bytes `typed` are the base bytes from `at` on.
-    fn is_base_at(&self, typed: &Range<u64>, at: u64) -> bool {
-        *self.base.bytes(at..at + span(typed)) == *self.buffer_bytes(Buffer::Added, typed.clone())
+        let text: Vec<u8> = typed.iter().flat_map(|bytes| self.buffer_bytes(Buffer::Added, bytes.clone()).into_owned()).collect();
+        let len = text.len() as u64;
+        let head = self.base.bytes(gap.start..gap.start + len.min(span(&gap)));
+        let prefix = text.iter().zip(head.iter()).take_while(|(typed, base)| typed == base).count() as u64;
+        let rest = gap.start + prefix..gap.end;
+        let tail = self.base.bytes(rest.end - (len - prefix).min(span(&rest))..rest.end);
+        let suffix = text[prefix as usize..].iter().rev().zip(tail.iter().rev()).take_while(|(typed, base)| typed == base).count() as u64;
+        push_joined(folded, Buffer::Base, gap.start..gap.start + prefix);
+        folded.extend(sub_run(&typed, prefix..len - suffix).into_iter().map(|bytes| (Buffer::Added, bytes)));
+        push_joined(folded, Buffer::Base, gap.end - suffix..gap.end);
     }
 
     fn piece(&self, buffer: Buffer, bytes: Range<u64>) -> Piece {
@@ -367,6 +359,20 @@ impl PieceIndex {
 
 fn span(bytes: &Range<u64>) -> u64 {
     bytes.end - bytes.start
+}
+
+/// Bytes `within` of the run `pieces` (ranges of one buffer read one after another), as ranges of that buffer.
+fn sub_run(pieces: &[Range<u64>], within: Range<u64>) -> Vec<Range<u64>> {
+    let mut ranges = Vec::new();
+    let mut at = 0;
+    for piece in pieces {
+        let (from, to) = (within.start.max(at), within.end.min(at + span(piece)));
+        if from < to {
+            ranges.push(piece.start + (from - at)..piece.start + (to - at));
+        }
+        at += span(piece);
+    }
+    ranges
 }
 
 /// Appends `bytes` of `buffer`, joined with the last piece when both are of the base and touch.

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use codeview::document::{self, Reread, TextSource};
-use codeview::panel::{Cast, Content, EditPolicy, Event, Panel, PanelState};
+use codeview::panel::{Cast, Content, Edit, EditPolicy, Event, Panel, PanelState, SaveFailure, SaveKind, SaveRequest};
 use codeview::text_editor::SizeLimit;
 use gpui::{
     AnyElement, App, ClickEvent, Context, Div, Entity, FocusHandle, Focusable, SharedString, Stateful, Subscription, Task,
@@ -184,15 +184,17 @@ impl ScratchTab {
         self.view.update(cx, |view, cx| view.renamed(name, cx));
     }
 
-    /// For MCP `send_text`: the text goes to the editor as typed.
+    /// For MCP `send_text`: the text goes to the editor as typed; one over the size limit is refused in the tab.
     pub fn type_text(&self, text: &str, cx: &mut App) -> Result<(), String> {
         let editor = self.view.read(cx).editor().ok_or_else(|| format!("scratch {} is read-only", self.scratch.name))?;
-        editor.update(cx, |editor, cx| editor.type_text(text, cx))
+        editor.update(cx, |editor, cx| editor.handle(Cast::Type(text.to_owned()), cx));
+        Ok(())
     }
 }
 
 enum Body {
-    Editing { editor: Entity<Panel>, ending: LineEnding, save: SaveState },
+    /// `text` is what the panel's base holds: the scratch as last read or saved, with LF line breaks
+    Editing { editor: Entity<Panel>, ending: LineEnding, save: SaveState, text: String },
     ReadOnly { panel: Entity<Panel>, disk: DiskText, note: &'static str },
     /// read-only, and the file could not be read either
     Unreadable { error: String, note: &'static str },
@@ -215,17 +217,10 @@ impl Bar {
     }
 }
 
-/// What a save did; the 500 ms save often has nothing to write.
-enum Saved {
-    Nothing,
-    Written,
-}
-
 pub struct ScratchView {
     target: ScratchTarget,
     body: Body,
     bar: Option<Bar>,
-    save_task: Option<Task<()>>,
     /// a read-only scratch's re-read after a change on disk
     read_task: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
@@ -242,12 +237,12 @@ impl ScratchView {
                 subscriptions.push(cx.subscribe(&editor, |view, _editor, event: &Event, cx| view.on_panel_event(event, cx)));
                 editor.update(cx, |editor, cx| editor.handle(Cast::Open(edited(&target.scratch.name, &text, ending)), cx));
                 let save = SaveState::new(editor.read(cx).revision(), stamp);
-                Body::Editing { editor, ending, save }
+                Body::Editing { editor, ending, save, text }
             }
             ScratchContent::TooLarge => read_only(&target, TOO_LARGE, cx),
             ScratchContent::NotUtf8 => read_only(&target, NOT_UTF8, cx),
         };
-        Self { target, body, bar: None, save_task: None, read_task: None, _subscriptions: subscriptions }
+        Self { target, body, bar: None, read_task: None, _subscriptions: subscriptions }
     }
 
     fn restore(&self, state: PanelState, cx: &mut Context<Self>) {
@@ -280,74 +275,119 @@ impl ScratchView {
         match event {
             Event::Edited { .. } => {
                 self.bar.take_if(|bar| bar.is_passing());
-                self.schedule_save(cx);
             }
             Event::Refused(reason) => self.bar = Some(Bar::Refused(reason.clone())),
             // caret and scroll are saved with the open tabs
             Event::StateChanged => return self.schedule_workspace_save(cx),
-            // parsing is `codeview_host::serve`'s; the panel saves nothing itself before Task 10
-            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::SaveRequested { .. } | Event::OpenAt { .. } => return,
+            Event::SaveRequested(request) => self.write_request(request.clone(), mode_of(request.kind), cx),
+            Event::ReloadRequested => self.reload(cx),
+            // parsing is `codeview_host::serve`'s
+            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::NeedTexts { .. } | Event::OpenAt { .. } => return,
         }
         cx.notify();
     }
 
-    fn schedule_save(&mut self, cx: &mut Context<Self>) {
-        // replacing the task cancels the previous wait, so the save comes SAVE_DELAY after the last edit
-        self.save_task = Some(cx.spawn(async move |view, cx| {
-            cx.background_executor().timer(SAVE_DELAY).await;
-            view.update(cx, |view, cx| view.save_with(SaveMode::Ask, cx)).ok();
-        }));
-    }
-
-    fn save_with(&mut self, mode: SaveMode, cx: &mut Context<Self>) {
-        self.save_task = None;
-        match self.write_out(mode, cx) {
-            // a bar about the file stays until a write settles it
-            Ok(Saved::Nothing) => {}
-            Ok(Saved::Written) => self.bar = self.bar.take().filter(|bar| matches!(bar, Bar::Refused(_))),
-            Err(bar) => self.bar = Some(bar),
-        }
+    /// A bar's Overwrite or Save again.
+    fn save_shown(&mut self, mode: SaveMode, cx: &mut Context<Self>) {
+        self.save_with(mode, cx);
         cx.notify();
     }
 
-    /// Writes unsaved edits; the error is the bar to show.
-    fn write_out(&mut self, mode: SaveMode, cx: &App) -> Result<Saved, Bar> {
-        let Body::Editing { editor, ending, save } = &mut self.body else {
-            return Ok(Saved::Nothing);
+    /// Writes what the panel has unsaved now, as `mode` allows; Save again also writes a scratch without edits.
+    fn save_with(&mut self, mode: SaveMode, cx: &mut App) {
+        match self.take_request(mode, cx) {
+            Some(request) => self.write_request(request, mode, cx),
+            None if mode == SaveMode::Always => drop(self.write_out(&self.unchanged(cx), mode)),
+            None => {}
+        }
+    }
+
+    /// The panel's unsaved edits, now instead of after its pause.
+    fn take_request(&self, mode: SaveMode, cx: &mut App) -> Option<SaveRequest> {
+        let Body::Editing { editor, .. } = &self.body else {
+            return None;
+        };
+        let kind = match mode {
+            SaveMode::Ask => SaveKind::Checked,
+            SaveMode::Overwrite | SaveMode::Always => SaveKind::Overwrite,
+        };
+        editor.update(cx, |editor, cx| editor.take_save(kind, cx))
+    }
+
+    /// A save of the text as it is on disk already: for Save again without edits.
+    fn unchanged(&self, cx: &App) -> SaveRequest {
+        let revision = self.editor().map_or(0, |editor| editor.read(cx).revision());
+        SaveRequest { base: revision, revision, edits: Vec::new(), kind: SaveKind::Overwrite }
+    }
+
+    /// Writes the edits of `request` and answers the panel.
+    fn write_request(&mut self, request: SaveRequest, mode: SaveMode, cx: &mut App) {
+        let answer = self.write_out(&request, mode);
+        self.answer(answer, cx);
+    }
+
+    fn answer(&self, answer: Cast, cx: &mut App) {
+        if let Body::Editing { editor, .. } = &self.body {
+            editor.update(cx, |editor, cx| editor.handle(answer, cx));
+        }
+    }
+
+    /// Writes the scratch's text with `request`'s edits; the answer to the panel, whose bar shows why a save
+    /// failed. A scratch deleted on disk gets this tab's own bar too, which can write it again or close the tab.
+    fn write_out(&mut self, request: &SaveRequest, mode: SaveMode) -> Cast {
+        let failed = |reason: &str| Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Io(reason.to_owned()) };
+        let Body::Editing { save, .. } = &self.body else {
+            return failed("the scratch is read-only");
         };
         let (store, name) = (&self.target.store, &self.target.scratch.name);
-        let revision = editor.read(cx).revision();
-        match save.action(revision, store.stamp(name).ok(), mode) {
-            SaveAction::Nothing => Ok(Saved::Nothing),
-            SaveAction::Conflict => Err(Bar::ChangedOnDisk),
-            SaveAction::Deleted => Err(Bar::DeletedOnDisk),
-            SaveAction::Write => {
-                // an editing scratch's panel is always in Edit mode, which has the text
-                let Some(text) = editor.read(cx).text(cx) else {
-                    return Ok(Saved::Nothing);
-                };
-                let written = store.write(name, &text, *ending).inspect_err(log_error);
-                save.saved(revision, written.map_err(|error| Bar::Failed(error.to_string()))?);
-                Ok(Saved::Written)
+        match save.action(request.revision, store.stamp(name).ok(), mode) {
+            SaveAction::Nothing => failed("the scratch is being deleted"),
+            SaveAction::Conflict => {
+                // the panel's bar asks now
+                self.bar.take_if(|bar| matches!(bar, Bar::ChangedOnDisk));
+                Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Conflict }
             }
+            SaveAction::Deleted => {
+                self.bar = Some(Bar::DeletedOnDisk);
+                failed("deleted on disk")
+            }
+            SaveAction::Write => self.write_edits(request),
+        }
+    }
+
+    fn write_edits(&mut self, request: &SaveRequest) -> Cast {
+        let Body::Editing { ending, save, text, .. } = &mut self.body else {
+            return Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Io("the scratch is read-only".to_owned()) };
+        };
+        let new_text = spliced(text, &request.edits);
+        match self.target.store.write(&self.target.scratch.name, &new_text, *ending).inspect_err(log_error) {
+            Ok(stamp) => {
+                save.saved(request.revision, stamp);
+                *text = new_text;
+                // a bar about the file stays until a write settles it
+                self.bar.take_if(|bar| !matches!(bar, Bar::Refused(_)));
+                Cast::Saved { revision: request.revision, source: Arc::new(TextSource::new(text)) }
+            }
+            Err(error) => Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Io(error.to_string()) },
         }
     }
 
     /// On release there is no bar left to show: write errors go to stderr, and the user's edits win over a
     /// change on disk.
-    fn flush(&mut self, cx: &App) {
-        let _ = self.write_out(SaveMode::Overwrite, cx);
+    fn flush(&mut self, cx: &mut App) {
+        self.save_with(SaveMode::Overwrite, cx);
     }
 
     /// Drops unsaved edits and shows the file as it is on disk.
     fn reload(&mut self, cx: &mut Context<Self>) {
         let read = self.target.store.read(&self.target.scratch.name);
         self.bar = match (read, &mut self.body) {
-            (Ok(ScratchContent::Editable { text, ending, stamp }), Body::Editing { editor, ending: current, save }) => {
+            (Ok(ScratchContent::Editable { text, ending, stamp }), Body::Editing { editor, ending: current, save, text: base }) => {
                 let content = edited(&self.target.scratch.name, &text, ending);
                 editor.update(cx, |editor, cx| editor.handle(Cast::Open(content), cx));
                 *current = ending;
                 *save = SaveState::new(editor.read(cx).revision(), stamp);
+                *base = text;
                 None
             }
             (Ok(_), _) => Some(Bar::Failed("the file is now too large or not UTF-8; reopen the tab to view it".to_owned())),
@@ -410,7 +450,6 @@ impl ScratchView {
     }
 
     fn forget(&mut self) {
-        self.save_task = None;
         if let Body::Editing { save, .. } = &mut self.body {
             save.forget();
         }
@@ -424,7 +463,6 @@ impl ScratchView {
     /// Saves, then runs in a new terminal; a failed save stops it, and so does a change on disk, with or without
     /// unsaved edits: what runs is what the editor shows.
     fn run(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.save_task = None;
         if let Err(bar) = self.settle_for_run(cx) {
             self.bar = Some(bar);
             cx.notify();
@@ -453,7 +491,16 @@ impl ScratchView {
             Some(DiskAction::Deleted) => return Err(Bar::DeletedOnDisk),
             Some(DiskAction::Unchanged) | None => {}
         }
-        self.write_out(SaveMode::Ask, cx).map(|_| ())
+        let Some(request) = self.take_request(SaveMode::Ask, cx) else {
+            return Ok(());
+        };
+        let answer = self.write_out(&request, SaveMode::Ask);
+        let saved = matches!(answer, Cast::Saved { .. });
+        self.answer(answer, cx);
+        if saved {
+            return Ok(());
+        }
+        Err(self.bar.take().unwrap_or(Bar::Failed("not run: the scratch could not be saved".to_owned())))
     }
 
     fn show_failure(&mut self, reason: String, cx: &mut Context<Self>) {
@@ -503,7 +550,7 @@ impl ScratchView {
                 .child(bar_button(
                     "scratch-overwrite",
                     "Overwrite",
-                    cx.listener(|view, _: &ClickEvent, _window, cx| view.save_with(SaveMode::Overwrite, cx)),
+                    cx.listener(|view, _: &ClickEvent, _window, cx| view.save_shown(SaveMode::Overwrite, cx)),
                     cx,
                 )),
             Bar::DeletedOnDisk => row
@@ -511,7 +558,7 @@ impl ScratchView {
                 .child(bar_button(
                     "scratch-save-again",
                     "Save again",
-                    cx.listener(|view, _: &ClickEvent, _window, cx| view.save_with(SaveMode::Always, cx)),
+                    cx.listener(|view, _: &ClickEvent, _window, cx| view.save_shown(SaveMode::Always, cx)),
                     cx,
                 ))
                 .child(bar_button("scratch-close", "Close", cx.listener(|view, _: &ClickEvent, window, cx| view.close_unsaved(window, cx)), cx)),
@@ -557,6 +604,28 @@ impl Render for ScratchView {
             .children(self.render_bar(theme, cx))
             .child(self.render_body(theme))
     }
+}
+
+/// How a save the panel asked for treats a change on disk.
+fn mode_of(kind: SaveKind) -> SaveMode {
+    match kind {
+        SaveKind::Checked => SaveMode::Ask,
+        SaveKind::Overwrite => SaveMode::Overwrite,
+    }
+}
+
+/// `text` with `edits` (sorted, in its bytes) applied: a scratch is small enough to splice in memory.
+fn spliced(text: &str, edits: &[Edit]) -> String {
+    let mut bytes = Vec::with_capacity(text.len());
+    let mut kept_from = 0;
+    for edit in edits {
+        bytes.extend_from_slice(&text.as_bytes()[kept_from..edit.bytes.start as usize]);
+        bytes.extend_from_slice(&edit.text);
+        kept_from = edit.bytes.end as usize;
+    }
+    bytes.extend_from_slice(&text.as_bytes()[kept_from..]);
+    // edits typed into UTF-8 text are UTF-8
+    String::from_utf8(bytes).unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned())
 }
 
 fn limit(ending: LineEnding) -> SizeLimit {
@@ -700,6 +769,19 @@ mod tests {
 
         // then
         assert_eq!(state.action(9, None, SaveMode::Always), SaveAction::Nothing);
+    }
+
+    #[test]
+    fn should_splice_edits_into_the_scratch_text() {
+        // given
+        let text = "one\ntwo\nthree\n";
+        let edits = [Edit { bytes: 0..3, text: b"ONE".to_vec() }, Edit { bytes: 8..8, text: "é\n".as_bytes().to_vec() }];
+
+        // when
+        let new_text = spliced(text, &edits);
+
+        // then
+        assert_eq!(new_text, "ONE\ntwo\né\nthree\n");
     }
 
     #[test]

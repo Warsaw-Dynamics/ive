@@ -29,10 +29,14 @@ pub enum Cast {
     /// the answer to [`Event::NeedParse`]; in View mode one for an older revision than the panel's is dropped, in
     /// Edit mode it is shown moved by the edits made since
     Parsed { target: ParseTarget, revision: u64, syntax: Syntax },
-    /// the answer to [`Event::SaveRequested`]; `source` is the rewritten file, when it was rewritten
-    Saved { revision: u64, source: Option<Arc<dyn LineSource>> },
+    /// the answer to [`Event::SaveRequested`]: `source` is the text as saved, read again (an in-place write may have
+    /// moved what the old one's line index points at)
+    Saved { revision: u64, source: Arc<dyn LineSource> },
+    /// the edits stay; the bar says why, and the next pause or flush tries again
     SaveFailed { revision: u64, reason: SaveFailure },
     Command(Command),
+    /// types the text at the caret as the keyboard would, `\r` a line break; refused over the size limit
+    Type(String),
     /// scrolls line `line` (from 1) into view and marks it
     RevealLine(usize),
     /// the file went away on disk; its text stays
@@ -97,9 +101,29 @@ pub enum Event {
     NeedParse(ParseJob),
     /// a diff file came on screen: the host answers [`Cast::SetTexts`]
     NeedTexts { file: usize },
-    /// `edits` turn the text of revision `base` into that of `revision`
-    SaveRequested { base: u64, revision: u64, edits: Vec<Edit> },
+    /// the host writes the edits and answers [`Cast::Saved`] or [`Cast::SaveFailed`]; one at a time
+    SaveRequested(SaveRequest),
+    /// the user chose Reload on a conflict: the host opens the text again, dropping the edits
+    ReloadRequested,
     OpenAt { path: PathBuf, line: usize },
+}
+
+/// `edits` turn the text of revision `base` into that of `revision`: sorted, non-overlapping, in `base`'s bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveRequest {
+    pub base: u64,
+    pub revision: u64,
+    pub edits: Vec<Edit>,
+    pub kind: SaveKind,
+}
+
+/// What a save may write over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveKind {
+    /// only the file as last read or saved; anything else is [`SaveFailure::Conflict`]
+    Checked,
+    /// whatever is there: the user chose Overwrite on a conflict
+    Overwrite,
 }
 
 /// One change to a saved text: `bytes` of it, as of the save's base revision, become `text`, stored as given (not

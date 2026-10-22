@@ -7,6 +7,7 @@
 
 use std::fmt;
 use std::ops::Range;
+use std::sync::Arc;
 
 use tree_sitter::InputEdit;
 
@@ -186,14 +187,14 @@ impl EditorModel {
         self.table.line_count()
     }
 
-    /// The whole text of a scratch, for saving it: one with a size limit, which bounds it; `None` for a file.
-    pub fn scratch_text(&self) -> Option<String> {
-        self.limit.map(|_| String::from_utf8_lossy(&self.table.bytes(0..self.table.byte_len())).into_owned())
-    }
-
-    /// The changes since the text the model was opened with, in its byte offsets.
+    /// The changes since the base (the text as opened or last saved), in its byte offsets.
     pub fn edits_since_base(&self) -> Vec<panel::Edit> {
         self.table.edits_since_base()
+    }
+
+    /// See [`PieceTable::rebase`]; the text, caret and history stay.
+    pub fn rebase(&mut self, base: Arc<dyn panel::LineSource>, saved: &[panel::Edit]) {
+        self.table.rebase(base, saved);
     }
 
     pub fn caret(&self) -> Position {
