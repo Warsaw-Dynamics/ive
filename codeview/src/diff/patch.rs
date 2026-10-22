@@ -54,12 +54,14 @@ pub(crate) fn base_line(edits: &[LineEdit], now: usize) -> Option<usize> {
 
 /// `hunks`, a diff of the base, with `edits` applied; `line(n)` is line `n` of the edited text as a row shows it.
 pub(crate) fn patched(hunks: &[Hunk], edits: &[LineEdit], line: &dyn Fn(usize) -> String) -> Vec<Hunk> {
-    let mut patch = Patch { edits, line, next: 0, growth: 0, seen: 0, hunks: Vec::new() };
+    let mut patch = Patch { edits, line, next: 0, growth: 0, seen: 0, flushed_end: 0, hunks: Vec::new() };
     for hunk in hunks {
         patch.hunks.push(Hunk { header: hunk.header.clone(), lines: Vec::new() });
         for diff_line in &hunk.lines {
             patch.take(diff_line);
         }
+        // an edit of the hunk's lines shows in the hunk, not at the start of the next one
+        patch.flush_started();
     }
     patch.flush_until(usize::MAX);
     patch.hunks.retain(|hunk| !hunk.lines.is_empty());
@@ -76,6 +78,8 @@ struct Patch<'a> {
     growth: isize,
     /// one past the last base line taken
     seen: usize,
+    /// one past the last base line the edits added so far replace
+    flushed_end: usize,
     hunks: Vec<Hunk>,
 }
 
@@ -91,7 +95,7 @@ impl Patch<'_> {
         let base = number as usize - 1;
         self.seen = base + 1;
         self.flush_until(base);
-        let replaced = self.edits.get(self.next).is_some_and(|edit| edit.base.contains(&base));
+        let replaced = base < self.flushed_end || self.edits.get(self.next).is_some_and(|edit| edit.base.contains(&base));
         match (replaced, line.kind) {
             (true, LineKind::Context) => self.push(DiffLine { kind: LineKind::Removed, new: None, ..line.clone() }),
             // an added line an edit replaced is added again as it is now
@@ -103,12 +107,25 @@ impl Patch<'_> {
     /// Adds the lines of the edits that end at base line `base` or before it.
     fn flush_until(&mut self, base: usize) {
         while let Some(edit) = self.edits.get(self.next).filter(|edit| edit.base.end <= base) {
-            for now in edit.now.clone() {
-                self.push(DiffLine { kind: LineKind::Added, old: None, new: Some(now as u32 + 1), text: (self.line)(now) });
-            }
-            self.growth = edit.now.end as isize - edit.base.end as isize;
-            self.next += 1;
+            self.add(edit);
         }
+    }
+
+    /// Adds the lines of the edits that start before the last base line taken.
+    fn flush_started(&mut self) {
+        while let Some(edit) = self.edits.get(self.next).filter(|edit| edit.base.start < self.seen) {
+            self.add(edit);
+        }
+    }
+
+    /// Adds the lines `edit` made; the base lines it replaced are not shown as they were any more.
+    fn add(&mut self, edit: &LineEdit) {
+        for now in edit.now.clone() {
+            self.push(DiffLine { kind: LineKind::Added, old: None, new: Some(now as u32 + 1), text: (self.line)(now) });
+        }
+        self.growth = edit.now.end as isize - edit.base.end as isize;
+        self.flushed_end = edit.base.end;
+        self.next += 1;
     }
 
     fn push(&mut self, line: DiffLine) {
@@ -215,6 +232,24 @@ mod tests {
 
         // then
         assert_eq!(rows(&hunks), [('+', None, Some(1), "a".to_owned()), ('+', None, Some(6), "late".to_owned())]);
+    }
+
+    #[test]
+    fn should_keep_an_edited_last_context_line_in_its_own_hunk() {
+        // given
+        let context = |n: u32, text: &str| line(LineKind::Context, Some(n), Some(n), text);
+        let first = Hunk { header: "@@ -1,3 +1,3 @@".to_owned(), lines: vec![context(1, "a"), line(LineKind::Added, None, Some(2), "b"), context(3, "c")] };
+        let second = Hunk { header: "@@ -20,2 +20,2 @@".to_owned(), lines: vec![context(20, "t"), line(LineKind::Added, None, Some(21), "u")] };
+        // "c", the first hunk's last line, is edited
+        let edits = [LineEdit { base: 2..3, now: 2..3 }];
+
+        // when
+        let hunks = patched(&[first, second], &edits, &|_| "c!".to_owned());
+
+        // then
+        let in_first = rows(&hunks[..1]);
+        assert_eq!(in_first.last(), Some(&('+', None, Some(3), "c!".to_owned())));
+        assert_eq!(rows(&hunks[1..]), [(' ', Some(20), Some(20), "t".to_owned()), ('+', None, Some(21), "u".to_owned())]);
     }
 
     #[test]
