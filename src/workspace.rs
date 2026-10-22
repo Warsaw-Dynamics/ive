@@ -449,9 +449,9 @@ impl Workspace {
         self.tab_shown(window, cx);
     }
 
+    /// Closes tab `id`; a file tab once its edits are saved, see [`Self::close_tabs`].
     pub fn close_tab(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
-        self.tabs.close(id);
-        self.tab_shown(window, cx);
+        self.close_tabs(vec![id], window, cx);
     }
 
     /// Makes temporary tab `id` stay when another is shown.

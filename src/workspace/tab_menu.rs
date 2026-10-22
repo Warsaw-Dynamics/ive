@@ -151,8 +151,11 @@ impl Workspace {
             Builtin::CloseTabsToTheRight => Beside::Right,
             _ => return,
         };
-        self.tabs.close_beside(tab, beside);
+        // file tabs with edits close once those are saved
+        let waiting: Vec<_> = self.tabs.ids_beside(tab, beside).into_iter().filter(|id| self.is_unsettled(*id, cx)).collect();
+        self.tabs.close_beside(tab, beside, &waiting);
         self.tab_shown(window, cx);
+        self.close_when_saved(waiting, window, cx);
     }
 
     /// Stop and Kill: a process tab's process ends for good (its tab closes with it); any other tab just closes, so

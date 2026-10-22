@@ -172,9 +172,24 @@ impl<T> Tabs<T> {
         Some(item)
     }
 
-    /// Closes the row's tabs `which` of tab `id`, detached ones staying; when the shown tab was among them, `id` is
-    /// shown instead.
-    pub fn close_beside(&mut self, id: TabId, which: Beside) -> Vec<T> {
+    /// Closes the row's tabs `which` of tab `id` but `kept`, detached ones staying; when the shown tab was among them,
+    /// `id` is shown instead.
+    pub fn close_beside(&mut self, id: TabId, which: Beside, kept: &[TabId]) -> Vec<T> {
+        let closing = self.ids_beside(id, which);
+        let (closed, staying): (Vec<_>, Vec<_>) =
+            std::mem::take(&mut self.entries).into_iter().partition(|(entry, _)| closing.contains(entry) && kept.iter().all(|kept| kept != entry));
+        self.entries = staying;
+        if self.temporary.is_some_and(|temporary| self.index_of(temporary).is_none()) {
+            self.temporary = None;
+        }
+        if self.active.is_some_and(|active| self.index_of(active).is_none()) {
+            self.active = Some(id);
+        }
+        closed.into_iter().map(|(_, item)| item).collect()
+    }
+
+    /// The row's tabs `which` of tab `id`, which is never among them.
+    pub fn ids_beside(&self, id: TabId, which: Beside) -> Vec<TabId> {
         let Some(index) = self.index_of(id) else {
             return Vec::new();
         };
@@ -183,16 +198,7 @@ impl<T> Tabs<T> {
             Beside::Right => index + 1..self.entries.len(),
             Beside::Others => 0..self.entries.len(),
         };
-        let (closed, kept): (Vec<_>, Vec<_>) =
-            std::mem::take(&mut self.entries).into_iter().enumerate().partition(|(place, (entry, _))| range.contains(place) && *entry != id);
-        self.entries = kept.into_iter().map(|(_, entry)| entry).collect();
-        if self.temporary.is_some_and(|temporary| self.index_of(temporary).is_none()) {
-            self.temporary = None;
-        }
-        if self.active.is_some_and(|active| self.index_of(active).is_none()) {
-            self.active = Some(id);
-        }
-        closed.into_iter().map(|(_, (_, item))| item).collect()
+        self.entries[range].iter().map(|(entry, _)| *entry).filter(|entry| *entry != id).collect()
     }
 
     /// Whether [`close_beside`](Self::close_beside) would close any tab.
@@ -486,6 +492,21 @@ mod tests {
     }
 
     #[test]
+    fn should_keep_the_tabs_asked_to_stay_when_closing_the_others() {
+        // given
+        let mut tabs = Tabs::default();
+        tabs.open("a");
+        let b = tabs.open("b");
+        let c = tabs.open("c");
+
+        // when
+        let closed = tabs.close_beside(b, Beside::Others, &[c]);
+
+        // then
+        assert_eq!((closed, titles(&tabs)), (vec!["a"], vec!["b".to_owned(), "[c]".to_owned()]));
+    }
+
+    #[test]
     fn should_close_the_tabs_left_of_a_tab_keeping_the_shown_one() {
         // given
         let mut tabs = Tabs::default();
@@ -494,7 +515,7 @@ mod tests {
         tabs.open("c");
 
         // when
-        let closed = tabs.close_beside(b, Beside::Left);
+        let closed = tabs.close_beside(b, Beside::Left, &[]);
 
         // then
         assert_eq!((closed, titles(&tabs)), (vec!["a"], vec!["b".to_owned(), "[c]".to_owned()]));
@@ -509,7 +530,7 @@ mod tests {
         tabs.open("c");
 
         // when
-        tabs.close_beside(a, Beside::Right);
+        tabs.close_beside(a, Beside::Right, &[]);
 
         // then
         assert_eq!(titles(&tabs), ["[a]"]);
@@ -526,7 +547,7 @@ mod tests {
         tabs.open_temporary("t");
 
         // when
-        tabs.close_beside(b, Beside::Others);
+        tabs.close_beside(b, Beside::Others, &[]);
 
         // then
         assert_eq!((titles(&tabs), tabs.is_detached(d), tabs.is_temporary(b)), (vec!["[b]".to_owned()], true, false));

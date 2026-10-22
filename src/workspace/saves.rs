@@ -1,5 +1,6 @@
 //! Edits reach the disk without the user saving: the workspace asks every editing panel to save now when the user
-//! turns away from it (another tab, another window), before a run, and before quitting, which waits for the saves.
+//! turns away from it (another tab, another window), before a run, and before quitting or closing its tab, which
+//! wait for the saves.
 
 use std::time::Duration;
 
@@ -62,11 +63,68 @@ impl Workspace {
         self.activate_tab(tab, window, cx);
         cx.notify();
     }
+
+    /// Closes tabs `ids` as quitting does: a file tab with edits is flushed and closes once its saves landed; one
+    /// whose edits cannot be saved stays, shown with the reason. Other tabs close at once.
+    pub fn close_tabs(&mut self, ids: Vec<TabId>, window: &mut Window, cx: &mut Context<Self>) {
+        let (waiting, settled): (Vec<_>, Vec<_>) = ids.into_iter().partition(|id| self.is_unsettled(*id, cx));
+        for id in settled {
+            self.tabs.close(id);
+        }
+        // flushes the waiting tabs' edits
+        self.tab_shown(window, cx);
+        self.close_when_saved(waiting, window, cx);
+    }
+
+    /// Whether tab `id` is a file tab whose edits are not on disk yet: waiting for a pause, in flight, or failed.
+    pub(super) fn is_unsettled(&self, id: TabId, cx: &App) -> bool {
+        match self.tabs.get(id) {
+            Some(Tab::Document(file)) => file.panel.read(cx).has_unsaved(cx) || file.panel.read(cx).is_saving(),
+            _ => false,
+        }
+    }
+
+    /// Closes the flushed file tabs `ids` once their saves landed, unless edits stay unsaved.
+    pub(super) fn close_when_saved(&mut self, ids: Vec<TabId>, window: &mut Window, cx: &mut Context<Self>) {
+        if ids.is_empty() {
+            return;
+        }
+        cx.spawn_in(window, async move |workspace, cx| {
+            tabs_saved(&workspace, &ids, cx).await;
+            let _ = workspace.update_in(cx, |workspace, window, cx| workspace.close_saved_tabs(&ids, window, cx));
+        })
+        .detach();
+    }
+
+    /// Closes the tabs of `ids` whose edits are all saved; the first of the others is shown, with the reason.
+    fn close_saved_tabs(&mut self, ids: &[TabId], window: &mut Window, cx: &mut Context<Self>) {
+        let (unsaved, saved): (Vec<TabId>, Vec<TabId>) = ids.iter().partition(|id| self.is_unsettled(**id, cx));
+        for id in saved {
+            self.tabs.close(id);
+        }
+        match unsaved.first() {
+            Some(tab) => self.activate_tab(*tab, window, cx),
+            None => self.tab_shown(window, cx),
+        }
+        cx.notify();
+    }
+
+    /// Whether a save of one of tabs `ids` is in flight.
+    fn is_saving_any_of(&self, ids: &[TabId], cx: &App) -> bool {
+        self.editing_panels(cx).iter().any(|(id, panel)| ids.contains(id) && panel.read(cx).is_saving())
+    }
 }
 
 /// Waits until no panel of `workspace` has a save in flight, or the workspace is gone.
 pub(super) async fn saves_landed(workspace: &WeakEntity<Workspace>, cx: &mut AsyncWindowContext) {
     while workspace.read_with(cx, |workspace, cx| workspace.is_saving(cx)).unwrap_or(false) {
+        cx.background_executor().timer(SAVE_POLL).await;
+    }
+}
+
+/// Waits until no save of tabs `ids` is in flight, or the workspace is gone.
+async fn tabs_saved(workspace: &WeakEntity<Workspace>, ids: &[TabId], cx: &mut AsyncWindowContext) {
+    while workspace.read_with(cx, |workspace, cx| workspace.is_saving_any_of(ids, cx)).unwrap_or(false) {
         cx.background_executor().timer(SAVE_POLL).await;
     }
 }

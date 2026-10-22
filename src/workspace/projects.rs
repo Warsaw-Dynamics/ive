@@ -374,9 +374,8 @@ impl Workspace {
             .filter(|(_, tab)| tab.project(self).as_ref() == Some(id))
             .map(|(tab_id, _)| tab_id)
             .collect();
-        for tab in tabs {
-            self.tabs.close(tab);
-        }
+        // file tabs with edits close once those are saved
+        self.close_tabs(tabs, window, cx);
         let processes: Vec<_> = self.processes.in_project(id).iter().map(|process| process.id).collect();
         for process in processes {
             if let Some(found) = self.processes.get(process) {
