@@ -13,6 +13,11 @@ right; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Sett
 
 `include.js` and `vendor/alpine.min.js` are copied from `forge-installer/mock`.
 
+`checkouts.html` shows the code view too (DESIGN.md "Code view: diffs, editing, saving", 2026-10-22): diff and commit
+tabs toggle Inline | Side by side (remembered for the session), code is coloured, files and scratches edit with a
+"saving…" state and no Ctrl+S, the new side of an uncommitted diff edits, and the `mock: save` bar at the bottom
+shows the conflict bar, the error bar and "Close without saving". Files over 8 MiB show without colours.
+
 `checkouts.html` (design notes: [DESIGN.md](DESIGN.md)) mocks the app as it is now (synced with the Rust code on
 2026-10-20): projects and worktrees in one sidebar, each worktree with its folders: Processes (terminals, Claude
 Code, every run), Uncommitted, Since base, Commits and Files; the badges on the worktree row show or hide them

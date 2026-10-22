@@ -24,6 +24,14 @@
           <div class="fill" x-include="components/checkouts/sidebar.html"></div>
           <div class="fill" x-include="components/checkouts/editor.html"></div>
         </main>
+        <!-- mock-only: save states of the shown file, scratch or uncommitted diff tab (codeview "Saving") -->
+        <nav class="mock-bar mock-bar--save" aria-label="Mock controls">
+          <span>mock: save</span>
+          <button type="button" @click="mockSave('disk')" title="The file changed on disk: Reload, Overwrite">conflict</button>
+          <button type="button" @click="mockSave('big')" title="A file over 8 MiB: only Reload">conflict (&gt; 8 MiB)</button>
+          <button type="button" @click="mockSave('error')" title="cannot save: Permission denied; then close the tab">error</button>
+          <button type="button" @click="mockSave(null)">clear</button>
+        </nav>
         <!-- mock-only: back to the single-project mock -->
         <a class="mock-back" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file">← index</a>
         <!-- mock-only: compare looks of the folder counts -->

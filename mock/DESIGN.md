@@ -405,3 +405,32 @@ Editor › Color Scheme pages (read-only once colours moved to `init.rn`).
   diff tabs' underline.
 - "● N running" remains on the project tree row and worktree cards.
 - Databases: IntelliJ's toolbar and "1 of N" database counts are not mocked.
+
+## Code view: diffs, editing, saving
+
+Added 2026-10-22, from `docs/superpowers/specs/2026-10-22-codeview-crate-design.md` (the `codeview` crate). Code is in
+`checkouts.js` (tokeniser, `diffRows`, `sideRows`, saving states), `components/checkouts/diff-lines.html` and
+`savebar.html`; colours are the `--syn-*` tokens in `mock.css`.
+
+- **Diff layouts.** Diff tabs and commit tabs have an Inline | Side by side toggle in their header. Side by side shows the
+  old text left and the new right in one vertical scroll, with line numbers per side; removed lines are red-tinted on the
+  left, added lines green-tinted on the right. A run of removed lines is paired line by line with the added lines that
+  follow it; the shorter side gets empty filler cells. Hunk headers and file headers span both sides. The layout is per
+  tab; a newly opened diff or commit tab starts with the layout last toggled (`diffLayout`, kept in the hash as `dl=side`).
+- **Colours.** Code is coloured in diffs (both layouts) and in the editor: keywords, strings, comments, types and numbers.
+  The app's theme has no syntax colours in the mock's source, so `mock.css` defines a plausible set (`--syn-kw`,
+  `--syn-str`, `--syn-com`, `--syn-type`, `--syn-num`, dark and light). In a diff the old side (context and removed rows)
+  and the new side (context and added rows) are tokenised separately, so a removed row has the old file's colours.
+- **Files over 8 MiB** show without colours (the `codeview` highlight limit); the status line says "over 8 MiB: no
+  colours". The 10M-line file in `index.html` shows the same note.
+- **Editing and saving, no Ctrl+S.** File tabs and scratches are editable (a transparent textarea over the coloured lines);
+  there is no dirty marker. A muted "saving…" shows while typing and clears about 0.5 s after the last key.
+- **Conflict.** "<file> changed on disk" with Reload and Overwrite; for a file over 8 MiB only Reload.
+- **Error.** "cannot save <file>: Permission denied"; the edits are kept and saving is retried after the next pause.
+- **Close without saving.** Closing a tab whose save failed or conflicts does not close it: its bar adds "Close without
+  saving (edits are lost)", which does.
+- Mock-only: the `mock: save` bar at the bottom puts the shown file, scratch or uncommitted diff tab in the conflict,
+  large-file conflict or error state, or clears it (hash: `save=disk|big|error`, `closing=1`, read but not written).
+- **Editable uncommitted diff.** In a single-file diff of uncommitted changes the new side (context and added rows, right
+  side in Side by side) is editable (a caret, one line per row). Commit tabs, Since base diffs and the hub preview are
+  read-only: no caret, "read-only" in the header.

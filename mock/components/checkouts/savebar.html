@@ -1,0 +1,18 @@
+<!-- codeview save states (design: "Saving: IntelliJ-style, no Ctrl+S"). Needs tab. Mock bar buttons set them.
+     Conflict: the file changed on disk; Reload, Overwrite (not for files over 8 MiB). Error: the save failed, the edits
+     stay and saving is retried after the next pause. Closing such a tab adds "Close without saving". -->
+<template x-if="tab.conflict || tab.error">
+  <div class="savebar" :class="tab.conflict ? 'savebar--conflict' : 'savebar--error'" role="alert">
+    <span class="savebar__text" x-text="saveBarText(tab)"></span>
+    <template x-if="tab.conflict">
+      <span class="savebar__actions">
+        <button class="toggle" type="button" @click="resolveConflict(tab)" title="Take the text on disk"><span>Reload</span></button>
+        <template x-if="isBig(tab) === false"><button class="toggle" type="button" @click="resolveConflict(tab)" title="Write the editor's text over the file"><span>Overwrite</span></button></template>
+        <template x-if="isBig(tab)"><span class="muted savebar__note">over 8 MiB: only Reload</span></template>
+      </span>
+    </template>
+    <template x-if="tab.closing">
+      <button class="toggle savebar__close" type="button" @click="closeWithoutSaving(tab)"><span>Close without saving (edits are lost)</span></button>
+    </template>
+  </div>
+</template>

@@ -103,9 +103,16 @@
         <span class="diffpane__name diffpane__name--full" x-text="tab.path"></span>
         <span class="muted diffpane__source" x-text="sourceText(checkout(tab.co), tab.source)"></span>
         <template x-if="d === null"><span class="muted diffpane__source" x-text="'No changes to ' + tab.path + ' any more.'"></span></template>
+        <span class="diffpane__state muted" x-text="tab.conflict || tab.error ? '' : tab.saving ? 'saving…' : isEditable(tab) ? 'editable' : 'read-only'"
+              :title="isEditable(tab) ? 'The new side is editable; saved as you type, no Ctrl+S' : 'Read-only: only a diff of uncommitted changes can be edited'"></span>
+        <div class="segmented" role="group" aria-label="Diff layout">
+          <button type="button" :aria-pressed="String(layoutOf(tab) === 'inline')" @click="setLayout(tab, 'inline')">Inline</button>
+          <button type="button" :aria-pressed="String(layoutOf(tab) === 'side')" @click="setLayout(tab, 'side')">Side by side</button>
+        </div>
         <button class="toggle" type="button"><img class="icon" :src="icon('history.svg')" alt="" /><span>Reload</span></button>
       </div>
-      <div class="diff" x-data="{ get rows() { return d ? diffRows(d.diff) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
+      <div x-include="components/checkouts/savebar.html"></div>
+      <div class="diff" x-data="{ get rows() { return d ? diffRows(d.diff, tab.path) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
     </div>
   </template>
 
@@ -120,15 +127,27 @@
           </template>
         </div>
       </template>
+      <div x-include="components/checkouts/savebar.html"></div>
+      <!-- A textarea over the coloured lines types into the text; it is as tall and wide as the text, so the box scrolls both. -->
       <div class="editor editor--static" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
-        <template x-for="(text, i) in lines(tab)" :key="i">
-          <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->
-          <div class="editor__line" :class="{ 'editor__line--at': tab.line === i + 1 }"
-               x-effect="tab.line === i + 1 && $nextTick(() => $el.scrollIntoView({ block: 'center' }))">
-            <span class="editor__number" x-text="i + 1"></span>
-            <span class="editor__text" x-text="text"></span>
-          </div>
-        </template>
+        <div class="editor__sheet" :style="{ height: lines(tab).length * 21 + 'px', width: editorWidth(tab) }">
+          <template x-for="(tokens, i) in codeLines(tab)" :key="i">
+            <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->
+            <div class="editor__line" :class="{ 'editor__line--at': tab.line === i + 1 }"
+                 x-effect="tab.line === i + 1 && $nextTick(() => $el.scrollIntoView({ block: 'center' }))">
+              <span class="editor__number" x-text="i + 1"></span>
+              <span class="editor__text"><template x-for="(tk, j) in tokens" :key="j"><span :class="tk.k && 'syn-' + tk.k" x-text="tk.t"></span></template></span>
+            </div>
+          </template>
+          <textarea class="editor__input" spellcheck="false" wrap="off" :value="lines(tab).join('\n')" @input="edited(tab, $event.target.value)"
+                    :style="{ height: lines(tab).length * 21 + 'px' }"></textarea>
+        </div>
+      </div>
+      <div class="codestatus">
+        <span class="codestatus__save" x-text="tab.conflict || tab.error ? '' : tab.saving ? 'saving…' : ''"></span>
+        <span class="muted" :title="isBig(tab) ? 'Files over 8 MiB are shown without colours' : 'Files over 8 MiB are shown without colours'"
+              x-text="isBig(tab) ? 'over 8 MiB: no colours' : languageName(tab)"></span>
+        <span class="muted">UTF-8</span>
       </div>
     </div>
   </template>

@@ -322,10 +322,66 @@
     return null;
   }
 
+  // ---- syntax colours (codeview/src/syntax.rs; the mock tokenises with regular expressions) ----
+  // Files over 8 MiB (MAX_HIGHLIGHT_BYTES) are shown without colours.
+  var C_KEYWORDS = 'as async await break case class const continue crate default def do else elif enum export extends fn for from function if impl import in let loop match mod move mut new null pub ref return self static struct super switch trait true false type typeof use var where while yield defmodule defp'.split(' ');
+  var LANGUAGES = {
+    rs: { line: '//', block: true }, js: { line: '//', block: true }, ts: { line: '//', block: true }, java: { line: '//', block: true },
+    ex: { line: '#' }, py: { line: '#' }, sh: { line: '#' }, bash: { line: '#' }, toml: { line: '#', keywords: false }, yml: { line: '#', keywords: false },
+    yaml: { line: '#', keywords: false }, json: { line: null, keywords: false }
+  };
+  var TOKEN = /(\/\/.*|#.*)|("(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.){0,2}'?)|(\b\d[\d_.]*\b)|(\b[A-Z][A-Za-z0-9_]*\b)|(\b[a-z_][A-Za-z0-9_]*\b)/y;
+
+  function languageOf(path) {
+    var m = /\.([A-Za-z0-9]+)$/.exec(path || '');
+    return m ? LANGUAGES[m[1].toLowerCase()] || null : null;
+  }
+
+  // Tokens of one line: [{ t: text, k: '' | 'kw' | 'str' | 'com' | 'type' | 'num' }]. `state.block`: inside /* … */ from an earlier line.
+  function highlightLine(text, lang, state) {
+    if (lang === null) return [{ t: text, k: '' }];
+    var out = [];
+    var plain = '';
+    var flush = function () { if (plain !== '') out.push({ t: plain, k: '' }); plain = ''; };
+    var at = 0;
+    while (at < text.length) {
+      if (state.block) {
+        var end = text.indexOf('*/', at);
+        var stop = end === -1 ? text.length : end + 2;
+        flush(); out.push({ t: text.slice(at, stop), k: 'com' });
+        if (end !== -1) state.block = false;
+        at = stop;
+        continue;
+      }
+      if (lang.block && text.startsWith('/*', at)) { state.block = true; continue; }
+      TOKEN.lastIndex = at;
+      var m = TOKEN.exec(text);
+      if (m === null) { plain += text[at]; at += 1; continue; }
+      var kind = m[1] !== undefined ? (lang.line !== null && text.startsWith(lang.line, at) ? 'com' : '') : m[2] !== undefined ? 'str' : m[3] !== undefined ? 'num'
+        : m[4] !== undefined ? (lang.keywords === false ? '' : 'type') : (lang.keywords !== false && C_KEYWORDS.includes(m[5]) ? 'kw' : '');
+      if (kind === '') plain += m[0]; else { flush(); out.push({ t: m[0], k: kind }); }
+      at += m[0].length;
+    }
+    flush();
+    return out.length ? out : [{ t: '', k: '' }];
+  }
+
+  // A text's lines as token lists; nothing is coloured when `coloured` is false (a file over 8 MiB).
+  function highlightLines(lines, path, coloured) {
+    var lang = coloured ? languageOf(path) : null;
+    var state = { block: false };
+    return lines.map(function (text) { return highlightLine(text, lang, state); });
+  }
+
   // diff_view.rs: hunk headers set the old and new line numbers; each line counts on its side(s).
-  function diffRows(lines) {
+  // Colours: the old side's lines (context and removed) are tokenised in order on their own, the new side's likewise,
+  // so a removed row has the old file's colours and an added or context row the new file's.
+  function diffRows(lines, path) {
     var old = 0;
     var now = 0;
+    var lang = languageOf(path);
+    var before = { block: false };
+    var after = { block: false };
     return lines.map(function (text) {
       var hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(text);
       if (hunk) { old = Number(hunk[1]); now = Number(hunk[2]); return { kind: 'hunk', text: text }; }
@@ -333,8 +389,33 @@
       var row = { kind: sign === '+' ? 'add' : sign === '-' ? 'del' : 'ctx', sign: sign === '+' || sign === '-' ? sign : ' ', text: text.slice(1) };
       row.old = sign === '+' ? '' : old++;
       row.now = sign === '-' ? '' : now++;
+      if (sign === '-') row.tokens = highlightLine(row.text, lang, before);
+      else if (sign === '+') row.tokens = highlightLine(row.text, lang, after);
+      else { row.tokens = highlightLine(row.text, lang, after); highlightLine(row.text, lang, before); }
       return row;
     });
+  }
+
+  // Side by side: one row per pair of cells. Context rows show on both sides; a run of removed lines is paired line by
+  // line with the added lines that follow it, the shorter side getting empty filler cells. Hunk headers span both sides.
+  function sideRows(rows) {
+    var out = [];
+    var at = 0;
+    var cell = function (r, side) { return { kind: r.kind, num: side === 'old' ? r.old : r.now, tokens: r.tokens, text: r.text }; };
+    var filler = { kind: 'fill', num: '', tokens: [], text: '' };
+    while (at < rows.length) {
+      var r = rows[at];
+      if (r.kind === 'hunk') { out.push({ kind: 'hunk', text: r.text }); at += 1; continue; }
+      if (r.kind === 'ctx') { out.push({ kind: 'pair', left: cell(r, 'old'), right: cell(r, 'new') }); at += 1; continue; }
+      var dels = [];
+      var adds = [];
+      while (at < rows.length && rows[at].kind === 'del') dels.push(rows[at++]);
+      while (at < rows.length && rows[at].kind === 'add') adds.push(rows[at++]);
+      for (var i = 0; i < Math.max(dels.length, adds.length); i++) {
+        out.push({ kind: 'pair', left: i < dels.length ? cell(dels[i], 'old') : filler, right: i < adds.length ? cell(adds[i], 'new') : filler });
+      }
+    }
+    return out;
   }
 
   // age.rs: now, N min, N h today; yesterday; 2–6 d; then the date.
@@ -440,6 +521,10 @@
         consoleCount: 0,
         tabs: [],
         focus: null,
+        // Mock-only: the diff layout last toggled (inline | side); a diff or commit tab opened later starts with it.
+        diffLayout: 'inline',
+        // Mock-only: the pause timers of "saving…"; a tab carries `saving`, `conflict` ('disk' | 'big'), `error`, `closing`.
+        savingTimers: {},
         // tabs.rs Tabs::temporary: the key of the tab that goes once another is shown; only ever the shown one.
         temporary: null,
         menu: null,
@@ -579,6 +664,8 @@
         counted: counted,
         distanceTags: distanceTags,
         diffRows: diffRows,
+        sideRows: sideRows,
+        highlightLines: highlightLines,
 
         // ---- model ----
         project: function (name) { return this.projects.find(function (p) { return p.name === name; }); },
@@ -691,6 +778,7 @@
         openTab: function (tab) {
           var open = this.tabs.find(function (t) { return t.key === tab.key; });
           if (open) { this.showTab(open); return; }
+          if ((tab.kind === 'diff' || tab.kind === 'commit') && tab.layout === undefined) tab.layout = this.diffLayout;
           this.tabs.splice(this.insertionIndex(), 0, tab);
           this.focus = tab.key;
           if (TEMPORARY_KINDS.includes(tab.kind)) this.temporary = tab.key;
@@ -735,6 +823,8 @@
         },
         // tabs.rs close: when it was shown, its right neighbour shows, or the left one at the end.
         closeTab: function (tab) {
+          // A tab whose save failed or conflicts keeps its edits: the bar first offers "Close without saving".
+          if ((tab.conflict || tab.error) && tab.closing !== true) { tab.closing = true; this.showTab(tab); return; }
           var at = this.tabs.indexOf(tab);
           this.keepTab(tab);
           this.tabs = this.tabs.filter(function (t) { return t !== tab; });
@@ -828,7 +918,62 @@
         tabUnderline: function (tab) {
           return tab.kind === 'diff' ? this.checkout(tab.co).colour : null;
         },
+        // ---- diff layout, editing and saving (codeview design: "Saving: IntelliJ-style, no Ctrl+S") ----
+        layoutOf: function (tab) { return tab.layout || this.diffLayout; },
+        setLayout: function (tab, layout) { tab.layout = layout; this.diffLayout = layout; },
+        // Only a single-file diff of uncommitted changes edits (its new side); commit tabs, since-base diffs and the hub preview are read-only.
+        isEditable: function (tab) {
+          if (tab.kind === 'diff') return tab.source === 'work';
+          return tab.kind === 'file' || tab.kind === 'scratch';
+        },
+        // Files over 8 MiB show without colours, and a conflict on them only offers Reload.
+        isBig: function (tab) { return tab.big === true; },
+        codeLines: function (tab) {
+          var lines = this.lines(tab);
+          return this.highlightLines(lines, tab.kind === 'scratch' ? tab.title : tab.path, this.isBig(tab) === false && lines.length < 5000);
+        },
+        languageName: function (tab) {
+          var m = /\.([A-Za-z0-9]+)$/.exec(tab.kind === 'scratch' ? tab.title : tab.path || '');
+          var names = { rs: 'Rust', js: 'JavaScript', ts: 'TypeScript', java: 'Java', ex: 'Elixir', py: 'Python', sh: 'Shell', bash: 'Shell', toml: 'TOML', yml: 'YAML', yaml: 'YAML', json: 'JSON', md: 'Markdown' };
+          return (m && names[m[1].toLowerCase()]) || 'Plain text';
+        },
+        // The text typed in an editor is kept at once; "saving…" shows until half a second after the last key.
+        edited: function (tab, value) {
+          if (tab.kind === 'scratch') this.scratch(tab.title).text = value;
+          else { var e = this.findFile(tab.co, tab.path); if (e) e.text = value; else tab.draft = value; }
+          this.touched(tab);
+        },
+        touched: function (tab) {
+          if (tab.conflict) return;
+          tab.saving = true;
+          clearTimeout(this.savingTimers[tab.key]);
+          this.savingTimers[tab.key] = setTimeout(function () { tab.saving = false; }, 500);
+        },
+        editorWidth: function (tab) {
+          var longest = this.lines(tab).reduce(function (n, l) { return Math.max(n, l.length); }, 0);
+          return 'calc(' + (longest + 4) + 'ch + var(--gutter-w))';
+        },
+        // Mock bar: the shown tab gets a conflict ('disk', or 'big': the file is over 8 MiB), a save error, or both clear.
+        mockSave: function (what) {
+          var tab = this.currentTab();
+          if (tab === null || this.isEditable(tab) === false) return;
+          tab.conflict = what === 'disk' || what === 'big' ? what : null;
+          tab.big = what === 'big';
+          tab.error = what === 'error';
+          tab.closing = false;
+          tab.saving = false;
+        },
+        // Reload takes the disk's text, Overwrite keeps the editor's; both end the conflict.
+        resolveConflict: function (tab) { tab.conflict = null; tab.closing = false; this.touched(tab); },
+        saveBarText: function (tab) {
+          var name = tab.kind === 'scratch' ? tab.title : tab.path.split('/').pop();
+          if (tab.conflict) return name + ' changed on disk';
+          if (tab.error) return 'cannot save ' + name + ': Permission denied (your edits are kept; saving is retried after the next pause)';
+          return '';
+        },
+        closeWithoutSaving: function (tab) { tab.conflict = null; tab.error = false; this.closeTab(tab); },
         lines: function (tab) {
+          if (tab.kind === 'file' && tab.draft !== undefined) return tab.draft.split('\n');
           if (tab.kind === 'file') { var e = this.findFile(tab.co, tab.path); return e ? e.text.split('\n') : window.IVE_HUB.placeholderLines(tab.path); }
           if (tab.kind === 'scratch') return this.scratch(tab.title).text.split('\n');
           return [];

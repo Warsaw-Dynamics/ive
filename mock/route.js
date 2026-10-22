@@ -7,6 +7,7 @@
 //   tree    a tree node whose open state differs from its default, repeated
 //   o, g    an overview's section (<tab key>~<section>), a worktree's git view (<checkout>~<view>), repeated
 //   rlayout the run configurations tab's layout
+//   dl      the diff layout last toggled, side (inline when absent); save, closing: mock-only, read but not written
 //   theme, side, page, layout, sort, gap, radius, q, changed, excl, scope, nt: theme, tree width, Settings page, git
 //           layout and order, panel gap and radius, hub query, "changed only", "with excluded", scope and whether
 //           the hub asks where a new terminal goes (Ctrl+Shift+T)
@@ -56,6 +57,7 @@
         add('rlayout', this.runLayout === 'flat' ? null : this.runLayout);
         add('gap', this.panelGap);
         add('radius', this.panelRadius);
+        add('dl', this.diffLayout === 'inline' ? null : this.diffLayout);
         add('counts', this.countStyle === 'dot' ? null : this.countStyle);
         if (this.tabs.some(function (t) { return t.key === 'hub'; })) {
           add('q', this.hub.query);
@@ -77,6 +79,7 @@
         this.temporary = null;
         this.focus = null;
         // the hub tab reopens asking where a new terminal goes, before its query comes back
+        this.diffLayout = p.get('dl') === 'side' ? 'side' : 'inline';
         var newTerminal = p.get('nt') === '1';
         p.getAll('t').forEach(function (key) {
           if (key === 'hub' && newTerminal) { self.openNewTerminalHub(); self.temporary = null; self.focus = 'hub'; return; }
@@ -87,6 +90,8 @@
         if (this.tabs.some(function (t) { return t.key === p.get('at'); })) this.focus = p.get('at');
         // only ever the shown tab is temporary
         if (p.get('temp') === this.focus) this.temporary = this.focus;
+        // mock-only, not written back: #save=disk|big|error (&closing=1) puts the shown tab in that save state
+        if (p.has('save')) { this.mockSave(p.get('save')); if (p.get('closing') === '1' && this.currentTab()) this.currentTab().closing = true; }
         if (p.has('tree')) this.toggled = p.getAll('tree');
         p.getAll('o').forEach(function (v) { var kv = unpair(v); self.overviewTabs[kv[0]] = kv[1]; });
         if (p.has('q')) this.hub.query = p.get('q');

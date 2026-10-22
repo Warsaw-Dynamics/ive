@@ -497,3 +497,38 @@ details.block[open] > .block__head, .block--prompt .block__head { border-bottom:
 .runlist__empty { padding: 4px 0; }
 .mock-counts { position: fixed; right: 70px; bottom: 4px; z-index: 50; font-size: 12px; color: var(--muted); }
 .mock-counts select { font: inherit; color: inherit; background: var(--panel, transparent); border: 1px solid var(--border); border-radius: 4px; }
+
+/* Code view: diff layout toggle, side by side, editing, save bars (codeview design, 2026-10-22). */
+.diffpane__state { font-size: 12px; font-style: italic; }
+.diffpane__head .segmented button, .committab__tools .segmented button { padding: 2px 10px; font-size: 13px; }
+.committab__tools { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; }
+.diff__code { white-space: pre; outline: none; caret-color: var(--text); }
+.diff__code[contenteditable] { cursor: text; }
+.sbs { min-width: 0; }
+.sbs__pair { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.sbs__cell { min-width: 0; overflow: hidden; white-space: pre; padding-left: 4px; height: 20px; }
+.sbs__cell:first-child { border-right: 1px solid var(--border); }
+.sbs__cell--del { background: var(--diff-removed); }
+.sbs__cell--add { background: var(--diff-added); }
+.sbs__cell--fill { background: color-mix(in srgb, var(--muted) 10%, transparent); }
+.diff__row.sbs__row { min-width: 0; }
+.diff:has(.sbs) { overflow-x: hidden; }
+
+.editor--static { --gutter-w: calc((var(--gutter-chars) + 1) * 1ch); }
+.editor__sheet { position: relative; min-width: 100%; }
+.editor__input {
+  position: absolute; left: 0; top: 0; width: 100%; margin: 0; border: 0; outline: none; resize: none; overflow: hidden;
+  padding: 0 0 0 var(--gutter-w); background: transparent; color: transparent; caret-color: var(--text);
+  font: inherit; white-space: pre; tab-size: 4;
+}
+.editor__input::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.savebar {
+  flex: none; display: flex; align-items: center; gap: 12px; padding: 6px 12px; font-size: 13px;
+  border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--mark-modified) 14%, var(--background));
+}
+.savebar--error { background: color-mix(in srgb, var(--error) 16%, var(--background)); }
+.savebar__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.savebar__actions { display: flex; align-items: center; gap: 6px; }
+.savebar__note { font-size: 12px; }
+.savebar__close { border-color: var(--error); color: var(--error); }

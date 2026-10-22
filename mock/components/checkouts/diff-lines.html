@@ -1,9 +1,33 @@
-<!-- diff_view.rs: hunk headers, then lines with old and new numbers and a sign; needs rows (diffRows of a diff). -->
-<template x-for="(r, i) in rows" :key="i">
-  <div class="diff__row" :class="'diff__row--' + r.kind">
-    <template x-if="r.kind === 'hunk'"><span class="diff__hunk" x-text="r.text"></span></template>
-    <template x-if="r.kind !== 'hunk'">
-      <span class="diff__line"><span class="diff__number" x-text="r.old"></span><span class="diff__number" x-text="r.now"></span><span class="diff__sign" x-text="r.sign"></span><span x-text="r.text"></span></span>
+<!-- diff_view.rs: hunk headers, then lines with old and new numbers and a sign (inline), or old text left and new right
+     (side by side: one scroll, numbers per side, removal runs paired with the additions after them, filler cells on the
+     shorter side, hunk headers across both). Needs tab and rows (diffRows of a diff). Code is coloured by the file's language;
+     the new side of an uncommitted single-file diff is editable (a caret), everything else is read-only. -->
+<template x-if="layoutOf(tab) === 'inline'">
+  <div>
+    <template x-for="(r, i) in rows" :key="i">
+      <div class="diff__row" :class="'diff__row--' + r.kind">
+        <template x-if="r.kind === 'hunk'"><span class="diff__hunk" x-text="r.text"></span></template>
+        <template x-if="r.kind !== 'hunk'">
+          <span class="diff__line"><span class="diff__number" x-text="r.old"></span><span class="diff__number" x-text="r.now"></span><span class="diff__sign" x-text="r.sign"></span><span class="diff__code"
+            :contenteditable="isEditable(tab) && r.kind !== 'del' ? 'plaintext-only' : null" spellcheck="false" @input="touched(tab)" @keydown.enter.prevent><template x-for="(tk, j) in r.tokens" :key="j"><span :class="tk.k && 'syn-' + tk.k" x-text="tk.t"></span></template></span></span>
+        </template>
+      </div>
+    </template>
+  </div>
+</template>
+<template x-if="layoutOf(tab) === 'side'">
+  <div class="sbs" x-data="{ get srows() { return sideRows(rows); } }">
+    <template x-for="(r, i) in srows" :key="i">
+      <div class="diff__row sbs__row" :class="'diff__row--' + r.kind">
+        <template x-if="r.kind === 'hunk'"><span class="diff__hunk" x-text="r.text"></span></template>
+        <template x-if="r.kind === 'pair'">
+          <div class="sbs__pair">
+            <div class="sbs__cell" :class="'sbs__cell--' + r.left.kind"><span class="diff__number" x-text="r.left.num"></span><span class="diff__code"><template x-for="(tk, j) in r.left.tokens" :key="j"><span :class="tk.k && 'syn-' + tk.k" x-text="tk.t"></span></template></span></div>
+            <div class="sbs__cell" :class="'sbs__cell--' + r.right.kind"><span class="diff__number" x-text="r.right.num"></span><span class="diff__code"
+              :contenteditable="isEditable(tab) && r.right.kind !== 'fill' ? 'plaintext-only' : null" spellcheck="false" @input="touched(tab)" @keydown.enter.prevent><template x-for="(tk, j) in r.right.tokens" :key="j"><span :class="tk.k && 'syn-' + tk.k" x-text="tk.t"></span></template></span></div>
+          </div>
+        </template>
+      </div>
     </template>
   </div>
 </template>
