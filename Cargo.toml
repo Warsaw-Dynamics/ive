@@ -55,6 +55,8 @@ toml = "1.1.8"
 # vars.toml is edited in place, keeping the user's comments
 toml_edit = "0.25.17"
 # IVE_LOG diagnostics (src/trace.rs); tracing-log also routes gpui's `log` records there
+# verifies update downloads; already built for gpui
+sha2 = "0.10"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "env-filter", "std", "tracing-log", "ansi"] }
 unicode-segmentation = "1.13.3"

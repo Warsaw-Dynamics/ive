@@ -1,6 +1,9 @@
 //! Updating a release build of IVE from GitHub Releases: find the newer release, stage it beside the install, swap it
 //! in on quit or before a restart. Builds from source (no `IVE_RELEASE_TAG` at build time) never update.
 
+pub mod checksum;
+pub mod extract;
+pub mod fetch;
 pub mod release;
 
 /// The release this build is, `ive-<version>-<commit>`; set by the release workflow, absent in builds from source.
