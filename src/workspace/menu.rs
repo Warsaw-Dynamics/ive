@@ -53,10 +53,46 @@ pub struct OpenMenu {
     changed_at: Instant,
 }
 
+/// What a predicate's answer did to the open menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Answered {
+    /// no line of this menu waited for it: an older menu's or load's
+    Unknown,
+    Changed,
+    /// its last line went: the menu closes
+    Emptied,
+}
+
 impl OpenMenu {
     /// Whether a press now may choose a line: none went in the last [`MOVED_GUARD`].
     pub fn is_settled(&self) -> bool {
         self.changed_at.elapsed() >= MOVED_GUARD
+    }
+
+    /// Whether the menu still has what it was opened on: a tab menu's tab, for which `is_open` tells.
+    pub fn stands(&self, is_open: impl Fn(TabId) -> bool) -> bool {
+        match self.on {
+            MenuOn::Tab(tab) => is_open(tab),
+            MenuOn::Tree { .. } => true,
+        }
+    }
+
+    /// Takes predicate answer `answer` to request `request`: its line becomes ready where it is, or goes.
+    pub fn answer(&mut self, request: u64, answer: bool) -> Answered {
+        let Some(at) = self.waiting.iter().position(|(asked, _)| *asked == request) else {
+            return Answered::Unknown;
+        };
+        let (_, id) = self.waiting.remove(at);
+        let before = std::mem::take(&mut self.lines);
+        self.lines = resolve::answered(before.clone(), &id, answer);
+        self.nav = self.nav.settle(&before, &self.lines);
+        if !answer {
+            self.changed_at = Instant::now();
+        }
+        if self.lines.is_empty() {
+            return Answered::Emptied;
+        }
+        Answered::Changed
     }
 }
 
@@ -134,10 +170,15 @@ pub fn line_target(kind: MenuKind, labels: &[String]) -> String {
 
 impl Workspace {
     pub fn menu(&self) -> Option<&OpenMenu> {
-        self.menu.as_ref().filter(|menu| match menu.on {
-            MenuOn::Tab(tab) => self.tabs.row().any(|(id, _)| id == tab),
-            MenuOn::Tree { .. } => true,
-        })
+        self.menu.as_ref().filter(|menu| menu.stands(|tab| self.tabs.row().any(|(id, _)| id == tab)))
+    }
+
+    /// Drops a menu whose tab closed, so its keys and lines do nothing; whether one stays open.
+    fn keep_standing_menu(&mut self) -> bool {
+        if self.menu().is_none() {
+            self.menu = None;
+        }
+        self.menu.is_some()
     }
 
     /// Opens menu `name` of tab `tab` at the pointer; the tab is not shown, so a temporary one shown stays. A menu
@@ -242,24 +283,16 @@ impl Workspace {
     }
 
     /// A predicate asked as `request` answered; one of a closed menu changes nothing.
-    pub(super) fn menu_answered(&mut self, request: u64, answer: bool, cx: &mut Context<Self>) {
+    pub(super) fn menu_answered(&mut self, request: u64, answer: bool, window: &mut Window, cx: &mut Context<Self>) {
         let Some(menu) = self.menu.as_mut() else {
             return;
         };
-        let Some(at) = menu.waiting.iter().position(|(asked, _)| *asked == request) else {
-            return;
-        };
-        let (_, id) = menu.waiting.remove(at);
-        let before = std::mem::take(&mut menu.lines);
-        menu.lines = resolve::answered(before.clone(), &id, answer);
-        menu.nav = menu.nav.settle(&before, &menu.lines);
-        if !answer {
-            menu.changed_at = Instant::now();
+        match menu.answer(request, answer) {
+            Answered::Unknown => {}
+            Answered::Changed => cx.notify(),
+            // as Escape: the keyboard goes back to the shown tab
+            Answered::Emptied => self.close_context_menu(window, cx),
         }
-        if menu.lines.is_empty() {
-            self.menu = None;
-        }
-        cx.notify();
     }
 
     pub fn hover_menu_line(&mut self, id: ItemId, cx: &mut Context<Self>) {
@@ -273,6 +306,9 @@ impl Workspace {
 
     /// The menu's keys: ↑ ↓ move, → opens a submenu, ← and Escape close one, Enter chooses; whether it took the key.
     pub(super) fn menu_key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        if !self.keep_standing_menu() {
+            return false;
+        }
         let Some(menu) = self.menu.as_mut() else {
             return false;
         };
@@ -302,6 +338,9 @@ impl Workspace {
     /// Runs line `id` of the open menu, closing the menu; a submenu's line opens it instead. A pending or disabled
     /// line does nothing.
     pub fn choose_menu_line(&mut self, id: &ItemId, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.keep_standing_menu() {
+            return;
+        }
         let Some(menu) = self.menu.as_mut() else {
             return;
         };
@@ -594,6 +633,51 @@ mod tests {
         assert_eq!(subject.paths[0].within, Within::Checkout("src".to_owned()));
         assert_eq!(subject.paths[1].within, Within::Outside);
         assert_eq!(subject.home, Home::Mixed);
+    }
+
+    fn pending_menu(on: MenuOn) -> OpenMenu {
+        let items = [MenuItem::Action { label: Label::Custom("Deploy".to_owned()), action: ItemAction::Invoke { generation: 1, function: 0 }, when: When { test: crate::script::menus::Test::Function { generation: 1, function: 1 }, ..When::default() } }];
+        let resolved = resolve(&items, &Subject::empty(), &|_| Applies::Shown { enabled: true });
+        OpenMenu { on, kind: MenuKind::Tree, name: "main".to_owned(), position: Point::default(), subject: Subject::empty(), lines: resolved.lines, nav: Nav::new(), waiting: vec![(7, vec![0])], changed_at: Instant::now() }
+    }
+
+    #[test]
+    fn should_tell_when_the_last_pending_line_goes() {
+        // given
+        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned() });
+
+        // when
+        let unknown = menu.answer(8, false);
+        let answered = menu.answer(7, false);
+
+        // then
+        assert_eq!((unknown, answered), (Answered::Unknown, Answered::Emptied));
+    }
+
+    #[test]
+    fn should_keep_a_menu_whose_line_turned_ready() {
+        // given
+        let mut menu = pending_menu(MenuOn::Tree { row: "entry:/w".to_owned() });
+
+        // when
+        let answered = menu.answer(7, true);
+
+        // then
+        assert_eq!(answered, Answered::Changed);
+        assert!(matches!(&menu.lines[..], [Line::Item { state: LineState::Ready, .. }]));
+    }
+
+    #[test]
+    fn should_not_stand_once_its_tab_closed() {
+        // given
+        let (tab, other) = (TabId::for_tests(3), TabId::for_tests(4));
+        let menu = pending_menu(MenuOn::Tab(tab));
+
+        // when
+        let stands = [menu.stands(|open| open == tab), menu.stands(|open| open == other)];
+
+        // then
+        assert_eq!(stands, [true, false]);
     }
 
     #[test]

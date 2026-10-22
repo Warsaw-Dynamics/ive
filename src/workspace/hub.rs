@@ -657,6 +657,8 @@ impl Workspace {
             return;
         };
         hub.found = None;
+        // the last query's lines are not this one's: "Searching…" until the first of these arrive
+        hub.content = None;
         let ignored = if hub.state.excluded { Ignored::Searched } else { Ignored::Skipped };
         let ContentSearch { roots, query, ticket } = search;
         let (sender, mut found) = futures::channel::mpsc::unbounded::<ContentFound>();

@@ -125,6 +125,10 @@ pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn
         [only] => format!("Contents of {}", file_name(only)),
         [first, rest @ ..] => format!("Contents of {} +{}", file_name(first), rest.len()),
     };
+    if let Some(Err(error)) = state.content_query().map(|query| query.compile()) {
+        list.message = Some(error);
+        return list.finish();
+    }
     let Some(found) = found.filter(|_| state.query.chars().count() >= MIN_QUERY_CHARS) else {
         list.message = Some(if state.query.chars().count() < MIN_QUERY_CHARS { CONTENT_NEEDS_TEXT } else { SEARCHING_CONTENTS }.to_owned());
         return list.finish();
@@ -459,4 +463,30 @@ pub fn thousands(count: usize) -> String {
         grouped.push(digit);
     }
     grouped
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use crate::hub::content::Matching;
+
+    fn nowhere(path: &Path) -> Located {
+        Located { place: Place::Nowhere, project: None, path: path.display().to_string() }
+    }
+
+    #[test]
+    fn should_say_why_a_regex_does_not_compile() {
+        // given
+        let state = HubState { content: true, matching: Matching::Regex, query: "foo(".to_owned(), ..HubState::default() };
+        let old = ContentFound { hits: vec![ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect() }], files: 1, done: true, ..ContentFound::default() };
+
+        // when
+        let list = content_list(&state, Some(&old), &nowhere);
+
+        // then
+        assert!(list.rows.is_empty(), "{:?}", list.rows);
+        assert!(list.message.as_deref().is_some_and(|message| message.contains("foo(")), "{:?}", list.message);
+    }
 }

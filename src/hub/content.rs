@@ -78,8 +78,22 @@ impl ContentQuery {
     pub fn compile(&self) -> Result<Regex, String> {
         let pattern = if self.mode.is_regex() { self.text.clone() } else { regex::escape(&self.text) };
         let pattern = if self.mode.is_whole_word() { format!(r"\b(?:{pattern})\b") } else { pattern };
-        let pattern = if self.text.chars().any(char::is_uppercase) { pattern } else { format!("(?i){pattern}") };
+        let pattern = if self.has_capitals() { pattern } else { format!("(?i){pattern}") };
         Regex::new(&pattern).map_err(|error| format!("{:?} is not a regex: {error}", self.text))
+    }
+
+    /// Whether the text has a capital letter of its own: in a regex, `\W`, `\S`, `\D`, `\B` and the like are escapes.
+    fn has_capitals(&self) -> bool {
+        let mut chars = self.text.chars();
+        let mut found = false;
+        while let Some(c) = chars.next() {
+            if c == '\\' && self.mode.is_regex() {
+                chars.next();
+                continue;
+            }
+            found |= c.is_uppercase();
+        }
+        found
     }
 }
 
@@ -211,7 +225,7 @@ impl Shared {
 fn walker(root: &Root, search: &Search) -> WalkBuilder {
     let honour = search.ignored == Ignored::Skipped;
     let mut builder = WalkBuilder::new(&root.path);
-    builder.standard_filters(false).git_ignore(honour).git_exclude(honour).ignore(honour).require_git(false).parents(honour && root.picked == Picked::Scope);
+    builder.standard_filters(false).git_ignore(honour).git_exclude(honour).ignore(honour).require_git(false).parents(honour);
     let excluded: Vec<String> = if honour { search.excluded.names().to_vec() } else { Vec::new() };
     builder.filter_entry(move |entry| {
         let name = entry.file_name().to_string_lossy();
@@ -346,6 +360,19 @@ mod tests {
     }
 
     #[test]
+    fn should_ignore_case_for_a_regex_whose_only_capitals_are_escapes() {
+        // given
+        let dir = project();
+        let regex = ContentQuery { text: r"menu\W".to_owned(), mode: Matching::Regex };
+
+        // when
+        let found = found(&[root(dir.path())], &regex, Ignored::Skipped);
+
+        // then
+        assert_eq!(lines(&found), ["a.rs:2:let Menu = 1;", "a.rs:3:let menu = 2;", "b.txt:2:menu bar"]);
+    }
+
+    #[test]
     fn should_mark_the_matches_in_the_line() {
         // given
         let dir = tempfile::tempdir().unwrap();
@@ -407,6 +434,24 @@ mod tests {
 
         // then
         assert_eq!(lines(&found), ["x:1:menu"]);
+    }
+
+    #[test]
+    fn should_leave_out_what_the_root_gitignore_ignores_inside_a_picked_folder() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(".gitignore"), "dist/\n").unwrap();
+        let modules = dir.path().join("frontend").join("dist");
+        fs::create_dir_all(&modules).unwrap();
+        fs::write(modules.join("lib.js"), "menu\n").unwrap();
+        fs::write(dir.path().join("frontend").join("app.js"), "menu\n").unwrap();
+        let picked = Root { path: dir.path().join("frontend"), picked: Picked::FromTree };
+
+        // when
+        let found = found(&[picked], &query("menu"), Ignored::Skipped);
+
+        // then
+        assert_eq!(lines(&found), ["app.js:1:menu"]);
     }
 
     #[test]

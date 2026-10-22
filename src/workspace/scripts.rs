@@ -97,7 +97,7 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
         if let ScriptEvent::Tested { request, answer } = event {
-            return self.menu_answered(request, answer, cx);
+            return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
             ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {

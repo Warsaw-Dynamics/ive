@@ -7,6 +7,11 @@ impl TabId {
     pub fn value(self) -> u64 {
         self.0
     }
+
+    #[cfg(test)]
+    pub fn for_tests(value: u64) -> Self {
+        Self(value)
+    }
 }
 
 /// Which of the row's tabs, seen from one of them, Close Other Tabs and Close Tabs to the Left / Right close.
