@@ -18,7 +18,7 @@ use crate::process::ProcessId;
 use crate::project::{self, CheckoutRef, ProjectId};
 use crate::saved_tabs::{MAX_TABS, PanelState, SavedTab, SavedTabs};
 use crate::scratch::ScratchRef;
-use crate::settings_page::{SettingsPage, SettingsView, THIRD_PARTY_TITLE};
+use crate::settings_page::{SettingsPage, SettingsView, THIRD_PARTY_TITLE, UPDATES_TITLE};
 use crate::tabs::{TabId, Tabs};
 
 impl Workspace {
@@ -197,10 +197,13 @@ fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
     }
 }
 
-/// Appearance, Scripts or Third-Party Software by its name; Appearance for a name no page has.
+/// Appearance, Scripts, Updates or Third-Party Software by its name; Appearance for a name no page has.
 fn settings_page_named(name: &str) -> SettingsPage {
     if name == "Scripts" {
         return SettingsPage::Scripts;
+    }
+    if name == UPDATES_TITLE {
+        return SettingsPage::Updates;
     }
     if name == THIRD_PARTY_TITLE {
         return SettingsPage::ThirdParty;
@@ -280,6 +283,18 @@ mod tests {
 
         // then
         assert_eq!(page, SettingsPage::Scripts);
+    }
+
+    #[test]
+    fn should_restore_the_updates_page_by_its_name() {
+        // given
+        let name = "Updates";
+
+        // when
+        let page = settings_page_named(name);
+
+        // then
+        assert_eq!(page, SettingsPage::Updates);
     }
 
     #[test]

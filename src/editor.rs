@@ -486,7 +486,7 @@ impl Tab {
             Self::Diff(tab) => tab.body.clone().into_any_element(),
             Self::Commit(tab) => tab.body.clone().into_any_element(),
             Self::GitLog(tab) => tab.body.clone().into_any_element(),
-            Self::Settings(view) => settings_page::render(view, theme, cx).into_any_element(),
+            Self::Settings(view) => settings_page::render(settings_page::Page { view, update_status: workspace.update_status() }, theme, cx).into_any_element(),
             Self::Failed { error, .. } => centered_message(error.clone(), theme.error).into_any_element(),
             Self::Scratch(scratch) => scratch.view().clone().into_any_element(),
             Self::RunValues(tab) => run_values::render_values_tab(id, tab, cx),
