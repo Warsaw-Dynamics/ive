@@ -1,5 +1,5 @@
 # A push to the release branch builds IVE for Linux and macOS and publishes both as one GitHub Release,
-# ive-<version>-<commit>.
+# ive-<version>-<commit>, with SHA256SUMS. Each build knows its tag (IVE_RELEASE_TAG), which makes it update itself.
 name: release
 
 on:
@@ -26,6 +26,9 @@ jobs:
           rustup toolchain install "$version" --profile minimal
           rustup default "$version"
       - uses: Swatinem/rust-cache@v2
+      - name: Release tag
+        # the build compares it with the latest release's to find updates
+        run: echo "IVE_RELEASE_TAG=ive-$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)-${GITHUB_SHA:0:10}" >> "$GITHUB_ENV"
       - name: Build
         run: cargo build --release --locked
       - name: Package
@@ -51,6 +54,9 @@ jobs:
           rustup toolchain install "$version" --profile minimal
           rustup default "$version"
       - uses: Swatinem/rust-cache@v2
+      - name: Release tag
+        # the build compares it with the latest release's to find updates
+        run: echo "IVE_RELEASE_TAG=ive-$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)-${GITHUB_SHA:0:10}" >> "$GITHUB_ENV"
       - name: Build
         run: cargo build --release --locked
       - name: Package
@@ -85,4 +91,6 @@ jobs:
         run: |
           version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           tag="ive-$version-${GITHUB_SHA:0:10}"
+          # IVE verifies an update's download against these
+          (cd dist && sha256sum -- * > SHA256SUMS)
           gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "$tag" --generate-notes

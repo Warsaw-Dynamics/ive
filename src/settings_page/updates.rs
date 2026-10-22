@@ -22,11 +22,12 @@ pub fn render(status: String, theme: Theme, cx: &mut Context<Workspace>) -> Div 
         return page;
     };
     let current = cx.global::<SettingsStore>().current().auto_update;
-    page.child(row("Automatic updates", render_switch(current, theme, cx), theme))
+    page.child(row("Auto-update", render_switch(current, theme, cx), theme))
 }
 
 fn row(label: &'static str, value: Div, theme: Theme) -> Div {
-    div().flex().items_center().gap(theme.sizes.settings.appearance_gap.px()).child(div().flex_none().w(theme.sizes.settings.appearance_label_width.px()).child(label)).child(value)
+    // the value wraps: a status can be a long error
+    div().flex().items_center().gap(theme.sizes.settings.appearance_gap.px()).child(div().flex_none().w(theme.sizes.settings.appearance_label_width.px()).child(label)).child(value.flex_1().min_w_0())
 }
 
 fn render_switch(current: AutoUpdate, theme: Theme, cx: &mut Context<Workspace>) -> Div {
