@@ -16,7 +16,7 @@ use gpui::{
     img, prelude::*, px, rgb, rgba, uniform_list,
 };
 
-use crate::host::{ClipboardTarget, Command, Host, KeyOutcome};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::icons;
 use crate::scrollbar::{Axis, ListScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar, widest_row};
 use crate::style::{DiffSizes, ViewStyle};
@@ -194,7 +194,7 @@ impl DiffView {
 
     /// The host's Copy and Select All; other keys go on to the window's bindings.
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        match Host::key_outcome(event, cx) {
+        match Host::key_outcome(event, KeyScope::Viewer, cx) {
             KeyOutcome::Command(Command::Copy(target)) => self.copy(target, cx),
             KeyOutcome::Command(Command::SelectAll) => self.select_all(cx),
             KeyOutcome::Handled => {}

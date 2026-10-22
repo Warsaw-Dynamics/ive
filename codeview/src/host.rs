@@ -43,7 +43,16 @@ pub enum KeyOutcome {
     Unbound,
 }
 
-pub type KeyFn = Rc<dyn Fn(&KeyDownEvent, &App) -> KeyOutcome>;
+/// Which kind of panel asks what a key means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyScope {
+    /// a text editor: the host runs the functions and strings bound to the key itself
+    Editor,
+    /// a read-only view (diff, file): it only takes Copy and Select All, every other bound key goes on to the host
+    Viewer,
+}
+
+pub type KeyFn = Rc<dyn Fn(&KeyDownEvent, KeyScope, &App) -> KeyOutcome>;
 pub type ClipboardFn = Rc<dyn Fn(ClipboardTarget, String, &mut App)>;
 pub type PasteFn = Rc<dyn Fn(ClipboardTarget, &mut App) -> Option<String>>;
 
@@ -66,9 +75,9 @@ pub struct Host {
 impl Global for Host {}
 
 impl Host {
-    pub fn key_outcome(event: &KeyDownEvent, cx: &App) -> KeyOutcome {
+    pub fn key_outcome(event: &KeyDownEvent, scope: KeyScope, cx: &App) -> KeyOutcome {
         match cx.try_global::<Host>() {
-            Some(host) => (host.keys.clone())(event, cx),
+            Some(host) => (host.keys.clone())(event, scope, cx),
             None => KeyOutcome::Unbound,
         }
     }

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use codeview::host::{ClickListener, Command, Host, KeyOutcome};
+use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
 use gpui::{App, IntoElement, KeyDownEvent};
 
 use crate::click_targets::ClickTargets;
@@ -25,25 +25,46 @@ pub fn install(cx: &mut App) {
     });
 }
 
-/// What the editor does with `event`: its bound action, if any.
-fn key_outcome(event: &KeyDownEvent, cx: &App) -> KeyOutcome {
-    match bound_action(event, Place::Editor, cx) {
-        None => KeyOutcome::Unbound,
-        Some(Action::Builtin(builtin)) => match command_of(builtin) {
-            Some(command) => KeyOutcome::Command(command),
-            // the shown tab is an editor, not a terminal: it does nothing
-            None if builtin == Builtin::Nop => KeyOutcome::Handled,
-            None => KeyOutcome::Foreign,
-        },
-        Some(Action::Invoke { generation, function }) => {
+/// What a codeview panel does with `event`: its bound action, if any.
+fn key_outcome(event: &KeyDownEvent, scope: KeyScope, cx: &App) -> KeyOutcome {
+    match decide(bound_action(event, Place::Editor, cx), scope) {
+        Decision::Done(outcome) => outcome,
+        Decision::Invoke { generation, function } => {
             invoke(generation, function, None, cx);
             KeyOutcome::Handled
         }
-        // the shown tab is an editor, not a terminal, so a bound `SendString` has nowhere to go
-        Some(Action::Send(_)) => KeyOutcome::Handled,
-        // a window action (Settings, a new terminal) is the workspace's to run
-        Some(Action::ShowTabMenu(_) | Action::Disable) => KeyOutcome::Foreign,
     }
+}
+
+/// What to do about a key, before anything has run.
+#[derive(Debug, PartialEq, Eq)]
+enum Decision {
+    Done(KeyOutcome),
+    /// run the script function, then the key is handled
+    Invoke { generation: u64, function: usize },
+}
+
+/// Maps the action bound to a key to what the panel does, without side effects. A viewer takes only its commands:
+/// everything else propagates to the window, which looks up its own bindings.
+fn decide(action: Option<Action>, scope: KeyScope) -> Decision {
+    let Some(action) = action else {
+        return Decision::Done(KeyOutcome::Unbound);
+    };
+    Decision::Done(match action {
+        Action::Builtin(builtin) => match command_of(builtin) {
+            Some(command) => KeyOutcome::Command(command),
+            // the shown tab is an editor, not a terminal: it does nothing
+            None if builtin == Builtin::Nop && scope == KeyScope::Editor => KeyOutcome::Handled,
+            None => KeyOutcome::Foreign,
+        },
+        Action::Invoke { generation, function } if scope == KeyScope::Editor => {
+            return Decision::Invoke { generation, function };
+        }
+        // the shown tab is an editor, not a terminal, so a bound `SendString` has nowhere to go
+        Action::Send(_) if scope == KeyScope::Editor => KeyOutcome::Handled,
+        // a window action (Settings, a new terminal) is the workspace's to run, and so is all a viewer leaves
+        Action::Invoke { .. } | Action::Send(_) | Action::ShowTabMenu(_) | Action::Disable => KeyOutcome::Foreign,
+    })
 }
 
 /// The editor's own built-ins; the rest are the workspace's.
@@ -75,5 +96,45 @@ mod tests {
 
         // then
         assert_eq!(commands, [Some(Command::Undo), Some(Command::Copy(ClipboardTarget::Both)), Some(Command::SelectAll), None]);
+    }
+
+    #[test]
+    fn should_let_script_bindings_propagate_from_a_viewer() {
+        // given
+        let invoke = Action::Invoke { generation: 1, function: 2 };
+        let actions = [invoke, Action::Send("x".into()), Action::Builtin(Builtin::Nop), Action::Builtin(Builtin::OpenHub)];
+
+        // when
+        let decisions = actions.map(|action| decide(Some(action), KeyScope::Viewer));
+
+        // then
+        assert_eq!(decisions, [(); 4].map(|_| Decision::Done(KeyOutcome::Foreign)));
+        assert_eq!(decide(None, KeyScope::Viewer), Decision::Done(KeyOutcome::Unbound));
+    }
+
+    #[test]
+    fn should_run_script_bindings_in_the_editor() {
+        // given
+        let invoke = Action::Invoke { generation: 1, function: 2 };
+
+        // when
+        let invoked = decide(Some(invoke), KeyScope::Editor);
+        let sent = decide(Some(Action::Send("x".into())), KeyScope::Editor);
+
+        // then
+        assert_eq!(invoked, Decision::Invoke { generation: 1, function: 2 });
+        assert_eq!(sent, Decision::Done(KeyOutcome::Handled));
+    }
+
+    #[test]
+    fn should_map_copy_in_a_viewer_to_a_command() {
+        // given
+        let copy = Action::Builtin(Builtin::CopyTo(ClipboardTarget::Both));
+
+        // when
+        let decision = decide(Some(copy), KeyScope::Viewer);
+
+        // then
+        assert_eq!(decision, Decision::Done(KeyOutcome::Command(Command::Copy(ClipboardTarget::Both))));
     }
 }

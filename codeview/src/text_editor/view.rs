@@ -15,7 +15,7 @@ use super::keys::command;
 use super::layout::{Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::host::{ClipboardTarget, Command, Host, KeyOutcome};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
@@ -178,7 +178,7 @@ impl TextEditor {
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        match Host::key_outcome(event, cx) {
+        match Host::key_outcome(event, KeyScope::Editor, cx) {
             KeyOutcome::Command(command) => {
                 cx.stop_propagation();
                 self.run(command, cx);
