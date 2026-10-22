@@ -20,7 +20,7 @@ pub fn shell_words(paths: &[PathBuf]) -> String {
 }
 
 /// `path` as is when the shell reads it as one plain word, else in single quotes.
-fn shell_word(path: &Path) -> String {
+pub fn shell_word(path: &Path) -> String {
     let text = path.to_string_lossy();
     // no `~`: at the start of a word the shell would expand it
     let plain = |c: char| c.is_ascii_alphanumeric() || "/._-+,:@%=".contains(c);

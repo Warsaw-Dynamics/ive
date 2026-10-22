@@ -28,6 +28,7 @@ mod overview;
 mod paging;
 mod parallel;
 mod pasted;
+mod path_text;
 mod paths;
 mod process;
 #[cfg(unix)]
