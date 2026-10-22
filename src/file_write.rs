@@ -15,6 +15,8 @@ use codeview::panel::Edit;
 
 const SMALL_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const LARGE_FILE_BYTES: u64 = 256 * 1024 * 1024;
+/// Links followed to a file before giving up, as Linux's `open` does.
+const MAX_LINKS: usize = 40;
 
 /// Temporary files of saves running at once in one folder get different names.
 static STAGING_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -151,15 +153,34 @@ fn write_at(mut file: &File, bytes: &[u8], offset: u64) -> io::Result<()> {
     file.write_all(bytes)
 }
 
-/// Writes the new text to a temporary file in the same folder, then renames it over the original.
+/// Writes the new text to a temporary file in the same folder, then renames it over the original: over the file a
+/// symbolic link ends at, so the link stays.
 fn rewrite(target: &Target, original: &Original, edits: &[Edit]) -> io::Result<Written> {
-    let dir = target.path.parent().unwrap_or(Path::new("."));
+    let path = resolve_links(target.path);
+    let dir = match path.parent() {
+        Some(dir) if dir != Path::new("") => dir,
+        _ => Path::new("."),
+    };
     let staging = dir.join(format!(".ive-save-{}-{}.tmp", std::process::id(), STAGING_COUNT.fetch_add(1, Ordering::Relaxed)));
-    let renamed = write_staging(&staging, target, original, edits).and_then(|stamp| fs::rename(&staging, target.path).map(|()| stamp));
+    let renamed = write_staging(&staging, target, original, edits).and_then(|stamp| fs::rename(&staging, &path).map(|()| stamp));
     let stamp = renamed.inspect_err(|_| drop(fs::remove_file(&staging)))?;
     // the new text is in place; a folder that cannot be synced only leaves the rename less durable
     let _ = File::open(dir).and_then(|dir| dir.sync_all());
     Ok(Written { outcome: WriteOutcome::Rewritten, stamp })
+}
+
+/// `path` with the symbolic links it names followed to the file they end at, which need not exist; after too many
+/// links (a loop) the last one, which then fails to open.
+fn resolve_links(path: &Path) -> PathBuf {
+    let mut path = path.to_path_buf();
+    for _ in 0..MAX_LINKS {
+        let Ok(target) = fs::read_link(&path) else {
+            return path;
+        };
+        // an absolute target replaces the whole path, a relative one the link's name
+        path = path.parent().unwrap_or(Path::new("")).join(target);
+    }
+    path
 }
 
 /// The new text in `staging`, with the original's permissions, synced; its stamp.
@@ -198,7 +219,7 @@ struct Copier<'a> {
 impl Copier<'_> {
     fn keep(&mut self, range: Range<u64>) -> io::Result<()> {
         let copied = match self.original {
-            Some(original) => kernel_copy(original, self.out, range.clone()),
+            Some(original) => kernel_copy(original, self.out, range.clone())?,
             None => 0,
         };
         self.out.write_all(slice(self.base, &(range.start + copied..range.end)))
@@ -206,40 +227,54 @@ impl Copier<'_> {
 }
 
 /// Copies what it can of `range` from `from` to the end of `to` without passing through IVE: a block-aligned start
-/// of the file by cloning (btrfs, XFS), then by `copy_file_range`. Returns how many bytes it copied.
+/// of the file by cloning (btrfs, XFS), then by `copy_file_range`. Returns how many bytes it copied, which `to`'s
+/// position is then past.
 #[cfg(target_os = "linux")]
-fn kernel_copy(from: &File, to: &mut File, range: Range<u64>) -> u64 {
+fn kernel_copy(from: &File, to: &mut File, range: Range<u64>) -> io::Result<u64> {
     use std::io::{Seek, SeekFrom};
-    let cloned = clone_start(from, to, &range);
-    if cloned > 0 && to.seek(SeekFrom::Start(range.start + cloned)).is_err() {
-        return 0;
+    let cloned = clone_start(from, to, &range)?;
+    if cloned > 0 {
+        // a clone leaves the position where it was: at the start, which is where `range` starts
+        to.seek(SeekFrom::Start(cloned))?;
     }
-    cloned + copy_file_range(from, to, range.start + cloned..range.end)
+    Ok(cloned + copy_file_range(from, to, range.start + cloned..range.end))
 }
 
 #[cfg(not(target_os = "linux"))]
-fn kernel_copy(_from: &File, _to: &mut File, _range: Range<u64>) -> u64 {
-    0
+fn kernel_copy(_from: &File, _to: &mut File, _range: Range<u64>) -> io::Result<u64> {
+    Ok(0)
 }
 
-/// Clones the whole blocks of `range` when it starts the file, sharing them with the original; 0 where the file
-/// system cannot (ext4).
+/// Clones the whole blocks of `range` when it starts the file into the empty `to`, sharing them with the original;
+/// 0, with `to` left empty, where the file system cannot (ext4).
 #[cfg(target_os = "linux")]
-fn clone_start(from: &File, to: &File, range: &Range<u64>) -> u64 {
+fn clone_start(from: &File, to: &File, range: &Range<u64>) -> io::Result<u64> {
     use std::os::unix::fs::MetadataExt;
     use std::os::unix::io::AsRawFd;
-    let block = from.metadata().map_or(0, |metadata| metadata.blksize());
-    if range.start != 0 || block == 0 {
-        return 0;
+    let length = clone_length(range, from.metadata().map_or(0, |metadata| metadata.blksize()));
+    // a length of 0 would clone up to the end of `from`
+    if length == 0 {
+        return Ok(0);
     }
-    let length = range.end / block * block;
     let clone = libc::file_clone_range { src_fd: i64::from(from.as_raw_fd()), src_offset: 0, src_length: length, dest_offset: 0 };
     // SAFETY: both descriptors are open for the call; the kernel reads `clone` only
     let result = unsafe { libc::ioctl(to.as_raw_fd(), libc::FICLONERANGE, &clone) };
-    if length == 0 || result != 0 {
+    if result == 0 {
+        return Ok(length);
+    }
+    // whatever a failed clone left goes, so the bytes written next start the file
+    to.set_len(0)?;
+    Ok(0)
+}
+
+/// How much of `range` cloning shares with the original: its whole blocks of `block` bytes when it starts the
+/// file, else nothing.
+#[cfg(target_os = "linux")]
+fn clone_length(range: &Range<u64>, block: u64) -> u64 {
+    if range.start != 0 || block == 0 {
         return 0;
     }
-    length
+    range.end / block * block
 }
 
 /// Copies `range` of `from` to `to`'s position inside the kernel for as long as that works; how much it copied.
@@ -417,6 +452,67 @@ mod tests {
         let message = written.as_ref().map_err(ToString::to_string).unwrap_err();
         assert!(message.starts_with(&format!("cannot save {}: ", path.display())), "{message}");
         assert_eq!(fs::read(&path).unwrap(), b"one\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn should_write_through_a_symbolic_link_to_its_target() {
+        // given
+        let base = b"one\ntwo\n";
+        let (dir, target, stamp) = file_of(base);
+        let link = dir.path().join("link.txt");
+        std::os::unix::fs::symlink("file.txt", &link).unwrap();
+
+        // when
+        let written = apply_edits(&Target { path: &link, base, expected: Expected::Stamp(stamp) }, &[edit(3..3, b"!")]);
+
+        // then
+        assert_eq!(written.unwrap().outcome, WriteOutcome::Rewritten);
+        assert!(fs::symlink_metadata(&link).unwrap().file_type().is_symlink(), "the link was replaced");
+        assert_eq!(fs::read(&target).unwrap(), b"one!\ntwo\n");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn should_clone_only_whole_blocks_from_the_start_of_the_file() {
+        // given
+        let block = 4096;
+        let ranges = [0..100, 0..block, 0..2 * block + 5, 5..3 * block];
+
+        // when
+        let lengths = ranges.map(|range| clone_length(&range, block));
+
+        // then
+        assert_eq!(lengths, [0, block, 2 * block, 0]);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn should_leave_the_staging_file_empty_when_there_is_nothing_to_clone() {
+        // given
+        let (dir, path, _stamp) = file_of(&vec![b'a'; 3 * 4096]);
+        let original = File::open(&path).unwrap();
+        let staging = OpenOptions::new().write(true).create_new(true).open(dir.path().join("staging")).unwrap();
+
+        // when
+        let cloned = clone_start(&original, &staging, &(0..100)).unwrap();
+
+        // then
+        assert_eq!((cloned, staging.metadata().unwrap().len()), (0, 0));
+    }
+
+    #[test]
+    fn should_shrink_a_file_of_several_blocks_by_an_edit_at_its_start() {
+        // given
+        let base: Vec<u8> = (0..5 * 4096u32).map(|at| b"abcdefghij\n"[(at % 11) as usize]).collect();
+        let (_dir, path, stamp) = file_of(&base);
+
+        // when
+        let written = apply_edits(&Target { path: &path, base: &base, expected: Expected::Stamp(stamp) }, &[edit(0..100, b"")]);
+
+        // then
+        assert!(written.is_ok(), "{written:?}");
+        assert!(fs::read(&path).unwrap() == base[100..], "the file is not the base without its first 100 bytes");
     }
 
     #[test]
