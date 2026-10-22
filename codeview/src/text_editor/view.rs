@@ -11,17 +11,14 @@ use gpui::{
     prelude::*, px, rgb, size,
 };
 
-use super::keys::{Command, command};
+use super::keys::command;
 use super::layout::{Geometry, VisibleLine, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::saved_tabs::{CaretPosition, ScrollPosition};
-use crate::script::keymap::Place;
-use crate::clipboard;
-use crate::script::keymap::{Action, Builtin, ClipboardTarget};
-use crate::script::state::{bound_action, invoke};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome};
+use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
-use crate::theme::{self, Theme};
+use crate::style::ViewStyle;
 
 /// Columns assumed visible before the first layout reports the viewport width.
 const FIRST_FRAME_COLUMNS: usize = 400;
@@ -126,13 +123,13 @@ impl TextEditor {
     fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         // a refused edit was already reported through TextEditorEvent::Refused
         let _ = match command {
-            Command::Move { motion, selecting } => self.navigate(|model| model.move_caret(motion, selecting), cx),
+            Command::Move(motion, selecting) => self.navigate(|model| model.move_caret(motion, selecting), cx),
             Command::SelectAll => self.navigate(EditorModel::select_all, cx),
-            Command::CopyTo(target) => self.copy(target, cx),
+            Command::Copy(target) => self.copy(target, cx),
             Command::Cut => self.cut(cx),
-            Command::PasteFrom(source) => self.paste(source, cx),
+            Command::Paste(source) => self.paste(source, cx),
             Command::Newline => self.edit(|model| model.insert("\n", EditKind::Other), cx),
-            Command::Tab => self.edit(|model| model.insert(INDENT, EditKind::Other), cx),
+            Command::Indent => self.edit(|model| model.insert(INDENT, EditKind::Other), cx),
             Command::Backspace(unit) => self.edit(|model| model.backspace(unit), cx),
             Command::Delete(unit) => self.edit(|model| model.delete_forward(unit), cx),
             Command::Undo => self.edit(
@@ -154,7 +151,7 @@ impl TextEditor {
 
     fn copy(&mut self, target: ClipboardTarget, cx: &mut Context<Self>) -> Result<(), EditError> {
         if let Some(text) = self.model.selected_text() {
-            clipboard::write(target, text, cx);
+            Host::write_clipboard(target, text, cx);
         }
         Ok(())
     }
@@ -165,7 +162,7 @@ impl TextEditor {
     }
 
     fn paste(&mut self, source: ClipboardTarget, cx: &mut Context<Self>) -> Result<(), EditError> {
-        let Some(text) = clipboard::read(source, cx) else {
+        let Some(text) = Host::read_clipboard(source, cx) else {
             return Ok(());
         };
         self.edit(|model| model.insert(&text, EditKind::Other), cx)
@@ -181,40 +178,23 @@ impl TextEditor {
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(action) = bound_action(event, Place::Editor, cx) {
-            // a window action (Settings, a new terminal) is the workspace's to run
-            if self.run_bound_key(action, cx) {
+        match Host::key_outcome(event, cx) {
+            KeyOutcome::Command(command) => {
                 cx.stop_propagation();
+                self.run(command, cx);
             }
-            return;
+            KeyOutcome::Handled => cx.stop_propagation(),
+            // a window action (Settings, a new terminal) is the workspace's to run
+            KeyOutcome::Foreign => {}
+            // typed characters arrive through the input handler; other keys belong to the host
+            KeyOutcome::Unbound => {
+                let Some(command) = command(&event.keystroke, self.page_rows()) else {
+                    return;
+                };
+                cx.stop_propagation();
+                self.run(command, cx);
+            }
         }
-        // typed characters arrive through the input handler; other keys belong to IVE
-        let Some(command) = command(&event.keystroke, self.page_rows()) else {
-            return;
-        };
-        cx.stop_propagation();
-        self.run(command, cx);
-    }
-
-    /// Runs a key's bound action in the editor; false for an action only the workspace can run.
-    fn run_bound_key(&mut self, action: Action, cx: &mut Context<Self>) -> bool {
-        let command = match action {
-            Action::Builtin(Builtin::SelectAll) => Command::SelectAll,
-            Action::Builtin(Builtin::CopyTo(target)) => Command::CopyTo(target),
-            Action::Builtin(Builtin::Cut) => Command::Cut,
-            Action::Builtin(Builtin::PasteFrom(source)) => Command::PasteFrom(source),
-            Action::Builtin(Builtin::Undo) => Command::Undo,
-            Action::Builtin(Builtin::Redo) => Command::Redo,
-            Action::Invoke { generation, function } => {
-                invoke(generation, function, None, cx);
-                return true;
-            }
-            // the shown tab is this editor, not a terminal, so a bound `SendString` has nowhere to go
-            Action::Builtin(Builtin::Nop) | Action::Send(_) => return true,
-            Action::Builtin(_) | Action::ShowTabMenu(_) | Action::Disable => return false,
-        };
-        self.run(command, cx);
-        true
     }
 
     fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -248,7 +228,7 @@ impl TextEditor {
     }
 
     /// Scrolls to the caret when it moved, then gathers what this frame paints.
-    fn frame(&mut self, metrics: Metrics, theme: Theme, window: &Window) -> Frame {
+    fn frame(&mut self, metrics: Metrics, style: ViewStyle, window: &Window) -> Frame {
         let char_width = f64::from(f32::from(metrics.char_width));
         self.scroll.set_line_count(self.model.line_count());
         if self.reveal_caret {
@@ -269,7 +249,7 @@ impl TextEditor {
             top: self.scroll.top(),
             left: self.scroll.left(),
             metrics,
-            theme,
+            style,
             focus: self.focus_handle.clone(),
             geometry: self.geometry.clone(),
         }
@@ -288,9 +268,9 @@ impl Focusable for TextEditor {
 
 impl Render for TextEditor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = crate::theme::tabs(cx);
+        let style = ViewStyle::drawing(cx).clone();
         let metrics = Metrics::measure(window, cx, self.model.line_count());
-        let frame = self.frame(metrics, theme, window);
+        let frame = self.frame(metrics, style.clone(), window);
         let (wheel, line_height) = (self.scroll.clone(), metrics.line_height);
         div()
             .id("text-editor")
@@ -308,8 +288,8 @@ impl Render for TextEditor {
             .on_scroll_wheel(move |event, window, _cx| wheel.scroll_by_wheel(event, line_height, window))
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
             .child(text_canvas(frame, cx.entity()))
-            .child(vertical_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
-            .child(horizontal_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
+            .child(vertical_scrollbar(&self.scrollbars, &style))
+            .child(horizontal_scrollbar(&self.scrollbars, &style))
     }
 }
 
@@ -322,7 +302,7 @@ struct Frame {
     top: f64,
     left: f64,
     metrics: Metrics,
-    theme: Theme,
+    style: ViewStyle,
     focus: FocusHandle,
     geometry: Rc<Cell<Option<Geometry>>>,
 }
@@ -381,12 +361,12 @@ fn paint_frame(frame: &Frame, bounds: Bounds<Pixels>, window: &mut Window, cx: &
         let top = frame.line_top(bounds.origin.y, line.line);
         let number = format!("{:>width$}", line.line + 1, width = frame.metrics.number_chars);
         let origin = point(bounds.origin.x + frame.metrics.char_width, top);
-        paint_text(frame, Glyphs { text: number, origin, color: frame.theme.muted }, window, cx);
+        paint_text(frame, Glyphs { text: number, origin, color: frame.style.muted }, window, cx);
         window.with_content_mask(mask, |window| paint_line(frame, line, point(text_area.origin.x, top), window, cx));
     }
     if let Some(caret) = frame.caret {
         let at = point(frame.column_x(text_area.origin.x, caret.column), frame.line_top(text_area.origin.y, caret.line));
-        let quad = fill(Bounds::new(at, size(frame.theme.sizes.editor.caret_width.px(), frame.metrics.line_height)), rgb(frame.theme.text));
+        let quad = fill(Bounds::new(at, size(px(frame.style.editor_caret_width), frame.metrics.line_height)), rgb(frame.style.text));
         window.with_content_mask(mask, |window| window.paint_quad(quad));
     }
 }
@@ -395,13 +375,13 @@ fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: 
     if let Some(selected) = &line.selected {
         let from = point(frame.column_x(origin.x, selected.start), origin.y);
         let to = point(frame.column_x(origin.x, selected.end), origin.y + frame.metrics.line_height);
-        window.paint_quad(fill(Bounds::from_corners(from, to), rgb(frame.theme.selected)));
+        window.paint_quad(fill(Bounds::from_corners(from, to), rgb(frame.style.selected)));
     }
     if line.text.is_empty() {
         return;
     }
     let origin = point(frame.column_x(origin.x, line.first_column), origin.y);
-    paint_text(frame, Glyphs { text: line.text.clone(), origin, color: frame.theme.text }, window, cx);
+    paint_text(frame, Glyphs { text: line.text.clone(), origin, color: frame.style.text }, window, cx);
 }
 
 /// Text to paint at a place, in one colour.
@@ -415,7 +395,7 @@ struct Glyphs {
 fn paint_text(frame: &Frame, glyphs: Glyphs, window: &mut Window, cx: &mut App) {
     let run = TextRun {
         len: glyphs.text.len(),
-        font: gpui::font(theme::mono_font(cx)),
+        font: gpui::font(frame.style.mono_font.clone()),
         color: rgb(glyphs.color).into(),
         background_color: None,
         underline: None,

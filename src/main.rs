@@ -5,6 +5,7 @@ mod args;
 mod assets;
 mod click_targets;
 mod clipboard;
+mod codeview_host;
 mod colors;
 mod diff_view;
 mod dragged_files;
@@ -54,7 +55,6 @@ mod tabs;
 mod third_party;
 mod trace;
 mod terminal;
-mod text_editor;
 mod text_input;
 mod theme;
 mod theme_config;
@@ -180,6 +180,7 @@ fn run(startup: Startup, background: bool) {
         cx.set_global(theme_config::defaults());
         theme::apply(cx.window_appearance(), cx);
         text_input::bind_keys(cx);
+        codeview_host::install(cx);
         #[cfg(target_os = "macos")]
         workspace::add_app_menu(cx);
         let saved = startup.saved.window.and_then(|window| window.usable_bounds(&window_state::screens(cx)));

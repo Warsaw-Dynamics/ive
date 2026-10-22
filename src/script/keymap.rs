@@ -106,12 +106,7 @@ pub enum SelectionMode {
     Line,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClipboardTarget {
-    Clipboard,
-    Primary,
-    Both,
-}
+pub use codeview::host::ClipboardTarget;
 
 /// What a terminal paste takes from the clipboard: `TextElseImage` is `act::PasteFrom`'s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -156,6 +156,7 @@ impl Global for TabsTheme {}
 pub fn set_tabs(window: &Window, cx: &mut App) -> Theme {
     let theme = for_panel(Panel::Tabs, window, cx);
     cx.set_global(TabsTheme(theme));
+    cx.set_global(codeview::style::PanelStyle(view_style(&theme).with_mono_font(mono_font(cx))));
     theme
 }
 
@@ -236,6 +237,7 @@ pub fn view_style(theme: &Theme) -> ViewStyle {
         panels_shown: theme.panels.shown(),
         editor_text_size: editor.text_size.0,
         editor_line_height_factor: editor.line_height_factor.0,
+        editor_caret_width: editor.caret_width.0,
         scrollbar_thickness: controls.scrollbar_thickness.0,
         scrollbar_min_thumb: controls.scrollbar_min_thumb.0,
         scrollbar_inset: controls.scrollbar_inset.0,

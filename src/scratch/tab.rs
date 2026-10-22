@@ -17,7 +17,7 @@ use crate::icons;
 use crate::paths::tilde_home;
 use crate::project::ProjectId;
 use crate::saved_tabs::{CaretPosition, ScrollPosition};
-use crate::text_editor::{SizeLimit, TextEditor, TextEditorEvent};
+use codeview::text_editor::{SizeLimit, TextEditor, TextEditorEvent};
 use crate::theme::Theme;
 use crate::workspace::Workspace;
 

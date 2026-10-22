@@ -37,6 +37,7 @@ pub struct ViewStyle {
     /// the editor's text size, and how many text sizes apart its lines are
     pub editor_text_size: f32,
     pub editor_line_height_factor: f32,
+    pub editor_caret_width: f32,
     pub scrollbar_thickness: f32,
     pub scrollbar_min_thumb: f32,
     pub scrollbar_inset: f32,
@@ -44,6 +45,12 @@ pub struct ViewStyle {
 }
 
 impl Global for ViewStyle {}
+
+/// The style of the panel a window is drawing, set by the host before it draws the panel; see [`ViewStyle::drawing`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct PanelStyle(pub ViewStyle);
+
+impl Global for PanelStyle {}
 
 impl ViewStyle {
     /// This style drawing code in `font`.
@@ -53,5 +60,11 @@ impl ViewStyle {
 
     pub fn get(cx: &App) -> &ViewStyle {
         cx.global::<ViewStyle>()
+    }
+
+    /// The style of the panel being drawn when the host sets one (an unfocused panel draws in other colours), else
+    /// the global one.
+    pub fn drawing(cx: &App) -> &ViewStyle {
+        cx.try_global::<PanelStyle>().map_or_else(|| cx.global::<ViewStyle>(), |panel| &panel.0)
     }
 }

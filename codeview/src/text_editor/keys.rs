@@ -3,22 +3,7 @@
 use gpui::{Keystroke, Modifiers};
 
 use super::model::{Motion, Selecting, Unit};
-use crate::script::keymap::ClipboardTarget;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Command {
-    Move { motion: Motion, selecting: Selecting },
-    Newline,
-    Tab,
-    Backspace(Unit),
-    Delete(Unit),
-    SelectAll,
-    CopyTo(ClipboardTarget),
-    Cut,
-    PasteFrom(ClipboardTarget),
-    Undo,
-    Redo,
-}
+use crate::host::Command;
 
 /// `page_rows` is how far PageUp and PageDown move, known only to the view.
 pub fn command(keystroke: &Keystroke, page_rows: usize) -> Option<Command> {
@@ -31,7 +16,7 @@ fn editing(key: &str, modifiers: &Modifiers) -> Option<Command> {
     let unit = if by_word(modifiers) { Unit::Word } else { Unit::Char };
     match key {
         "enter" => Some(Command::Newline),
-        "tab" => Some(Command::Tab),
+        "tab" => Some(Command::Indent),
         "backspace" => Some(Command::Backspace(unit)),
         "delete" => Some(Command::Delete(unit)),
         _ => None,
@@ -57,7 +42,7 @@ fn movement(key: &str, modifiers: &Modifiers, page_rows: usize) -> Option<Comman
         _ => return None,
     };
     let selecting = if modifiers.shift { Selecting::Extend } else { Selecting::Move };
-    Some(Command::Move { motion, selecting })
+    Some(Command::Move(motion, selecting))
 }
 
 /// Ctrl on Linux and Windows, Alt (Option) on macOS, as their native text fields do.
@@ -96,7 +81,7 @@ mod tests {
         let commands = keys.map(command_for);
 
         // then
-        let expected = [Command::Newline, Command::Tab, Command::Backspace(Unit::Char), Command::Delete(Unit::Char)];
+        let expected = [Command::Newline, Command::Indent, Command::Backspace(Unit::Char), Command::Delete(Unit::Char)];
         assert_eq!(commands, expected.map(Some));
     }
 
@@ -110,9 +95,9 @@ mod tests {
 
         // then
         let expected = [
-            Command::Move { motion: Motion::PageDown(30), selecting: Selecting::Extend },
-            Command::Move { motion: Motion::LineStart, selecting: Selecting::Move },
-            Command::Move { motion: Motion::Up, selecting: Selecting::Extend },
+            Command::Move(Motion::PageDown(30), Selecting::Extend),
+            Command::Move(Motion::LineStart, Selecting::Move),
+            Command::Move(Motion::Up, Selecting::Extend),
         ];
         assert_eq!(commands, expected.map(Some));
     }
@@ -128,12 +113,12 @@ mod tests {
 
         // then
         let expected = [
-            Command::Move { motion: Motion::WordLeft, selecting: Selecting::Move },
-            Command::Move { motion: Motion::WordRight, selecting: Selecting::Extend },
+            Command::Move(Motion::WordLeft, Selecting::Move),
+            Command::Move(Motion::WordRight, Selecting::Extend),
             Command::Backspace(Unit::Word),
             Command::Delete(Unit::Word),
-            Command::Move { motion: Motion::DocumentStart, selecting: Selecting::Move },
-            Command::Move { motion: Motion::DocumentEnd, selecting: Selecting::Extend },
+            Command::Move(Motion::DocumentStart, Selecting::Move),
+            Command::Move(Motion::DocumentEnd, Selecting::Extend),
         ];
         assert_eq!(commands, expected.map(Some));
     }
