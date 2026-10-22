@@ -102,9 +102,9 @@ pub struct Workspace {
     tree_statuses: tree_status::TreeStatuses,
     tree_git: tree_git::TreeGit,
     /// the Open project menu of the sidebar header
-    menu_open: bool,
+    header_menu: Option<sidebar_view::HeaderMenu>,
     /// the menu was open when the + button was pressed: that press closed it, so the click must not reopen it
-    menu_open_at_press: bool,
+    header_menu_at_press: Option<sidebar_view::HeaderMenu>,
     /// the menu a right click on a tab opened
     /// the open menu of a tab or tree row
     menu: Option<menu::OpenMenu>,
@@ -140,6 +140,10 @@ pub struct Workspace {
     _api_calls: Task<()>,
     scripts: scripts::ScriptWatch,
     quit_prompt: Option<quit::QuitPrompt>,
+    /// the folders every worktree shows (the tree header's folders menu)
+    shown_folders: std::collections::BTreeSet<FolderKind>,
+    /// the open projects the tree and the hub leave out (the tree header's picker)
+    hidden_projects: std::collections::BTreeSet<ProjectId>,
     on_quit: OnQuit,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
@@ -264,8 +268,8 @@ impl Workspace {
             tree: Tree::new(),
             tree_statuses: tree_status::TreeStatuses::default(),
             tree_git: tree_git::TreeGit::default(),
-            menu_open: false,
-            menu_open_at_press: false,
+            header_menu: None,
+            header_menu_at_press: None,
             menu: None,
             menu_requests: 0,
             locating: None,
@@ -290,6 +294,8 @@ impl Workspace {
             _api_calls: api_requests::answer_calls(startup.api_calls, window, cx),
             scripts,
             quit_prompt: None,
+            hidden_projects: startup.saved.hidden_projects.iter().filter_map(|id| ProjectId::parse(id).ok()).collect(),
+            shown_folders: startup.saved.shown_folders.as_ref().map_or_else(crate::sidebar::folders::default_shown, |kinds| kinds.iter().copied().collect()),
             on_quit: startup.on_quit,
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
@@ -710,34 +716,84 @@ impl Workspace {
         let layout = cx.global::<SettingsStore>().current().git_files.layout;
         let open_folders = cx.try_global::<crate::script::open_folders::OpenFolders>().unwrap_or(&crate::script::open_folders::ALL_OPEN);
         let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system() };
-        self.tree.rows = rows::build(&self.projects, &self.processes, &*self, &look);
+        let shown = crate::project_list::shown(&self.projects, &self.hidden_projects);
+        self.tree.rows = rows::build(shown, &self.processes, &*self, &look);
         self.read_tree_statuses(cx);
         self.sync_watches();
         cx.notify();
     }
 
-    /// The + button: opens the Open project menu, or closes it when it was open.
-    pub(crate) fn toggle_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let was_open = self.menu_open || self.menu_open_at_press;
-        self.menu_open_at_press = false;
+    /// The projects the tree and the hub show, in tree order.
+    pub(crate) fn shown_projects(&self) -> Vec<ProjectId> {
+        crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.id.clone()).collect()
+    }
+
+    /// The picker's row of project `project`: shows it, or leaves it out of the tree and the hub; the last one shown
+    /// stays.
+    pub(crate) fn toggle_project_shown(&mut self, project: ProjectId, cx: &mut Context<Self>) {
+        let shown = self.shown_projects();
+        let hiding = shown.contains(&project);
+        if hiding && shown == [project.clone()] {
+            return;
+        }
+        match hiding {
+            true => self.hidden_projects.insert(project),
+            false => self.hidden_projects.remove(&project),
+        };
+        self.forget_stale_hidden();
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// Drops from the projects left out those closed, and all of them when they would leave none shown.
+    pub(crate) fn forget_stale_hidden(&mut self) {
+        self.hidden_projects = crate::project_list::still_hidden(&self.projects, std::mem::take(&mut self.hidden_projects));
+    }
+
+    /// The picker's All projects.
+    pub(crate) fn show_all_projects(&mut self, cx: &mut Context<Self>) {
+        self.hidden_projects.clear();
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    fn picker_title(&self) -> sidebar_view::PickerTitle {
+        let shown: Vec<&str> = crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.name.as_str()).collect();
+        sidebar_view::picker_title(&shown, self.projects.len())
+    }
+
+    /// What the picker's menu lists: the open projects in tree order, whether each shows, their live processes.
+    fn projects_menu(&self) -> sidebar_view::ProjectsMenu {
+        let shown = self.shown_projects();
+        let projects = self.projects.iter().map(|open| {
+            let running = self.processes.in_project(&open.project.id).iter().filter(|process| process.is_live()).count();
+            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running }
+        });
+        sidebar_view::ProjectsMenu { projects: projects.collect() }
+    }
+
+    /// A header button: opens its menu, or closes it when it was open.
+    pub(crate) fn toggle_menu(&mut self, menu: sidebar_view::HeaderMenu, window: &mut Window, cx: &mut Context<Self>) {
+        let was_open = self.header_menu == Some(menu) || self.header_menu_at_press == Some(menu);
+        self.header_menu_at_press = None;
         if was_open {
             return self.close_menu(window, cx);
         }
-        self.menu_open = true;
+        self.header_menu = Some(menu);
         // so Escape reaches the workspace, not a focused terminal; the sidebar keeps the keyboard
         window.focus(&cx.global::<theme::SidebarFocus>().0.clone(), cx);
         cx.notify();
     }
 
-    /// A press on the + button, seen before the menu's press-outside closes the menu.
+    /// A press on a header button, seen before the open menu's press-outside closes it.
     pub(crate) fn note_menu_press(&mut self) {
-        self.menu_open_at_press = self.menu_open;
+        self.header_menu_at_press = self.header_menu;
     }
 
     /// Closes the menu and gives the keyboard back to the shown tab.
     pub(crate) fn close_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_open {
-            self.menu_open = false;
+        if self.header_menu.is_some() {
+            self.header_menu = None;
             self.focus_active_tab(window, cx);
             cx.notify();
         }
@@ -893,7 +949,10 @@ impl Render for Workspace {
             let sidebar = Sidebar {
                 tree: &self.tree,
                 recent: &self.recent,
-                menu_open: self.menu_open,
+                menu: self.header_menu,
+                folders: (self.header_menu == Some(sidebar_view::HeaderMenu::Folders)).then(|| self.folders_menu(cx)),
+                picker: self.picker_title(),
+                projects: (self.header_menu == Some(sidebar_view::HeaderMenu::Projects)).then(|| self.projects_menu()),
                 drag: &self.window_drag,
                 width,
                 resizing: self.sidebar_resize.is_some(),

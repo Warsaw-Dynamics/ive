@@ -3,6 +3,7 @@
 use gpui::{Keystroke, Modifiers};
 
 use super::menus::MenuKind;
+use crate::sidebar::folders::FolderKind;
 
 /// Where a binding applies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,6 +157,8 @@ pub enum Builtin {
     CloseTabsToTheRight,
     /// changed files flat or grouped by folder, in the tree's git folders and the Git sections
     ToggleChangesLayout,
+    /// a worktree folder shown in every worktree, or hidden in every one (the tree header's folders menu)
+    ToggleFolderEverywhere(FolderKind),
     /// the hub asking where a new terminal goes (Ctrl+Shift+T)
     OpenTerminalIn,
     ActivateRow,
@@ -239,7 +242,7 @@ impl Builtin {
     pub fn supports(&self, scope: Scope) -> bool {
         match self {
             Self::Nop => true,
-            Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::ToggleChangesLayout => scope == Scope::Window,
+            Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::ToggleChangesLayout | Self::ToggleFolderEverywhere(_) => scope == Scope::Window,
             Self::CloseTab | Self::KeepTab => matches!(scope, Scope::Window | Scope::Tab),
             Self::StopProgram | Self::KillProgram | Self::CloseOtherTabs | Self::CloseTabsToTheLeft | Self::CloseTabsToTheRight => {
                 matches!(scope, Scope::Window | Scope::Tab)

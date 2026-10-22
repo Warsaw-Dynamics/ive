@@ -33,6 +33,12 @@ pub const MAX_COMMITS_SHOWN: usize = 10_000;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SavedState {
     pub version: u32,
+    /// the folders every worktree shows; `None`: Processes and Files
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shown_folders: Option<Vec<FolderKind>>,
+    /// the ids of the open projects the tree and the hub leave out, sorted
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hidden_projects: Vec<String>,
     /// in tree order
     #[serde(default)]
     pub projects: Vec<SavedProject>,
@@ -55,7 +61,7 @@ pub struct SavedState {
 
 impl Default for SavedState {
     fn default() -> Self {
-        Self { version: VERSION, projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new() }
+        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new() }
     }
 }
 
@@ -176,6 +182,9 @@ impl SavedState {
         }
         if let Some(tabs) = &self.tabs {
             tabs.validate()?;
+        }
+        for hidden in &self.hidden_projects {
+            ProjectId::parse(hidden)?;
         }
         if let Some(over) = self.projects.iter().flat_map(|project| &project.folders).find(|folders| folders.is_over_limits()) {
             return Err(format!(
@@ -323,6 +332,8 @@ mod tests {
     fn sample() -> SavedState {
         SavedState {
             version: VERSION,
+            shown_folders: None,
+            hidden_projects: Vec::new(),
             projects: vec![SavedProject {
                 path: PathBuf::from("/mnt/data/Projects/atlassian"),
                 id: "atlassian".to_owned(),
@@ -556,6 +567,35 @@ mod tests {
 
         // then
         assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_round_trip_shown_folders_and_hidden_projects() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let state = SavedState { shown_folders: Some(vec![FolderKind::Processes, FolderKind::Commits]), hidden_projects: vec!["notes".to_owned()], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_load_a_state_without_shown_folders_or_hidden_projects() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        fs::write(&path, "version = 2\n").unwrap();
+
+        // when
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state.shown_folders, loaded.state.hidden_projects, loaded.problem), (None, Vec::<String>::new(), None));
     }
 
     #[test]

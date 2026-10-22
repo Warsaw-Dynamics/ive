@@ -1,0 +1,6 @@
+# The mock reads its icons from assets/icons, so the root is the folder above.
+[serve.mock]
+name = "Mock"
+root = ".."
+port = 4301
+open = "/mock/checkouts.html"

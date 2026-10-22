@@ -72,9 +72,12 @@ impl Workspace {
         for project in &saved.projects {
             // ids were validated when the file was read
             if let Ok(id) = ProjectId::parse(&project.id) {
-                self.projects.push(OpenProject::restored(project, id));
+                let mut open = OpenProject::restored(project, id);
+                open.set_every_folder(&self.shown_folders);
+                self.projects.push(open);
             }
         }
+        self.forget_stale_hidden();
         self.refresh_all(cx);
         self.tree_changed(cx);
     }
@@ -163,12 +166,28 @@ impl Workspace {
     /// Puts a scanned folder in the tree: the open project it belongs to takes the scan as it takes a refresh's
     /// (the later-started scan wins), a new one is added at the end.
     fn place_opened(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
+        let placed = self.place_scanned(new, folder, cx);
+        // a project opened shows, though the picker left it out
+        if let Ok(id) = &placed {
+            self.hidden_projects.remove(id);
+        }
+        placed
+    }
+
+    fn place_scanned(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
         match project_list::holding(&self.projects, folder, &new.scan).map(|open| open.project.id.clone()) {
             Some(id) => {
                 self.apply_scan(&id, Scanned { number: new.number, result: Ok(new.scan) }, cx);
                 Ok(id)
             }
-            None => project_list::add(&mut self.projects, &mut self.recent, new),
+            None => {
+                let id = project_list::add(&mut self.projects, &mut self.recent, new)?;
+                let every = self.shown_folders.clone();
+                if let Some(open) = self.open_project_mut(&id) {
+                    open.set_every_folder(&every);
+                }
+                Ok(id)
+            }
         }
     }
 
@@ -387,6 +406,7 @@ impl Workspace {
         if project_list::close(&mut self.projects, &mut self.recent, id).is_none() {
             return;
         }
+        self.forget_stale_hidden();
         self.project_closed(id, cx);
         self.tree_changed(cx);
         self.schedule_save(cx);

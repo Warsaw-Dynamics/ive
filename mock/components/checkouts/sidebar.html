@@ -1,8 +1,17 @@
-<!-- sidebar/view.rs: header "Projects" with Select opened file and Open project; then the tree; the resize handle. -->
+<!-- sidebar/view.rs: header with Select opened file and Open project; then the tree; the resize handle. The header's
+     title picks what the tree and the hub show: all projects, one or a few. -->
 <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }">
-  <div class="sidebar__header sidebar__header--bar">
-    <span>Projects</span>
+  <div class="sidebar__header sidebar__header--bar anchor" @click.outside="(menu === 'folders' || menu === 'projects') && (menu = null)">
+    <button class="scope-button" type="button" title="Show all projects, or one" @click="toggleMenu('projects')">
+      <template x-if="onlyShown() !== null"><span class="badge" x-text="initials(onlyShown())"></span></template>
+      <span class="scope-button__name" x-text="allLabel()"></span>
+      <img class="icon" :src="icon('chevron-down.svg')" alt="" />
+    </button>
     <div class="sidebar__tools anchor" @click.outside="menu === 'add' && (menu = null)">
+      <!-- a proposal: the folders every worktree shows -->
+      <button class="icon-button" type="button" title="Folders in every worktree" @click="toggleMenu('folders')">
+        <img class="icon" :src="icon('project-folder.svg')" alt="Folders in every worktree" />
+      </button>
       <button class="icon-button" type="button" title="Select opened file">
         <img class="icon" :src="icon('locate.svg')" alt="Select opened file" />
       </button>
@@ -23,6 +32,56 @@
           <img class="icon" :src="icon('project-folder.svg')" alt="" /><span>Open Folder…</span>
         </button>
       </div>
+    </div>
+    <!-- the tree's projects: a tick each, a click shows it or leaves it out (the last one shown stays); the menu stays
+         open; the projects left out stay open (tabs, processes), only out of the tree and the hub -->
+    <div class="menu menu--header" x-show="menu === 'projects'">
+      <button class="menu__item" type="button" @click="showAllProjects()">
+        <span class="menu__tick" x-text="allProjectsShown() ? '✓' : ''"></span>
+        <span class="menu__grow">All projects</span>
+        <span class="menu__key" x-text="openProjects().length"></span>
+      </button>
+      <div class="menu__separator"></div>
+      <template x-for="p in openProjects()" :key="p.name">
+        <button class="menu__item" type="button" @click="toggleProjectShown(p.name)" :title="p.checkouts[0].path">
+          <span class="menu__tick" x-text="isProjectShown(p.name) ? '✓' : ''"></span>
+          <span class="badge" x-text="initials(p.name)"></span>
+          <span class="menu__grow" x-text="p.name"></span>
+          <template x-if="projectConsoles(p).length"><span class="menu__key" x-text="'● ' + projectConsoles(p).length + ' running'"></span></template>
+        </button>
+      </template>
+    </div>
+    <!-- under the whole header, as wide as the tree -->
+    <div class="menu menu--header" x-show="menu === 'folders'">
+      <div class="menu__section">In every worktree</div>
+      <!-- each row's shortcut on its right, as IntelliJ's menus; Alt+Shift+G flips Flat and Tree -->
+      <template x-for="(f, at) in WORKTREE_FOLDERS" :key="f.key">
+        <button class="menu__item" type="button" @click="showFolderEverywhere(f.key, everyFolder[f.key] === false)">
+          <span class="menu__tick" x-text="everyFolder[f.key] ? '✓' : ''"></span>
+          <img class="icon" :src="icon(f.icon)" alt="" /><span class="menu__grow" x-text="f.title"></span>
+          <span class="menu__key" x-text="'Alt+Shift+' + f.letter"></span>
+        </button>
+      </template>
+      <div class="menu__separator"></div>
+      <!-- the run configurations tab's Flat | Tree switch -->
+      <div class="menu__item menu__item--switch">
+        <span class="menu__grow menu__label">Changed files</span>
+        <div class="segmented" role="group" aria-label="Changed files">
+          <template x-for="option in [['flat', 'Flat'], ['tree', 'Tree']]" :key="option[0]">
+            <button type="button" :aria-pressed="gitLayout === option[0]" @click="gitLayout = option[0]" x-text="option[1]"></button>
+          </template>
+        </div>
+        <span class="menu__key">Alt+Shift+G</span>
+      </div>
+      <template x-if="foldersOwned().length">
+        <div>
+          <div class="menu__separator"></div>
+          <button class="menu__item" type="button" @click="resetOwnFolders()" :title="foldersOwned().join('\n')">
+            <span class="menu__tick"></span>
+            <span class="menu__grow" x-text="'Reset ' + foldersOwned().length + (foldersOwned().length === 1 ? ' worktree' : ' worktrees') + ' set apart'"></span>
+          </button>
+        </div>
+      </template>
     </div>
   </div>
 

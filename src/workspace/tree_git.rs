@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use gpui::{Context, Window, prelude::*};
+use gpui::{App, Context, Window, prelude::*};
 
 use super::Workspace;
 use crate::git::base;
@@ -232,6 +232,61 @@ impl Workspace {
         }
         self.tree_changed(cx);
         self.schedule_save(cx);
+    }
+
+    /// Alt+click on a badge, or its `act::ToggleFolderEverywhere` key: shows `kind` in every worktree, or hides it.
+    pub(crate) fn toggle_folder_everywhere(&mut self, kind: FolderKind, cx: &mut Context<Self>) {
+        let on = !self.shown_folders.contains(&kind);
+        self.show_folder_everywhere(kind, on, cx);
+    }
+
+    /// Shows `kind` in every worktree of every open project, or hides it, and in worktrees opened later; a git
+    /// folder switched on reads the git data of the checkouts the tree shows.
+    pub(crate) fn show_folder_everywhere(&mut self, kind: FolderKind, on: bool, cx: &mut Context<Self>) {
+        match on {
+            true => self.shown_folders.insert(kind),
+            false => self.shown_folders.remove(&kind),
+        };
+        for open in &mut self.projects {
+            open.show_folder_everywhere(kind, on);
+        }
+        if on && GIT_FOLDERS.contains(&kind) {
+            let shown: Vec<CheckoutRef> = self.projects.iter().flat_map(|open| open.shown_checkouts().into_iter().map(|checkout| open.project.checkout_ref(checkout))).collect();
+            for checkout in &shown {
+                self.want_tree_git(checkout, cx);
+            }
+        }
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// What the tree header's folders menu shows.
+    pub(crate) fn folders_menu(&self, cx: &App) -> crate::sidebar::view::FoldersMenu {
+        let keymap = crate::script::state::keymap(cx);
+        let (keys, layout_key) = keymap.map_or_else(|| (FolderKind::ALL.map(|kind| (kind, None)).to_vec(), None), crate::sidebar::view::menu_keys);
+        let layout = cx.global::<SettingsStore>().current().git_files.layout;
+        crate::sidebar::view::FoldersMenu { every: self.shown_folders.clone(), layout, keys, layout_key, set_apart: self.folders_set_apart() }
+    }
+
+    /// The folders menu's Flat | Tree switch.
+    pub(crate) fn set_changes_layout(&mut self, layout: crate::overview::file_list::FileLayout, cx: &mut Context<Self>) {
+        if cx.global::<SettingsStore>().current().git_files.layout != layout {
+            self.toggle_changes_layout(cx);
+        }
+    }
+
+    /// Every worktree shows every worktree's folders again.
+    pub(crate) fn reset_folders(&mut self, cx: &mut Context<Self>) {
+        for open in &mut self.projects {
+            open.reset_folders();
+        }
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// The worktrees whose folders differ from every worktree's, as `<project> · <worktree>`.
+    pub(crate) fn folders_set_apart(&self) -> Vec<String> {
+        self.projects.iter().flat_map(|open| open.set_apart().into_iter().map(|checkout| format!("{} · {}", open.project.name, checkout.label))).collect()
     }
 
     /// A folder's chevron.

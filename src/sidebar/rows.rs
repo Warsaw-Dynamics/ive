@@ -235,7 +235,7 @@ pub fn target_name(verb: &str, row: &str) -> String {
 
 /// Every visible row, top to bottom. A project with one checkout (or no git) has no worktree level: its
 /// Processes row and files sit directly under it.
-pub fn build<V>(projects: &[OpenProject], processes: &Processes<V>, runs: &dyn RunsView, look: &TreeLook) -> Vec<TreeRow> {
+pub fn build<'a, V>(projects: impl IntoIterator<Item = &'a OpenProject>, processes: &Processes<V>, runs: &dyn RunsView, look: &TreeLook) -> Vec<TreeRow> {
     let mut rows = Vec::new();
     let tree = Sources { processes, runs, look };
     for project in projects {
@@ -304,7 +304,7 @@ fn git_folders<'a>(open: &'a OpenProject, checkout: &'a CheckoutRef, target: &'a
         ProjectKind::Plain => Some(&*NO_GIT),
         ProjectKind::Git => look.git.get(&checkout.path),
     };
-    GitFolders { checkout, target, folders: open.folders(&checkout.path), git, layout: look.layout, clock: look.clock }
+    GitFolders { checkout, target, folders: open.folders(&checkout.path), every: open.every_folder(), git, layout: look.layout, clock: look.clock }
 }
 
 /// What Processes lists: terminals and Claude Code, and the runs.
@@ -1062,6 +1062,29 @@ mod tests {
             (FolderKind::SinceBase, Some(2), false),
             (FolderKind::Commits, Some(2), true),
             (FolderKind::Files, None, true),
+        ]);
+    }
+
+    #[test]
+    fn should_mark_badges_set_apart_from_every_worktree() {
+        // given
+        use std::collections::BTreeSet;
+        let mut project = single();
+        project.set_every_folder(&BTreeSet::from([FolderKind::Processes, FolderKind::Uncommitted, FolderKind::Files]));
+        project.folders_mut(Path::new("/forge")).toggle_shown(FolderKind::Commits);
+
+        // when
+        let rows = build(std::slice::from_ref(&project), &Processes::<()>::default(), &FakeRuns::default(), &no_look());
+
+        // then
+        let TreeItem::Project(row) = &rows[0].item else { panic!("{:?}", rows[0]) };
+        let apart: Vec<(FolderKind, bool, bool)> = row.badges.iter().map(|badge| (badge.kind, badge.shown, badge.apart)).collect();
+        assert_eq!(apart, [
+            (FolderKind::Processes, true, false),
+            (FolderKind::Uncommitted, true, false),
+            (FolderKind::SinceBase, false, false),
+            (FolderKind::Commits, true, true),
+            (FolderKind::Files, true, false),
         ]);
     }
 

@@ -7,6 +7,8 @@
 //   tree    a tree node whose open state differs from its default, repeated
 //   o, g    an overview's section (<tab key>~<section>), a worktree's git view (<checkout>~<view>), repeated
 //   rlayout the run configurations tab's layout
+//   every   the folders every worktree shows (a proposal), when not all of them
+//   hidden  the projects the tree and the hub leave out
 //   theme, side, page, layout, sort, gap, radius, q, changed, excl, scope, nt: theme, tree width, Settings page, git
 //           layout and order, panel gap and radius, hub query, "changed only", "with excluded", scope and whether
 //           the hub asks where a new terminal goes (Ctrl+Shift+T)
@@ -52,11 +54,14 @@
         add('theme', this.themePreference === 'system' ? null : this.themePreference);
         add('side', this.sidebarWidth === this.SIDEBAR_DEFAULT_WIDTH ? null : this.sidebarWidth);
         add('page', this.settingsPage === 'Appearance' ? null : this.settingsPage);
-        add('layout', this.gitLayout === 'flat' ? null : this.gitLayout);
+        add('layout', this.gitLayout === 'tree' ? null : this.gitLayout);
         add('rlayout', this.runLayout === 'flat' ? null : this.runLayout);
         add('gap', this.panelGap);
         add('radius', this.panelRadius);
-        add('counts', this.countStyle === 'dot' ? null : this.countStyle);
+        add('hidden', this.hiddenProjects.join(','));
+        var every = this.everyFolder;
+        var folders = Object.keys(every).filter(function (k) { return every[k]; }).join(',');
+        add('every', folders === Object.keys(every).join(',') ? null : folders);
         if (this.tabs.some(function (t) { return t.key === 'hub'; })) {
           add('q', this.hub.query);
           add('excl', this.hub.withExcluded ? '1' : null);
@@ -65,7 +70,7 @@
           add('nt', this.hub.newTerminal ? '1' : null);
         }
         // keys hold '/', '@' and ':', which are fine in a hash; keep them readable
-        return p.toString().replace(/%2F/g, '/').replace(/%40/g, '@').replace(/%3A/g, ':').replace(/%7E/g, '~');
+        return p.toString().replace(/%2F/g, '/').replace(/%40/g, '@').replace(/%3A/g, ':').replace(/%7E/g, '~').replace(/%2C/g, ',');
       },
       // Tabs a key brings back: run variable prompts and processes started after load cannot be rebuilt.
       isRoutable: function (tab) { return tab.kind !== 'vars'; },
@@ -88,6 +93,10 @@
         // only ever the shown tab is temporary
         if (p.get('temp') === this.focus) this.temporary = this.focus;
         if (p.has('tree')) this.toggled = p.getAll('tree');
+        if (p.has('every')) {
+          var on = p.get('every').split(',');
+          Object.keys(this.everyFolder).forEach(function (k) { self.everyFolder[k] = on.includes(k); });
+        }
         p.getAll('o').forEach(function (v) { var kv = unpair(v); self.overviewTabs[kv[0]] = kv[1]; });
         if (p.has('q')) this.hub.query = p.get('q');
         this.hub.changedOnly = p.get('changed') === '1';

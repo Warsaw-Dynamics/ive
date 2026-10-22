@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::file_tree::{Expansion, FileTree, FileTreeError, Listing};
 use crate::git::types::Sha;
 use crate::paging::Paging;
-use crate::sidebar::folders::{COMMITS_SHOWN, ChangeSource, CheckoutFolders, CheckoutGit, DEFAULT_FOLDERS, FolderKind};
+use crate::sidebar::folders::{COMMITS_SHOWN, ChangeSource, CheckoutFolders, CheckoutGit, FolderKind};
 use crate::project::{Checkout, Project, ProjectError, ProjectId, ProjectScan, Statuses};
 use crate::state::{MAX_COMMITS_SHOWN, MAX_SAVED_OPEN, SavedChangeFolder, SavedFolders, SavedProject};
 use crate::watch::Watched;
@@ -40,8 +40,10 @@ pub struct OpenProject {
     expanded_checkouts: HashSet<PathBuf>,
     /// worktrees the user hid: out of the tree and the hub; never the main checkout
     hidden_worktrees: HashSet<PathBuf>,
-    /// what each checkout shows of its folders, when not the default
+    /// what each checkout shows of its folders, when not `default_folders`
     folders: HashMap<PathBuf, CheckoutFolders>,
+    /// the folders of a checkout nobody changed: every worktree's set, nothing folded or open
+    default_folders: CheckoutFolders,
     files: HashMap<PathBuf, FileTree>,
     /// what `state.toml` kept expanded of file trees not built yet, by checkout
     restored_files: HashMap<PathBuf, Expansion>,
@@ -67,6 +69,7 @@ impl OpenProject {
             expanded_checkouts: HashSet::new(),
             hidden_worktrees: HashSet::new(),
             folders: HashMap::new(),
+            default_folders: CheckoutFolders::default(),
             files: HashMap::new(),
             restored_files: HashMap::new(),
             unwatched: HashSet::new(),
@@ -114,7 +117,7 @@ impl OpenProject {
     fn saved_folders(&self) -> Vec<SavedFolders> {
         let expansions = self.expansions();
         let paths: BTreeSet<&PathBuf> = self.folders.keys().chain(expansions.keys()).filter(|path| path.to_str().is_some()).collect();
-        paths.into_iter().filter_map(|path| saved_folders(path, self.folders(path), expansions.get(path))).collect()
+        paths.into_iter().filter_map(|path| saved_folders(path, self.folders(path), self.every_folder(), expansions.get(path))).collect()
     }
 
     /// What each checkout's file tree has expanded; a tree not built yet keeps what was restored.
@@ -205,11 +208,43 @@ impl OpenProject {
     }
 
     pub fn folders(&self, checkout: &Path) -> &CheckoutFolders {
-        self.folders.get(checkout).unwrap_or(&DEFAULT_FOLDERS)
+        self.folders.get(checkout).unwrap_or(&self.default_folders)
     }
 
     pub fn folders_mut(&mut self, checkout: &Path) -> &mut CheckoutFolders {
-        self.folders.entry(checkout.to_path_buf()).or_default()
+        self.folders.entry(checkout.to_path_buf()).or_insert_with(|| self.default_folders.clone())
+    }
+
+    /// The folders every worktree shows: what a checkout nobody changed shows.
+    pub fn every_folder(&self) -> &BTreeSet<FolderKind> {
+        &self.default_folders.shown
+    }
+
+    /// Makes `every` what a checkout nobody changed shows; the checkouts that were changed keep their folders.
+    pub fn set_every_folder(&mut self, every: &BTreeSet<FolderKind>) {
+        self.default_folders.shown = every.clone();
+    }
+
+    /// Shows `kind` in every checkout, or hides it, those set apart on it too.
+    pub fn show_folder_everywhere(&mut self, kind: FolderKind, on: bool) {
+        for folders in std::iter::once(&mut self.default_folders).chain(self.folders.values_mut()) {
+            match on {
+                true => folders.shown.insert(kind),
+                false => folders.shown.remove(&kind),
+            };
+        }
+    }
+
+    /// Every checkout shows every worktree's folders again; what is folded or open in them stays.
+    pub fn reset_folders(&mut self) {
+        for folders in self.folders.values_mut() {
+            folders.shown = self.default_folders.shown.clone();
+        }
+    }
+
+    /// The listed checkouts whose folders differ from every worktree's, in project order.
+    pub fn set_apart(&self) -> Vec<&Checkout> {
+        self.listed_checkouts().filter(|checkout| self.folders(&checkout.path).is_set_apart(self.every_folder())).collect()
     }
 
     /// See [`CheckoutFolders::forget_unlisted`].
@@ -412,9 +447,9 @@ impl OpenProject {
 }
 
 /// What `state.toml` keeps of a checkout's folders and its file tree's `expansion`; `None` when all are as by
-/// default. Keeps at most [`MAX_SAVED_OPEN`] of each kind of open item.
-fn saved_folders(checkout: &Path, folders: &CheckoutFolders, expansion: Option<&Expansion>) -> Option<SavedFolders> {
-    if folders.is_default_saved() && expansion.is_none() {
+/// default, every worktree showing `every`. Keeps at most [`MAX_SAVED_OPEN`] of each kind of open item.
+fn saved_folders(checkout: &Path, folders: &CheckoutFolders, every: &BTreeSet<FolderKind>, expansion: Option<&Expansion>) -> Option<SavedFolders> {
+    if folders.is_default_saved(every) && expansion.is_none() {
         return None;
     }
     let mut open_commits: Vec<String> = folders.open_commits.iter().map(|sha| sha.as_str().to_owned()).collect();
@@ -802,6 +837,98 @@ mod tests {
         folders.toggle_shown(FolderKind::Commits);
         folders.toggle_commit(Sha::parse(&"ab".repeat(20)).unwrap());
         folders.toggle_commit(Sha::parse(&"ab".repeat(20)).unwrap());
+
+        // when
+        let saved = project.saved();
+
+        // then
+        assert!(saved.folders.is_empty(), "{:?}", saved.folders);
+    }
+
+    fn every(kinds: &[FolderKind]) -> BTreeSet<FolderKind> {
+        kinds.iter().copied().collect()
+    }
+
+    #[test]
+    fn should_follow_every_worktree_for_untouched_checkouts() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a"])));
+
+        // when
+        project.set_every_folder(&every(&[FolderKind::Processes, FolderKind::Commits, FolderKind::Files]));
+
+        // then
+        assert!(project.folders(Path::new("/p/a")).is_shown(FolderKind::Commits));
+        assert!(project.folders_mut(Path::new("/p/a")).is_shown(FolderKind::Commits), "a new entry starts as every worktree's");
+        assert!(project.saved().folders.is_empty(), "{:?}", project.saved().folders);
+    }
+
+    #[test]
+    fn should_switch_a_folder_in_every_checkout() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a", "b"])));
+        project.folders_mut(Path::new("/p/a")).toggle_shown(FolderKind::Uncommitted);
+
+        // when
+        project.show_folder_everywhere(FolderKind::Commits, true);
+        let commits = ["/p/a", "/p/b"].map(|path| project.folders(Path::new(path)).is_shown(FolderKind::Commits));
+        let kept = project.folders(Path::new("/p/a")).is_shown(FolderKind::Uncommitted);
+        project.show_folder_everywhere(FolderKind::Uncommitted, false);
+
+        // then
+        assert_eq!(commits, [true, true]);
+        assert!(kept, "a folder set apart stays until it is switched everywhere");
+        assert_eq!(["/p/a", "/p/b"].map(|path| project.folders(Path::new(path)).is_shown(FolderKind::Uncommitted)), [false, false]);
+        assert!(project.every_folder().contains(&FolderKind::Commits));
+    }
+
+    #[test]
+    fn should_reset_checkouts_set_apart() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a", "b"])));
+        let folders = project.folders_mut(Path::new("/p/a"));
+        folders.toggle_shown(FolderKind::Commits);
+        folders.toggle_folded(FolderKind::Files, &crate::script::open_folders::ALL_OPEN);
+        let apart: Vec<PathBuf> = project.set_apart().iter().map(|checkout| checkout.path.clone()).collect();
+
+        // when
+        project.reset_folders();
+
+        // then
+        assert_eq!(apart, [PathBuf::from("/p/a")]);
+        assert_eq!(project.folders(Path::new("/p/a")).shown, *project.every_folder());
+        assert!(!project.folders(Path::new("/p/a")).is_expanded(FolderKind::Files, &crate::script::open_folders::ALL_OPEN), "folds stay");
+        assert!(project.set_apart().is_empty());
+    }
+
+    #[test]
+    fn should_keep_old_saved_folders_as_they_were() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a"])));
+        project.folders_mut(Path::new("/p/a")).toggle_shown(FolderKind::Commits);
+        let saved = project.saved();
+
+        // when
+        let mut restored = OpenProject::restored(&saved, ProjectId::new("p"));
+        restored.set_every_folder(&crate::sidebar::folders::default_shown());
+
+        // then
+        assert_eq!(restored.folders(Path::new("/p/a")).shown, every(&[FolderKind::Processes, FolderKind::Commits, FolderKind::Files]));
+    }
+
+    #[test]
+    fn should_not_save_a_checkout_that_matches_every_worktree() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a"])));
+        project.set_every_folder(&every(&[FolderKind::Processes, FolderKind::Commits, FolderKind::Files]));
+        let folders = project.folders_mut(Path::new("/p/a"));
+        folders.toggle_shown(FolderKind::Commits);
+        folders.toggle_shown(FolderKind::Commits);
 
         // when
         let saved = project.saved();

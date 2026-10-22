@@ -755,7 +755,8 @@ impl Workspace {
 
     fn scope_chips(&self, state: &HubState, sources: &Sources) -> Vec<(String, HubScope)> {
         let label = |scope: &HubScope| match scope {
-            HubScope::All => "All".to_owned(),
+            HubScope::All if sources.hidden.is_empty() => "All".to_owned(),
+            HubScope::All => sources.all_label(),
             HubScope::Project(id) => self.project(id).map_or_else(|| id.to_string(), |project| project.name.clone()),
             HubScope::Worktree(checkout) => self.checkout_label(checkout),
         };
@@ -811,7 +812,10 @@ impl Workspace {
     /// Everything the hub lists but the files.
     pub(super) fn hub_sources(&self, back: Option<TabId>, cx: &App) -> Sources {
         let open_checkouts: Vec<PathBuf> = self.projects.iter().flat_map(|open| open.listed_checkouts().map(|checkout| checkout.path.clone())).collect();
+        let shown = self.shown_projects();
+        let hidden = self.projects.iter().map(|open| open.project.id.clone()).filter(|id| !shown.contains(id)).collect();
         Sources {
+            hidden,
             projects: self.hub_projects(),
             recent: recent_items(&self.history, |shown| self.presence(shown), |path| self.checkout_of_path(path)),
             changed: self.changed_items(),
@@ -823,6 +827,7 @@ impl Workspace {
             back: back.and_then(|back| self.back_tab(back, cx)),
             loading: open_checkouts.iter().any(|path| self.hub_index.files(path).is_none()),
         }
+        .without_hidden()
     }
 
     /// Open projects in the corpus' order, which its entries index; projects not in it yet after them.

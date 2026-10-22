@@ -103,8 +103,11 @@ impl Write {
 
 impl Workspace {
     fn saved_state(&self, cx: &App) -> SavedState {
+        let every = (self.shown_folders != crate::sidebar::folders::default_shown()).then(|| self.shown_folders.iter().copied().collect());
         SavedState {
             version: VERSION,
+            shown_folders: every,
+            hidden_projects: self.hidden_projects.iter().map(|id| id.as_str().to_owned()).collect(),
             projects: self.projects.iter().map(|open| open.saved()).collect(),
             recent: self.recent.clone(),
             tabs: self.saved_tabs(cx),

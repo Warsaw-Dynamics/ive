@@ -2,7 +2,6 @@
 //! the three git folders; pure, so it is tested without gpui.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
 
@@ -73,6 +72,11 @@ impl FolderKind {
     }
 }
 
+/// The folders every worktree shows in a new profile, and a checkout nobody changed.
+pub fn default_shown() -> BTreeSet<FolderKind> {
+    BTreeSet::from([FolderKind::Processes, FolderKind::Files])
+}
+
 /// What the tree shows of a checkout's folders: which are switched on by their badges, which the user folded or
 /// unfolded, and inside the git folders the change folders the user opened or closed and the open commits.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +94,7 @@ pub struct CheckoutFolders {
 impl Default for CheckoutFolders {
     fn default() -> Self {
         Self {
-            shown: BTreeSet::from([FolderKind::Processes, FolderKind::Files]),
+            shown: default_shown(),
             folds: BTreeMap::new(),
             change_folders: HashMap::new(),
             open_commits: HashSet::new(),
@@ -99,14 +103,20 @@ impl Default for CheckoutFolders {
     }
 }
 
-/// The folders of a checkout nobody changed.
-pub static DEFAULT_FOLDERS: LazyLock<CheckoutFolders> = LazyLock::new(CheckoutFolders::default);
-
 impl CheckoutFolders {
-    /// Whether `state.toml` has nothing to keep for it.
-    pub fn is_default_saved(&self) -> bool {
+    /// Whether `state.toml` has nothing to keep for it, when every worktree shows `every`.
+    pub fn is_default_saved(&self, every: &BTreeSet<FolderKind>) -> bool {
         let git_default = self.change_folders.is_empty() && self.open_commits.is_empty() && self.commits_shown == COMMITS_SHOWN;
-        self.shown == DEFAULT_FOLDERS.shown && self.folds.is_empty() && git_default
+        self.shown == *every && self.folds.is_empty() && git_default
+    }
+
+    /// Whether this checkout shows `kind` where every worktree does not, or the other way round.
+    pub fn is_apart(&self, kind: FolderKind, every: &BTreeSet<FolderKind>) -> bool {
+        self.shown.contains(&kind) != every.contains(&kind)
+    }
+
+    pub fn is_set_apart(&self, every: &BTreeSet<FolderKind>) -> bool {
+        self.shown != *every
     }
 
     pub fn is_shown(&self, kind: FolderKind) -> bool {
@@ -271,6 +281,8 @@ pub struct FolderBadge {
     /// `None` until the git data is read
     pub count: Option<usize>,
     pub shown: bool,
+    /// shown here and not in every worktree, or the other way round
+    pub apart: bool,
     /// `<checkout target>/<kind>`
     pub target: String,
 }
@@ -350,6 +362,8 @@ pub struct GitFolders<'a> {
     /// the checkout's click target name
     pub target: &'a str,
     pub folders: &'a CheckoutFolders,
+    /// the folders every worktree shows
+    pub every: &'a BTreeSet<FolderKind>,
     /// `None` until read
     pub git: Option<&'a CheckoutGit>,
     pub layout: FileLayout,
@@ -364,6 +378,7 @@ impl GitFolders<'_> {
             kind,
             count,
             shown: self.folders.is_shown(kind),
+            apart: self.folders.is_apart(kind, self.every),
             target: format!("{}/{}", self.target, kind.name()),
         };
         let git = [FolderKind::Uncommitted, FolderKind::SinceBase, FolderKind::Commits].map(|kind| badge(kind, self.git.and_then(|git| count_of(git, kind))));

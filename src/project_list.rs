@@ -1,6 +1,7 @@
 //! The workspace's open and recent projects, without gpui: which open project a folder belongs to, adding a
 //! project (the limit, its id) and closing one (Recent), and where Alt+F12 opens a terminal.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::open_project::OpenProject;
@@ -48,6 +49,21 @@ pub fn add(projects: &mut Vec<OpenProject>, recent: &mut Vec<RecentProject>, new
     open.apply(new.number, Ok(new.scan));
     projects.push(open);
     Ok(id)
+}
+
+/// The projects the tree shows: all but the `hidden` ones; all when that would leave none.
+pub fn shown<'a>(projects: &'a [OpenProject], hidden: &'a BTreeSet<ProjectId>) -> impl Iterator<Item = &'a OpenProject> {
+    let none_left = projects.iter().all(|open| hidden.contains(&open.project.id));
+    projects.iter().filter(move |open| none_left || !hidden.contains(&open.project.id))
+}
+
+/// `hidden` without the projects no longer open; empty when it would leave none shown.
+pub fn still_hidden(projects: &[OpenProject], mut hidden: BTreeSet<ProjectId>) -> BTreeSet<ProjectId> {
+    hidden.retain(|id| projects.iter().any(|open| &open.project.id == id));
+    match projects.iter().all(|open| hidden.contains(&open.project.id)) {
+        true => BTreeSet::new(),
+        false => hidden,
+    }
 }
 
 /// A slug of `root`'s folder name that no open, recent or on-disk id has.
@@ -107,6 +123,37 @@ mod tests {
 
     fn checkout(project: &str, path: &str) -> Option<CheckoutRef> {
         Some(CheckoutRef { project: ProjectId::new(project), path: PathBuf::from(path) })
+    }
+
+    #[test]
+    fn should_build_the_tree_of_the_projects_not_hidden() {
+        // given
+        let projects = [opened("a", "/a"), opened("b", "/b"), opened("c", "/c")];
+        let hidden = |ids: &[&str]| ids.iter().map(|id| ProjectId::new(*id)).collect::<BTreeSet<_>>();
+        let ids = |hidden: BTreeSet<ProjectId>| shown(&projects, &hidden).map(|open| open.project.id.as_str().to_owned()).collect::<Vec<_>>();
+
+        // when
+        let some = ids(hidden(&["a", "gone"]));
+        let none = ids(hidden(&[]));
+        let every = ids(hidden(&["a", "b", "c"]));
+
+        // then
+        assert_eq!(some, ["b", "c"]);
+        assert_eq!(none, ["a", "b", "c"]);
+        assert_eq!(every, ["a", "b", "c"], "the tree never shows no project");
+    }
+
+    #[test]
+    fn should_forget_hidden_projects_that_are_closed_or_would_leave_none() {
+        // given
+        let projects = [opened("a", "/a"), opened("b", "/b")];
+        let hidden = |ids: &[&str]| ids.iter().map(|id| ProjectId::new(*id)).collect::<BTreeSet<_>>();
+
+        // when
+        let kept = [hidden(&["a", "gone"]), hidden(&["a", "b"]), hidden(&["a", "b", "gone"])].map(|set| still_hidden(&projects, set));
+
+        // then
+        assert_eq!(kept, [hidden(&["a"]), hidden(&[]), hidden(&[])]);
     }
 
     #[test]

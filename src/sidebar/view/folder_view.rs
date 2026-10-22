@@ -185,6 +185,18 @@ fn link_actions(run: &RunRow, line: &RowLine, cx: &mut Context<Workspace>) -> Ve
     ]
 }
 
+/// `Commits (5) · this worktree only`, then what a click and an Alt+click do.
+fn badge_tip(badge: &FolderBadge) -> String {
+    let count = badge.count.map_or_else(String::new, |count| format!(" ({count})"));
+    let apart = if badge.apart { " · this worktree only" } else { "" };
+    format!("{}{count}{apart}\nClick: this worktree · Alt+click: every worktree", badge.kind.title())
+}
+
+/// The mark of a badge set apart from every worktree's: a 4 px accent dot at its top right.
+fn apart_dot(theme: Theme) -> Div {
+    div().absolute().top(px(1.)).right(px(1.)).size(px(4.)).rounded_full().bg(rgb(theme.accent))
+}
+
 /// The badges at the end of a checkout's row (or a single checkout's project row): each its folder's icon and count,
 /// highlighted while the folder shows; a click shows or hides it. Shown while the row is hovered, pinned like row
 /// actions to the panel's visible right edge, `after` short of it, over a long name.
@@ -194,14 +206,16 @@ pub(super) fn folder_badges(badges: &[FolderBadge], checkout: &CheckoutRef, line
     let height = theme.sizes.icon.0 + 2. * sizes.action_padding.0;
     let buttons = badges.iter().map(|badge| {
         let (kind, toggled) = (badge.kind, checkout.clone());
-        let toggle = target(target_name("badge", &badge.target), cx.listener(move |workspace, _event, _window, cx| {
-            workspace.toggle_folder_shown(&toggled, kind, cx);
+        // Alt (Option on macOS): every worktree
+        let toggle = target(target_name("badge", &badge.target), cx.listener(move |workspace, event: &gpui::ClickEvent, _window, cx| {
+            match event.modifiers().alt {
+                true => workspace.toggle_folder_everywhere(kind, cx),
+                false => workspace.toggle_folder_shown(&toggled, kind, cx),
+            }
         }), cx);
         let (fill, text) = if badge.shown { (Some(theme.border), theme.text) } else { (None, secondary(theme)) };
-        let tip = match badge.count {
-            Some(count) => format!("{} ({count})", kind.title()),
-            None => kind.title().to_owned(),
-        };
+        let tip = badge_tip(badge);
+        let dot = badge.apart.then(|| apart_dot(theme));
         div()
             .id(("folder-badge", kind as usize))
             .flex()
@@ -217,6 +231,8 @@ pub(super) fn folder_badges(badges: &[FolderBadge], checkout: &CheckoutRef, line
                 None => button,
             })
             .hover(|style| style.bg(rgb(theme.border)))
+            .relative()
+            .children(dot)
             .child(icon(theme, kind.icon()))
             .children(badge.count.map(|count| count.to_string()))
             .tooltip(tooltip::text_tooltip(tip))

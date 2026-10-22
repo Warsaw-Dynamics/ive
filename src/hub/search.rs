@@ -26,6 +26,8 @@ pub struct Filter {
     pub excluded: bool,
     /// paths shown above the files already (Recent rows), by project
     pub skip: HashSet<(usize, Arc<str>)>,
+    /// projects the tree header's picker left out
+    pub hidden: HashSet<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,7 +86,7 @@ pub fn search(corpus: &Corpus, query: &Query, filter: &Filter, ticket: &Ticket, 
 
 impl Filter {
     fn admits(&self, entry: &Entry) -> bool {
-        let in_project = self.project.is_none_or(|project| project == entry.project);
+        let in_project = self.project.is_none_or(|project| project == entry.project) && !self.hidden.contains(&entry.project);
         let in_checkout = self.checkout.is_none_or(|(project, bit)| project == entry.project && 1u64.checked_shl(bit).is_some_and(|mask| entry.checkouts & mask != 0));
         let searched = self.excluded || entry.class == Class::Searched;
         in_project && in_checkout && searched && (self.skip.is_empty() || !self.skip.contains(&(entry.project, entry.path.clone())))
