@@ -702,6 +702,10 @@ fn bind_row(line: Stateful<Div>, row: RowMouse, cx: &App) -> Stateful<Div> {
         }
         Some(Action::Invoke { generation, function }) => invoke(generation, function, Some(context.clone()), cx),
         Some(Action::ShowTreeMenu(menu)) => open_menu(&select, &menu_row, &menu, window, cx),
+        Some(Action::Builtin(builtin)) if crate::workspace::is_path_action(builtin) => {
+            let key = select.key.clone();
+            let _ = select.workspace.update(cx, |workspace, cx| workspace.run_row_path_action(key, builtin, window, cx));
+        }
         // the keymap allows no other action in the tree scope
         _ => {}
     })

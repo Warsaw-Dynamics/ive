@@ -174,6 +174,10 @@ impl Workspace {
             // a shown tab that is not a terminal takes no text
             Action::Send(text) => drop(self.send_to_active(&text)),
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
+            // the keymap allows Copy Absolute Path in the tree only, where it has its own key
+            Action::Builtin(builtin) if builtin != Builtin::CopyFullPath && super::path_actions::is_path_action(builtin) => {
+                self.run_bound_path_action(builtin, place == Place::Tree, window, cx);
+            }
             Action::Builtin(builtin) => self.run_window_builtin(builtin, window, cx),
             // the keymap allows it only in the tab scope
             Action::ShowTreeMenu(name) if place == Place::Tree => self.open_tree_menu_on_selection(&name, window, cx),

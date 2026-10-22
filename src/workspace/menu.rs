@@ -153,10 +153,36 @@ impl Workspace {
         if !self.tree.selection.contains(&pressed) {
             self.tree.selection.select_only(pressed.clone());
         }
-        let listed = selection::listed(&self.tree.rows);
-        let rows = menu_rows(&pressed, |key| self.tree.selection.contains(key), &listed);
-        let subject = subject_of(rows.iter().filter_map(|key| self.row_path(key)).collect(), &self.all_checkouts());
+        let subject = self.tree_subject(&pressed);
         self.open_menu(MenuKind::Tree, name, MenuOn::Tree { row }, subject, window, cx);
+    }
+
+    /// What a menu or action on the row of `pressed` applies to, see [`menu_rows`].
+    pub(super) fn tree_subject(&self, pressed: &TreeKey) -> Subject {
+        let listed = selection::listed(&self.tree.rows);
+        let rows = menu_rows(pressed, |key| self.tree.selection.contains(key), &listed);
+        subject_of(rows.iter().filter_map(|key| self.row_path(key)).collect(), &self.all_checkouts())
+    }
+
+    /// Runs path action `builtin` from a mouse binding on the row of `pressed`; a row outside the selection becomes
+    /// the selection first.
+    pub fn run_row_path_action(&mut self, pressed: TreeKey, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.tree.selection.contains(&pressed) {
+            self.tree.selection.select_only(pressed.clone());
+        }
+        let subject = self.tree_subject(&pressed);
+        self.run_path_action(builtin, &subject, window, cx);
+    }
+
+    /// Runs path action `builtin` from a binding: on the selection when the tree has the keyboard, else on the shown
+    /// tab's file.
+    pub(super) fn run_bound_path_action(&mut self, builtin: Builtin, in_tree: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let subject = match (in_tree, self.tree.selection.anchor().cloned(), self.tabs.active_id()) {
+            (true, Some(anchor), _) => self.tree_subject(&anchor),
+            (false, _, Some(shown)) => self.tab_subject(shown),
+            _ => return,
+        };
+        self.run_path_action(builtin, &subject, window, cx);
     }
 
     /// Opens tree menu `name` on the selection, from a key; nothing when no row is selected.
@@ -290,12 +316,9 @@ impl Workspace {
 
     /// A built-in chosen from a menu, on the menu's subject.
     fn run_menu_builtin(&mut self, builtin: Builtin, subject: &Subject, window: &mut Window, cx: &mut Context<Self>) {
-        match builtin {
-            Builtin::CopyFullPath => {
-                let lines: Vec<String> = subject.paths.iter().map(|path| path.path.display().to_string()).collect();
-                cx.write_to_clipboard(gpui::ClipboardItem::new_string(lines.join("\n")));
-            }
-            window_action => self.run_window_builtin(window_action, window, cx),
+        match super::path_actions::path_applies(builtin, subject) {
+            Some(_) => self.run_path_action(builtin, subject, window, cx),
+            None => self.run_window_builtin(builtin, window, cx),
         }
     }
 
@@ -308,8 +331,7 @@ impl Workspace {
                 tab_applies(tab_action, facts, |which| self.tabs.has_beside(*tab, which))
             }
             (Builtin::OpenHub | Builtin::OpenSettings | Builtin::OpenTerminal | Builtin::OpenTerminalIn | Builtin::ToggleChangesLayout, _) => Applies::Shown { enabled: true },
-            (Builtin::CopyFullPath, _) if !subject.paths.is_empty() => Applies::Shown { enabled: true },
-            _ => Applies::Hidden,
+            (path_action, _) => super::path_actions::path_applies(path_action, subject).unwrap_or(Applies::Hidden),
         }
     }
 

@@ -57,6 +57,7 @@ mod scratches;
 mod scripts;
 mod settings_actions;
 mod menu;
+mod path_actions;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -70,6 +71,7 @@ pub use quit::{add_app_menu, show_main_window};
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
+pub use path_actions::is_path_action;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {

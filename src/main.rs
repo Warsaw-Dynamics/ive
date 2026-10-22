@@ -26,6 +26,7 @@ mod mcp;
 mod menu;
 mod menu_view;
 mod open_project;
+mod os_open;
 mod overview;
 mod paging;
 mod parallel;

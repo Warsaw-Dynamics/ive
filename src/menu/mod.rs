@@ -46,7 +46,6 @@ pub struct Subject {
 }
 
 impl Subject {
-    #[cfg(test)]
     pub fn empty() -> Self {
         Self { paths: Vec::new(), home: Home::Mixed }
     }
