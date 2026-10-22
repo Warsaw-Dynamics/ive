@@ -14,7 +14,7 @@ pub mod keymap;
 pub mod quit_countdown;
 pub mod log;
 pub mod state;
-pub mod tab_menus;
+pub mod menus;
 pub mod temporary_tabs;
 mod thread;
 mod toml_module;

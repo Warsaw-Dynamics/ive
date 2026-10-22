@@ -7,7 +7,7 @@ use super::Workspace;
 use super::processes::ProgramEnding;
 use crate::editor::Tab;
 use crate::script::keymap::Builtin;
-use crate::script::tab_menus::{MenuEntry, TabMenus};
+use crate::script::menus::{ItemAction, MenuItem, MenuKind, Menus};
 use crate::tabs::{Beside, TabId};
 
 /// The menu MCP's `tab-menu:<tab>` target opens.
@@ -19,6 +19,24 @@ pub struct TabMenu {
     pub tab: TabId,
     pub position: Point<Pixels>,
     entries: Vec<MenuEntry>,
+}
+
+/// A line of a tab menu as declared: a built-in tab action or a separator.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuEntry {
+    Item(Builtin),
+    Separator,
+}
+
+/// `items` as the tab menu draws them today: built-in actions and separators; submenus and functions wait for the
+/// shared menu view.
+fn entries(items: &[MenuItem]) -> Vec<MenuEntry> {
+    let entry = |item: &MenuItem| match item {
+        MenuItem::Action { action: ItemAction::Builtin(builtin), .. } => Some(MenuEntry::Item(*builtin)),
+        MenuItem::Separator => Some(MenuEntry::Separator),
+        _ => None,
+    };
+    items.iter().filter_map(entry).collect()
 }
 
 /// A line of the open menu.
@@ -104,7 +122,7 @@ impl Workspace {
     /// Opens menu `name` of tab `tab` at the pointer; the tab is not shown, so a temporary one shown stays. A menu
     /// with nothing for the tab, or one the scripts have not declared (yet), does not open.
     pub fn open_tab_menu(&mut self, tab: TabId, name: &str, window: &mut Window, cx: &mut Context<Self>) {
-        let entries = cx.try_global::<TabMenus>().and_then(|menus| menus.get(name)).map(<[MenuEntry]>::to_vec).unwrap_or_default();
+        let entries = cx.try_global::<Menus>().and_then(|menus| menus.get(MenuKind::Tab, name)).map(entries).unwrap_or_default();
         let menu = TabMenu { tab, position: window.mouse_position(), entries };
         if self.tab_menu_lines(&menu).is_empty() {
             return;

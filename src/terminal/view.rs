@@ -604,7 +604,7 @@ fn run_bound_key(session: &Session, action: keymap::Action, cx: &App) -> bool {
         keymap::Action::Builtin(Builtin::PasteFrom(source)) => paste(session, PasteKind::TextElseImage, source, cx),
         keymap::Action::Builtin(Builtin::Paste(kind, source)) => paste(session, kind, source, cx),
         keymap::Action::Builtin(Builtin::Nop) => {}
-        keymap::Action::Builtin(_) | keymap::Action::ShowTabMenu(_) | keymap::Action::Disable => return false,
+        keymap::Action::Builtin(_) | keymap::Action::ShowTabMenu(_) | keymap::Action::ShowTreeMenu(_) | keymap::Action::Disable => return false,
     }
     true
 }

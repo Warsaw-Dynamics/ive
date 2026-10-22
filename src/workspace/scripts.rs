@@ -97,7 +97,7 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {
                 apply_theme(theme.as_ref().clone(), cx);
                 let open_changed = cx.try_global::<OpenFolders>() != Some(open_folders);
                 cx.set_global(open_folders.clone());
@@ -105,7 +105,7 @@ impl Workspace {
                     self.tree_changed(cx);
                 }
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
-                cx.set_global(tab_menus.clone());
+                cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
                 apply_fonts(fonts.clone(), cx)
             }
@@ -171,7 +171,7 @@ impl Workspace {
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
             Action::Builtin(builtin) => self.run_window_builtin(builtin, window, cx),
             // the keymap allows it only in the tab scope
-            Action::ShowTabMenu(_) | Action::Disable => {}
+            Action::ShowTabMenu(_) | Action::ShowTreeMenu(_) | Action::Disable => {}
         }
         cx.stop_propagation();
         window.refresh();

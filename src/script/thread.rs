@@ -22,7 +22,7 @@ use super::open_folders::OpenFolders;
 use super::quit_countdown::QuitCountdown;
 use super::fingerprint::fingerprint;
 use super::keymap::Keymap;
-use super::tab_menus::TabMenus;
+use super::menus::Menus;
 use super::temporary_tabs::TemporaryTabs;
 use crate::theme::Fonts;
 use crate::theme_config::ThemeSpec;
@@ -39,7 +39,7 @@ pub enum ScriptEvent {
         theme: Box<ThemeSpec>,
         excluded: Excluded,
         temporary_tabs: TemporaryTabs,
-        tab_menus: TabMenus,
+        menus: Box<Menus>,
         quit_countdown: QuitCountdown,
         open_folders: OpenFolders,
         has_init: bool,
@@ -180,7 +180,7 @@ impl Runner {
             theme: Box::new(loaded.theme.clone()),
             excluded: loaded.excluded.clone(),
             temporary_tabs: loaded.temporary_tabs.clone(),
-            tab_menus: loaded.tab_menus.clone(),
+            menus: Box::new(loaded.menus.clone()),
             quit_countdown: loaded.quit_countdown,
             open_folders: loaded.open_folders.clone(),
             has_init: loaded.has_init,
@@ -203,7 +203,7 @@ impl Runner {
 
     fn invoke(&self, generation: u64, function: usize, context: Option<serde_json::Value>) {
         let bound = self.current.as_ref().filter(|(current, _)| *current == generation).and_then(|(_, loaded)| {
-            let key = loaded.keymap.invoked(function)?;
+            let key = loaded.keymap.invoked(function).or_else(|| loaded.menus.function_label(function))?;
             Some((key, loaded.functions.get(function)?.try_clone().ok()?))
         });
         let Some((key, function)) = bound else {
@@ -503,6 +503,22 @@ mod tests {
         // given
         let dir = tempfile::tempdir().unwrap();
         let (scripts, seen, _) = start_with(dir.path(), CLICK_RESTART, answer_terminal);
+
+        // when
+        invoke(&scripts, 1);
+
+        // then
+        let expected = format!("{:?}", Request::WindowInput(WindowInput::Click("restart".to_owned())));
+        assert!(wait_for(&seen, &expected));
+    }
+
+    #[test]
+    fn should_run_a_function_named_only_by_a_menu() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let init = "pub fn init(config) { config.tree_menus.main = [#{ label: \"Restart\", action: restart }]; }\n\
+            async fn restart(context) { ive::click(\"restart\").await?; Ok(()) }";
+        let (scripts, seen, _) = start_with(dir.path(), init, answer_terminal);
 
         // when
         invoke(&scripts, 1);

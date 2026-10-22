@@ -150,7 +150,7 @@ fn text(object: &HashMap<String, Value>, field: &str) -> Result<Option<String>, 
 }
 
 /// A Rune string, borrowed: taking it would empty a variable that another entry also uses.
-fn string(value: &Value) -> Option<String> {
+pub(super) fn string(value: &Value) -> Option<String> {
     value.borrow_string_ref().ok().map(|text| text.to_owned())
 }
 
@@ -293,6 +293,7 @@ fn tagged_action(value: Value) -> Result<Action, String> {
     let builtin = match name.as_str() {
         "SendString" => return Ok(Action::Send(argument)),
         "ShowTabMenu" => return Ok(Action::ShowTabMenu(argument)),
+        "ShowTreeMenu" => return Ok(Action::ShowTreeMenu(argument)),
         "CopyTo" => Builtin::CopyTo(clipboard(&argument)?),
         "PasteFrom" => Builtin::PasteFrom(paste_source(&argument)?),
         "PasteTextFrom" => Builtin::Paste(PasteKind::Text, paste_source(&argument)?),
@@ -345,6 +346,7 @@ fn supported(action: Action, scope: Scope) -> Result<Action, String> {
         Action::Builtin(builtin) => builtin.supports(scope),
         Action::Send(_) => matches!(scope, Scope::Window | Scope::Terminal),
         Action::ShowTabMenu(_) => scope == Scope::Tab,
+        Action::ShowTreeMenu(_) => scope == Scope::Tree,
         Action::Invoke { .. } | Action::Disable => true,
     };
     if fits {
@@ -361,6 +363,7 @@ fn action_name(action: &Action) -> String {
         Action::Invoke { .. } => "a function".to_owned(),
         Action::Disable => "DisableDefaultAssignment".to_owned(),
         Action::ShowTabMenu(_) => "ShowTabMenu".to_owned(),
+        Action::ShowTreeMenu(_) => "ShowTreeMenu".to_owned(),
     }
 }
 

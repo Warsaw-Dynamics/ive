@@ -2,6 +2,8 @@
 
 use gpui::{Keystroke, Modifiers};
 
+use super::menus::MenuKind;
+
 /// Where a binding applies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Scope {
@@ -252,6 +254,15 @@ impl Builtin {
         )
     }
 
+    /// The menus that can hold the action as an item.
+    pub fn menu_kinds(&self) -> &'static [MenuKind] {
+        match self {
+            Self::CopyFullPath => &[MenuKind::Tab, MenuKind::Tree],
+            tab if tab.is_tab_command() => &[MenuKind::Tab],
+            _ => &[],
+        }
+    }
+
     /// Whether the action needs a place the mouse points at, so a key cannot run it.
     pub fn is_mouse_only(&self) -> bool {
         matches!(
@@ -281,6 +292,8 @@ pub enum Action {
     Disable,
     /// opens the clicked tab's menu of that name, from `config.tab_menus`, at the pointer
     ShowTabMenu(String),
+    /// opens the menu of that name from `config.tree_menus` on the clicked row (a key: the selected one)
+    ShowTreeMenu(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -333,10 +346,10 @@ impl Keymap {
         self.bindings.iter().find(invokes).map(|binding| binding.trigger.describe())
     }
 
-    /// The names of the tab menus the bindings open.
-    pub fn tab_menu_names(&self) -> impl Iterator<Item = &str> {
-        self.bindings.iter().filter_map(|binding| match &binding.action {
-            Action::ShowTabMenu(name) => Some(name.as_str()),
+    /// The names of the menus of `kind` the bindings open.
+    pub fn menu_names(&self, kind: MenuKind) -> impl Iterator<Item = &str> {
+        self.bindings.iter().filter_map(move |binding| match (&binding.action, kind) {
+            (Action::ShowTabMenu(name), MenuKind::Tab) | (Action::ShowTreeMenu(name), MenuKind::Tree) => Some(name.as_str()),
             _ => None,
         })
     }

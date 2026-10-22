@@ -15,7 +15,7 @@ use super::{api_module, http_module, toml_module};
 use super::config::{self, Carried, Config};
 use super::declare::{self, FontChoice, Functions};
 use super::keymap::Keymap;
-use super::tab_menus::{self, TabMenus};
+use super::menus::{self, MenuKind, Menus};
 use super::excluded::{self, Excluded};
 use super::open_folders::{self, OpenFolders};
 use super::quit_countdown::{self, QuitCountdown};
@@ -40,7 +40,7 @@ pub struct Loaded {
     pub theme: ThemeSpec,
     pub excluded: Excluded,
     pub temporary_tabs: TemporaryTabs,
-    pub tab_menus: TabMenus,
+    pub menus: Menus,
     pub quit_countdown: QuitCountdown,
     pub open_folders: OpenFolders,
     pub functions: Vec<Function>,
@@ -88,6 +88,7 @@ impl Engine {
             excluded: rune::Value::from(()),
             temporary_tabs: rune::Value::from(()),
             tab_menus: rune::Value::from(()),
+            tree_menus: rune::Value::from(()),
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
         };
@@ -98,19 +99,20 @@ impl Engine {
             excluded: rune::Value::from(()),
             temporary_tabs: default_carried.temporary_tabs.clone(),
             tab_menus: default_carried.tab_menus.clone(),
+            tree_menus: default_carried.tree_menus.clone(),
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
-            let checked = checked(&default_carried, &carried_defaults, &defaults, IVE_RN_NAME)?;
+            let checked = checked(&default_carried, &carried_defaults, &defaults, &mut functions, IVE_RN_NAME)?;
             return Ok(Loaded {
                 keymap: defaults,
                 fonts: default_fonts,
                 theme: checked.theme,
                 excluded: checked.excluded,
                 temporary_tabs: checked.temporary_tabs,
-                tab_menus: checked.tab_menus,
+                menus: checked.menus,
                 quit_countdown: checked.quit_countdown,
                 open_folders: checked.open_folders,
                 functions: bound,
@@ -120,14 +122,14 @@ impl Engine {
         let text = std::fs::read_to_string(&path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
         let (user, fonts, carried) = self.run(&Script { name: INIT, text, path: Some(&path) }, &mut functions, default_carried)?;
         let keymap = Keymap::merged(defaults, user);
-        let checked = checked(&carried, &carried_defaults, &keymap, INIT)?;
+        let checked = checked(&carried, &carried_defaults, &keymap, &mut functions, INIT)?;
         Ok(Loaded {
             keymap,
             fonts: fonts.over(default_fonts),
             theme: checked.theme,
             excluded: checked.excluded,
             temporary_tabs: checked.temporary_tabs,
-            tab_menus: checked.tab_menus,
+            menus: checked.menus,
             quit_countdown: checked.quit_countdown,
             open_folders: checked.open_folders,
             functions: bound,
@@ -179,23 +181,27 @@ struct Checked {
     theme: ThemeSpec,
     excluded: Excluded,
     temporary_tabs: TemporaryTabs,
-    tab_menus: TabMenus,
+    menus: Menus,
     quit_countdown: QuitCountdown,
     open_folders: OpenFolders,
 }
 
-/// The theme, excluded folders, temporary tabs and tab menus `file` left, checked: keys of `temporary_tabs` and menus of `tab_menus`
+/// The theme, excluded folders, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
 /// it left out taken from `defaults`, and every menu `keymap` opens declared; the error names `file`.
-fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, file: &str) -> Result<Checked, String> {
+fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &mut Functions, file: &str) -> Result<Checked, String> {
     let named = |problem: String| format!("{file}: {problem}");
     let theme = theme_config::parse(&carried.theme).map_err(named)?;
     let excluded = excluded::parse(&carried.excluded).map_err(named)?;
     let temporary_tabs = temporary_tabs::parse(&defaults.temporary_tabs, &carried.temporary_tabs).map_err(named)?;
-    let tab_menus = tab_menus::parse(&defaults.tab_menus, &carried.tab_menus).map_err(named)?;
-    tab_menus::check_shown(&tab_menus, keymap.tab_menu_names()).map_err(named)?;
+    let tab = menus::parse(MenuKind::Tab, &defaults.tab_menus, &carried.tab_menus, functions).map_err(named)?;
+    let tree = menus::parse(MenuKind::Tree, &defaults.tree_menus, &carried.tree_menus, functions).map_err(named)?;
+    let menus = Menus::new(tab, tree);
+    for kind in [MenuKind::Tab, MenuKind::Tree] {
+        menus::check_shown(&menus, kind, keymap.menu_names(kind)).map_err(named)?;
+    }
     let quit_countdown = quit_countdown::parse(&carried.quit_countdown).map_err(named)?;
     let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders })
+    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -267,7 +273,7 @@ mod tests {
     use crate::theme::Fonts;
     use crate::theme_config::{Height, Px, Rgb};
     use crate::script::keymap::{Action, Builtin, ClipboardTarget, MouseButton, MouseKind, MouseTrigger, PasteKind, Place, Scope, SelectionMode};
-    use crate::script::tab_menus::MenuEntry;
+    use crate::script::menus::{CountIs, ItemAction, KindIs, Label, MenuItem, MenuKind, Test, When};
     use crate::script::temporary_tabs::{TabKind, TabMarker, TemporaryTabs};
 
     const ALL_KINDS: [TabKind; 4] = [TabKind::Project, TabKind::Settings, TabKind::Hub, TabKind::RunConfigs];
@@ -294,6 +300,14 @@ mod tests {
 
     fn builtin(builtin: Builtin) -> Option<Action> {
         Some(Action::Builtin(builtin))
+    }
+
+    fn item(builtin: Builtin) -> MenuItem {
+        MenuItem::Action { label: Label::Default, action: ItemAction::Builtin(builtin), when: When::default() }
+    }
+
+    fn invoked(item: &MenuItem) -> bool {
+        matches!(item, MenuItem::Action { action: ItemAction::Invoke { generation: 1, .. }, .. })
     }
 
     #[test]
@@ -855,20 +869,19 @@ mod tests {
     #[test]
     fn should_load_the_default_tab_menu() {
         // when
-        let menus = defaults().tab_menus;
+        let menus = defaults().menus;
 
         // then
-        let item = MenuEntry::Item;
         let expected = [
             item(Builtin::KeepTab),
             item(Builtin::StopProgram),
-            MenuEntry::Separator,
+            MenuItem::Separator,
             item(Builtin::CloseTab),
             item(Builtin::CloseOtherTabs),
             item(Builtin::CloseTabsToTheLeft),
             item(Builtin::CloseTabsToTheRight),
         ];
-        assert_eq!(menus.get("main"), Some(&expected[..]));
+        assert_eq!(menus.get(MenuKind::Tab, "main"), Some(&expected[..]));
     }
 
     #[test]
@@ -887,8 +900,8 @@ mod tests {
         // then
         let shift = MouseTrigger { mods: Modifiers { shift: true, ..Modifiers::default() }, ..mouse(MouseKind::Down, MouseButton::Right, 1) };
         assert_eq!(loaded.keymap.find_mouse(Scope::Tab, &shift).cloned(), Some(Action::ShowTabMenu("close".to_owned())));
-        assert_eq!(loaded.tab_menus.get("close"), Some(&[MenuEntry::Item(Builtin::CloseOtherTabs), MenuEntry::Item(Builtin::CloseTabsToTheRight)][..]));
-        assert!(loaded.tab_menus.get("main").is_some());
+        assert_eq!(loaded.menus.get(MenuKind::Tab, "close"), Some(&[item(Builtin::CloseOtherTabs), item(Builtin::CloseTabsToTheRight)][..]));
+        assert!(loaded.menus.get(MenuKind::Tab, "main").is_some());
     }
 
     #[test]
@@ -915,6 +928,144 @@ mod tests {
 
         // then
         assert!(error.contains("\"nope\""), "{error}");
+    }
+
+    #[test]
+    fn should_read_a_tree_menu_with_a_submenu_and_a_function() {
+        // given
+        let init = r#"pub fn init(config) {
+            config.tree_menus.main = [act::CopyFullPath, #{ label: "More", items: [#{ label: "Mine", action: mine }] }];
+        }
+        fn mine(context) {}"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let menu = loaded.menus.get(MenuKind::Tree, "main").unwrap();
+        assert_eq!(menu[0], item(Builtin::CopyFullPath));
+        let MenuItem::Submenu { label, items, .. } = &menu[1] else { panic!("{:?}", menu[1]) };
+        assert_eq!(label, "More");
+        assert!(invoked(&items[0]), "{items:?}");
+        assert!(matches!(&items[0], MenuItem::Action { label: Label::Custom(mine), .. } if mine == "Mine"));
+    }
+
+    #[test]
+    fn should_read_when_with_kind_name_list_and_test() {
+        // given
+        let init = r#"pub fn init(config) {
+            config.tree_menus.main = [#{ label: "Rust", action: act::CopyFullPath, when: #{ kind: "file", name: ["*.rs", "Cargo.toml"], count: "many", test: check } }];
+        }
+        fn check(context) { true }"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let MenuItem::Action { when, .. } = &loaded.menus.get(MenuKind::Tree, "main").unwrap()[0] else { panic!() };
+        assert_eq!((when.kind, when.count), (KindIs::File, CountIs::Many));
+        assert_eq!(when.name, ["*.rs", "Cargo.toml"]);
+        assert!(when.path.is_empty());
+        assert!(matches!(when.test, Test::Function { generation: 1, .. }), "{:?}", when.test);
+    }
+
+    #[test]
+    fn should_take_a_function_as_when() {
+        // given
+        let init = r#"pub fn init(config) { config.tree_menus.main = [#{ label: "X", action: act::CopyFullPath, when: check }]; }
+        fn check(context) { true }"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let MenuItem::Action { when, .. } = &loaded.menus.get(MenuKind::Tree, "main").unwrap()[0] else { panic!() };
+        assert!(matches!(when.test, Test::Function { .. }) && when.kind == KindIs::Any, "{when:?}");
+    }
+
+    #[test]
+    fn should_reject_unknown_when_field() {
+        // given
+        let init = r#"pub fn init(config) { config.tree_menus.main = [#{ label: "X", action: act::CopyFullPath, when: #{ size: 1 } }]; }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("tree_menus.main[0]") && error.contains("size"), "{error}");
+    }
+
+    #[test]
+    fn should_reject_a_submenu_nested_five_deep() {
+        // given
+        let init = r#"pub fn init(config) {
+            let menu = [act::CopyFullPath];
+            for level in 0..5 { menu = [#{ label: "Deeper", items: menu }]; }
+            config.tree_menus.main = menu;
+        }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("deep"), "{error}");
+    }
+
+    #[test]
+    fn should_let_init_push_onto_ive_rn_menu() {
+        // given
+        let init = r#"pub fn init(config) { config.tab_menus.main.push(#{ label: "X", action: x }); }
+        fn x(context) {}"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let menu = loaded.menus.get(MenuKind::Tab, "main").unwrap();
+        assert_eq!(menu[0], item(Builtin::KeepTab));
+        assert!(invoked(menu.last().unwrap()), "{menu:?}");
+    }
+
+    #[test]
+    fn should_reject_show_tree_menu_of_undeclared_menu() {
+        // given
+        let init = r#"pub fn init(config) {
+            config.mouse_bindings = [#{ event: #{ Down: #{ streak: 1, button: "Right" } }, action: act::ShowTreeMenu("nope"), scope: "tree" }];
+        }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("ShowTreeMenu") && error.contains("\"nope\""), "{error}");
+    }
+
+    #[test]
+    fn should_reject_show_tree_menu_outside_the_tree() {
+        // given
+        let init = r#"pub fn init(config) { config.tree_menus.main = [act::CopyFullPath];
+            config.mouse_bindings = [#{ event: #{ Down: #{ streak: 1, button: "Right" } }, action: act::ShowTreeMenu("main"), scope: "tab" }];
+        }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert!(error.contains("ShowTreeMenu") && error.contains("tab"), "{error}");
+    }
+
+    #[test]
+    fn should_name_a_menu_function_by_its_label() {
+        // given
+        let init = r#"pub fn init(config) { config.tree_menus.main = [#{ label: "Mine", action: mine }]; }
+        fn mine(context) {}"#;
+
+        // when
+        let loaded = load(init).1.unwrap();
+
+        // then
+        let MenuItem::Action { action: ItemAction::Invoke { function, .. }, .. } = &loaded.menus.get(MenuKind::Tree, "main").unwrap()[0] else { panic!() };
+        assert_eq!(loaded.menus.function_label(*function).as_deref(), Some("Mine"));
     }
 
     #[test]
