@@ -63,6 +63,8 @@ See `2026-10-22-mermaid-port-analysis.md` and `2026-10-22-plantuml-port-analysis
 
 **Interfaces:** Consumes shared `render` API and uses `Language::PlantUml`. Preserve caller API and viewer isolation. Input includes/resources can only come from explicit caller-owned data; initially reject includes if dependency cannot enforce an in-memory resolver.
 
+Audit outcome: the current `puml` candidate failed the traceable permitted-source gate before any import. Follow [the fresh MIT-only native plan](2026-10-23-plantuml-native-plan.md). Reviewed stage 3A combines its common service spine, real sequence renderer and shared UML graph deliverables (detailed Tasks 1–3); subsequent stages add state/activity/tree/data, pure preprocessing/styles and the remaining distinct families. Each stage receives a scoped brief, source manifest, meaningful oracle tests and independent review. Candidate-only aliases and source are not reused.
+
 - [ ] Audit `puml` provenance and runtime API. Disable default CLI/network/include features. If the library reads files or lacks safe resolver control, adapt a minimal local permissive fork or implement safe native layers from the authorized MIT source; do not enable unsafe behavior to gain a family count.
 - [ ] Write failing tests for sequence, class, component and activity examples, Unicode/escaping, malformed wrappers and local/URL/preprocessor include attacks. Test output dimension/resource limits and invalid source diagnostics.
 - [ ] Implement native rendering and preprocessing restrictions with descriptive errors, preserve source provenance and notices. Expose backend coverage accurately.
@@ -71,10 +73,14 @@ See `2026-10-22-mermaid-port-analysis.md` and `2026-10-22-plantuml-port-analysis
 
 ### Task 4: Fidelity evidence, coverage ledger, final integration verification
 
-**Files:** Create `diagram-ports/COVERAGE.md`, a corpus report and comparison tooling under `diagram-ports/tools/`; modify tests/docs/notices only as necessary, and fix verified defects through implementation subagents.
+**Files:** Create `diagram-ports/COVERAGE.md`, a corpus report and comparison tooling under `diagram-ports/tools/`; modify engine/tests/docs/notices as necessary for verified compatibility defects. A narrowly vendored exact-source backend crate is allowed when the public API cannot repair the consumed typed model; retain per-file source hashes and a local patch ledger.
 
 **Interfaces:** Consumes all existing corpus fixtures and native CLI. Produces reproducible family/behavior evidence, explicit reference-engine/version/config/font details, and documented residuals. Original tools are optional development oracles, never runtime requirements.
 
+Execute in two reviewed stages: compatibility repairs first, final corpus/tooling/documentation second. Do not overlap product implementers. Read-only investigation found that released Mermaid 12.2's `mindmap.colorBy: depth` is silently ignored by the 12.1-targeted baseline; its public API cannot modify the consumed built-in semantic model. Font investigations also isolated usecase effective size and omitted tree paint-family differences. These are concrete follow-ups, not reasons to replace geometry with fixture constants.
+
+- [ ] Repair reproduced `mindmap.colorBy: depth` before layout, retaining default branch coloring, structural rather than indentation depth, palette cycling, child-edge section semantics and cancellation checkpoints. Test exact public rendered output and typed semantics; preserve the exact imported-source provenance if a small core fork is required.
+- [ ] Fix reproduced font-style defects only where measurement and painting can use coherent effective configuration; cover non-default configuration. Keep unsupported glyph-bbox/wrapping metrics explicit and never hardcode oracle fixture measurements.
 - [ ] Test all fixtures through public rendering and resvg parsing, checking finite nonzero geometry, labels and no forbidden SVG content. Include negative and bounded-execution tests across both backends.
 - [ ] Compare representative output against original Mermaid and PlantUML MIT oracles if the installed sources/toolchain can produce them without GPL input. Record missing reference infrastructure explicitly; do not invent geometry/pixel parity claims.
 - [ ] Produce coverage matrix per upstream family, separating tested family admission from syntax/semantic coverage and layout fidelity, with commands and counts. Preserve exact pinned versions, source traces and third-party notices.

@@ -29,3 +29,9 @@ Pin the engine versions/revisions and pgui revision. Audit selected Cargo featur
 ## Execution
 
 The controller coordinates subagents and independently checks their work. Finish and review Mermaid before adding PlantUML. Use a fresh review for each implementation deliverable and a final integration review. Keep a persistent ledger with coverage, evidence, remaining work and any decisions made on the owner's behalf. Local implementation and verification are authorized; publishing, pushing, and modifying the owner's running IVE session are outside this task.
+
+## PlantUML adoption gate, 2026-10-23
+
+The audited `puml` candidate was not adopted. Its own pinned design records and source headers explicitly identify style-parser/catalogue implementation lineage from the GPL master repository without a recorded MIT-edition basis. This is an unresolved permissible-source question under the owner's hard rule, not an infringement finding. No candidate source was imported into the project. Dependency metadata and resource hardening cannot resolve that separate question. The [source-provenance audit](../plans/2026-10-23-puml-provenance-audit.md) records the precise evidence and its limits.
+
+Use the fresh [native PlantUML plan](../plans/2026-10-23-plantuml-native-plan.md): typed family models and native scenes translated only from the authorized MIT artifact, with separately audited Merman measurement/SVG services and bounded Dugong/Dagre layout. Preserve source-file hashes and notices. Review meaningful increments, then continue toward the remaining inventory; do not describe the first admitted subset as a full port.
