@@ -842,8 +842,8 @@ impl EditorView {
                     .top(-metrics.line_height * (top - first as f64) as f32)
                     .children(rows),
             )
-            .child(vertical_scrollbar(&self.scrollbars, theme))
-            .child(horizontal_scrollbar(&self.scrollbars, theme));
+            .child(vertical_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
+            .child(horizontal_scrollbar(&self.scrollbars, &theme::view_style(&theme)));
         let notice = self.notice.clone().map(|notice| {
             let sizes = &theme.sizes.editor;
             div()

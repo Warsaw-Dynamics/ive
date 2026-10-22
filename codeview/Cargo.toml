@@ -13,6 +13,8 @@ test-support = []
 # Zed's gpui with our fixes (Warsaw-Dynamics/pgui, branch zed-main: a snapshot of Zed plus one commit each).
 # gpui is Apache-2.0.
 gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73" }
+memchr = "2.8"
+memmap2 = "0.9.11"
 serde = { version = "1", features = ["derive"] }
 streaming-iterator = "0.1"
 toml = "1.1.8"
@@ -76,3 +78,6 @@ tree-sitter-zig = "1.1.2"
 
 [build-dependencies]
 cc = "1.8.0"
+
+[dev-dependencies]
+tempfile = "3"

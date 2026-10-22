@@ -896,8 +896,11 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "gpui",
+ "memchr",
+ "memmap2",
  "serde",
  "streaming-iterator",
+ "tempfile",
  "toml 1.1.8+spec-1.1.0",
  "tree-sitter",
  "tree-sitter-bash",

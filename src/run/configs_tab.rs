@@ -173,7 +173,7 @@ fn list(listing: Rc<Listing>, tab: &RunConfigsTab, theme: Theme, cx: &mut Contex
     )
     .track_scroll(&tab.list.list_handle())
     .size_full();
-    div().relative().flex_1().min_h_0().child(rows).child(vertical_scrollbar(&tab.scroll, theme))
+    div().relative().flex_1().min_h_0().child(rows).child(vertical_scrollbar(&tab.scroll, &crate::theme::view_style(&theme)))
 }
 
 fn list_row(listing: &Listing, index: usize, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {

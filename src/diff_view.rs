@@ -381,7 +381,7 @@ impl Render for DiffView {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .child(follow_drag(self.bounds.clone(), cx.entity()))
             .child(list)
-            .child(vertical_scrollbar(&self.scrollbars, theme))
-            .child(horizontal_scrollbar(&self.scrollbars, theme))
+            .child(vertical_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
+            .child(horizontal_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
     }
 }

@@ -64,7 +64,7 @@ fn render_list(view: &ThirdPartyView, theme: Theme, cx: &mut Context<Workspace>)
         .gap(theme.sizes.settings.list_gap.px())
         .child(div().text_color(rgb(theme.muted)).child(format!("IVE includes these {count} libraries, fonts and icon sets; click a licence to read it.")))
         .child(header)
-        .child(div().relative().flex_1().min_h_0().child(rows).child(vertical_scrollbar(&view.scroll, theme)))
+        .child(div().relative().flex_1().min_h_0().child(rows).child(vertical_scrollbar(&view.scroll, &theme::view_style(&theme))))
 }
 
 fn render_rows(range: Range<usize>, cx: &mut Context<Workspace>) -> Vec<AnyElement> {

@@ -224,7 +224,7 @@ impl GitLogView {
         let rows = uniform_list(("git-log-rows", cx.entity_id().as_u64()), count, cx.processor(|view: &mut GitLogView, range, _window, cx| view.render_log_rows(range, cx)))
             .track_scroll(&self.log_scroll.list_handle())
             .size_full();
-        bordered(theme).relative().flex_1().min_h_0().mb(theme.sizes.git.log_margin_bottom.px()).child(rows).child(vertical_scrollbar(&self.log_scrollbar, theme))
+        bordered(theme).relative().flex_1().min_h_0().mb(theme.sizes.git.log_margin_bottom.px()).child(rows).child(vertical_scrollbar(&self.log_scrollbar, &crate::theme::view_style(&theme)))
     }
 
     fn render_log_rows(&self, range: Range<usize>, cx: &mut Context<Self>) -> Vec<Stateful<Div>> {

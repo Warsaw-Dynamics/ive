@@ -6,18 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_TABS: usize = 200;
 
-/// Where a text view was scrolled: the first visible line (fractional) and the horizontal offset in pixels.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct ScrollPosition {
-    pub top_line: f64,
-    pub left: f64,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CaretPosition {
-    pub line: usize,
-    pub column: usize,
-}
+pub use codeview::position::{CaretPosition, ScrollPosition};
 
 /// One tab, by what opens it again. Sections, views and pages are their labels as shown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

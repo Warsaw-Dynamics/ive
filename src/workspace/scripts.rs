@@ -89,7 +89,9 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
     for family in &missing {
         cx.global::<ScriptState>().log().append(&format!("font {family:?} is not installed; IVE keeps the font it had"));
     }
+    let style = cx.global::<crate::theme::ViewStyle>().clone().with_mono_font(fonts.mono.clone());
     cx.set_global(fonts);
+    cx.set_global(style);
     !missing.is_empty()
 }
 

@@ -308,8 +308,8 @@ impl Render for TextEditor {
             .on_scroll_wheel(move |event, window, _cx| wheel.scroll_by_wheel(event, line_height, window))
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
             .child(text_canvas(frame, cx.entity()))
-            .child(vertical_scrollbar(&self.scrollbars, theme))
-            .child(horizontal_scrollbar(&self.scrollbars, theme))
+            .child(vertical_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
+            .child(horizontal_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
     }
 }
 

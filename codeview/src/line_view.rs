@@ -5,9 +5,9 @@ use std::rc::Rc;
 
 use gpui::{App, Bounds, IntoElement, Pixels, ScrollWheelEvent, Styled, Window, canvas};
 
-use crate::saved_tabs::ScrollPosition;
+use crate::position::ScrollPosition;
 use crate::scrollbar::{Axis, Extent, Scrollable, wheel_axes};
-use crate::theme::{self, Theme};
+use crate::style::ViewStyle;
 
 /// Lines drawn before the first layout reports the real viewport height.
 const FIRST_FRAME_LINES: f64 = 120.;
@@ -183,14 +183,14 @@ pub struct Metrics {
 
 impl Metrics {
     pub fn measure(window: &Window, cx: &App, line_count: usize) -> Self {
+        let style = ViewStyle::get(cx);
         let text_system = window.text_system();
-        let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
-        let sizes = &cx.global::<Theme>().sizes.editor;
-        let font_size = sizes.text_size.px();
+        let font_id = text_system.resolve_font(&gpui::font(style.mono_font.clone()));
+        let font_size = gpui::px(style.editor_text_size);
         let char_width = text_system.ch_advance(font_id, font_size).unwrap_or(font_size * 0.6);
         Self {
             font_size,
-            line_height: (font_size * sizes.line_height_factor.0).round(),
+            line_height: (font_size * style.editor_line_height_factor).round(),
             char_width,
             number_chars: line_count.to_string().len(),
         }

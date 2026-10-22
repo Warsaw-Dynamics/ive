@@ -5,7 +5,7 @@ use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, Window
 use crate::settings::{SettingsStore, ThemePreference};
 use crate::theme_config::{GitColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
 
-pub use codeview::style::Appearance;
+pub use codeview::style::{Appearance, ViewStyle};
 
 /// `preference`, with the OS's appearance for [`ThemePreference::System`].
 pub fn appearance(preference: ThemePreference, os: WindowAppearance) -> Appearance {
@@ -211,6 +211,38 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
     }
 }
 
+/// What the code views draw with: `theme`'s colours and sizes they read, in the default monospace font until
+/// [`ViewStyle::with_mono_font`] names the one in use.
+pub fn view_style(theme: &Theme) -> ViewStyle {
+    let (editor, controls) = (&theme.sizes.editor, &theme.sizes.controls);
+    ViewStyle {
+        appearance: theme.appearance,
+        text: theme.text,
+        muted: theme.muted,
+        background: theme.background,
+        border: theme.border,
+        hover: theme.hover,
+        selected: theme.selected,
+        accent: theme.accent,
+        error: theme.error,
+        sidebar: theme.sidebar,
+        tab_active: theme.tab_active,
+        tab_active_border: theme.tab_active_border,
+        diff_added: theme.diff_added,
+        diff_removed: theme.diff_removed,
+        scrollbar_thumb: theme.scrollbar_thumb,
+        scrollbar_thumb_hover: theme.scrollbar_thumb_hover,
+        panels_radius: theme.panels.radius.0,
+        panels_shown: theme.panels.shown(),
+        editor_text_size: editor.text_size.0,
+        editor_line_height_factor: editor.line_height_factor.0,
+        scrollbar_thickness: controls.scrollbar_thickness.0,
+        scrollbar_min_thumb: controls.scrollbar_min_thumb.0,
+        scrollbar_inset: controls.scrollbar_inset.0,
+        mono_font: MONOSPACE.into(),
+    }
+}
+
 /// `sizes` as a reference that lives as long as IVE, so [`Theme`] stays `Copy`; each distinct value is kept once, so
 /// saving `init.rn` again and again does not grow memory.
 pub fn intern(sizes: &Sizes) -> &'static Sizes {
@@ -245,6 +277,7 @@ pub fn reapply(cx: &mut App) {
 fn set(appearance: Appearance, cx: &mut App) {
     let theme = from_spec(cx.global::<ThemeSpec>(), appearance);
     let unfocused = unfocused_from_spec(cx.global::<ThemeSpec>(), appearance);
+    cx.set_global(view_style(&theme).with_mono_font(mono_font(cx)));
     cx.set_global(theme);
     cx.set_global(UnfocusedTheme(unfocused));
     crate::colors::apply(cx);
@@ -377,6 +410,20 @@ mod tests {
 
         // then
         assert!(std::ptr::eq(first, second));
+    }
+
+    #[test]
+    fn should_build_view_style_from_theme() {
+        // given
+        let theme = from_spec(&defaults(), Appearance::Dark);
+
+        // when
+        let style = view_style(&theme);
+
+        // then
+        assert_eq!(style.text, theme.text);
+        assert_eq!(style.diff_added, theme.diff_added);
+        assert_eq!(style.editor_text_size, theme.sizes.editor.text_size.0);
     }
 
     #[test]

@@ -8,7 +8,7 @@ use gpui::{
     fill, point, px, rgba,
 };
 
-use crate::theme::Theme;
+use crate::style::ViewStyle;
 
 /// Rows assumed visible before the list's first layout tells us its real size.
 const FIRST_FRAME_ROWS: usize = 100;
@@ -83,6 +83,12 @@ impl ScrollState {
 #[derive(Clone)]
 pub struct ListScroll {
     list: UniformListScrollHandle,
+}
+
+impl Default for ListScroll {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ListScroll {
@@ -177,22 +183,22 @@ fn scroll_for(thumb_start: f32, thumb: Thumb, track: f32, max_scroll: f64) -> f6
 }
 
 /// A vertical scrollbar overlaid on the right edge of its parent, which must be `relative()`.
-pub fn vertical_scrollbar(state: &ScrollState, theme: Theme) -> impl IntoElement {
-    scrollbar(state, Axis::Vertical, theme).top_0().right_0().h_full().w(theme.sizes.controls.scrollbar_thickness.px())
+pub fn vertical_scrollbar(state: &ScrollState, style: &ViewStyle) -> impl IntoElement {
+    scrollbar(state, Axis::Vertical, style).top_0().right_0().h_full().w(px(style.scrollbar_thickness))
 }
 
 /// A horizontal scrollbar overlaid on the bottom edge of its parent, which must be `relative()`.
-pub fn horizontal_scrollbar(state: &ScrollState, theme: Theme) -> impl IntoElement {
+pub fn horizontal_scrollbar(state: &ScrollState, style: &ViewStyle) -> impl IntoElement {
     // stops short of the right edge so it never covers the vertical scrollbar's thumb
-    let thickness = theme.sizes.controls.scrollbar_thickness.px();
-    scrollbar(state, Axis::Horizontal, theme).bottom_0().left_0().right(thickness).h(thickness)
+    let thickness = px(style.scrollbar_thickness);
+    scrollbar(state, Axis::Horizontal, style).bottom_0().left_0().right(thickness).h(thickness)
 }
 
-fn scrollbar(state: &ScrollState, axis: Axis, theme: Theme) -> gpui::Canvas<Hitbox> {
-    let state = state.clone();
+fn scrollbar(state: &ScrollState, axis: Axis, style: &ViewStyle) -> gpui::Canvas<Hitbox> {
+    let (state, style) = (state.clone(), style.clone());
     canvas(
         |bounds, window, _cx| window.insert_hitbox(bounds, HitboxBehavior::BlockMouseExceptScroll),
-        move |bounds, hitbox, window, _cx| paint(&state, axis, Track { bounds, hitbox, theme }, window),
+        move |bounds, hitbox, window, _cx| paint(&state, axis, Track { bounds, hitbox, style: style.clone() }, window),
     )
     .absolute()
 }
@@ -200,7 +206,7 @@ fn scrollbar(state: &ScrollState, axis: Axis, theme: Theme) -> gpui::Canvas<Hitb
 struct Track {
     bounds: Bounds<Pixels>,
     hitbox: Hitbox,
-    theme: Theme,
+    style: ViewStyle,
 }
 
 fn paint(state: &ScrollState, axis: Axis, track: Track, window: &mut Window) {
@@ -208,15 +214,15 @@ fn paint(state: &ScrollState, axis: Axis, track: Track, window: &mut Window) {
         listen_for_shift_wheel(state, list.bounds(), window);
     }
     let extent = state.target.extent(axis);
-    let sizes = &track.theme.sizes.controls;
-    let Some(thumb) = thumb(axis.of_bounds(track.bounds), extent, sizes.scrollbar_min_thumb.0) else {
+    let style = &track.style;
+    let Some(thumb) = thumb(axis.of_bounds(track.bounds), extent, style.scrollbar_min_thumb) else {
         return;
     };
     let active = state.grab(axis).get().is_some() || track.hitbox.is_hovered(window);
-    let color = if active { track.theme.scrollbar_thumb_hover } else { track.theme.scrollbar_thumb };
-    let (origin, inset, along) = (track.bounds.origin, sizes.scrollbar_inset.px(), px(thumb.start));
+    let color = if active { style.scrollbar_thumb_hover } else { style.scrollbar_thumb };
+    let (origin, inset, along) = (track.bounds.origin, px(style.scrollbar_inset), px(thumb.start));
     // the thumb fills the track's thickness but for the inset on both sides, with fully round ends
-    let across = px(sizes.scrollbar_thickness.0 - 2. * sizes.scrollbar_inset.0);
+    let across = px(style.scrollbar_thickness - 2. * style.scrollbar_inset);
     let thumb_bounds = match axis {
         Axis::Vertical => Bounds::new(origin + point(inset, along), gpui::size(across, px(thumb.length))),
         Axis::Horizontal => Bounds::new(origin + point(along, inset), gpui::size(px(thumb.length), across)),
