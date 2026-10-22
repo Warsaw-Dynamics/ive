@@ -4,7 +4,7 @@
 use std::ffi::OsString;
 use std::time::{Duration, Instant};
 
-use gpui::{AppContext as _, Context, PromptLevel, Task, Window};
+use gpui::{AppContext as _, Context, DispatchPhase, IntoElement, KeyDownEvent, MouseDownEvent, MouseMoveEvent, PromptLevel, ScrollWheelEvent, Styled as _, Task, WeakEntity, Window, canvas};
 
 use super::Workspace;
 use super::quit::QuitEvent;
@@ -35,6 +35,15 @@ pub(super) enum Updates {
     Release(Box<ReleaseUpdates>),
 }
 
+/// What quitting does with a staged release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AtQuit {
+    /// swap it in for the next start
+    Swap,
+    /// swap it in and start it: a restart onto the update began this quit
+    Restart(Focus),
+}
+
 pub(super) struct ReleaseUpdates {
     tag: &'static str,
     platform: Platform,
@@ -42,6 +51,7 @@ pub(super) struct ReleaseUpdates {
     feed: String,
     idle_limit: Duration,
     state: UpdateState,
+    at_quit: AtQuit,
     last_activity: Instant,
     _running: Running,
     _checks: Task<()>,
@@ -61,6 +71,7 @@ pub(super) fn start(window: &mut Window, cx: &mut Context<Workspace>) -> Updates
             feed: std::env::var(FEED_ENV).unwrap_or_else(|_| FEED.to_owned()),
             idle_limit: idle_limit(std::env::var(IDLE_ENV).ok().as_deref()),
             state: UpdateState::NotChecked,
+            at_quit: AtQuit::Swap,
             last_activity: Instant::now(),
             _running: running,
             _checks: check_now_and_then(window, cx),
@@ -110,12 +121,30 @@ fn watch_idle(window: &mut Window, cx: &mut Context<Workspace>) -> Task<()> {
     })
 }
 
+/// An element that counts any key, click, mouse move or scroll in its window as activity for `workspace`, before the
+/// window's own elements see it (they may stop it).
+pub fn activity_watcher(workspace: WeakEntity<Workspace>) -> impl IntoElement {
+    canvas(
+        |_, _, _| (),
+        move |_, _, window, _| {
+            let note = |workspace: &WeakEntity<Workspace>, cx: &mut gpui::App| drop(workspace.update(cx, |workspace, _| workspace.note_activity()));
+            let (keys, downs, moves, scrolls) = (workspace.clone(), workspace.clone(), workspace.clone(), workspace.clone());
+            window.on_key_event(move |_: &KeyDownEvent, phase, _, cx| if phase == DispatchPhase::Capture { note(&keys, cx) });
+            window.on_mouse_event(move |_: &MouseDownEvent, phase, _, cx| if phase == DispatchPhase::Capture { note(&downs, cx) });
+            window.on_mouse_event(move |_: &MouseMoveEvent, phase, _, cx| if phase == DispatchPhase::Capture { note(&moves, cx) });
+            window.on_mouse_event(move |_: &ScrollWheelEvent, phase, _, cx| if phase == DispatchPhase::Capture { note(&scrolls, cx) });
+        },
+    )
+    .absolute()
+    .size_full()
+}
+
 fn is_on(cx: &gpui::App) -> bool {
     cx.global::<SettingsStore>().current().auto_update.is_on()
 }
 
 impl Workspace {
-    /// A key, a click or an MCP call: IVE is not idle.
+    /// A key, a click, a mouse move, a scroll or an MCP call: IVE is not idle.
     pub(super) fn note_activity(&mut self) {
         if let Updates::Release(updates) = &mut self.updates {
             updates.last_activity = Instant::now();
@@ -235,46 +264,40 @@ impl Workspace {
         }
     }
 
-    /// Swaps the staged release in, starts it in place of this IVE, and quits leaving the terminals running.
+    /// Quits leaving the terminals running; the quit hook then swaps the staged release in and starts it (see
+    /// [`Self::apply_update_on_quit`]), so a new IVE starts only once this one's quit is certain.
     fn restart_onto_update(&mut self, focus: Focus, window: &mut Window, cx: &mut Context<Self>) {
         let Updates::Release(updates) = &mut self.updates else {
             return;
         };
-        match apply_staged(&updates.install) {
-            Ok(Applied::Swapped(_)) => {}
-            Ok(Applied::NothingStaged | Applied::NotNow(_)) => return,
-            Err(reason) => return self.update_failed(reason, cx),
-        }
-        let original: Vec<OsString> = std::env::args_os().skip(1).collect();
-        let cwd = std::env::current_dir().unwrap_or_default();
-        if let Err(reason) = relaunch(&updates.install, &relaunch_args(&original, &cwd, std::process::id(), focus)) {
-            // the install is the new release already: the next start runs it
-            return self.update_failed(reason, cx);
-        }
+        updates.at_quit = AtQuit::Restart(focus);
         self.quit_event(QuitEvent::Replaced, window, cx);
     }
 
-    fn update_failed(&mut self, reason: String, cx: &mut Context<Self>) {
-        eprintln!("ive: update: {reason}");
+    /// The quit a restart onto an update began stopped (a save failed or asks about a conflict): a later quit only
+    /// swaps.
+    pub(super) fn restart_cancelled(&mut self) {
         if let Updates::Release(updates) = &mut self.updates {
-            updates.state = UpdateState::Failed(reason);
+            updates.at_quit = AtQuit::Swap;
         }
-        cx.notify();
     }
 
-    /// On quit: the staged release replaces the install, so the next start runs it.
+    /// On quit: the staged release replaces the install, so the next start runs it; after a restart onto it, it
+    /// starts now, as the old release would when the swap could not happen, so IVE comes back either way.
     pub(super) fn apply_update_on_quit(&self, cx: &gpui::App) {
         let Updates::Release(updates) = &self.updates else {
             return;
         };
-        if !is_on(cx) {
-            return;
+        if is_on(cx) {
+            log_applied(apply_staged(&updates.install));
         }
-        match apply_staged(&updates.install) {
-            Ok(Applied::Swapped(tag)) => eprintln!("ive: updated to {tag}; it starts next time"),
-            Ok(Applied::NotNow(reason)) => eprintln!("ive: update: not applied on quit: {reason}"),
-            Ok(Applied::NothingStaged) => {}
-            Err(reason) => eprintln!("ive: update: {reason}"),
+        let AtQuit::Restart(focus) = updates.at_quit else {
+            return;
+        };
+        let original: Vec<OsString> = std::env::args_os().skip(1).collect();
+        let cwd = std::env::current_dir().unwrap_or_default();
+        if let Err(reason) = relaunch(&updates.install, &relaunch_args(&original, &cwd, std::process::id(), focus), focus) {
+            eprintln!("ive: update: {reason}");
         }
     }
 
@@ -294,6 +317,15 @@ impl Workspace {
                 self.check_for_update(cx);
             }
         }
+    }
+}
+
+fn log_applied(applied: Result<Applied, String>) {
+    match applied {
+        Ok(Applied::Swapped(tag)) => eprintln!("ive: updated to {tag}"),
+        Ok(Applied::NotNow(reason)) => eprintln!("ive: update: not applied on quit: {reason}"),
+        Ok(Applied::NothingStaged) => {}
+        Err(reason) => eprintln!("ive: update: {reason}"),
     }
 }
 

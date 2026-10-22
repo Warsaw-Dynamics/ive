@@ -97,19 +97,24 @@ pub fn relaunch_args(original: &[OsString], cwd: &Path, pid: u32, focus: Focus) 
 }
 
 /// Starts the IVE at `install` with `args`, apart from this one so it outlives it.
-pub fn relaunch(install: &Install, args: &[OsString]) -> Result<(), String> {
-    let mut command = launch_command(install, args);
+pub fn relaunch(install: &Install, args: &[OsString], focus: Focus) -> Result<(), String> {
+    let mut command = launch_command(install, args, focus);
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     detach(&mut command);
     command.spawn().map(drop).map_err(|error| format!("cannot start the updated IVE at {}: {error}", install.path().display()))
 }
 
-/// macOS starts an app through `open`, so the Dock shows it as IVE.
-fn launch_command(install: &Install, args: &[OsString]) -> Command {
+/// macOS starts an app through `open`, so the Dock shows it as IVE; `-g` keeps it from coming to the front, which
+/// IVE's own `--background` cannot stop.
+fn launch_command(install: &Install, args: &[OsString], focus: Focus) -> Command {
     match install {
         Install::App(app) => {
             let mut command = Command::new("open");
-            command.arg("-n").arg("-a").arg(app).arg("--args").args(args);
+            command.arg("-n");
+            if focus == Focus::Keep {
+                command.arg("-g");
+            }
+            command.arg("-a").arg(app).arg("--args").args(args);
             command
         }
         Install::Binary(exe) => {
@@ -153,6 +158,7 @@ fn detach(_command: &mut Command) {}
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use std::time::Duration;
 
     use super::*;
@@ -301,6 +307,22 @@ mod tests {
         child.kill().unwrap();
         child.wait().unwrap();
         assert_eq!(exited, Exit::StillRunning);
+    }
+
+    #[test]
+    fn should_open_an_app_in_the_background_on_an_idle_restart() {
+        // given
+        let install = Install::App(PathBuf::from("/Applications/IVE.app"));
+        let args = os(&["--replacing", "42"]);
+
+        // when
+        let keep = launch_command(&install, &args, Focus::Keep);
+        let take = launch_command(&install, &args, Focus::Take);
+
+        // then
+        let args_of = |command: &Command| command.get_args().map(OsString::from).collect::<Vec<_>>();
+        assert_eq!(args_of(&keep), os(&["-n", "-g", "-a", "/Applications/IVE.app", "--args", "--replacing", "42"]));
+        assert_eq!(args_of(&take), os(&["-n", "-a", "/Applications/IVE.app", "--args", "--replacing", "42"]));
     }
 
     #[test]

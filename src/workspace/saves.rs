@@ -71,12 +71,13 @@ impl Workspace {
 
     fn quit_unless_unsaved(&mut self, ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
         if !self.waits.is_live(ticket) {
-            return;
+            return self.restart_cancelled();
         }
         let unsaved = self.unsaved_tabs(cx);
         let Some(first) = unsaved.first().copied() else {
             return cx.quit();
         };
+        self.restart_cancelled();
         self.quit_prompt = None;
         cx.cancel_quit();
         self.waits.quit_stopped(ticket, unsaved.clone());

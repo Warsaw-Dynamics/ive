@@ -5,7 +5,7 @@ use std::rc::Rc;
 use codeview::panel::Cast;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, SharedString,
+    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, Render, SharedString,
     ScrollHandle, Stateful, Subscription, Svg, Task, Window, canvas, div, img, prelude::*, rgb, svg,
 };
 
@@ -78,6 +78,7 @@ pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 pub use path_actions::is_path_action;
+pub use updates::activity_watcher;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -941,10 +942,8 @@ impl Render for Workspace {
             .size_full()
             .child(content.flex_1().min_h_0())
             .children(quit_prompt)
+            .child(updates::activity_watcher(cx.entity().downgrade()))
             .track_focus(&self.focus_handle)
-            // input anywhere in the window: IVE is not idle
-            .capture_key_down(cx.listener(|workspace, _: &KeyDownEvent, _, _| workspace.note_activity()))
-            .capture_any_mouse_down(cx.listener(|workspace, _: &MouseDownEvent, _, _| workspace.note_activity()))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.close_menu_on_escape(event, window, cx)))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.run_window_binding(event, window, cx)))
             .on_drop(cx.listener(|workspace, dropped: &ExternalPaths, window, cx| workspace.open_dropped(dropped, window, cx)))
