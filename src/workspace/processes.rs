@@ -167,10 +167,7 @@ impl Workspace {
     pub fn send_text_to_tab(&mut self, tab: TabId, text: &str, cx: &mut Context<Self>) -> Result<(), String> {
         match self.tabs.get(tab) {
             Some(Tab::Scratch(scratch)) => scratch.type_text(text, cx),
-            Some(Tab::Document(file)) => {
-                file.cast(codeview::panel::Cast::Type(text.to_owned()), cx);
-                Ok(())
-            }
+            Some(Tab::Document(file)) => file.type_text(text, cx),
             Some(Tab::Diff(diff)) => {
                 let panel = diff.editing_panel(cx).ok_or_else(|| format!("tab {} shows a diff that cannot be edited: only a diff of uncommitted changes can", tab.value()))?;
                 panel.update(cx, |panel, cx| panel.handle(codeview::panel::Cast::Type(text.to_owned()), cx));

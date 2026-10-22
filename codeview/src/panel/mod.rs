@@ -135,6 +135,11 @@ impl Panel {
         self.edit_revision(cx).is_some_and(|revision| self.saving.has_unsaved(revision))
     }
 
+    /// Whether typing reaches a text now: in Edit mode, or a diff's new side taken to edit.
+    pub fn takes_typing(&self, cx: &App) -> bool {
+        self.edit_revision(cx).is_some()
+    }
+
     /// The revision of the text edited: in Edit mode, or a diff's new side; `None` when nothing is edited.
     fn edit_revision(&self, cx: &App) -> Option<u64> {
         match &self.body {

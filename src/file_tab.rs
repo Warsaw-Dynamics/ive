@@ -66,6 +66,15 @@ impl FileTab {
         self.panel.update(cx, |panel, cx| panel.handle(cast, cx));
     }
 
+    /// MCP `send_text`: types `text` at the caret; an error while the tab is read-only.
+    pub fn type_text(&self, text: &str, cx: &mut App) -> Result<(), String> {
+        if self.panel.read(cx).takes_typing(cx) {
+            self.cast(Cast::Type(text.to_owned()), cx);
+            return Ok(());
+        }
+        Err(format!("{} is read-only here: another tab holds unsaved edits to it, or it was deleted", self.path.display()))
+    }
+
     pub fn file_name(&self) -> String {
         self.path.file_name().map_or_else(|| self.path.display().to_string(), |name| name.to_string_lossy().into_owned())
     }
@@ -757,6 +766,25 @@ mod tests {
         assert_eq!((base_of(&second, cx), second.read_with(cx, |file, _| file.lock_note())), (b"aone\n".to_vec(), None));
         typed(&second_panel, "c", cx);
         assert!(second_panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)));
+    }
+
+    #[gpui::test]
+    fn should_refuse_text_sent_to_a_file_tab_while_another_tab_holds_edits_to_its_file(cx: &mut TestAppContext) {
+        // given
+        let (_dir, path, first) = edited_file(b"one\n", cx);
+        let first_panel = first.read_with(cx, |file, _| file.panel.clone());
+        let panel = cx.new(Panel::new);
+        let opened = Document::open_stamped(&path).unwrap();
+        let file = cx.new(|cx| EditedFile::new(opened, Shown { panel: panel.clone(), shows: Shows::File }, cx));
+        let tab = FileTab { path: path.clone(), panel, file };
+        typed(&first_panel, "a", cx);
+
+        // when
+        let sent = cx.update(|cx| tab.type_text("b", cx));
+
+        // then
+        let error = sent.expect_err("the tab is read-only");
+        assert!(error.contains("file.txt") && error.contains("read-only"), "{error}");
     }
 
     #[gpui::test]
