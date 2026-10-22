@@ -64,15 +64,89 @@ The user wants:
   `src/syntax/tests`, `src/editor.rs`, `src/text_editor/`, `src/diff_view/` move with their code.
 - Licence header/metadata like `ptyhost/Cargo.toml` (`publish = false`, proprietary licence).
 
-## The interface (decided in conversation, details are the design's)
+## The interface: actor-style messages (user's decision)
 
-Communication is plain in-process Rust: data in through types and traits, events out through gpui's
-`EventEmitter`. No messages, no protocol.
+Each panel (a `codeview` view entity) behaves like an Elixir GenServer and IVE like its parent process: IVE **casts**
+messages to the panel, **calls** it for answers, and the panel **sends** events back. Messages are delivered
+synchronously on the UI thread (`entity.update(cx, |panel, cx| panel.handle(cast, cx))`, `cx.emit` /
+`cx.subscribe`), not through a mailbox on another thread: the panel paints every frame from its own state, and an
+async hop would add latency to typing and scrolling for no gain. The protocol is still pure messages: one entry
+point, ordered, easy to log, test and drive from MCP or Rune.
 
-### Data in
+### Casts: IVE → panel, no answer
 
 ```rust
-/// Where View mode reads lines; the host owns the file. Ranges only: never the whole text.
+pub enum Cast {
+    Open(Content),
+    Restore(PanelState),                 // held until the content is known, then clamped and applied
+    SetFiles(Vec<FileDiff>),             // diff reload: keeps scroll, collapsed files, caret
+    SetTexts { file: usize, old: Option<Source>, new: Option<Source> },  // answer to Event::NeedTexts
+    Parsed { target: ParseTarget, revision: u64, syntax: Syntax },        // answer to Event::NeedParse
+    Saved { revision: u64 },             // the text up to `revision` is on disk
+    Command(Command),                    // from the keymap, menus, MCP, Rune: moves, copy, undo, toggle layout…
+    RevealLine(usize),
+    MarkDeleted,
+}
+
+pub enum Content {
+    Text { text: String, limit: SizeLimit, language: Option<Language> },  // Edit mode (scratches)
+    Lines(Arc<dyn LineSource>),                                          // View mode (files, any size)
+    Diff(DiffInput),                                                     // Diff mode
+}
+```
+
+`Restore` may arrive before or after `Open`; a shorter file just clamps the scroll.
+
+### Events: panel → IVE
+
+```rust
+pub enum Event {
+    Edited { revision: u64 },            // IVE schedules the save (see Saving)
+    Refused(String),                     // edit over the size limit
+    StateChanged,                        // scroll / caret / layout / collapsed changed: IVE marks saved tabs dirty
+    LayoutToggled(DiffLayout),           // IVE also remembers it as the layout for the next new diff tab
+    FocusLost,                           // IVE saves now (see Saving)
+    NeedParse(ParseJob),                 // IVE runs it on the background executor, answers Cast::Parsed
+    NeedTexts { file: usize },           // a diff file came on screen: IVE fetches blobs, answers Cast::SetTexts
+    OpenAt { path: PathBuf, line: usize }, // e.g. double-click a diff line → open the file there
+}
+```
+
+### Calls: IVE asks, the panel answers at once
+
+Plain methods, not a `Call`/`Reply` enum: in Rust a reply enum forces `match … _ => unreachable!()` at every call
+site, methods give the same synchronous answer with typed results.
+
+```rust
+impl Panel {
+    pub fn state(&self) -> PanelState;
+    pub fn text(&self) -> Option<String>;     // Edit mode and editable diffs: what to write to disk
+    pub fn revision(&self) -> u64;
+}
+```
+
+### State for restart
+
+```rust
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(default)]                             // older saved tabs still load
+pub struct PanelState {
+    pub scroll: ScrollPosition,               // top line + fraction, left offset (today's type, moved here)
+    pub caret: Option<CaretPosition>,         // Edit mode, editable diffs
+    pub layout: Option<DiffLayout>,           // Inline | SideBySide, per tab
+    pub collapsed: Vec<String>,               // commit tabs: collapsed files, by path
+}
+```
+
+- **Save:** on `Event::StateChanged` (debounced) and on quit, IVE calls `panel.state()` and stores it in
+  `SavedTab { …, panel: PanelState }`. It replaces the separate `ScrollPosition`/`CaretPosition` fields there,
+  reading old saved tabs into it.
+- **Restore:** IVE creates the panel, casts `Open(content)` and `Restore(state)`.
+
+### Data types behind the messages
+
+```rust
+/// Where View mode reads lines; the host owns the file. Ranges only: never the whole text (100M-line files).
 pub trait LineSource: Send + Sync {
     fn line_count(&self) -> usize;
     /// lines `range` (clamped), already decoded for display (tabs, CRLF, MAX_LINE_CHARS cut)
@@ -80,34 +154,26 @@ pub trait LineSource: Send + Sync {
     /// the whole text when it is small enough to highlight (<= MAX_HIGHLIGHT_BYTES), else None
     fn source(&self) -> Option<Source>;
 }
+
+pub struct DiffInput {
+    pub files: Vec<FileDiff>,                 // codeview's own hunk types (the data part of git/diff.rs)
+    pub editable: Editable,                   // No | NewSide { limit: SizeLimit }
+}
 ```
 
 - `Document` (mmap + line index) moves into `codeview` and implements `LineSource`; IVE may implement others.
-- Edit mode takes a `String` plus `SizeLimit` (as `TextEditor::new` does now).
-- Diff mode takes:
+- The pure diff data types (`FileDiff`, `DiffBody`, `Hunk`, `DiffLine`, `LineKind`, `Cut`) move into `codeview`;
+  IVE's `git::diff` builds them from libgit2 and fetches the old/new blobs.
+- Full diff texts load **per file, lazily** (my call): `NeedTexts` only for files expanded and on screen, each file
+  gets its own parse job, files above `MAX_HIGHLIGHT_BYTES` per side are never fetched and show uncoloured. A commit
+  tab with hundreds of files costs only what is on screen.
+- Language: `Language::for_path(path, content)` lives in `codeview`; the host may override in `Content`.
 
-```rust
-pub struct DiffInput {
-    pub files: Vec<FileDiff>,          // codeview's own copy of the hunk types (moved from git/diff.rs's data part)
-    pub editable: Editable,            // No | NewSide { limit: SizeLimit }
-}
-// full texts arrive later, per file, when the view asks for them:
-view.set_texts(file_index, old: Option<Source>, new: Option<Source>)
-```
+### Host services: the one direct callback
 
-  Full texts are loaded **per file, lazily** (my call): the view emits `NeedTexts { file }` for files that are
-  expanded and scrolled into view; the host fetches the blobs on a background thread and calls `set_texts`; each file
-  gets its own parse job. Files above `MAX_HIGHLIGHT_BYTES` per side are never fetched and show uncoloured. A commit
-  tab with hundreds of files therefore costs only what is on screen.
-
-  The pure data types (`FileDiff`, `DiffBody`, `Hunk`, `DiffLine`, `LineKind`, `Cut`) move into `codeview`; IVE's
-  `git::diff` builds them from libgit2 and fetches the old/new blobs. Without full texts a file's diff shows uncoloured.
-
-- Language: `Language::for_path(path, content)` lives in `codeview`; the host may override.
-
-### Host services
-
-One struct the host sets as a gpui global (or passes in), replacing direct imports of IVE modules:
+Key resolution needs an answer within the same keystroke, which would be a call from panel to IVE; it stays a
+callback. Together with style it is one struct IVE provides (gpui global or passed in), replacing direct imports of
+IVE modules:
 
 ```rust
 pub struct Host {
@@ -118,39 +184,33 @@ pub struct Host {
 }
 
 pub enum KeyOutcome {
-    Command(Command),   // codeview's own enum: moves, selection, copy/cut/paste, undo/redo, toggle diff layout…
-    Handled,            // the host ran something (a Rune script binding); the view does nothing
+    Command(Command),   // codeview's own enum, the same one Cast::Command carries
+    Handled,            // IVE ran something (a Rune script binding); the panel does nothing
     Unbound,
 }
 ```
 
 IVE's adapter maps `script::keymap::Action`/`Builtin` to `Command` and runs `Action::Invoke` itself. `colors::apply`
-keeps building `ResolvedScheme` from `ThemeSpec` in IVE (theme config stays in IVE); the scheme type and the
-built-in schemes per key move with `ColorKey`.
-
-### Events out
-
-```rust
-pub enum CodeViewEvent {
-    Edited { revision: u64 },          // host schedules saves (scratch autosave, worktree file write)
-    Refused(String),                   // edit over the size limit
-    LayoutToggled(DiffLayout),         // host saves it with the tab and as the default for new diffs
-    Scrolled,                          // host persists ScrollPosition / CaretPosition in saved tabs
-    OpenAt { path: PathBuf, line: usize }, // e.g. double-click a diff line → open the file there
-    NeedTexts { file: usize },         // diff: full old/new texts wanted for colouring this file
-}
-```
-
-State the host reads/writes: `scroll_position()`, `caret()`, `restore(...)`, `text()` (edit modes),
-`set_text` / `set_files` (reload keeping scroll and collapsed files, as `DiffView::set_files` does now),
-`reveal_line`, `mark_deleted`. `ScrollPosition`/`CaretPosition` become codeview types; `saved_tabs` stores them.
+keeps building `ResolvedScheme` from `ThemeSpec` in IVE (theme config stays in IVE); the scheme type and the built-in
+schemes per key move with `ColorKey`.
 
 ### Threads
 
-Parsing runs off the UI thread (today's `ParseJob` pattern with `Cancel`). The view hands out a job, the host spawns it
-on gpui's background executor, the result comes back through `set_syntax`. Edit mode applies `Tree::edit` and
-re-parses incrementally after each edit, a newer edit cancelling an older parse. Colours of a stale parse are shown
-shifted until the new one lands (never block typing).
+The panel never spawns threads. Parsing runs off the UI thread through the `NeedParse` → background → `Parsed` round
+trip (today's `ParseJob` with `Cancel`); a stale `revision` is dropped. Edit mode applies `Tree::edit` and re-parses
+incrementally after each edit, a newer job cancelling the older one; colours of the previous parse stay, shifted by
+the edit, until the new one lands (never block typing).
+
+### Saving: IntelliJ-style, no Ctrl+S (user's decision)
+
+Edits reach the disk almost at once without the user doing anything; there is no save shortcut to press.
+
+- IVE writes `panel.text()` **`SAVE_DELAY` (500 ms, as scratches today) after the last `Edited`**, and immediately on
+  `FocusLost`, tab switch or close, window deactivation, quit, and before a run.
+- On success IVE casts `Saved { revision }`; the panel shows no dirty marker beyond the moment in between.
+- Conflicts reuse the scratch `SaveState`/`FileStamp` logic: with unwritten edits and an outside change on disk, the
+  conflict bar offers reload / overwrite.
+- The same rule for scratches and editable diffs.
 
 ## Behaviour
 
@@ -169,11 +229,9 @@ shifted until the new one lands (never block typing).
   - **Which diffs:** only a single-file diff tab with `DiffSource::Uncommitted` (old = HEAD/index, new = the file on
     disk). `Since { .. }`, commit tabs, the git log and the hub preview stay read-only.
   - **What is shown:** the same hunk rows as today. Edits apply to the **full new text** held by the view (fetched
-    through `set_texts`), so the undo history is over the whole file, not over rows.
-  - **When it writes:** like scratches: debounced autosave after `Edited`, plus explicit save. IVE reuses the scratch
-    `SaveState`/`FileStamp` logic; with unsaved edits and an outside change on disk it shows the same conflict bar
-    (reload / overwrite).
-  - **After a write:** the host re-runs the diff (existing reload path) and calls `set_files`; the view keeps caret,
+    through `NeedTexts`/`SetTexts`), so the undo history is over the whole file, not over rows.
+  - **When it writes:** as in Saving above, no explicit save.
+  - **After a write:** the host re-runs the diff (existing reload path) and casts `SetFiles`; the view keeps caret,
     selection and undo history by mapping them through new-side line numbers. A hunk an edit undid disappears; if
     the caret was in it, it goes to the nearest remaining row.
 - Old side and all other diffs are always read-only.
@@ -186,7 +244,7 @@ shifted until the new one lands (never block typing).
 ### Scratches
 
 - `ScratchView`'s `Editing` body uses Edit mode (gaining colours by the scratch's file name); its `ReadOnly` body uses
-  View mode. Save/conflict logic (`SaveState`, `FileStamp`) stays in IVE.
+  View mode. Save/conflict logic (`SaveState`, `FileStamp`) stays in IVE; saving follows the Saving rule above.
 
 ### File tabs become entities
 
@@ -227,9 +285,10 @@ over MCP with an `--profile agent-…` instance.
 
 ## Calls made by the designer (not discussed with the user)
 
-- Library crate, not a process.
+- Library crate, not a process; messages delivered synchronously on the UI thread, not via a mailbox thread.
+- Calls are typed methods rather than a `Call`/`Reply` enum; key resolution stays a callback.
 - Editable diffs: only the new side, only in single-file `Uncommitted` diff tabs (not `Since`, not the hub
-  preview); hunk rows shown, full new text edited; debounced autosave with the scratch conflict handling; caret and
+  preview); hunk rows shown, full new text edited; saved per the Saving rule with the scratch conflict handling; caret and
   undo kept across re-diffs by new-side line numbers.
 - Diff data types move into codeview; libgit2 stays in IVE.
 - Scrollbar module moves into codeview.
