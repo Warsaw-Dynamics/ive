@@ -30,6 +30,8 @@ pub enum Command {
     Indent,
     /// saves unsaved edits now instead of after the pause
     Flush,
+    /// a diff switches between inline and side by side
+    ToggleLayout,
 }
 
 /// What the host made of a key press.

@@ -24,7 +24,7 @@ pub use state::PanelState;
 
 use crate::code_view::CodeView;
 use crate::diff::texts::Parsed;
-use crate::diff::{DiffEvent, DiffView, FileDiff};
+use crate::diff::{DiffEvent, DiffView, FileDiff, Shape};
 use crate::document::Source;
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
@@ -139,6 +139,14 @@ impl Panel {
         }
     }
 
+    /// The diff's layout; `None` outside Diff mode.
+    pub fn diff_layout(&self, cx: &App) -> Option<DiffLayout> {
+        match &self.body {
+            Body::Diff(diff) => Some(diff.read(cx).layout()),
+            Body::Empty | Body::View(_) | Body::Edit(_) => None,
+        }
+    }
+
     /// A save is in flight: the host has not answered it yet.
     pub fn is_saving(&self) -> bool {
         self.saving.is_in_flight()
@@ -217,7 +225,7 @@ impl Panel {
     fn build_diff(&mut self, input: DiffInput, cx: &mut Context<Self>) {
         // editable diffs come with Task 13
         let diff = cx.new(|cx| {
-            let mut diff = DiffView::new(input.headers, cx);
+            let mut diff = DiffView::new(Shape { headers: input.headers, layout: input.layout }, cx);
             diff.set_files(input.files, cx);
             diff
         });
@@ -228,6 +236,10 @@ impl Panel {
     fn on_diff_event(&mut self, _diff: Entity<DiffView>, event: &DiffEvent, cx: &mut Context<Self>) {
         match event {
             DiffEvent::NeedTexts { file } => cx.emit(Event::NeedTexts { file: *file }),
+            DiffEvent::LayoutToggled(layout) => {
+                cx.emit(Event::LayoutToggled(*layout));
+                self.notice_state(cx);
+            }
         }
     }
 
@@ -404,6 +416,9 @@ impl Panel {
             Body::View(view) => view.update(cx, |view, cx| view.restore_scroll(state.scroll, cx)),
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.restore_view(state.caret.unwrap_or_default(), state.scroll, cx)),
             Body::Diff(diff) => diff.update(cx, |diff, cx| {
+                if let Some(layout) = state.layout {
+                    diff.set_layout(layout, cx);
+                }
                 // no saved list is the same as none known: the diff keeps the collapse its files started with
                 if !state.collapsed.is_empty() {
                     diff.restore_collapsed(&state.collapsed, cx);
@@ -437,7 +452,7 @@ impl Panel {
             }
             Body::Diff(diff) => {
                 let diff = diff.read(cx);
-                PanelState { scroll: diff.scroll_position(), collapsed: diff.collapsed_paths(), ..PanelState::default() }
+                PanelState { scroll: diff.scroll_position(), layout: Some(diff.layout()), collapsed: diff.collapsed_paths(), ..PanelState::default() }
             }
         }
     }

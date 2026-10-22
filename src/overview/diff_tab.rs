@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use gpui::{App, Context, Entity, IntoElement, Render, Task, Window, div, prelude::*, rgb};
 
-use super::git_ui::{mark_label, muted, toggle_button};
+use super::git_ui::{layout_switch, mark_label, muted, toggle_button};
 use crate::click_targets::target;
 use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serve};
 use codeview::diff::Headers;
@@ -258,6 +258,7 @@ impl Render for DiffTabBody {
             .child(div().flex_none().font_weight(theme.sizes.git.diff_header_weight.font_weight()).text_size(theme.sizes.git.text_size.px()).child(self.request.file.path.display()))
             .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(self.source.clone()))
             .children(status)
+            .child(layout_switch(&self.panel, theme, cx))
             .child(toggle_button("reload-diff", icons::HISTORY, "Reload", theme).on_click(reload));
         div().flex().flex_col().flex_1().min_h_0().child(header).child(self.panel.clone())
     }

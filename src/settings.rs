@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use codeview::panel::DiffLayout;
 use gpui::Global;
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +40,9 @@ pub struct Settings {
     pub theme: ThemePreference,
     /// project tree width in pixels, once the user resized it; IVE fits it to the window
     pub sidebar_width: Option<u32>,
+    /// the diff layout the user last switched to: new diff and commit tabs open in it
+    #[serde(skip_serializing_if = "is_inline")]
+    pub diff_layout: DiffLayout,
     /// how the git views list changed files
     #[serde(skip_serializing_if = "FileOrder::is_default")]
     pub git_files: FileOrder,
@@ -55,6 +59,10 @@ impl Settings {
 
     pub fn with_git_files(&self, git_files: FileOrder) -> Self {
         Self { git_files, ..self.clone() }
+    }
+
+    pub fn with_diff_layout(&self, diff_layout: DiffLayout) -> Self {
+        Self { diff_layout, ..self.clone() }
     }
 
     /// Reads settings from `path`; a missing file means defaults.
@@ -84,6 +92,10 @@ impl Settings {
         fs::write(&staging, text).map_err(|source| SettingsError::io(&staging, source))?;
         fs::rename(&staging, path).map_err(|source| SettingsError::io(path, source))
     }
+}
+
+fn is_inline(layout: &DiffLayout) -> bool {
+    *layout == DiffLayout::Inline
 }
 
 /// The settings in effect, and where they are saved (none when the OS has no config folder).
@@ -256,6 +268,22 @@ mod tests {
         // then
         assert_eq!(loaded, settings);
         assert!(fs::read_to_string(&path).unwrap().contains("[git_files]\nsort = \"modified\"\nlayout = \"tree\""));
+    }
+
+    #[test]
+    fn should_save_and_load_the_diff_layout() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let settings = Settings::default().with_git_files(FileOrder { sort: FileSort::Modified, layout: FileLayout::Tree }).with_diff_layout(DiffLayout::SideBySide);
+
+        // when
+        settings.save(&path).unwrap();
+        let loaded = Settings::load(&path).unwrap();
+
+        // then
+        assert_eq!(loaded, settings);
+        assert!(fs::read_to_string(&path).unwrap().contains("diff_layout = \"side-by-side\""));
     }
 
     #[test]

@@ -3,10 +3,14 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use gpui::{Entity, ParentElement, Styled, TestAppContext, VisualTestContext, div, point, px, size};
+use gpui::{
+    Entity, IntoElement, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point, Styled, TestAppContext,
+    VisualTestContext, div, point, px, size,
+};
 
 use super::*;
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
+use crate::host::{ClipboardTarget, Host, KeyOutcome};
 use crate::diff::texts::Placed;
 use crate::diff::{DiffBody, DiffLine, GitPath, Headers, Hunk, LineKind, Mark};
 use crate::style::{Appearance, ViewStyle};
@@ -40,8 +44,11 @@ fn window(cx: &mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Asked>>, &mut V
 }
 
 fn open(panel: &Entity<Panel>, files: Vec<FileDiff>, headers: Headers, cx: &mut VisualTestContext) {
-    let content = Content::Diff(DiffInput { files, headers, editable: Editable::No });
-    panel.update(cx, |panel, cx| panel.handle(Cast::Open(content), cx));
+    show(panel, DiffInput { files, headers, layout: DiffLayout::Inline, editable: Editable::No }, cx);
+}
+
+fn show(panel: &Entity<Panel>, input: DiffInput, cx: &mut VisualTestContext) {
+    panel.update(cx, |panel, cx| panel.handle(Cast::Open(Content::Diff(input)), cx));
 }
 
 /// Draws a frame `rows` rows high.
@@ -133,4 +140,98 @@ fn should_show_a_file_without_texts_uncoloured(cx: &mut TestAppContext) {
     // then
     assert_eq!((asked.borrow().texts.clone(), asked.borrow().parses.len()), (vec![0, 1], 0));
     assert_eq!((colours_of(&panel, 2, "let a = 1;", cx), colours_of(&panel, 5, "let b = 2;", cx)), (vec![], vec![]));
+}
+
+/// What `panel` told its host besides asking for texts and parses: the layouts toggled, and how often its state
+/// changed.
+#[derive(Default)]
+struct Told {
+    toggled: Vec<DiffLayout>,
+    state_changes: usize,
+}
+
+fn told_by(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Rc<RefCell<Told>> {
+    let told: Rc<RefCell<Told>> = Rc::default();
+    let seen = told.clone();
+    cx.update(|_window, cx| {
+        cx.subscribe(panel, move |_, event: &Event, _| match event {
+            Event::LayoutToggled(layout) => seen.borrow_mut().toggled.push(*layout),
+            Event::StateChanged => seen.borrow_mut().state_changes += 1,
+            _ => {}
+        })
+        .detach();
+    });
+    told
+}
+
+#[gpui::test]
+fn should_report_a_toggled_layout_and_restore_a_tabs_own_without_reporting_it(cx: &mut TestAppContext) {
+    // given
+    let (panel, _asked, cx) = window(cx);
+    open(&panel, vec![file("a.rs", vec![line(LineKind::Added, None, Some(1), "a")])], Headers::Hidden, cx);
+    let told = told_by(&panel, cx);
+
+    // when
+    panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleLayout), cx));
+    cx.run_until_parked();
+    let toggled = panel.read_with(cx, |panel, _| panel.state().layout);
+    panel.update(cx, |panel, cx| panel.handle(Cast::Restore(PanelState { layout: Some(DiffLayout::Inline), ..PanelState::default() }), cx));
+    cx.run_until_parked();
+
+    // then
+    let restored = panel.read_with(cx, |panel, cx| (panel.state().layout, panel.diff_layout(cx)));
+    assert_eq!((toggled, restored), (Some(DiffLayout::SideBySide), (Some(DiffLayout::Inline), Some(DiffLayout::Inline))));
+    assert_eq!((told.borrow().toggled.clone(), told.borrow().state_changes), (vec![DiffLayout::SideBySide], 2));
+}
+
+/// What the panel's view puts on the clipboard.
+fn clipboard(cx: &mut VisualTestContext) -> Rc<RefCell<Vec<String>>> {
+    let copied: Rc<RefCell<Vec<String>>> = Rc::default();
+    let seen = copied.clone();
+    cx.update(|_window, cx| {
+        cx.set_global(Host {
+            keys: Rc::new(|_, _, _| KeyOutcome::Unbound),
+            clipboard: Rc::new(move |_, text, _| seen.borrow_mut().push(text)),
+            paste: Rc::new(|_, _| None),
+            diff_mark: Rc::new(|_, _| div().into_any_element()),
+            click_target: Rc::new(|_, _, _| {}),
+        });
+    });
+    copied
+}
+
+/// Drags the mouse from `from` to `to` over the panel's diff, as a left-button selection.
+fn drag(panel: &Entity<Panel>, from: Point<Pixels>, to: Point<Pixels>, cx: &mut VisualTestContext) {
+    let Body::Diff(diff) = panel.read_with(cx, |panel, _| panel.body.clone()) else { panic!("not a diff") };
+    let press = MouseDownEvent { button: MouseButton::Left, position: from, modifiers: Modifiers::default(), click_count: 1, first_mouse: false };
+    let moved = MouseMoveEvent { position: to, pressed_button: Some(MouseButton::Left), modifiers: Modifiers::default() };
+    cx.update(|window, cx| diff.update(cx, |diff, cx| diff.on_mouse_down(&press, window, cx)));
+    diff.update(cx, |diff, cx| diff.on_window_mouse_move(&moved, cx));
+}
+
+#[gpui::test]
+fn should_copy_only_the_left_side(cx: &mut TestAppContext) {
+    // given
+    let (panel, _asked, cx) = window(cx);
+    let copied = clipboard(cx);
+    let lines = vec![
+        line(LineKind::Context, Some(1), Some(1), "keep"),
+        line(LineKind::Removed, Some(2), None, "old a"),
+        line(LineKind::Removed, Some(3), None, "old b"),
+        line(LineKind::Added, None, Some(2), "new a"),
+        line(LineKind::Context, Some(4), Some(3), "end"),
+    ];
+    show(&panel, DiffInput { files: vec![file("a.rs", lines)], headers: Headers::Hidden, layout: DiffLayout::SideBySide, editable: Editable::No }, cx);
+    // 800 px wide: the old panel left of x 400, the new one right of it; row 0 is the hunk header
+    draw(&panel, 10., cx);
+    let copy = |cx: &mut VisualTestContext| panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Copy(ClipboardTarget::Both)), cx));
+
+    // when
+    drag(&panel, point(px(1.), px(30.)), point(px(399.), px(90.)), cx);
+    copy(cx);
+    drag(&panel, point(px(401.), px(30.)), point(px(799.), px(90.)), cx);
+    copy(cx);
+
+    // then
+    assert_eq!(*copied.borrow(), ["keep\nold a\nold b\nend", "keep\nnew a\nend"]);
 }

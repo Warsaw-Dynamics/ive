@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, div, prelude::*, rgb};
 
 use super::git_event::CommitLink;
-use super::git_ui::{error_with_retry, muted};
+use super::git_ui::{error_with_retry, layout_switch, muted};
 use crate::age::date_time;
 use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::Sides;
@@ -130,7 +130,8 @@ impl Render for CommitView {
             .child(div().font_family(theme::mono_font(cx)).text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(header.info.sha.as_str().to_owned()))
             .child(div().text_size(theme.sizes.git.text_size.px()).child(format!("{} · {}", header.info.author, date_time(header.info.when))))
             .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).font_weight(theme.sizes.git.commit_subject_weight.font_weight()).child(header.message.clone()))
-            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(parents));
+            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(parents))
+            .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).flex().child(layout_switch(&self.files, theme, cx)));
         div().flex().flex_col().flex_1().min_h_0().child(top).child(self.files.clone())
     }
 }

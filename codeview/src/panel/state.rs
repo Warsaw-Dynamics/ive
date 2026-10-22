@@ -134,7 +134,7 @@ mod tests {
     }
 
     fn commit_without_files() -> Content {
-        Content::Diff(DiffInput { files: Vec::new(), headers: Headers::Shown, editable: Editable::No })
+        Content::Diff(DiffInput { files: Vec::new(), headers: Headers::Shown, layout: DiffLayout::Inline, editable: Editable::No })
     }
 
     #[gpui::test]

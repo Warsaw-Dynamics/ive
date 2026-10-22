@@ -1,5 +1,6 @@
 //! The full texts behind a diff's files, asked for per file once it shows lines on screen, and the colours their
-//! parses give the rows: a removed line takes the old side's, an added or context line the new side's.
+//! parses give the rows: inline, a removed line takes the old side's, an added or context line the new side's; side
+//! by side, each panel takes its own side's.
 
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
@@ -7,6 +8,7 @@ use std::path::Path;
 
 use super::data::{DiffLine, FileDiff, LineKind};
 use super::rows::DiffRow;
+use super::side_by_side::Side;
 use crate::colors::ColorKey;
 use crate::document::{DisplayLine, Source, TextSource};
 use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous};
@@ -57,7 +59,7 @@ impl DiffTexts {
     pub(crate) fn wanted(&mut self, shown: &[DiffRow]) -> Vec<usize> {
         let mut wanted = Vec::new();
         for row in shown {
-            if let DiffRow::Line { file, .. } = row
+            if let DiffRow::Line { file, .. } | DiffRow::Pair { file, .. } = row
                 && self.requested.insert(*file)
             {
                 wanted.push(*file);
@@ -107,15 +109,25 @@ impl DiffTexts {
         }
     }
 
-    /// `line` of file `file` as coloured ranges of its text; none while its side is not parsed.
+    /// `line` of file `file` as an inline diff shows it, as coloured ranges of its text; none while its side is not
+    /// parsed.
     pub(crate) fn colours(&self, file: usize, line: &DiffLine) -> Vec<Placed> {
-        let (target, number) = match line.kind {
-            LineKind::Removed => (ParseTarget::DiffOld(file), line.old),
-            LineKind::Added | LineKind::Context => (ParseTarget::DiffNew(file), line.new),
-            LineKind::NoNewline => return Vec::new(),
+        let side = if line.kind == LineKind::Removed { Side::Old } else { Side::New };
+        self.colours_on(file, line, side)
+    }
+
+    /// `line` of file `file` as panel `side` of a side-by-side diff shows it; a context line on the old side takes
+    /// the new side's colours while the old text is missing.
+    pub(crate) fn colours_on(&self, file: usize, line: &DiffLine, side: Side) -> Vec<Placed> {
+        let old = self.sides.get(&ParseTarget::DiffOld(file));
+        let (text, number) = match (side, line.kind, old) {
+            (_, LineKind::NoNewline, _) => return Vec::new(),
+            (Side::Old, LineKind::Context, None) => (self.sides.get(&ParseTarget::DiffNew(file)), line.new),
+            (Side::Old, _, old) => (old, line.old),
+            (Side::New, _, _) => (self.sides.get(&ParseTarget::DiffNew(file)), line.new),
         };
-        match (self.sides.get(&target), number) {
-            (Some(side), Some(number)) => side.colours(number as usize, &line.text),
+        match (text, number) {
+            (Some(text), Some(number)) => text.colours(number as usize, &line.text),
             _ => Vec::new(),
         }
     }
@@ -206,6 +218,26 @@ mod tests {
         // then
         assert_eq!(keys(&colours.0, &removed.text)[0], ("let".to_owned(), "RUST.KEYWORD".to_owned()));
         assert_eq!(keys(&colours.1, &added.text), [("\"text\"".to_owned(), "RUST.STRING".to_owned())]);
+    }
+
+    #[test]
+    fn should_colour_a_context_line_from_each_panels_side_and_from_the_new_side_without_an_old_text() {
+        // given
+        let context = line(LineKind::Context, Some(1), Some(2), "let a;");
+        let diff = rust_file(vec![context.clone()]);
+        let mut texts = DiffTexts::default();
+        texts.wanted(&[DiffRow::Line { file: 0, hunk: 0, line: 0 }]);
+        parsed_side(&mut texts, ParseTarget::DiffNew(0), "\"x\"\nlet a;\n", &diff);
+        let without_old = texts.colours_on(0, &context, Side::Old);
+        parsed_side(&mut texts, ParseTarget::DiffOld(0), "/* old */\n", &diff);
+
+        // when
+        let (old, new) = (texts.colours_on(0, &context, Side::Old), texts.colours_on(0, &context, Side::New));
+
+        // then
+        assert_eq!(keys(&without_old, &context.text)[0], ("let".to_owned(), "RUST.KEYWORD".to_owned()));
+        // the old text has another line 1: the old panel shows the line uncoloured
+        assert_eq!((old, keys(&new, &context.text)[0].clone()), (vec![], ("let".to_owned(), "RUST.KEYWORD".to_owned())));
     }
 
     #[test]

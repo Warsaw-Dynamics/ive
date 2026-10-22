@@ -147,6 +147,41 @@ impl Scrollable for ListScroll {
     }
 }
 
+/// Scrolling along one axis that a view applies itself, by offsetting what it draws; in pixels.
+#[derive(Clone, Default)]
+pub struct OffsetScroll {
+    scrolled: Rc<Cell<f64>>,
+    /// the viewport's and the content's length, as of the last frame
+    size: Rc<Cell<(f64, f64)>>,
+}
+
+impl OffsetScroll {
+    pub fn scrolled(&self) -> f64 {
+        self.scrolled.get()
+    }
+
+    /// Sets the viewport's and the content's length, keeping the scroll inside them.
+    pub fn set_size(&self, viewport: f64, content: f64) {
+        self.size.set((viewport, content));
+        self.scroll_to(Axis::Horizontal, self.scrolled());
+    }
+
+    fn max_scroll(&self) -> f64 {
+        let (viewport, content) = self.size.get();
+        (content - viewport).max(0.)
+    }
+}
+
+impl Scrollable for OffsetScroll {
+    fn extent(&self, _axis: Axis) -> Extent {
+        Extent { viewport: self.size.get().0, max_scroll: self.max_scroll(), scrolled: self.scrolled() }
+    }
+
+    fn scroll_to(&self, _axis: Axis, scrolled: f64) {
+        self.scrolled.set(scrolled.clamp(0., self.max_scroll()));
+    }
+}
+
 /// The row in `rows` with the largest `width`: the one a list should measure to size its scrollable width.
 pub fn widest_row(rows: Range<usize>, width: impl Fn(usize) -> usize) -> Option<usize> {
     rows.max_by_key(|&row| width(row))
@@ -375,6 +410,21 @@ mod tests {
 
         // then
         assert_eq!((at_top, mid_row, at_end), (0..5, 1..7, 995..1000));
+    }
+
+    #[test]
+    fn should_keep_an_offset_scroll_inside_its_content() {
+        // given
+        let scroll = OffsetScroll::default();
+        scroll.set_size(100., 300.);
+        scroll.scroll_to(Axis::Horizontal, 500.);
+        let past_the_end = scroll.scrolled();
+
+        // when
+        scroll.set_size(100., 150.);
+
+        // then
+        assert_eq!((past_the_end, scroll.scrolled()), (200., 50.));
     }
 
     #[test]

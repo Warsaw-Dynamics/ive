@@ -189,8 +189,8 @@ impl TextEditor {
                 },
                 cx,
             ),
-            // saving is the panel's
-            Command::Flush => Ok(()),
+            // saving is the panel's, and a text has no layout to toggle
+            Command::Flush | Command::ToggleLayout => Ok(()),
         };
     }
 

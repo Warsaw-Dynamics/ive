@@ -1,6 +1,8 @@
 //! Small widgets shared by the git views, after the mock's `rows`, `seg`, `tag` and `toggle`.
 
-use gpui::{App, ClickEvent, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, rgb};
+use codeview::host::Command;
+use codeview::panel::{Cast, DiffLayout, Panel};
+use gpui::{App, ClickEvent, Div, ElementId, Entity, SharedString, Stateful, Window, div, prelude::*, rgb};
 
 use crate::click_targets::target;
 use crate::git::types::Mark;
@@ -88,6 +90,25 @@ pub fn segment(id: impl Into<ElementId>, label: impl Into<SharedString>, picked:
         return button.bg(rgb(theme.selected)).border_color(rgb(theme.accent));
     }
     button.border_color(rgb(theme.border)).hover(|style| style.bg(rgb(theme.hover)))
+}
+
+/// Inline | Side by side, for a diff panel; a click on the other one switches its layout (targets
+/// `diff-layout:inline` and `diff-layout:side-by-side`).
+pub fn layout_switch(panel: &Entity<Panel>, theme: Theme, cx: &App) -> Div {
+    let shown = panel.read(cx).diff_layout(cx);
+    let segments = [(DiffLayout::Inline, "inline", "Inline"), (DiffLayout::SideBySide, "side-by-side", "Side by side")].map(|(layout, name, label)| {
+        let panel = panel.clone();
+        let pick = target(format!("diff-layout:{name}"), move |_event, _window, cx| switch_layout(&panel, layout, cx), cx);
+        segment(("diff-layout", layout as usize), label, Picked::from(shown == Some(layout)), theme).on_click(pick)
+    });
+    div().flex().flex_none().gap_1().children(segments)
+}
+
+fn switch_layout(panel: &Entity<Panel>, layout: DiffLayout, cx: &mut App) {
+    if panel.read(cx).diff_layout(cx) == Some(layout) {
+        return;
+    }
+    panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleLayout), cx));
 }
 
 /// An outlined button with an icon, like the mock's `toggle`.

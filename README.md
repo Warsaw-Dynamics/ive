@@ -459,6 +459,7 @@ async fn restart(context) {
 | `act::ActivateRowToKeep` | tree | the row's click, its project tab kept rather than temporary (middle click by default); on other rows the same as `ActivateRow` |
 | `act::ToggleRowSelection`, `act::ExtendRowSelection` | tree | Ctrl+click (Cmd on macOS) adds a file or folder to the selection or takes it out; Shift+click selects the files and folders from the last clicked row; dragging a selected row onto a terminal types all their paths |
 | `act::SelectAll`, `act::Cut`, `act::Undo`, `act::Redo` | editor | the scratch editor's commands |
+| `act::ToggleDiffLayout` | editor | a focused diff inline or side by side (no key by default); new diff and commit tabs open in the layout last switched to |
 | `act::OpenHub` | window | shows the hub (Ctrl+Shift+E) |
 | `act::OpenTerminalIn` | window | the hub asking where a new terminal goes: a checkout, or a branch that first gets its worktree (Ctrl+Shift+T) |
 | `act::HubDown`, `act::HubUp`, `act::HubPageDown`, `act::HubPageUp` | hub | move the selection |
@@ -697,7 +698,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
-| diff and commit tabs | `reload-diff`, `diff-file:<path>` |
+| diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |
 | Worktrees list | `worktree-filter` (focuses the filter: then `window_text`, `window_keys` `["down", "space"]`), `worktree-row:<path>`, `branch-row:<name>` (as Enter), `worktree-toggle:<path or name>` (Hide, Show, + Worktree), `worktree-hidden-group`, `branch-more`, `branch-all` |
 | Scratches section | `new-scratch` (the name input opens focused and takes `window_text`, Enter / Escape), `scratch-search` (focus the search field), `scratch-name` (focus the open name input, New scratch's or Rename's) |
 | scratch row | `scratch:<name>` (open it), `rename-scratch:<name>`, `delete-scratch:<name>` (its hover actions; Delete asks: `prompt:Delete`) |

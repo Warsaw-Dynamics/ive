@@ -59,6 +59,8 @@ pub enum Content {
 pub struct DiffInput {
     pub files: Vec<FileDiff>,
     pub headers: Headers,
+    /// until a [`Cast::Restore`] brings the tab's own
+    pub layout: DiffLayout,
     pub editable: Editable,
 }
 
@@ -158,9 +160,10 @@ impl Edit {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DiffLayout {
+    #[default]
     Inline,
     SideBySide,
 }

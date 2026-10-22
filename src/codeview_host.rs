@@ -5,9 +5,9 @@ use std::rc::Rc;
 
 use codeview::diff::{FileDiff, Headers};
 use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
-use codeview::panel::{Cast, Content, DiffInput, Editable, Event, Panel, ParseJob};
+use codeview::panel::{Cast, Content, DiffInput, DiffLayout, Editable, Event, Panel, ParseJob};
 use codeview::syntax::ParseError;
-use gpui::{App, AppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
+use gpui::{App, AppContext, BorrowAppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
 
 use crate::click_targets::ClickTargets;
 use crate::clipboard;
@@ -15,6 +15,7 @@ use crate::git::diff::{self, FilePaths, Sides};
 use crate::overview::git_ui::mark_label;
 use crate::script::keymap::{Action, Builtin, Place};
 use crate::script::state::{bound_action, invoke};
+use crate::settings::SettingsStore;
 
 pub fn install(cx: &mut App) {
     cx.set_global(Host {
@@ -81,6 +82,7 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::PasteFrom(source) => Command::Paste(source),
         Builtin::Undo => Command::Undo,
         Builtin::Redo => Command::Redo,
+        Builtin::ToggleDiffLayout => Command::ToggleLayout,
         _ => return None,
     })
 }
@@ -135,14 +137,33 @@ pub fn send_texts(panel: &Entity<Panel>, wanted: WantedTexts, cx: &mut App) {
     .detach();
 }
 
-/// A panel showing `files` read-only.
+/// A panel showing `files` read-only, in the layout the user last switched a diff to; switching it again is
+/// remembered for the next diff.
 pub fn diff_panel(files: Vec<FileDiff>, headers: Headers, cx: &mut App) -> Entity<Panel> {
-    let input = DiffInput { files, headers, editable: Editable::No };
-    cx.new(|cx| {
+    let layout = cx.try_global::<SettingsStore>().map(|store| store.current().diff_layout).unwrap_or_default();
+    let input = DiffInput { files, headers, layout, editable: Editable::No };
+    let panel = cx.new(|cx| {
         let mut panel = Panel::new(cx);
         panel.handle(Cast::Open(Content::Diff(input)), cx);
         panel
+    });
+    cx.subscribe(&panel, |_panel, event: &Event, cx| {
+        if let Event::LayoutToggled(layout) = event {
+            remember_layout(*layout, cx);
+        }
     })
+    .detach();
+    panel
+}
+
+fn remember_layout(layout: DiffLayout, cx: &mut App) {
+    if cx.try_global::<SettingsStore>().is_none() {
+        return;
+    }
+    let stored = cx.update_global::<SettingsStore, _>(|store, _| store.replace(store.current().with_diff_layout(layout)));
+    if let Err(error) = stored {
+        eprintln!("ive: cannot save the diff layout: {error}");
+    }
 }
 
 fn parse_in_background(panel: WeakEntity<Panel>, job: ParseJob, name: &str, cx: &mut App) {
@@ -169,9 +190,13 @@ fn parse_in_background(panel: WeakEntity<Panel>, job: ParseJob, name: &str, cx: 
 
 #[cfg(test)]
 mod tests {
+    use codeview::diff::{DiffBody, DiffLine, GitPath, Hunk, LineKind, Mark};
     use codeview::host::ClipboardTarget;
+    use codeview::panel::PanelState;
+    use gpui::TestAppContext;
 
     use super::*;
+    use crate::settings::Settings;
 
     #[test]
     fn should_map_editor_builtins_to_commands() {
@@ -211,6 +236,54 @@ mod tests {
         // then
         assert_eq!(invoked, Decision::Invoke { generation: 1, function: 2 });
         assert_eq!(sent, Decision::Done(KeyOutcome::Handled));
+    }
+
+    #[test]
+    fn should_map_toggling_the_diff_layout_in_a_viewer_to_a_command() {
+        // given
+        let toggle = Action::Builtin(Builtin::ToggleDiffLayout);
+
+        // when
+        let decision = decide(Some(toggle), KeyScope::Viewer);
+
+        // then
+        assert_eq!(decision, Decision::Done(KeyOutcome::Command(Command::ToggleLayout)));
+    }
+
+    /// A diff panel showing one added line, as a diff tab opens it.
+    fn opened_diff(cx: &mut TestAppContext) -> Entity<Panel> {
+        let line = DiffLine { kind: LineKind::Added, old: None, new: Some(1), text: "a".to_owned() };
+        let hunk = Hunk { header: "@@ -0,0 +1 @@".to_owned(), lines: vec![line] };
+        let file = FileDiff { path: GitPath::from_bytes(b"a.rs"), old_path: None, mark: Mark::Added, body: DiffBody::Text { hunks: vec![hunk], cut: None } };
+        cx.update(|cx| diff_panel(vec![file], Headers::Hidden, cx))
+    }
+
+    fn layout_of(panel: &Entity<Panel>, cx: &mut TestAppContext) -> Option<DiffLayout> {
+        panel.read_with(cx, |panel, cx| panel.diff_layout(cx))
+    }
+
+    #[gpui::test]
+    fn should_open_new_diffs_in_the_last_toggled_layout(cx: &mut TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        cx.update(|cx| {
+            cx.set_global(SettingsStore::new(Settings::default(), Some(path.clone())));
+            cx.set_global(crate::theme::view_style(&crate::theme::Theme::of(crate::theme::Appearance::Dark)));
+        });
+        let first = opened_diff(cx);
+        let restored = opened_diff(cx);
+        let before = layout_of(&first, cx);
+
+        // when
+        first.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleLayout), cx));
+        cx.run_until_parked();
+        restored.update(cx, |panel, cx| panel.handle(Cast::Restore(PanelState { layout: Some(DiffLayout::Inline), ..PanelState::default() }), cx));
+        let opened = opened_diff(cx);
+
+        // then
+        assert_eq!((before, layout_of(&opened, cx), layout_of(&restored, cx)), (Some(DiffLayout::Inline), Some(DiffLayout::SideBySide), Some(DiffLayout::Inline)));
+        assert_eq!(Settings::load(&path).unwrap().diff_layout, DiffLayout::SideBySide);
     }
 
     #[test]
