@@ -134,7 +134,7 @@ built-in schemes per key move with `ColorKey`.
 pub enum CodeViewEvent {
     Edited { revision: u64 },          // host schedules saves (scratch autosave, worktree file write)
     Refused(String),                   // edit over the size limit
-    LayoutToggled(DiffLayout),         // host persists the user's preference
+    LayoutToggled(DiffLayout),         // host saves it with the tab and as the default for new diffs
     Scrolled,                          // host persists ScrollPosition / CaretPosition in saved tabs
     OpenAt { path: PathBuf, line: usize }, // e.g. double-click a diff line → open the file there
     NeedTexts { file: usize },         // diff: full old/new texts wanted for colouring this file
@@ -161,8 +161,9 @@ shifted until the new one lands (never block typing).
   removals paired with the following run of additions line by line, the shorter side padded with empty filler rows.
   One vertical scroll for both panels; horizontal scroll per panel. Line numbers per side. Selection and copy stay
   within one side.
-- Toggle: a button in the diff header and a `Command`; the choice is a user setting, the same for every diff (my call:
-  global, remembered by IVE).
+- Toggle: a button in the diff header and a `Command`. The layout belongs to each tab: switching changes only that
+  tab (saved with it, restored on restart). IVE remembers the last layout the user switched to and opens every new
+  diff tab in it (user's decision).
 - Commit tabs (several collapsible files): both layouts, file headers span both panels.
 - Editable diff (worktree), my calls:
   - **Which diffs:** only a single-file diff tab with `DiffSource::Uncommitted` (old = HEAD/index, new = the file on
@@ -227,7 +228,6 @@ over MCP with an `--profile agent-…` instance.
 ## Calls made by the designer (not discussed with the user)
 
 - Library crate, not a process.
-- Layout toggle is global and remembered, not per tab.
 - Editable diffs: only the new side, only in single-file `Uncommitted` diff tabs (not `Since`, not the hub
   preview); hunk rows shown, full new text edited; debounced autosave with the scratch conflict handling; caret and
   undo kept across re-diffs by new-side line numbers.
