@@ -20,6 +20,7 @@ use gpui::{
 
 use crate::codeview_host;
 use crate::git;
+use crate::git::diff::BaseRead;
 use crate::disk_text::{Disk, failure_note};
 use crate::document::Document;
 use crate::file_write::{self, Expected, Target, WriteError};
@@ -190,21 +191,26 @@ struct ChangeSent {
     head_id: String,
     /// the message of the failure last logged; empty after a read that worked
     failure: String,
-    /// the number of the read whose answer was last taken: an earlier read's answer is stale, while a read that
-    /// skipped (another repository, the same HEAD) leaves earlier reads in flight standing
+    /// the number of the read whose answer was last taken: an earlier read's answer is stale. A read that saw the
+    /// HEAD known is taken too (an earlier one may have seen a HEAD gone since); one skipped for another repository
+    /// leaves earlier reads in flight standing
     taken: u64,
 }
 
 impl ChangeSent {
     /// What to cast for the answer of read number `read`, if anything: a skipped read, an answer older than the one
     /// last taken and a failure already logged cast nothing.
-    fn took(&mut self, read: u64, answer: Result<Option<ChangeBase>, git::repo::GitError>) -> Option<ChangeBase> {
+    fn took(&mut self, read: u64, answer: Result<BaseRead, git::repo::GitError>) -> Option<ChangeBase> {
         if read < self.taken {
             return None;
         }
         match answer {
-            Ok(None) => None,
-            Ok(Some(base)) => {
+            Ok(BaseRead::OtherRepository) => None,
+            Ok(BaseRead::SameHead) => {
+                self.taken = read;
+                None
+            }
+            Ok(BaseRead::Read(base)) => {
                 self.taken = read;
                 self.failure.clear();
                 self.head_id = match &base {
@@ -721,15 +727,30 @@ mod tests {
         let mut sent = ChangeSent::default();
         let base = || ChangeBase::Tracked { head: codeview::document::Source::from_vec(b"one\n".to_vec()), head_id: "abc".into() };
         // when
-        let skipped = sent.took(2, Ok(None));
-        let first = sent.took(1, Ok(Some(base())));
-        let newer = sent.took(3, Ok(Some(base())));
-        let older = sent.took(2, Ok(Some(base())));
+        let skipped = sent.took(2, Ok(BaseRead::OtherRepository));
+        let first = sent.took(1, Ok(BaseRead::Read(base())));
+        let newer = sent.took(3, Ok(BaseRead::Read(base())));
+        let older = sent.took(2, Ok(BaseRead::Read(base())));
         // then
         assert!(skipped.is_none(), "a read skipped for another repository casts nothing");
         assert!(first.is_some(), "the earlier read in flight is still cast");
         assert!(newer.is_some());
         assert!(older.is_none(), "an answer older than one taken is stale");
+    }
+
+    #[test]
+    fn should_drop_a_slow_base_read_after_a_same_head_skip() {
+        // given
+        let mut sent = ChangeSent::default();
+        let transient = ChangeBase::Tracked { head: codeview::document::Source::from_vec(b"one\n".to_vec()), head_id: "transient".into() };
+
+        // when
+        let skipped = sent.took(2, Ok(BaseRead::SameHead));
+        let slow = sent.took(1, Ok(BaseRead::Read(transient)));
+
+        // then
+        assert!(skipped.is_none(), "the same HEAD again casts nothing");
+        assert!(slow.is_none(), "a read started before one that saw the HEAD known is stale");
     }
 
     #[test]

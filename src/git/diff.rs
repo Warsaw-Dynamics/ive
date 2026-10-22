@@ -198,7 +198,10 @@ fn checked_out_head(repo: &Repository, file: &FilePaths) -> Result<Vec<u8>, git2
 /// HEAD's entry is not a regular file, is binary or is larger than `MAX_HIGHLIGHT_BYTES`.
 #[cfg(test)]
 pub fn change_base(path: &Path) -> Result<ChangeBase, GitError> {
-    Ok(change_base_since(path, &BaseAsk { known: "", git_dir: None })?.unwrap_or(ChangeBase::Untracked))
+    match change_base_since(path, &BaseAsk { known: "", git_dir: None })? {
+        BaseRead::Read(base) => Ok(base),
+        BaseRead::SameHead | BaseRead::OtherRepository => Ok(ChangeBase::Untracked),
+    }
 }
 
 /// What [`change_base_since`] is asked.
@@ -209,33 +212,42 @@ pub struct BaseAsk<'a> {
     pub git_dir: Option<&'a Path>,
 }
 
-/// [`change_base`], or `None` when `ask` says the caller has the answer: the file is of another git dir, or HEAD
-/// (and whether it holds the file) is as the caller last saw it, which is told without reading HEAD's blob.
-pub fn change_base_since(path: &Path, ask: &BaseAsk<'_>) -> Result<Option<ChangeBase>, GitError> {
+/// What [`change_base_since`] found.
+pub enum BaseRead {
+    /// the base, as [`change_base`] reads it
+    Read(ChangeBase),
+    /// HEAD (and whether it holds the file) is as the caller last saw it, told without reading HEAD's blob
+    SameHead,
+    /// the file is of another git dir than the one asked about; nothing was read
+    OtherRepository,
+}
+
+/// [`change_base`], unless `ask` says the caller has the answer.
+pub fn change_base_since(path: &Path, ask: &BaseAsk<'_>) -> Result<BaseRead, GitError> {
     let Some((repo, name)) = repository_of(path)? else {
-        return Ok(Some(ChangeBase::Untracked));
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
     };
     if ask.git_dir.is_some_and(|dir| !is_git_dir_of(&repo, dir)) {
-        return Ok(None);
+        return Ok(BaseRead::OtherRepository);
     }
     let workdir = repo.workdir().map_or_else(|| path.to_path_buf(), Path::to_path_buf);
     let fail = failed("read HEAD's text of a file", &workdir);
     let (head_id, blob) = match head_entry(&repo, &name).map_err(&fail)? {
-        HeadEntry::Absent => return Ok(Some(ChangeBase::Untracked)),
-        HeadEntry::StagedNew { head_id } if head_id == ask.known => return Ok(None),
-        HeadEntry::StagedNew { head_id } => return Ok(Some(ChangeBase::Tracked { head: Source::from_vec(Vec::new()), head_id })),
-        HeadEntry::Blob { head_id, .. } if head_id == ask.known => return Ok(None),
+        HeadEntry::Absent => return Ok(BaseRead::Read(ChangeBase::Untracked)),
+        HeadEntry::StagedNew { head_id } if head_id == ask.known => return Ok(BaseRead::SameHead),
+        HeadEntry::StagedNew { head_id } => return Ok(BaseRead::Read(ChangeBase::Tracked { head: Source::from_vec(Vec::new()), head_id })),
+        HeadEntry::Blob { head_id, .. } if head_id == ask.known => return Ok(BaseRead::SameHead),
         HeadEntry::Blob { head_id, blob } => (head_id, blob),
     };
     let blob = repo.find_blob(blob).map_err(&fail)?;
     if blob.is_binary() {
-        return Ok(Some(ChangeBase::Untracked));
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
     }
     let text = blob_filter::checked_out(&blob, &name).map_err(&fail)?;
     if text.len() > MAX_HIGHLIGHT_BYTES {
-        return Ok(Some(ChangeBase::Untracked));
+        return Ok(BaseRead::Read(ChangeBase::Untracked));
     }
-    Ok(Some(ChangeBase::Tracked { head: Source::from_vec(text), head_id }))
+    Ok(BaseRead::Read(ChangeBase::Tracked { head: Source::from_vec(text), head_id }))
 }
 
 /// Whether `dir` is the git dir of `repo`, or of the repository a linked work tree belongs to.
@@ -994,8 +1006,8 @@ mod tests {
         let elsewhere = ask("old", Some(other.repo.path()));
 
         // then
-        assert!(known.is_none() && elsewhere.is_none());
-        assert!(matches!(stale, Some(ChangeBase::Tracked { .. })));
+        assert!(matches!((known, elsewhere), (BaseRead::SameHead, BaseRead::OtherRepository)));
+        assert!(matches!(stale, BaseRead::Read(ChangeBase::Tracked { .. })));
     }
 
     #[test]
