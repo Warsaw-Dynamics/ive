@@ -231,17 +231,16 @@ no chip and no `@` (`@hidden` keeps its). In this order:
 | Folder | Holds | Shown |
 |---|---|---|
 | Processes | terminals, Claude Code, then every run of the worktree with its state (`● running · :8767`, `exit 1`; Restart and Stop, or Start and Remove, on hover); a click opens the Run configurations tab; its + (on hover) starts a terminal | by default |
-| Uncommitted | what `git status` reports | by its badge |
-| Since base | every file the branch changed since it left its base: its commits' files and the uncommitted ones | by its badge |
-| Commits | commits since the base, newest first: the first 10, then `Load 20 more · 10 of 32` adds 20 each click | by its badge |
+| Uncommitted | what `git status` reports | by the folders menu |
+| Since base | every file the branch changed since it left its base: its commits' files and the uncommitted ones | by the folders menu |
+| Commits | commits since the base, newest first: the first 10, then `Load 20 more · 10 of 32` adds 20 each click | by the folders menu |
 | Files | every file, as above | always |
 
-- **Badges**: on hover, the worktree row shows a badge per folder, Files last, pinned to the panel's right edge over a long name (as row actions are): its icon and count (`⌨2 ±6 ⏱13 ◦5 ▤`), on
-  (highlighted) while the folder shows; a click shows or hides it. Every folder has its badge, empty or not, so each
-  can always be switched on. A switched-on git folder with nothing in it keeps its row, muted (icon faded), without a
+- **No badges** (removed 2026-10-22): the worktree row has none; the header's folders menu and Ctrl+Alt+1 to 5 switch
+  folders, in every worktree at once. A switched-on git folder with nothing in it keeps its row, muted (icon faded), without a
   chevron, `· 0` after its name (`· no base` for Since base and Commits of a branch without a base) and why in its
-  tooltip (`No commits since dev`). An empty Processes has no chevron; its + still starts a terminal. Per worktree; the
-  folder still folds on its own.
+  tooltip (`No commits since dev`). An empty Processes has no chevron; its + still starts a terminal. The folder still
+  folds on its own, per worktree.
 - **Changed files** (in Uncommitted, Since base and under a commit) show their mark after the name (M, A, D, R, U),
   a deleted one struck through; a click opens its diff (uncommitted, since base, or the commit's).
 - **Commits**: the message without the prefix most of them share (`[GEN-817] IVE - Integrated Vibe Editor - `), then
@@ -251,7 +250,7 @@ no chip and no `@` (`@hidden` keeps its). In this order:
   with its file count, none when it holds one file). Folders open shallowest first while the list shows at most 20
   rows; one you open or close stays so. **Alt+Shift+G** flips it from anywhere in the window.
 - **Counts**: a folder's count follows its label as `· 4`, 11 px in the secondary colour at 75% (no pill), so it
-  reads as a note, not a button; the worktree row's badges keep their chips, being switches.
+  reads as a note, not a button.
 - **Header**: the project picker (see "Projects in the tree"); its folder button sets the folders every
   worktree shows (see "Folders for every worktree").
 
@@ -297,10 +296,9 @@ of folders **every worktree** shows (Processes and Files in a new profile; the m
   flips (see "Worktree folders"). Each row shows its shortcut on its right, muted, as `init.rn` binds it:
   **Ctrl+Alt+1 to 5** (`act::ToggleFolderEverywhere`, window scope, as Alt+Shift+G), Alt+Shift+G after the
   switch. Not Alt+Shift+1…5: with Shift a digit key arrives as `!`, `@`, … depending on the keyboard layout.
-- **Badges**: a click still shows or hides the folder in this worktree only; **Alt+click** does it in every worktree.
-- A worktree follows the set except for the folders it switched itself. Those badges carry a dot (accent, top
-  right), and their tooltip says `· this worktree only`, then what a click and an Alt+click do.
-- Switching a folder for every worktree, from the menu or by Alt+click, also ends the worktrees set apart on that
+- **Badges** on the worktree row (a click: this worktree only; Alt+click: every worktree; a dot when set apart) were
+  removed on 2026-10-22: the menu is the one way. A worktree set apart earlier keeps its own set until Reset.
+- Switching a folder for every worktree also ends the worktrees set apart on that
   folder, so every worktree then shows what the click showed. When some are set apart, the menu ends with
   "Reset N worktrees set apart" (the worktrees in its tooltip), which ends them all.
 - In the app: the set is `shown_folders` in `state.toml`; a checkout keeps its own full set as before, and one nobody

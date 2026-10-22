@@ -21,7 +21,7 @@ Read [README.md](README.md) first: how to run IVE, use it, and drive it over MCP
   (macOS: `IVE_PTY_DIR="$HOME/.ive-pty/<profile>"`), or answer the quit prompt with `prompt:Stop all`. A killed
   (SIGKILL) or crashed IVE leaves them running either way.
 
-## Coding guidelines
+## Coding guideline
 
 These apply to any language. Where a rule names a construct, use the language's equivalent.
 

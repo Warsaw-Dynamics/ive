@@ -28,17 +28,6 @@
       <span class="pill"><img class="icon" :src="icon('branch.svg')" alt="" /><span x-text="row.node.pill"></span></span>
     </template>
     <template x-if="row.node.count"><span class="count" x-text="row.node.count"></span></template>
-    <!-- a worktree's badges: a folder's icon and count; a click shows or hides the folder, Alt+click in every worktree;
-         a dot marks one this worktree set for itself -->
-    <template x-if="row.node.badges && row.node.badges.length">
-      <span class="tree__badges">
-        <template x-for="b in row.node.badges" :key="b.key">
-          <button class="tree__badge" :class="{ 'tree__badge--on': b.on, 'tree__badge--own': b.own }" type="button" :title="b.title" @click.stop="b.toggle($event)">
-            <img class="icon" :src="icon(b.icon)" alt="" /><template x-if="b.count"><span x-text="b.count"></span></template>
-          </button>
-        </template>
-      </span>
-    </template>
     <template x-if="row.node.meta"><span class="tree__meta" x-text="row.node.meta"></span></template>
     <template x-if="row.node.running"><span class="tree__meta" x-text="row.node.running"></span></template>
     <template x-if="row.node.action">

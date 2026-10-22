@@ -464,7 +464,7 @@ pub struct TreeSizes {
     /// a virtual folder's `@name`: `@hidden`
     pub chip_padding_x: Px,
     pub chip_radius: Px,
-    /// a worktree row's folder badges
+    /// a count pill, such as a folder of changed files' count
     pub count_padding_x: Px,
     pub count_radius: Px,
     pub count_text_size: FontPx,

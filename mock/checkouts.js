@@ -72,8 +72,8 @@
   Object.assign(RUN_FILES, window.IVE_SCALE.runFiles);
   // The tree's virtual rows under a folder with a .run.toml.
   var HIDDEN_NODE = '@hidden';
-  // A worktree's folders (DESIGN.md "Worktree folders"), in tree order; each shows while its badge on the worktree row
-  // is on (shown: the default).
+  // A worktree's folders (DESIGN.md "Worktree folders"), in tree order; each shows while the folders menu has it on
+  // (shown: the default).
   var WORKTREE_FOLDERS = [
     { key: 'processes', title: 'Processes', icon: 'terminal.svg', shown: true, digit: '1' },
     { key: 'uncommitted', title: 'Uncommitted', icon: 'changes.svg', shown: false, digit: '2' },
@@ -546,8 +546,8 @@
         WORKTREE_FOLDERS: WORKTREE_FOLDERS,
         // DESIGN.md "Projects in the tree": the open projects the tree and the hub leave out; never all of them.
         hiddenProjects: [],
-        // A proposal (DESIGN.md "Folders for every worktree"): the folders every worktree shows unless its own badge says
-        // otherwise; the Projects header's menu and Alt+click on a badge set it. The mock starts with them all on; a new
+        // A proposal (DESIGN.md "Folders for every worktree"): the folders every worktree shows; the header's folders
+        // menu and Ctrl+Alt+1 to 5 set it. The mock starts with them all on; a new
         // profile in the app with what WORKTREE_FOLDERS says (Processes and Files).
         everyFolder: WORKTREE_FOLDERS.reduce(function (on, f) { on[f.key] = true; return on; }, {}),
         gitLogSection: 'log',
@@ -1233,12 +1233,12 @@
               ? { icon: 'stop.svg', title: 'Stop', run: function () { self.stop(c); } }
               : { icon: 'close.svg', title: 'Close', run: function () { self.closeConsole(c); } } };
         },
-        // What a checkout holds: the folders whose badge is on (Processes by default), then Files.
+        // What a checkout holds: the folders switched on (Processes by default), then Files.
         checkoutChildren: function (co) {
           var self = this;
           return this.worktreeFolders(co).filter(function (n) { return self.isFolderShown(n); });
         },
-        // The folders a worktree has a badge for, empty or not, so each can be switched on (Processes' + starts a terminal).
+        // Every folder of a worktree, empty or not, so each can be switched on (Processes' + starts a terminal).
         worktreeFolders: function (co) {
           var self = this;
           // terminals and Claude Code, then every run of the worktree: running, waiting, exited, stopped, failed
@@ -1279,8 +1279,8 @@
                { icon: 'close.svg', title: 'Remove', run: function () { self.closeRun(c); } }];
           return node;
         },
-        // A badge shows or hides its folder; the folder still folds on its own. A worktree follows everyFolder but for
-        // the badges it switched itself.
+        // A worktree follows everyFolder but for the folders it set apart earlier (until Reset); the folder still
+        // folds on its own.
         isFolderShown: function (node) { return this.everyFolder[node.folder.key] !== this.ownsFolder(node); },
         ownsFolder: function (node) { return this.toggled.includes('fs:' + node.key); },
         toggleFolderShown: function (node, event) {
@@ -1294,26 +1294,12 @@
           this.everyFolder[key] = on;
           this.toggled = this.toggled.filter(function (k) { return (k.startsWith('fs:wf:') && k.endsWith('/' + key)) === false; });
         },
-        // The worktrees whose badges differ from everyFolder (the Projects header menu's Reset).
+        // The worktrees whose folders differ from everyFolder (the Projects header menu's Reset).
         foldersOwned: function () {
           var ids = this.toggled.filter(function (k) { return k.startsWith('fs:wf:'); }).map(function (k) { return k.slice('fs:wf:'.length, k.lastIndexOf('/')); });
           return Array.from(new Set(ids));
         },
         resetOwnFolders: function () { this.toggled = this.toggled.filter(function (k) { return k.startsWith('fs:wf:') === false; }); },
-        // On the worktree row (or a single checkout's project row): a badge per folder, its icon and count, on while shown;
-        // marked when this worktree differs from every worktree's.
-        folderBadges: function (co) {
-          var self = this;
-          var how = '\nClick: this worktree · Alt+click: every worktree';
-          return this.worktreeFolders(co).map(function (n) {
-            // as the app: a known empty folder counts 0, one without a base nothing
-            var count = n.empty && n.count !== '0' ? null : n.count;
-            var own = self.ownsFolder(n);
-            var title = (n.empty ? n.label + ': ' + n.hint : n.label + (count ? ' (' + count + ')' : '')) + (own ? ' · this worktree only' : '') + how;
-            return { key: n.folder.key, icon: n.icon, count: count, title: title, on: self.isFolderShown(n), own: own,
-              toggle: function (event) { self.toggleFolderShown(n, event); } };
-          });
-        },
         // Alt+Shift+G: changed files flat or grouped by folder, here and in the Git overview.
         groupKey: function (event) {
           if (event.altKey && event.shiftKey && event.code === 'KeyG' && event.ctrlKey === false && event.metaKey === false) {
@@ -1378,7 +1364,7 @@
         worktreeNode: function (co) {
           var self = this;
           return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', open: true,
-            children: this.checkoutChildren(co), badges: this.folderBadges(co),
+            children: this.checkoutChildren(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };
         },
         // Project children: worktrees, or the single checkout's content.
@@ -1389,7 +1375,7 @@
           var running = this.projectConsoles(project).length;
           return { tab: 'pp:' + project.name, click: function () { self.openProjectPage(project); }, key: 'p:' + project.name, label: project.name,
             entry: { co: project.checkouts[0].id, path: '', folder: true },
-            project: project, strong: true, open: true, children: body, badges: single ? this.folderBadges(project.checkouts[0]) : null,
+            project: project, strong: true, open: true, children: body,
             pill: single && project.git ? project.checkouts[0].label : null,
             meta: project.git ? null : 'no git', running: running ? '● ' + running + ' running' : null,
             action: { icon: 'close.svg', title: 'Close project', run: function () { self.closeProject(project); } } };

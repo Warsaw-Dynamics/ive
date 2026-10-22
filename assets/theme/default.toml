@@ -65,7 +65,7 @@ chevron_radius = 4.0
 # a virtual folder's @name (@hidden, @run); its colours are in dark/light.virtual_folders
 chip_padding_x = "0.375rem"
 chip_radius = 4.0
-# a worktree row's folder badges
+# a count pill, such as a folder of changed files' count
 count_padding_x = "0.375rem"
 count_radius = 8.0
 count_text_size = "0.75rem"
