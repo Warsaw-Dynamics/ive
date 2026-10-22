@@ -150,7 +150,7 @@ starts in the checkout holding it. Default: the current checkout (the shown tab'
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct SendTextArgs {
-    #[schemars(description = "process or scratch tab id from list_tabs")]
+    #[schemars(description = "process, file or scratch tab id from list_tabs")]
     tab: u64,
     #[schemars(description = "text typed as is; end with \\r to press Enter")]
     text: String,
@@ -424,7 +424,7 @@ opened_from_hub.hub) in that state: query, scope, worktree question, selected ro
         Ok(self.ask(Request::AttachTab { tab: args.tab }).await)
     }
 
-    #[tool(description = "Type text into a process tab or a scratch tab, as if typed on the keyboard. End with \\r to \
+    #[tool(description = "Type text into a process, file or scratch tab, as if typed on the keyboard. End with \\r to \
 press Enter.")]
     async fn send_text(&self, Parameters(args): Parameters<SendTextArgs>) -> Result<CallToolResult, ErrorData> {
         if args.text.len() > MAX_TEXT_BYTES {

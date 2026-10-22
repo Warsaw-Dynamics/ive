@@ -19,6 +19,8 @@ use crate::syntax::{Highlight, MAX_HIGHLIGHT_BYTES};
 const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// The index keeps the start of every Nth line; reaching any line scans at most N-1 newlines.
 const LINES_PER_CHECKPOINT: usize = 1024;
+/// Files up to this size are read into memory rather than mapped; see [`Document::open`].
+const MAX_COPIED_BYTES: u64 = MAX_HIGHLIGHT_BYTES as u64;
 /// Indexing work unit; small enough to spread a few hundred MB over all cores.
 const PARALLEL_CHUNK_BYTES: usize = 8 * 1024 * 1024;
 /// Text layout of a longer line would stall the UI (think minified JSON); the rest is cut off.
@@ -178,9 +180,13 @@ impl Document {
         let bytes = if size == 0 {
             // mapping an empty file fails on some platforms
             Bytes::Empty
+        } else if size <= MAX_COPIED_BYTES {
+            // a copy: another program rewriting the file in place (`>` in a shell) changes neither the text an
+            // editor's edits apply to nor its length
+            Bytes::Owned(read_all(file, size).map_err(unreadable)?.into_boxed_slice())
         } else {
             // SAFETY: the map is read-only. If another process truncates the file while it is open,
-            // reading past the new end raises SIGBUS; accepted for a viewer, as other editors do.
+            // reading past the new end raises SIGBUS; accepted for files this large, as other editors do.
             Bytes::Mapped(unsafe { Mmap::map(&file) }.map_err(unreadable)?)
         };
         if looks_binary(bytes.as_slice()) {
@@ -391,6 +397,13 @@ pub fn stamp(path: &Path) -> Option<Stamp> {
     Some((metadata.len(), metadata.modified().ok()?))
 }
 
+/// The file's bytes; `size` is what it held when opened, a capacity hint only.
+fn read_all(mut file: File, size: u64) -> io::Result<Vec<u8>> {
+    let mut bytes = Vec::with_capacity(size as usize);
+    io::Read::read_to_end(&mut file, &mut bytes)?;
+    Ok(bytes)
+}
+
 fn looks_binary(bytes: &[u8]) -> bool {
     memchr::memchr(0, &bytes[..bytes.len().min(BINARY_SNIFF_BYTES)]).is_some()
 }
@@ -505,6 +518,18 @@ mod tests {
         fs::write(&path, text).unwrap();
         let document = Document::open(&path).unwrap();
         (dir, document)
+    }
+
+    #[test]
+    fn should_keep_a_small_files_text_when_another_program_rewrites_it_in_place() {
+        // given
+        let (dir, document) = open_text(b"first line\nsecond line\n");
+
+        // when
+        fs::write(dir.path().join("file.txt"), b"x\n").unwrap();
+
+        // then
+        assert_eq!(document.bytes(), b"first line\nsecond line\n");
     }
 
     fn texts(lines: Vec<DisplayLine>) -> Vec<String> {
