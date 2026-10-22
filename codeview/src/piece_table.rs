@@ -749,24 +749,31 @@ mod tests {
         }
     }
 
-    #[test]
-    fn should_find_lines_in_a_large_base_quickly() {
-        // given
-        let line_count = 10_000_000;
+    /// Makes 1 000 edits spread over a base of `line_count` lines, then 10 000 lookups; the time they took.
+    fn time_edits_and_lookups(line_count: usize) -> Duration {
         let mut table = PieceTable::from_text(&"some text\n".repeat(line_count));
-
-        // when
         let started = Instant::now();
         for edit in 0..1_000 {
-            let at = table.line_start(edit * 9_973 + 5);
+            let at = table.line_start(edit * (line_count / 1_003) + 5);
             table.replace(at..at + 4, "edit\nmore");
         }
-        let lookups: Vec<Vec<u8>> = (0..10_000).map(|lookup| table.line(lookup * 997 + 1)).collect();
+        let lookups: Vec<Vec<u8>> = (0..10_000).map(|lookup| table.line(lookup * (line_count / 10_030) + 1)).collect();
         let elapsed = started.elapsed();
-
-        // then
         assert_eq!(table.line_count(), line_count + 1_001);
         assert!(lookups.iter().all(|line| [&b"some text"[..], b"edit", b"more text"].contains(&line.as_slice())));
-        assert!(elapsed < Duration::from_millis(200), "1 000 edits and 10 000 lookups took {elapsed:?}");
+        elapsed
+    }
+
+    #[test]
+    fn should_find_lines_in_a_large_base_quickly() {
+        // given a base 100 times larger than another
+
+        // when
+        let small = time_edits_and_lookups(100_000);
+        let large = time_edits_and_lookups(10_000_000);
+
+        // then the time does not grow with the base, as it would if lookups walked its lines (wall time against a
+        // baseline, not a fixed bound: unoptimised and loaded test runs are slow)
+        assert!(large < small * 10, "10 000 000 lines took {large:?}, 100 000 took {small:?}");
     }
 }
