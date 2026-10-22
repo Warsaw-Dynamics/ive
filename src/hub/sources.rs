@@ -180,9 +180,53 @@ pub struct Sources {
     pub back: Option<BackTab>,
     /// a project's file list is still being read
     pub loading: bool,
+    /// the open projects the tree header's picker left out; never all of them
+    pub hidden: Vec<ProjectId>,
 }
 
 impl Sources {
+    /// Whether rows of `project` are listed: those of no project always are.
+    pub fn shows(&self, project: Option<&ProjectId>) -> bool {
+        project.is_none_or(|project| !self.hidden.contains(project))
+    }
+
+    /// These sources without the rows of the projects left out.
+    pub fn without_hidden(mut self) -> Self {
+        let hidden = std::mem::take(&mut self.hidden);
+        let shows = |item: &Item| item.project.as_ref().is_none_or(|project| !hidden.contains(project));
+        for items in [&mut self.recent, &mut self.changed, &mut self.running, &mut self.processes, &mut self.configs] {
+            items.retain(shows);
+        }
+        self.branches.retain(|branch| !hidden.contains(&branch.project));
+        self.hidden = hidden;
+        self
+    }
+
+    /// The projects listed, in the corpus' order.
+    pub fn shown_projects(&self) -> impl Iterator<Item = &ProjectInfo> {
+        self.projects.iter().filter(|project| self.shows(Some(&project.id)))
+    }
+
+    /// The one project listed, when the others are left out.
+    pub fn only_shown(&self) -> Option<&ProjectInfo> {
+        let mut shown = self.shown_projects();
+        match (self.hidden.is_empty(), shown.next(), shown.next()) {
+            (false, Some(one), None) => Some(one),
+            _ => None,
+        }
+    }
+
+    /// What the All scope covers: `All projects`, the one project listed, or `2 of 4 projects`.
+    pub fn all_label(&self) -> String {
+        if self.hidden.is_empty() {
+            return "All projects".to_owned();
+        }
+        match self.only_shown() {
+            Some(one) => one.name.clone(),
+            None => format!("{} of {} projects", self.shown_projects().count(), self.projects.len()),
+        }
+    }
+
     pub fn project_index(&self, id: &ProjectId) -> Option<usize> {
         self.projects.iter().position(|project| &project.id == id)
     }

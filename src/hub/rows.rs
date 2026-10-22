@@ -299,7 +299,7 @@ struct TerminalPlaces {
 }
 
 fn new_terminal_places(sources: &Sources) -> Vec<TerminalPlaces> {
-    sources.projects.iter().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources) }).collect()
+    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources) }).collect()
 }
 
 fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
@@ -353,7 +353,7 @@ fn branch_items(sources: &Sources) -> Vec<Item> {
 /// `#`: every open worktree, most recently used first.
 fn worktree_items(sources: &Sources) -> Vec<Item> {
     let mut worktrees: Vec<(&str, &WorktreeInfo)> =
-        sources.projects.iter().flat_map(|project| project.worktrees.iter().map(move |worktree| (project.name.as_str(), worktree))).collect();
+        sources.shown_projects().flat_map(|project| project.worktrees.iter().map(move |worktree| (project.name.as_str(), worktree))).collect();
     worktrees.sort_by_key(|(_, worktree)| std::cmp::Reverse(worktree.last_used));
     let item = |(project, worktree): (&str, &WorktreeInfo)| {
         let detail = worktree.branch.as_ref().map_or_else(|| project.to_owned(), |branch| format!("{project} · {branch}"));
@@ -368,12 +368,16 @@ fn worktree_items(sources: &Sources) -> Vec<Item> {
     worktrees.into_iter().map(item).collect()
 }
 
-/// `:`: all projects, then each project with its worktrees nested, most recently used first.
+/// `:`: all projects listed, then each with its worktrees nested, most recently used first; with one project listed,
+/// All is titled with it and its own row is left out.
 fn scope_rows(sources: &Sources, text: &str) -> Vec<Row> {
-    let mut items = vec![(Item::new(Target::Scope(HubScope::All), "All projects", icons::PROJECT_FOLDER), 0)];
-    for project in &sources.projects {
+    let mut items = vec![(Item::new(Target::Scope(HubScope::All), sources.all_label(), icons::PROJECT_FOLDER), 0)];
+    let only = sources.only_shown().map(|one| one.id.clone());
+    for project in sources.shown_projects() {
         let row = Item { detail: "project".to_owned(), project: Some(project.id.clone()), ..Item::new(Target::Scope(HubScope::Project(project.id.clone())), project.name.clone(), icons::PROJECT_FOLDER) };
-        items.push((row, 0));
+        if only.as_ref() != Some(&project.id) {
+            items.push((row, 0));
+        }
         for worktree in sources.by_recency(&project.id, None) {
             let row = Item {
                 detail: worktree.branch.clone().unwrap_or_default(),

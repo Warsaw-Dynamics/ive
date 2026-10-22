@@ -194,8 +194,8 @@ impl HubState {
     pub fn fitted(mut self, sources: &Sources) -> HubState {
         let open = |scope: &HubScope| match scope {
             HubScope::All => true,
-            HubScope::Project(project) => sources.project_index(project).is_some(),
-            HubScope::Worktree(checkout) => sources.worktree(checkout).is_some(),
+            HubScope::Project(project) => sources.project_index(project).is_some() && sources.shows(Some(project)),
+            HubScope::Worktree(checkout) => sources.worktree(checkout).is_some() && sources.shows(Some(&checkout.project)),
         };
         if !open(&self.scope) {
             self.scope = HubScope::All;
@@ -226,7 +226,8 @@ impl HubState {
             .into_iter()
             .filter_map(|row| Some((sources.project_index(row.item.project.as_ref()?)?, Arc::from(row.item.path?.as_str()))))
             .collect();
-        Filter { project, checkout, excluded: self.excluded, skip }
+        let hidden = sources.hidden.iter().filter_map(|id| sources.project_index(id)).collect();
+        Filter { project, checkout, excluded: self.excluded, skip, hidden }
     }
 
     fn selected_row(&self) -> usize {
@@ -301,14 +302,17 @@ impl HubState {
         stops
     }
 
-    /// The stops Tab goes through: All, the back tab's project, its worktree (its own, else the project's most
-    /// recently used), then a scope picked with `:`.
+    /// The stops Tab goes through: All, the back tab's project (unless it is the one project listed, which All is),
+    /// its worktree (its own, else the project's most recently used), then a scope picked with `:`.
     fn scope_stops(&self, sources: &Sources) -> Vec<HubScope> {
         let mut stops = vec![HubScope::All];
         if let Some(back) = &sources.back
             && let Some(project) = &back.project
+            && sources.shows(Some(project))
         {
-            stops.push(HubScope::Project(project.clone()));
+            if sources.only_shown().is_none_or(|one| &one.id != project) {
+                stops.push(HubScope::Project(project.clone()));
+            }
             let worktree = back.checkout.clone().or_else(|| sources.by_recency(project, None).first().map(|worktree| worktree.checkout.clone()));
             stops.extend(worktree.map(HubScope::Worktree));
         }
@@ -733,6 +737,76 @@ mod tests {
         // then
         assert_eq!(titles(&list), ["All projects", "atlassian", "GEN-817-ive", "dev", "old", "notes", "notes"]);
         assert_eq!(list.rows.iter().map(|row| row.depth).collect::<Vec<_>>(), [0, 0, 1, 1, 1, 0, 1]);
+    }
+
+    /// The fixture with notes left out of the tree, and a notes row in each list.
+    fn without_notes() -> Sources {
+        let mut sources = sources();
+        let in_notes = |title: &str| Item { project: Some(notes()), place: Place::One(checkout(notes(), "/n")), ..Item::new(Target::Change { checkout: checkout(notes(), "/n"), path: title.to_owned() }, title, "file") };
+        sources.recent.push(in_notes("notes.md"));
+        sources.changed.push(in_notes("todo.md"));
+        sources.running.push(in_notes("run"));
+        sources.hidden = vec![notes()];
+        sources.without_hidden()
+    }
+
+    #[test]
+    fn should_search_only_the_shown_projects() {
+        // given
+        let sources = without_notes();
+
+        // when
+        let filter = HubState::default().filter(&sources);
+
+        // then
+        assert_eq!(filter.hidden, HashSet::from([1]));
+    }
+
+    #[test]
+    fn should_leave_out_rows_of_projects_not_shown() {
+        // when
+        let sources = without_notes();
+
+        // then
+        let titles = |items: &[Item]| items.iter().map(|item| item.title.clone()).collect::<Vec<_>>();
+        assert_eq!((titles(&sources.recent), titles(&sources.changed), titles(&sources.running)), (vec!["theme.rs".to_owned(), "Settings".to_owned()], vec!["README.md".to_owned()], vec!["Terminal".to_owned()]));
+    }
+
+    #[test]
+    fn should_list_only_the_shown_project_for_colon() {
+        // given
+        let mut state = HubState::default();
+        typed(&mut state, ":");
+
+        // when
+        let list = shown(&state, &without_notes());
+
+        // then
+        assert_eq!(titles(&list), ["atlassian", "GEN-817-ive", "dev", "old"]);
+    }
+
+    #[test]
+    fn should_not_stop_at_the_one_shown_project() {
+        // given
+        let sources = Sources { back: Some(back_in_dev()), ..without_notes() };
+
+        // when
+        let stops = HubState::default().stops(&sources);
+
+        // then
+        assert_eq!(stops, [HubScope::All, HubScope::Worktree(dev())]);
+    }
+
+    #[test]
+    fn should_name_all_by_the_projects_shown() {
+        // given
+        let three = Sources { projects: [sources().projects, vec![ProjectInfo { id: ProjectId::new("x"), name: "x".to_owned(), git: false, worktrees: Vec::new() }]].concat(), hidden: vec![notes()], ..sources() };
+
+        // when
+        let names = [sources().all_label(), without_notes().all_label(), three.all_label()];
+
+        // then
+        assert_eq!(names, ["All projects", "atlassian", "2 of 3 projects"]);
     }
 
     #[test]
