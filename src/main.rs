@@ -84,7 +84,7 @@ use assets::Assets;
 use api::Call;
 use mcp::Token;
 use settings::SettingsStore;
-use workspace::{Launch, Startup, Workspace};
+use workspace::{Launch, OnQuit, Startup, Workspace};
 
 fn main() -> ExitCode {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
@@ -132,6 +132,7 @@ fn main() -> ExitCode {
         hosted: tracing::info_span!("claim_terminals").in_scope(|| claim_terminals(args.restart.as_deref())),
         signals: forward_signals(),
         restart_script: args.restart.and_then(|script| std::fs::canonicalize(script).ok()),
+        on_quit: if args.stop_processes_on_quit { OnQuit::StopProcesses } else { OnQuit::Ask },
     };
     run(startup, args.background);
     ExitCode::SUCCESS

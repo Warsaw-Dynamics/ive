@@ -49,6 +49,26 @@ pub enum QuitStep {
     Ignore,
 }
 
+/// What quitting does with hosted processes still running.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum OnQuit {
+    /// show the quit prompt
+    #[default]
+    Ask,
+    /// `--stop-processes-on-quit`: stop them all without asking
+    StopProcesses,
+}
+
+impl OnQuit {
+    /// `step` under this choice: where the prompt would show, the processes stop and IVE quits.
+    pub fn apply(self, step: QuitStep) -> QuitStep {
+        match (self, step) {
+            (Self::StopProcesses, QuitStep::ShowPrompt) => QuitStep::StopAllThenQuit,
+            _ => step,
+        }
+    }
+}
+
 /// What `event` does with `running` hosted processes, while the prompt shows `prompt` seconds left (or no prompt).
 /// A second signal while the prompt is up quits at once, keeping the processes, like the countdown's end; being
 /// replaced quits at once, keeping them, the new IVE adopts them.
@@ -111,7 +131,7 @@ impl Workspace {
     #[cfg(target_os = "macos")]
     pub(super) fn quit_requested_by_system(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
         let seconds = self.quit_prompt.as_ref().map(|prompt| prompt.seconds);
-        if next_step(self.hosted_process_count(), seconds, QuitEvent::CloseRequested) == QuitStep::QuitNow {
+        if self.on_quit.apply(next_step(self.hosted_process_count(), seconds, QuitEvent::CloseRequested)) == QuitStep::QuitNow {
             return true;
         }
         self.request_quit(window, cx);
@@ -120,7 +140,7 @@ impl Workspace {
 
     pub(super) fn quit_event(&mut self, event: QuitEvent, window: &mut Window, cx: &mut Context<Self>) {
         let seconds = self.quit_prompt.as_ref().map(|prompt| prompt.seconds);
-        match next_step(self.hosted_process_count(), seconds, event) {
+        match self.on_quit.apply(next_step(self.hosted_process_count(), seconds, event)) {
             // dropping the hosted sessions detaches them; their shells keep running
             QuitStep::QuitNow => cx.quit(),
             QuitStep::ShowPrompt => self.show_quit_prompt(window, cx),
@@ -330,6 +350,20 @@ mod tests {
         // then
         assert_eq!(while_shown, QuitStep::Ignore);
         assert_eq!(without_prompt, [QuitStep::Ignore; 4]);
+    }
+
+    #[test]
+    fn should_stop_processes_instead_of_prompting_when_asked_to() {
+        // given
+        let steps = [QuitStep::ShowPrompt, QuitStep::QuitNow, QuitStep::Countdown(3), QuitStep::Dismiss];
+
+        // when
+        let stopping = steps.map(|step| OnQuit::StopProcesses.apply(step));
+        let asking = steps.map(|step| OnQuit::Ask.apply(step));
+
+        // then
+        assert_eq!(stopping, [QuitStep::StopAllThenQuit, QuitStep::QuitNow, QuitStep::Countdown(3), QuitStep::Dismiss]);
+        assert_eq!(asking, steps);
     }
 
     #[test]

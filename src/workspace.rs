@@ -67,6 +67,7 @@ mod worktree_list;
 pub use drag_preview::TabDragArea;
 #[cfg(target_os = "macos")]
 pub use quit::{add_app_menu, show_main_window};
+pub use quit::OnQuit;
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use tab_menu::{DEFAULT_MENU, MenuLine, label as tab_command_label, target as tab_command_target};
@@ -132,6 +133,7 @@ pub struct Workspace {
     _api_calls: Task<()>,
     scripts: scripts::ScriptWatch,
     quit_prompt: Option<quit::QuitPrompt>,
+    on_quit: OnQuit,
     /// runs waiting for their `before` steps
     pending: runs::PendingRuns,
     /// the tabs shown, for the hub's Recent rows
@@ -199,6 +201,7 @@ pub struct Startup {
     pub signals: Option<UnboundedReceiver<i32>>,
     /// `--restart`: shows the Restart button, which runs this start script
     pub restart_script: Option<PathBuf>,
+    pub on_quit: OnQuit,
 }
 
 impl Workspace {
@@ -277,6 +280,7 @@ impl Workspace {
             _api_calls: api_requests::answer_calls(startup.api_calls, window, cx),
             scripts,
             quit_prompt: None,
+            on_quit: startup.on_quit,
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),

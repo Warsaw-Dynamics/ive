@@ -39,6 +39,7 @@ Run it again to rebuild and reinstall.
 | `--mcp PORT` | serve MCP on `127.0.0.1:PORT` (1024-65535) from now on, instead of the remembered port, see [Drive IVE from an agent](#drive-ive-from-an-agent-mcp) |
 | `--no-mcp` | do not serve MCP |
 | `--background` | open the window without taking focus |
+| `--stop-processes-on-quit` | quit without the quit prompt, stopping the running terminals and processes instead of leaving them running; being replaced by a [restart](#restart) still keeps them |
 | `--restart SCRIPT` | show a Restart button left of Settings that rebuilds and restarts IVE with SCRIPT, see [Restart](#restart); Linux and macOS |
 | `--profile NAME` | run as profile NAME (default `default`): its own projects, tabs, settings, scratches and terminals, see [Profiles](#profiles) |
 
@@ -92,7 +93,8 @@ in a tab, with its last output (up to 1 MiB) replayed; Claude Code and other ful
 window (on macOS: Cmd+Q or the Dock's Quit; the window's × only hides the window there, IVE keeps running in the
 Dock and a click on its icon shows the window again), or SIGTERM /
 SIGINT, with terminals running asks **Stop N running processes?**: Keep running (Enter, and what happens when its
-10 s countdown ends, `config.quit_countdown`), Stop all, or Cancel (Escape). SIGUSR1 quits at once and keeps them
+10 s countdown ends, `config.quit_countdown`), Stop all, or Cancel (Escape); with `--stop-processes-on-quit` it
+stops them all without asking. SIGUSR1 quits at once and keeps them
 running, as a [restart](#restart) does. A row's Close, closing a project, or `exit`
 still ends a terminal. Only the first IVE running in a profile keeps terminals this way; a second one's terminals end with it.
 

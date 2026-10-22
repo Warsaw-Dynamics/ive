@@ -7,15 +7,17 @@ use crate::profile::Profile;
 /// Ports below this need privileges on Unix; IVE never wants one.
 pub const MIN_PORT: u16 = 1024;
 
-pub const USAGE: &str = "usage: ive [--profile NAME] [--restart SCRIPT] [--mcp PORT | --no-mcp] [--background] [FOLDER | FILE]";
+pub const USAGE: &str = "usage: ive [--profile NAME] [--restart SCRIPT] [--mcp PORT | --no-mcp] [--background] [--stop-processes-on-quit] [FOLDER | FILE]";
 
-/// Command line: `ive [--profile NAME] [--restart SCRIPT] [--mcp PORT | --no-mcp] [--background] [FOLDER | FILE]`.
+/// Command line: `ive [--profile NAME] [--restart SCRIPT] [--mcp PORT | --no-mcp] [--background] [--stop-processes-on-quit] [FOLDER | FILE]`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Args {
     pub path: Option<PathBuf>,
     pub mcp: McpPort,
     /// open the window without taking focus
     pub background: bool,
+    /// quit without the prompt, stopping the running processes
+    pub stop_processes_on_quit: bool,
     pub profile: Profile,
     /// the start script the Restart button runs
     pub restart: Option<PathBuf>,
@@ -62,13 +64,14 @@ impl fmt::Display for ArgsError {
 
 impl Args {
     pub fn parse(arguments: impl IntoIterator<Item = OsString>) -> Result<Self, ArgsError> {
-        let mut args = Self { path: None, mcp: McpPort::Remembered, background: false, profile: Profile::default(), restart: None };
+        let mut args = Self { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None };
         let mut arguments = arguments.into_iter();
         while let Some(argument) = arguments.next() {
             match argument.to_str() {
                 Some("--mcp") => args.set_mcp(McpPort::Given(parse_port(arguments.next())?))?,
                 Some("--no-mcp") => args.set_mcp(McpPort::Off)?,
                 Some("--background") => args.background = true,
+                Some("--stop-processes-on-quit") => args.stop_processes_on_quit = true,
                 Some("--restart") => args.restart = Some(arguments.next().map(PathBuf::from).ok_or(ArgsError::MissingRestartScript)?),
                 Some(flag) if flag.starts_with("--restart=") => args.restart = Some(PathBuf::from(&flag["--restart=".len()..])),
                 Some("--profile") => args.profile = parse_profile(arguments.next())?,
@@ -140,7 +143,7 @@ mod tests {
         let args = parse(line);
 
         // then
-        assert_eq!(args, Ok(Args { path: Some(PathBuf::from("~/code")), mcp: McpPort::Given(7461), background: true, profile: Profile::default(), restart: None }));
+        assert_eq!(args, Ok(Args { path: Some(PathBuf::from("~/code")), mcp: McpPort::Given(7461), background: true, stop_processes_on_quit: false, profile: Profile::default(), restart: None }));
     }
 
     #[test]
@@ -152,7 +155,7 @@ mod tests {
         let args = parse(line);
 
         // then
-        assert_eq!(args, Ok(Args { path: None, mcp: McpPort::Remembered, background: false, profile: Profile::default(), restart: None }));
+        assert_eq!(args, Ok(Args { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None }));
     }
 
     #[test]
@@ -198,6 +201,18 @@ mod tests {
 
         // then
         assert_eq!(errors, [Some(ArgsError::McpAndNoMcp), Some(ArgsError::McpAndNoMcp)]);
+    }
+
+    #[test]
+    fn should_stop_processes_on_quit_only_when_asked() {
+        // given
+        let lines = ["--stop-processes-on-quit ~/code", "~/code"];
+
+        // when
+        let stops: Vec<_> = lines.iter().map(|line| parse(line).map(|args| args.stop_processes_on_quit)).collect();
+
+        // then
+        assert_eq!(stops, [Ok(true), Ok(false)]);
     }
 
     #[test]
