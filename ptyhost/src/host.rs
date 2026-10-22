@@ -479,8 +479,9 @@ fn signal_groups(groups: &[libc::pid_t], signal: libc::c_int) {
 fn open_pty(size: Size) -> io::Result<(File, OwnedFd)> {
     let (mut master, mut slave) = (-1, -1);
     let mut window = winsize(size);
-    // SAFETY: valid out-pointers; name and termios may be null
-    check(unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &mut window) })?;
+    // SAFETY: valid out-pointers; name and termios may be null. The window size is a raw `*mut`: macOS's libc takes
+    // `*mut winsize`, Linux's `*const`, which a `&mut` would trip clippy on
+    check(unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &raw mut window) })?;
     // SAFETY: openpty returned two new descriptors nobody else owns
     let (master, slave) = unsafe { (OwnedFd::from_raw_fd(master), OwnedFd::from_raw_fd(slave)) };
     // the program gets the slave as 0-2 only; it must not inherit either descriptor beyond that
