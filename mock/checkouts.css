@@ -106,23 +106,32 @@ code { font-family: var(--mono); }
 .tree__badge:hover { background: var(--border); }
 .tree__badge--on { background: var(--selected); color: var(--text); }
 .tree__badge--on .icon { opacity: 1; }
+/* a proposal: a badge this worktree set apart from every worktree's */
+.tree__badge { position: relative; }
+.tree__badge--own::after { content: ""; position: absolute; top: 1px; right: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+.menu__tick { width: 12px; text-align: center; font-size: 12px; }
+.menu__key { flex: none; margin-left: 16px; font-size: 12px; color: var(--muted); }
+/* a row holding a switch: the switch takes the clicks, the row no hover */
+.menu__item--switch, .menu__item--switch:hover { height: 32px; background: none; cursor: default; }
+.menu__item--switch .segmented button { padding: 1px 8px; font-size: 12px; }
+.menu__item--switch .menu__label { flex: 1 0 auto; overflow: visible; }
+.menu__item--switch .menu__key { margin-left: 4px; }
+/* a proposal: the header's title, a picker of what the tree shows (All projects, or one) */
+.scope-button { display: flex; align-items: center; gap: 6px; min-width: 0; height: 28px; margin-left: -6px; padding: 0 6px; border-radius: 6px; font: inherit; font-weight: 600; }
+.scope-button:hover { background: var(--hover); }
+.scope-button__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-button .icon { width: 12px; height: 12px; opacity: 0.7; }
+/* under the whole Projects header, 4 px in from the tree's edges */
+.menu--header { left: 4px; right: 4px; width: auto; }
 .tree__label--weak { color: var(--muted); background: color-mix(in srgb, var(--hover) 50%, transparent); }
 /* project_row: the single checkout's branch pill */
 .pill {
   flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 4px;
   font-size: 12px; background: var(--hover);
 }
-/* count_badge: a folder's count, `· 4` in muted digits (a folder of one file shows none); the variants are mock-only,
-   to compare (the switch at the bottom right) */
+/* count_badge: a folder's count, `· 4` in muted digits (a folder of one file shows none) */
 .count { flex: none; padding: 0 2px; font-size: 11px; color: var(--muted); opacity: 0.75; font-variant-numeric: tabular-nums; }
-[data-counts="pill"] .count { padding: 0 6px; border-radius: 8px; font-size: 12px; background: var(--hover); opacity: 1; }
-[data-counts="faint"] .count {
-  padding: 0 5px; border-radius: 8px; line-height: 16px; background: color-mix(in srgb, var(--hover) 55%, transparent); opacity: 0.9;
-}
-[data-counts="outline"] .count {
-  padding: 0 5px; border-radius: 8px; line-height: 14px; border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
-}
-[data-counts="dot"] .count::before { content: '· '; }
+.count::before { content: '· '; }
 /* folder_row: an empty git folder, muted (its icon at 60%), `· 0` or `· no base` after its name */
 .tree__row--empty { color: var(--muted); }
 .tree__row--empty > .icon { opacity: 0.6; }
@@ -495,5 +504,3 @@ details.block[open] > .block__head, .block--prompt .block__head { border-bottom:
 .runlist__tree { overflow: visible; margin: 0 -8px; }
 .runlist__tree .tree__row { font-size: 13px; }
 .runlist__empty { padding: 4px 0; }
-.mock-counts { position: fixed; right: 70px; bottom: 4px; z-index: 50; font-size: 12px; color: var(--muted); }
-.mock-counts select { font: inherit; color: inherit; background: var(--panel, transparent); border: 1px solid var(--border); border-radius: 4px; }

@@ -331,11 +331,12 @@
         return tab && tab.project ? tab.project : 'atlassian';
       },
       // ---- scope: all projects, one project (p:<name>) or one worktree (w:<checkout id>) ----
-      // The scope as set, or 'all' when what it names is no longer open.
+      // The scope as set, or 'all' when what it names is no longer open or out of the tree (its header shows one project).
       hubScope: function () {
         var scope = this.hub.scope;
-        if (scope.startsWith('p:') && this.open.includes(scope.slice(2))) return scope;
-        if (scope.startsWith('w:') && this.hasCheckout(scope.slice(2)) && this.open.includes(scope.slice(2).split('@')[0])) return scope;
+        var shown = this.treeProjectNames();
+        if (scope.startsWith('p:') && shown.includes(scope.slice(2))) return scope;
+        if (scope.startsWith('w:') && this.hasCheckout(scope.slice(2)) && shown.includes(scope.slice(2).split('@')[0])) return scope;
         return 'all';
       },
       hubScopeProject: function () {
@@ -348,15 +349,17 @@
       // scope picked with : that is none of these.
       hubScopeStops: function () {
         var back = this.tabs.find(function (t) { return t.key === this.hub.back; }, this);
-        var project = back && back.project && this.open.includes(back.project) ? back.project : null;
+        var project = back && back.project && this.treeProjectNames().includes(back.project) ? back.project : null;
         var stops = ['all'];
-        if (project) stops.push('p:' + project, 'w:' + (back.co || this.byRecency(this.checkoutIds(project))[0]));
+        // with one project in the tree, all is that project
+        if (project && project !== this.onlyProject) stops.push('p:' + project);
+        if (project) stops.push('w:' + (back.co || this.byRecency(this.checkoutIds(project))[0]));
         var scope = this.hubScope();
         if (stops.includes(scope) === false) stops.push(scope);
         return stops;
       },
       hubScopeLabel: function (scope) {
-        if (scope === 'all') return 'All projects';
+        if (scope === 'all') return this.onlyProject === null ? 'All projects' : this.onlyProject;
         return scope.startsWith('p:') ? scope.slice(2) : this.label(scope.slice(2));
       },
       // Tab: the next stop; from a picked scope (the last stop) back to all.
@@ -372,6 +375,7 @@
       // A row in the scope: any in all or a project's; in a worktree's, that worktree's rows and the project's own
       // (scratches, commits, Git log), which belong to no worktree.
       hubInScope: function (item) {
+        if (item.project && this.treeProjectNames().includes(item.project) === false) return false;
         var co = this.hubScopeCheckout();
         if (co === null) return true;
         return item.co === co || (item.co === null && item.project === this.hubScopeProject());
@@ -469,11 +473,12 @@
       hub_scope: function (groups) {
         var self = this;
         var running = function (ids) { return self.consoles.filter(function (c) { return ids.includes(c.co) && self.isLive(c); }).length; };
-        var items = [this.hubItem({ id: 'sc:all', icon: 'project-folder.svg', title: 'All projects', detail: 'every open project', scope: 'all' })];
-        this.openProjects().forEach(function (p) {
+        var items = [this.hubItem({ id: 'sc:all', icon: 'project-folder.svg', title: this.hubScopeLabel('all'), detail: this.onlyProject === null ? 'every open project' : 'the project the tree shows', scope: 'all' })];
+        this.treeProjects().forEach(function (p) {
           var ids = self.checkoutIds(p.name);
           var n = running(ids);
-          items.push(self.hubItem({ id: 'sc:p:' + p.name, icon: 'project-folder.svg', title: p.name, detail: ids.length > 1 ? ids.length + ' worktrees' : (p.git ? 'one checkout' : 'no git'),
+          // with one project in the tree, the first row (all) is that project; its worktrees follow
+          if (p.name !== self.onlyProject) items.push(self.hubItem({ id: 'sc:p:' + p.name, icon: 'project-folder.svg', title: p.name, detail: ids.length > 1 ? ids.length + ' worktrees' : (p.git ? 'one checkout' : 'no git'),
             state: n ? '● ' + n + ' running' : null, scope: 'p:' + p.name }));
           if (ids.length < 2) return;
           self.byRecency(ids).forEach(function (id) {
@@ -503,7 +508,7 @@
             more: Math.max(0, found.length - NEW_TERMINAL_MATCHES), empty: 'No project, worktree or branch matches' }];
         }
         // before typing: a section per project, its newest branches only; the rest typing reaches
-        return this.openProjects().map(function (p) {
+        return this.treeProjects().map(function (p) {
           var mine = items.filter(function (item) { return item.project === p.name; });
           var branches = mine.filter(function (item) { return item.branch; });
           return { key: 'terminal:' + p.name, title: p.name, hint: branches.length ? 'worktrees by last use, then the newest branches without one' : '',
@@ -516,7 +521,7 @@
         var self = this;
         var running = function (ids) { return self.consoles.filter(function (c) { return ids.includes(c.co) && self.isLive(c); }).length; };
         var items = [];
-        this.openProjects().forEach(function (p) {
+        this.treeProjects().forEach(function (p) {
           var main = p.checkouts[0];
           var ids = self.checkoutIds(p.name);
           var n = running([main.id]);
@@ -654,7 +659,7 @@
       hubChanged: function (groups) {
         var self = this;
         var items = [];
-        this.openProjects().forEach(function (p) {
+        this.treeProjects().forEach(function (p) {
           p.checkouts.forEach(function (co) {
             co.changes.forEach(function (x) {
               var at = x.path.lastIndexOf('/') + 1;
@@ -722,7 +727,7 @@
       },
       hubWorktrees: function () {
         var self = this;
-        return this.openProjects().flatMap(function (p) {
+        return this.treeProjects().flatMap(function (p) {
           return p.checkouts.filter(function (co) { return co.branch !== null; }).map(function (co) {
             return self.hubItem({
               id: 'w:' + co.id, icon: 'branch.svg', title: co.branch, detail: p.name + ' · ' + self.cardTags(co).join(' · '), co: co.id,
@@ -734,7 +739,7 @@
       },
       hubBranches: function () {
         var self = this;
-        return this.openProjects().flatMap(function (p) {
+        return this.treeProjects().flatMap(function (p) {
           return p.branches.map(function (b) {
             return self.hubItem({
               id: 'b:' + p.name + ':' + b.name, icon: 'branch.svg', title: b.name, detail: p.name + ' · no worktree', age: self.age(b.modified),
@@ -768,7 +773,7 @@
       // The files of every open project (or the shown tab's), fzf-ranked; scratches too. Memoized per query.
       hubSearch: function (groups, split) {
         var scope = { project: this.hubScopeProject(), checkout: this.hubScopeCheckout() };
-        var open = this.open.slice();
+        var open = this.treeProjectNames();
         var key = JSON.stringify([this.hubText(), scope, open, this.hub.withExcluded, this.hub.loaded, this.scratches.length]);
         if (searchMemo.key !== key) searchMemo = { key: key, value: this.hubScan(groups, scope, open, this.hub.withExcluded) };
         var self = this;

@@ -57,8 +57,8 @@ started later, runs, new worktrees and scratches, and the hub's history are not 
 An older-style hash opens a screen, for comparing with the app, e.g.
 `checkouts.html#theme=dark&tab=project&section=Git` (`tab`: project, file, scratch, terminal, agent,
 settings, gitlog, commit, diff, runconfigs (the Processes row's tab over the `runs` screen; `rlayout=tree` groups it), runconfigs1k (the `platform` project's tab: 1000 configurations in 250 folders), run (`internal-apps/misc` expanded), runs (ive's and misc's runs in Processes: a
-server, a running command and a finished build); hub (the hub; `q`: its query, `changed=1`: changed only); `section`: an overview section; `layout`: flat, tree;
+server, a running command and a finished build); hub (the hub; `q`: its query, `changed=1`: changed only); `section`: an overview section; `layout`: flat, tree (the mock starts with tree);
 `page`: a Settings page; `menu`: add, branches, tab (the tab menu on the shown tab); `gap`: pixels between the
 tree and the editor, 5 by default (as the app), 0 for the flat layout; `radius`: the panels' corner radius, 8 by default;
-`side`: the tree's width in pixels; `counts`: how folder counts look, dot (the app), plain, pill, faint or outline, also
-switched at the bottom right).
+`side`: the tree's width in pixels; `only`: the project the tree (and the hub) shows alone, see DESIGN.md "One
+project in the tree"; `every`: the folders every worktree shows (the mock starts with all), see DESIGN.md "Folders for every worktree").

@@ -453,13 +453,18 @@
         shown: {},
         // Overviews: the shown section per overview; changed files flat or grouped (Alt+Shift+G).
         overviewTabs: {},
-        gitLayout: 'flat',
+        // the mock starts grouped, as the menu's Tree; the app's default is flat
+        gitLayout: 'tree',
         // The run configurations tab: flat (by name) or tree (by folder).
         runLayout: 'flat',
         collapsedFiles: [],
-        // Mock-only: how folder counts look (count_badge), to compare: dot (the app), plain, pill (before), faint, outline.
-        countStyle: 'dot',
-        COUNT_STYLES: ['dot', 'plain', 'pill', 'faint', 'outline'],
+        WORKTREE_FOLDERS: WORKTREE_FOLDERS,
+        // A proposal (DESIGN.md "One project in the tree"): the open project the tree shows alone, or null for all.
+        onlyProject: null,
+        // A proposal (DESIGN.md "Folders for every worktree"): the folders every worktree shows unless its own badge says
+        // otherwise; the Projects header's menu and Alt+click on a badge set it. The mock starts with them all on; a new
+        // profile in the app with what WORKTREE_FOLDERS says (Processes and Files).
+        everyFolder: WORKTREE_FOLDERS.reduce(function (on, f) { on[f.key] = true; return on; }, {}),
         gitLogSection: 'log',
         // Settings: theme preference (settings.rs ThemePreference) and the shown page.
         themePreference: 'system',
@@ -520,8 +525,8 @@
           if (p.has('radius')) { this.panelRadius = Number(p.get('radius')); document.documentElement.style.setProperty('--panel-radius', this.panelRadius + 'px'); }
           if (p.get('page')) this.settingsPage = p.get('page');
           if (p.get('layout')) this.gitLayout = p.get('layout');
+          if (p.get('only')) this.onlyProject = p.get('only');
           if (p.get('rlayout')) this.runLayout = p.get('rlayout');
-          if (p.get('counts')) this.countStyle = p.get('counts');
           // route.js: the whole state, as the mock last wrote it
           if (this.isRouteHash(p)) { this.restoreRoute(p); return; }
           var atl = this.project('atlassian');
@@ -635,11 +640,14 @@
         openProject: function (name) {
           if (this.open.includes(name) === false) this.open.push(name);
           this.recent = this.recent.filter(function (r) { return r !== name; });
+          // a project opened while the tree shows one is the one it shows
+          if (this.onlyProject !== null) this.onlyProject = name;
           this.menu = null;
         },
         closeProject: function (project) {
           this.open = this.open.filter(function (o) { return o !== project.name; });
           this.recent.unshift(project.name);
+          if (this.onlyProject === project.name) this.onlyProject = null;
           this.tabs = this.tabs.filter(function (t) { return t.project !== project.name; });
           if (this.tabs.some(function (t) { return t.key === this.temporary; }, this) === false) this.temporary = null;
           this.consoles = this.consoles.filter(function (c) { return c.co.split('@')[0] !== project.name; });
@@ -921,7 +929,7 @@
         // Alt+F12: a new terminal in the current tab's checkout.
         openTerminal: function () {
           var current = this.currentTab();
-          this.newTerminal(current && current.co ? current.co : this.targetCheckout(this.project(this.open[0])));
+          this.newTerminal(current && current.co ? current.co : this.targetCheckout(this.treeProjects()[0]));
         },
         // Stop: SIGTERM to Claude Code, which leaves the shell; Close ends a terminal and its tab.
         stop: function (c) { c.lines.push('', '(stopped)'); this.becomeShell(c); },
@@ -1005,8 +1013,19 @@
               out.push({ node: node, depth: depth });
               if (node.children && self.isNodeOpen(node)) walk(node.children, depth + 1);
             });
-          })(this.openProjects().map(function (p) { return self.projectNode(p); }), 0);
+          })(this.treeProjects().map(function (p) { return self.projectNode(p); }), 0);
           return out;
+        },
+        // The projects the tree shows: all open ones, or the one picked in the header. The hub and New terminal list
+        // these alone too.
+        treeProjects: function () {
+          var only = this.onlyProject;
+          return this.openProjects().filter(function (p) { return only === null || p.name === only; });
+        },
+        treeProjectNames: function () { return this.treeProjects().map(function (p) { return p.name; }); },
+        showOnlyProject: function (name) {
+          this.onlyProject = name;
+          this.menu = null;
         },
         // The row the shown tab belongs to is selected.
         isRowSelected: function (node) {
@@ -1093,21 +1112,39 @@
                { icon: 'close.svg', title: 'Remove', run: function () { self.closeRun(c); } }];
           return node;
         },
-        // A badge shows or hides its folder; the folder still folds on its own.
-        isFolderShown: function (node) { return node.folder.shown !== this.toggled.includes('fs:' + node.key); },
-        toggleFolderShown: function (node) {
+        // A badge shows or hides its folder; the folder still folds on its own. A worktree follows everyFolder but for
+        // the badges it switched itself.
+        isFolderShown: function (node) { return this.everyFolder[node.folder.key] !== this.ownsFolder(node); },
+        ownsFolder: function (node) { return this.toggled.includes('fs:' + node.key); },
+        toggleFolderShown: function (node, event) {
+          if (event && event.altKey) return this.showFolderEverywhere(node.folder.key, this.isFolderShown(node) === false);
           var key = 'fs:' + node.key;
           var at = this.toggled.indexOf(key);
           if (at === -1) this.toggled.push(key); else this.toggled.splice(at, 1);
         },
-        // On the worktree row (or a single checkout's project row): a badge per folder, its icon and count, on while shown.
+        // Every worktree shows folder `key` or not; the worktrees that had switched it themselves follow too.
+        showFolderEverywhere: function (key, on) {
+          this.everyFolder[key] = on;
+          this.toggled = this.toggled.filter(function (k) { return (k.startsWith('fs:wf:') && k.endsWith('/' + key)) === false; });
+        },
+        // The worktrees whose badges differ from everyFolder (the Projects header menu's Reset).
+        foldersOwned: function () {
+          var ids = this.toggled.filter(function (k) { return k.startsWith('fs:wf:'); }).map(function (k) { return k.slice('fs:wf:'.length, k.lastIndexOf('/')); });
+          return Array.from(new Set(ids));
+        },
+        resetOwnFolders: function () { this.toggled = this.toggled.filter(function (k) { return k.startsWith('fs:wf:') === false; }); },
+        // On the worktree row (or a single checkout's project row): a badge per folder, its icon and count, on while shown;
+        // marked when this worktree differs from every worktree's.
         folderBadges: function (co) {
           var self = this;
+          var how = '\nClick: this worktree · Alt+click: every worktree';
           return this.worktreeFolders(co).map(function (n) {
             // as the app: a known empty folder counts 0, one without a base nothing
             var count = n.empty && n.count !== '0' ? null : n.count;
-            return { key: n.folder.key, icon: n.icon, count: count, title: n.empty ? n.label + ': ' + n.hint : n.label + (count ? ' (' + count + ')' : ''), on: self.isFolderShown(n),
-              toggle: function () { self.toggleFolderShown(n); } };
+            var own = self.ownsFolder(n);
+            var title = (n.empty ? n.label + ': ' + n.hint : n.label + (count ? ' (' + count + ')' : '')) + (own ? ' · this worktree only' : '') + how;
+            return { key: n.folder.key, icon: n.icon, count: count, title: title, on: self.isFolderShown(n), own: own,
+              toggle: function (event) { self.toggleFolderShown(n, event); } };
           });
         },
         // Alt+Shift+G: changed files flat or grouped by folder, here and in the Git overview.
@@ -1118,6 +1155,15 @@
           }
         },
         toggleGitLayout: function () { this.gitLayout = this.gitLayout === 'flat' ? 'tree' : 'flat'; },
+        // Alt+Shift+1…5: a worktree folder (Processes … Files) shown or hidden in every worktree, as the header menu's ticks.
+        folderKey: function (event) {
+          var at = /^Digit([1-5])$/.exec(event.code);
+          if (at && event.altKey && event.shiftKey && event.ctrlKey === false && event.metaKey === false) {
+            event.preventDefault();
+            var key = WORKTREE_FOLDERS[Number(at[1]) - 1].key;
+            this.showFolderEverywhere(key, this.everyFolder[key] === false);
+          }
+        },
         // Processes' + on hover: a terminal in the worktree.
         newTerminalAction: function (co) {
           var self = this;
