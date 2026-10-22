@@ -6,6 +6,7 @@ pub mod extract;
 pub mod fetch;
 pub mod install;
 pub mod release;
+pub mod restart;
 pub mod staging;
 
 /// The release this build is, `ive-<version>-<commit>`; set by the release workflow, absent in builds from source.

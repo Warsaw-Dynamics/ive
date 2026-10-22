@@ -21,6 +21,8 @@ pub struct Args {
     pub profile: Profile,
     /// the start script the Restart button runs
     pub restart: Option<PathBuf>,
+    /// `--replacing PID`, not in the usage: an update restart started this IVE in place of IVE `PID`
+    pub replacing: Option<u32>,
 }
 
 /// Where IVE serves MCP on 127.0.0.1.
@@ -45,6 +47,7 @@ pub enum ArgsError {
     MissingProfile,
     MissingRestartScript,
     InvalidProfile(String),
+    InvalidReplacing(String),
 }
 
 impl fmt::Display for ArgsError {
@@ -57,6 +60,7 @@ impl fmt::Display for ArgsError {
             Self::MissingProfile => write!(f, "--profile needs a name"),
             Self::MissingRestartScript => write!(f, "--restart needs the path of a start script"),
             Self::InvalidProfile(reason) => write!(f, "{reason}"),
+            Self::InvalidReplacing(value) => write!(f, "--replacing needs the process id of an IVE, got {value:?}"),
             Self::ExtraPath(path) => write!(f, "only one folder or file can be opened, got also {}", path.display()),
         }
     }
@@ -64,7 +68,7 @@ impl fmt::Display for ArgsError {
 
 impl Args {
     pub fn parse(arguments: impl IntoIterator<Item = OsString>) -> Result<Self, ArgsError> {
-        let mut args = Self { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None };
+        let mut args = Self { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None, replacing: None };
         let mut arguments = arguments.into_iter();
         while let Some(argument) = arguments.next() {
             match argument.to_str() {
@@ -74,6 +78,8 @@ impl Args {
                 Some("--stop-processes-on-quit") => args.stop_processes_on_quit = true,
                 Some("--restart") => args.restart = Some(arguments.next().map(PathBuf::from).ok_or(ArgsError::MissingRestartScript)?),
                 Some(flag) if flag.starts_with("--restart=") => args.restart = Some(PathBuf::from(&flag["--restart=".len()..])),
+                Some("--replacing") => args.replacing = Some(parse_pid(arguments.next())?),
+                Some(flag) if flag.starts_with("--replacing=") => args.replacing = Some(parse_pid(Some(flag["--replacing=".len()..].into()))?),
                 Some("--profile") => args.profile = parse_profile(arguments.next())?,
                 Some(flag) if flag.starts_with("--profile=") => args.profile = parse_profile(Some(flag["--profile=".len()..].into()))?,
                 Some(flag) if flag.starts_with("--") => return Err(ArgsError::UnknownFlag(flag.to_owned())),
@@ -117,6 +123,14 @@ fn parse_profile(value: Option<OsString>) -> Result<Profile, ArgsError> {
     Profile::parse(&value.to_string_lossy()).map_err(ArgsError::InvalidProfile)
 }
 
+fn parse_pid(value: Option<OsString>) -> Result<u32, ArgsError> {
+    let text = value.map(|value| value.to_string_lossy().into_owned()).unwrap_or_default();
+    match text.parse::<u32>() {
+        Ok(pid) if pid > 0 => Ok(pid),
+        _ => Err(ArgsError::InvalidReplacing(text)),
+    }
+}
+
 fn parse_port(value: Option<OsString>) -> Result<u16, ArgsError> {
     let value = value.ok_or(ArgsError::MissingPort)?;
     let text = value.to_string_lossy().into_owned();
@@ -143,7 +157,7 @@ mod tests {
         let args = parse(line);
 
         // then
-        assert_eq!(args, Ok(Args { path: Some(PathBuf::from("~/code")), mcp: McpPort::Given(7461), background: true, stop_processes_on_quit: false, profile: Profile::default(), restart: None }));
+        assert_eq!(args, Ok(Args { path: Some(PathBuf::from("~/code")), mcp: McpPort::Given(7461), background: true, stop_processes_on_quit: false, profile: Profile::default(), restart: None, replacing: None }));
     }
 
     #[test]
@@ -155,7 +169,7 @@ mod tests {
         let args = parse(line);
 
         // then
-        assert_eq!(args, Ok(Args { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None }));
+        assert_eq!(args, Ok(Args { path: None, mcp: McpPort::Remembered, background: false, stop_processes_on_quit: false, profile: Profile::default(), restart: None, replacing: None }));
     }
 
     #[test]
@@ -263,6 +277,33 @@ mod tests {
         // then
         let script = Some(PathBuf::from("/home/me/ive.sh"));
         assert_eq!(scripts, [Ok(script.clone()), Ok(script), Ok(None)]);
+    }
+
+    #[test]
+    fn should_parse_replacing_pid() {
+        // given
+        let lines = ["--replacing 4242", "--replacing=4242"];
+
+        // when
+        let replacing: Vec<_> = lines.iter().map(|line| parse(line).map(|args| args.replacing)).collect();
+
+        // then
+        assert_eq!(replacing, [Ok(Some(4242)), Ok(Some(4242))]);
+    }
+
+    #[test]
+    fn should_reject_a_replacing_that_is_not_a_pid() {
+        // given
+        let lines = ["--replacing", "--replacing ive", "--replacing=0"];
+
+        // when
+        let errors: Vec<_> = lines.iter().map(|line| parse(line).err()).collect();
+
+        // then
+        assert_eq!(
+            errors,
+            [Some(ArgsError::InvalidReplacing(String::new())), Some(ArgsError::InvalidReplacing("ive".to_owned())), Some(ArgsError::InvalidReplacing("0".to_owned()))]
+        );
     }
 
     #[test]

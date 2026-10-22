@@ -79,6 +79,14 @@ fn set_aside_running_exe(current: &Path) -> Result<(), String> {
     rename(current, &old)
 }
 
+/// Deletes the executable a swap set aside, which its IVE ran from until it quit.
+#[cfg(windows)]
+pub fn delete_set_aside_exe() {
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = fs::remove_file(exe.with_extension("exe.old"));
+    }
+}
+
 /// Unix renames over a running executable; the running process keeps the old file.
 #[cfg(not(windows))]
 fn set_aside_running_exe(_current: &Path) -> Result<(), String> {
