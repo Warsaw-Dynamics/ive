@@ -280,6 +280,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "FindInFiles" => Builtin::FindInFiles,
         "OpenFindInFiles" => Builtin::OpenFindInFiles,
         "OpenTerminalHere" => Builtin::OpenTerminalHere,
+        "NewTerminal" => Builtin::NewTerminal,
         "RevealInFileManager" => Builtin::RevealInFileManager,
         "OpenWithDefaultApp" => Builtin::OpenWithDefaultApp,
         "OpenInBrowser" => Builtin::OpenInBrowser,

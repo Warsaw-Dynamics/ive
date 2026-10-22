@@ -59,7 +59,7 @@
         <button class="menu__item" type="button" @click="showFolderEverywhere(f.key, everyFolder[f.key] === false)">
           <span class="menu__tick" x-text="everyFolder[f.key] ? '✓' : ''"></span>
           <img class="icon" :src="icon(f.icon)" alt="" /><span class="menu__grow" x-text="f.title"></span>
-          <span class="menu__key" x-text="'Alt+Shift+' + f.letter"></span>
+          <span class="menu__key" x-text="'Ctrl+Alt+' + f.digit"></span>
         </button>
       </template>
       <div class="menu__separator"></div>

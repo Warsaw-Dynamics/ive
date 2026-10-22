@@ -685,15 +685,15 @@ mod tests {
     }
 
     #[test]
-    fn should_bind_alt_shift_letters_to_folders_everywhere() {
+    fn should_bind_ctrl_alt_digits_to_folders_everywhere() {
         // given
-        let keys = [("p", FolderKind::Processes), ("u", FolderKind::Uncommitted), ("b", FolderKind::SinceBase), ("c", FolderKind::Commits), ("f", FolderKind::Files)];
+        let keys = [("1", FolderKind::Processes), ("2", FolderKind::Uncommitted), ("3", FolderKind::SinceBase), ("4", FolderKind::Commits), ("5", FolderKind::Files)];
 
         // when
         let keymap = defaults().keymap;
 
         // then
-        let found: Vec<_> = keys.iter().map(|(key, _)| keymap.find_key(&pressed(&format!("alt-shift-{key}")), Place::Elsewhere).cloned()).collect();
+        let found: Vec<_> = keys.iter().map(|(key, _)| keymap.find_key(&pressed(&format!("ctrl-alt-{key}")), Place::Elsewhere).cloned()).collect();
         assert_eq!(found, keys.iter().map(|(_, kind)| builtin(Builtin::ToggleFolderEverywhere(*kind))).collect::<Vec<_>>());
     }
 
@@ -1131,8 +1131,9 @@ mod tests {
 
         // then
         let tree = loaded.menus.get(MenuKind::Tree, "main").expect("tree menu");
+        assert_eq!(tree[..3], [item(Builtin::NewTerminal), item(Builtin::StopProgram), MenuItem::Separator]);
+        assert!(tree.contains(&item(Builtin::SendPathsToTerminal)));
         let tab = loaded.menus.get(MenuKind::Tab, "main").expect("tab menu");
-        assert_eq!(tree[0], item(Builtin::SendPathsToTerminal));
         assert_eq!(tab[..2], [item(Builtin::KeepTab), item(Builtin::StopProgram)]);
         assert!(tab.contains(&item(Builtin::CloseTabsToTheRight)));
         let right_press = loaded.keymap.find_mouse(Scope::Tree, &mouse(MouseKind::Down, MouseButton::Right, 1)).cloned();

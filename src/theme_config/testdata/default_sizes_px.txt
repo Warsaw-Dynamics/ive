@@ -925,4 +925,46 @@ Sizes {
             2.0,
         ),
     },
+    menu: MenuSizes {
+        min_width: Px(
+            240.0,
+        ),
+        padding_y: Px(
+            6.0,
+        ),
+        radius: Px(
+            0.0,
+        ),
+        border: Px(
+            1.0,
+        ),
+        text_size: FontPx(
+            13.0,
+        ),
+        weight: Normal,
+        item_height: Height(
+            26.0,
+        ),
+        item_margin_x: Px(
+            6.0,
+        ),
+        item_padding_x: Px(
+            10.0,
+        ),
+        item_radius: Px(
+            4.0,
+        ),
+        shortcut_gap: Px(
+            32.0,
+        ),
+        separator_margin_y: Px(
+            4.0,
+        ),
+        separator_inset_x: Px(
+            10.0,
+        ),
+        pending_opacity: Fraction(
+            0.5,
+        ),
+    },
 }

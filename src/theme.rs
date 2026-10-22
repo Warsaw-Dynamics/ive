@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, WindowAppearance};
 
 use crate::settings::{SettingsStore, ThemePreference};
-use crate::theme_config::{GitColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
+use crate::theme_config::{GitColors, MenuColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Appearance {
@@ -68,6 +68,7 @@ pub struct Theme {
     pub git: GitColors,
     pub tree_states: TreeStates,
     pub virtual_folders: VirtualFolders,
+    pub menu: MenuColors,
     pub panels: Panels,
     pub sizes: &'static Sizes,
 }
@@ -212,6 +213,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         git: palette.git,
         tree_states: palette.tree_states,
         virtual_folders: palette.virtual_folders,
+        menu: palette.menu,
         panels: spec.panels,
         sizes: intern(&spec.sizes),
     }
