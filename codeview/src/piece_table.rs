@@ -21,6 +21,13 @@ pub struct PieceTable {
     index: PieceIndex,
 }
 
+/// A new base that cannot be the old one with the saved edits applied: it has `found` bytes, not `expected`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WrongBase {
+    pub expected: u64,
+    pub found: u64,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Buffer {
     Base,
@@ -181,16 +188,13 @@ impl PieceTable {
 
     /// Makes `base` the new base once `saved` is written: `base` must be the old base with `saved` (an earlier
     /// [`Self::edits_since_base`]) applied. The text stays as it is, edits made since `saved` was taken included;
-    /// afterwards [`Self::edits_since_base`] reports only those.
-    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) {
+    /// afterwards [`Self::edits_since_base`] reports only those. A `base` of another length changes nothing.
+    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) -> Result<(), WrongBase> {
         let growth: i64 = saved.iter().map(Edit::growth).sum();
-        assert_eq!(
-            base.byte_len() as i64,
-            self.base.byte_len() as i64 + growth,
-            "rebase onto a base of {} bytes, but the old base of {} bytes grows by {growth} with the saved edits",
-            base.byte_len(),
-            self.base.byte_len()
-        );
+        let expected = (self.base.byte_len() as i64 + growth) as u64;
+        if base.byte_len() != expected {
+            return Err(WrongBase { expected, found: base.byte_len() });
+        }
         let mut shift = Shift::new(saved);
         let moved: Vec<(Buffer, Range<u64>)> = self
             .pieces
@@ -204,6 +208,7 @@ impl PieceTable {
         let folded = self.fold_saved_text(moved);
         self.pieces = folded.into_iter().map(|(buffer, bytes)| self.piece(buffer, bytes)).collect();
         self.reindex();
+        Ok(())
     }
 
     /// Whether `edit` replaces base bytes with different ones.
@@ -618,6 +623,22 @@ mod tests {
     }
 
     #[test]
+    fn should_refuse_a_new_base_of_the_wrong_length() {
+        // given
+        let mut table = PieceTable::from_text("ab\n");
+        table.replace(0..0, "x");
+        let saved = table.edits_since_base();
+
+        // when
+        let rebased = table.rebase(Arc::new(TextSource::new("another program's text\n")), &saved);
+
+        // then
+        assert_eq!(rebased, Err(WrongBase { expected: 4, found: 23 }));
+        assert_eq!(table.edits_since_base(), saved);
+        assert_eq!(lines(&table), ["xab", ""]);
+    }
+
+    #[test]
     fn should_hold_the_current_text_after_rebase() {
         // given
         let mut table = PieceTable::from_text("ab\ncd\n");
@@ -625,7 +646,7 @@ mod tests {
         let saved = table.edits_since_base();
 
         // when
-        table.rebase(Arc::new(TextSource::new("aX\nYd\n")), &saved);
+        table.rebase(Arc::new(TextSource::new("aX\nYd\n")), &saved).unwrap();
 
         // then
         assert_eq!(table.edits_since_base(), []);
@@ -645,7 +666,7 @@ mod tests {
         table.replace(9..10, "");
 
         // when
-        table.rebase(Arc::new(TextSource::new("01ab4567XYZ89\n")), &saved);
+        table.rebase(Arc::new(TextSource::new("01ab4567XYZ89\n")), &saved).unwrap();
 
         // then
         assert_eq!(text(&table), b"-1ab4567XZ89\n");
@@ -713,7 +734,7 @@ mod tests {
                 step += 1;
             }
             let before = text(&table);
-            table.rebase(Arc::new(TextSource::from_bytes(&written)), &saved);
+            table.rebase(Arc::new(TextSource::from_bytes(&written)), &saved).unwrap();
             base = written;
 
             // then

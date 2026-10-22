@@ -74,6 +74,8 @@ gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5
 
 [dev-dependencies]
 codeview = { path = "codeview", features = ["test-support"] }
+# gpui's test app, for driving a file tab's saves in unit tests
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["test-support"] }
 tempfile = "3"
 
 # Dependencies (memchr, gpui's renderer) are unusably slow unoptimised: opening a 10M-line file took

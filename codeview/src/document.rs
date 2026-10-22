@@ -171,8 +171,23 @@ impl fmt::Display for DocumentError {
 
 impl Document {
     pub fn open(path: &Path) -> Result<Self, DocumentError> {
+        Self::open_stamped(path).map(|(document, _)| document)
+    }
+
+    /// Opens the file at `path`, with the stamp the open file had both before and after it was read; `None` when
+    /// the two differ (another program wrote it meanwhile) or the system keeps no modification times.
+    pub fn open_stamped(path: &Path) -> Result<(Self, Option<Stamp>), DocumentError> {
         let unreadable = |source| DocumentError::Unreadable { path: path.to_path_buf(), source };
         let file = File::open(path).map_err(unreadable)?;
+        let before = stamp_of(&file.metadata().map_err(unreadable)?);
+        let document = Self::read(path, &file)?;
+        let after = file.metadata().ok().and_then(|metadata| stamp_of(&metadata));
+        Ok((document, before.filter(|_| before == after)))
+    }
+
+    /// The text of `file`, opened at `path`: copied, or mapped when large.
+    fn read(path: &Path, file: &File) -> Result<Self, DocumentError> {
+        let unreadable = |source| DocumentError::Unreadable { path: path.to_path_buf(), source };
         let size = file.metadata().map_err(unreadable)?.len();
         if size > MAX_FILE_BYTES {
             return Err(DocumentError::TooLarge { path: path.to_path_buf(), bytes: size });
@@ -187,7 +202,7 @@ impl Document {
         } else {
             // SAFETY: the map is read-only. If another process truncates the file while it is open,
             // reading past the new end raises SIGBUS; accepted for files this large, as other editors do.
-            Bytes::Mapped(unsafe { Mmap::map(&file) }.map_err(unreadable)?)
+            Bytes::Mapped(unsafe { Mmap::map(file) }.map_err(unreadable)?)
         };
         if looks_binary(bytes.as_slice()) {
             return Err(DocumentError::NotText(path.to_path_buf()));
@@ -198,6 +213,12 @@ impl Document {
 
     pub fn bytes(&self) -> &[u8] {
         self.text.bytes()
+    }
+
+    /// Whether the bytes are the file's own, mapped, rather than a copy: another program writing the file in place
+    /// changes them, and truncating it makes reading past its new end raise SIGBUS.
+    pub fn is_mapped(&self) -> bool {
+        matches!(*self.text.bytes, Bytes::Mapped(_))
     }
 
     pub fn byte_len(&self) -> usize {
@@ -384,8 +405,8 @@ pub fn reread(path: &Path, known: Option<Stamp>) -> Reread {
     if now.is_some() && now == known {
         return Reread::Unchanged;
     }
-    match Document::open(path) {
-        Ok(document) => Reread::Changed(document, now),
+    match Document::open_stamped(path) {
+        Ok((document, stamp)) => Reread::Changed(document, stamp),
         Err(error) if path.exists() => Reread::Failed(error.to_string()),
         Err(_) => Reread::Gone,
     }
@@ -393,12 +414,15 @@ pub fn reread(path: &Path, known: Option<Stamp>) -> Reread {
 
 /// The stamp of the file at `path` now; `None` when it cannot be read.
 pub fn stamp(path: &Path) -> Option<Stamp> {
-    let metadata = fs::metadata(path).ok()?;
+    stamp_of(&fs::metadata(path).ok()?)
+}
+
+fn stamp_of(metadata: &fs::Metadata) -> Option<Stamp> {
     Some((metadata.len(), metadata.modified().ok()?))
 }
 
 /// The file's bytes; `size` is what it held when opened, a capacity hint only.
-fn read_all(mut file: File, size: u64) -> io::Result<Vec<u8>> {
+fn read_all(mut file: &File, size: u64) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::with_capacity(size as usize);
     io::Read::read_to_end(&mut file, &mut bytes)?;
     Ok(bytes)
@@ -530,6 +554,32 @@ mod tests {
 
         // then
         assert_eq!(document.bytes(), b"first line\nsecond line\n");
+    }
+
+    #[test]
+    fn should_take_the_stamp_of_the_file_it_read() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"text\n").unwrap();
+
+        // when
+        let (document, stamp) = Document::open_stamped(&path).unwrap();
+
+        // then
+        assert_eq!((document.bytes(), stamp), (&b"text\n"[..], super::stamp(&path)));
+    }
+
+    #[test]
+    fn should_map_only_files_too_large_to_copy() {
+        // given
+        let (_small_dir, small) = open_text(b"text\n");
+
+        // when
+        let (_large_dir, large) = open_text(&vec![b'\n'; MAX_COPIED_BYTES as usize + 1]);
+
+        // then
+        assert_eq!((small.is_mapped(), large.is_mapped()), (false, true));
     }
 
     fn texts(lines: Vec<DisplayLine>) -> Vec<String> {

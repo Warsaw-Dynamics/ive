@@ -522,8 +522,8 @@ impl Workspace {
             return self.activate_tab(open, window, cx);
         }
         let name = project::folder_name(path);
-        let tab = match Document::open(path) {
-            Ok(document) => Tab::Document(FileTab::new(document, cx)),
+        let tab = match Document::open_stamped(path) {
+            Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
             Err(error) => Tab::Failed { title: name, error: error.to_string().into() },
         };
         self.open_tab(tab, window, cx);

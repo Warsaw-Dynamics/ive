@@ -14,8 +14,8 @@ use gpui::{
 };
 
 pub use protocol::{
-    Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, SaveFailure,
-    SaveKind, SaveRequest,
+    Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
+    SaveFailure, SaveKind, SaveRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
@@ -304,11 +304,11 @@ impl Panel {
     }
 
     fn saved(&mut self, revision: u64, source: Arc<dyn LineSource>, cx: &mut Context<Self>) {
-        let (Body::Edit(editor), Answer::Saved { edits, then }) = (&self.body, self.saving.saved(revision)) else {
+        let Body::Edit(editor) = &self.body else {
             return;
         };
-        editor.update(cx, |editor, _cx| editor.rebase(source, &edits));
-        if then == Then::SaveAgain {
+        let rebase = |edits: &[Edit]| editor.update(cx, |editor, _cx| editor.rebase(source, edits));
+        if let Answer::Saved { then: Then::SaveAgain } = self.saving.saved(revision, rebase) {
             self.request_save(SaveKind::Checked, cx);
         }
     }
@@ -412,7 +412,7 @@ impl Panel {
             reload: Box::new(move |_window, cx| drop(this.update(cx, |_panel, cx| cx.emit(Event::ReloadRequested)))),
             overwrite: Box::new(move |_window, cx| drop(other.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx)))),
         };
-        let Some(bar) = saving::bar(self.saving.problem(), actions, cx) else {
+        let Some(bar) = saving::bar(&self.saving, actions, cx) else {
             return editor.into_any_element();
         };
         div().flex().flex_col().flex_1().min_h_0().child(bar).child(editor).into_any_element()
@@ -605,7 +605,7 @@ mod tests {
         let saves = saves_of(&panel, cx);
         cast(&panel, typed("a"), cx);
         cast(&panel, Cast::Command(Command::Flush), cx);
-        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Conflict }, cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Conflict(Resolve::ReloadOrOverwrite) }, cx);
         cast(&panel, typed("b"), cx);
         wait(Duration::from_millis(500), cx);
         cast(&panel, Cast::Command(Command::Flush), cx);
@@ -617,6 +617,56 @@ mod tests {
         // then
         let overwrite = SaveRequest { base: 0, revision: 2, edits: vec![edit(0..0, "ab")], kind: SaveKind::Overwrite };
         assert_eq!((while_conflicting, saves.borrow().last().cloned()), (1, Some(overwrite)));
+    }
+
+    #[gpui::test]
+    fn should_keep_the_edits_when_the_saved_text_is_not_the_edited_one(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+
+        // when
+        cast(&panel, Cast::Saved { revision: 1, source: Arc::new(TextSource::new("another program's text\n")) }, cx);
+
+        // then
+        assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx) && !panel.is_saving()));
+        let problem = panel.read_with(cx, |panel, _| (panel.saving.problem().clone(), panel.saving.choices()));
+        assert_eq!(problem, (saving::Problem::Conflict(Resolve::Reload), saving::Choices::Reload));
+    }
+
+    #[gpui::test]
+    fn should_offer_no_choice_while_an_overwrite_is_in_flight(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Conflict(Resolve::ReloadOrOverwrite) }, cx);
+        let before = panel.read_with(cx, |panel, _| panel.saving.choices());
+
+        // when
+        panel.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx));
+
+        // then
+        let during = panel.read_with(cx, |panel, _| panel.saving.choices());
+        assert_eq!((before, during), (saving::Choices::ReloadOrOverwrite, saving::Choices::Nothing));
+    }
+
+    #[gpui::test]
+    fn should_refuse_to_overwrite_a_conflict_that_only_a_reload_resolves(cx: &mut TestAppContext) {
+        // given
+        let panel = editing("text\n", cx);
+        let saves = saves_of(&panel, cx);
+        cast(&panel, typed("a"), cx);
+        cast(&panel, Cast::Command(Command::Flush), cx);
+        cast(&panel, Cast::SaveFailed { revision: 1, reason: SaveFailure::Conflict(Resolve::Reload) }, cx);
+
+        // when
+        panel.update(cx, |panel, cx| panel.request_save(SaveKind::Overwrite, cx));
+
+        // then
+        let choices = panel.read_with(cx, |panel, _| panel.saving.choices());
+        assert_eq!((saves.borrow().len(), choices), (1, saving::Choices::Reload));
     }
 
     #[gpui::test]

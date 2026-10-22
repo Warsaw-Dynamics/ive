@@ -381,8 +381,8 @@ impl Workspace {
             self.activate_tab(open, window, cx);
             return Ok(open);
         }
-        let document = Document::open(&path).map_err(|error| error.to_string())?;
-        Ok(self.open_tab(Tab::Document(FileTab::new(document, cx)), window, cx))
+        let opened = Document::open_stamped(&path).map_err(|error| error.to_string())?;
+        Ok(self.open_tab(Tab::Document(FileTab::new(opened, cx)), window, cx))
     }
 
     /// Starts a terminal in the checkout holding `directory` (the current checkout without one) and types

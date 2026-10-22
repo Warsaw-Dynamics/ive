@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use codeview::document::{self, Reread, TextSource};
-use codeview::panel::{Cast, Content, Edit, EditPolicy, Event, Panel, PanelState, SaveFailure, SaveKind, SaveRequest};
+use codeview::panel::{Cast, Content, Edit, EditPolicy, Event, Panel, PanelState, Resolve, SaveFailure, SaveKind, SaveRequest};
 use codeview::text_editor::SizeLimit;
 use gpui::{
     AnyElement, App, ClickEvent, Context, Div, Entity, FocusHandle, Focusable, SharedString, Stateful, Subscription, Task,
@@ -350,7 +350,7 @@ impl ScratchView {
             SaveAction::Conflict => {
                 // the panel's bar asks now
                 self.bar.take_if(|bar| matches!(bar, Bar::ChangedOnDisk));
-                Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Conflict }
+                Cast::SaveFailed { revision: request.revision, reason: SaveFailure::Conflict(Resolve::ReloadOrOverwrite) }
             }
             SaveAction::Deleted => {
                 self.bar = Some(Bar::DeletedOnDisk);

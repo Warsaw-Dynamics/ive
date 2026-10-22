@@ -82,9 +82,18 @@ pub enum ParseTarget {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveFailure {
-    /// the file changed on disk since the last save
-    Conflict,
+    /// the file changed on disk since the last save; what the user may do about it
+    Conflict(Resolve),
     Io(String),
+}
+
+/// What the user may do about a conflict.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Resolve {
+    /// read the file again, dropping the edits, or write the edits over it
+    ReloadOrOverwrite,
+    /// only read it again: the text the edits apply to may be gone, so writing them over it would garble it
+    Reload,
 }
 
 /// What a panel tells its host.
@@ -120,7 +129,7 @@ pub struct SaveRequest {
 /// What a save may write over.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SaveKind {
-    /// only the file as last read or saved; anything else is [`SaveFailure::Conflict`]
+    /// only the file as last read or saved; anything else is a [`SaveFailure::Conflict`]
     Checked,
     /// whatever is there: the user chose Overwrite on a conflict
     Overwrite,

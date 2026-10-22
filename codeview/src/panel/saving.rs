@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use gpui::{App, ClickEvent, Div, SharedString, Stateful, Subscription, Task, Window, div, prelude::*, px, rgb};
 
-use super::protocol::{Edit, SaveFailure, SaveKind, SaveRequest};
+use super::protocol::{Edit, Resolve, SaveFailure, SaveKind, SaveRequest};
 use crate::host::Host;
+use crate::piece_table::WrongBase;
 use crate::style::ViewStyle;
 
 /// The save state of the text being edited; see the spec's "Saving".
@@ -44,8 +45,16 @@ enum Pause {
 pub(super) enum Problem {
     Nothing,
     Failed(String),
-    /// the file changed on disk: the user reloads it or overwrites it
-    Conflict,
+    /// the file changed on disk: the user reloads it, or may overwrite it
+    Conflict(Resolve),
+}
+
+/// The buttons the bar offers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Choices {
+    Nothing,
+    Reload,
+    ReloadOrOverwrite,
 }
 
 /// What the panel does about a save request.
@@ -58,8 +67,8 @@ pub(super) enum Next {
 
 /// The answer to a save, for the save in flight.
 pub(super) enum Answer {
-    /// the base becomes the saved text, which `edits` made of the old one; `then` says whether to save again now
-    Saved { edits: Vec<Edit>, then: Then },
+    /// the base is the saved text now; `then` says whether to save again now
+    Saved { then: Then },
     Failed,
     /// for an older save, or after a reload
     Stale,
@@ -83,16 +92,26 @@ impl Saving {
         &self.problem
     }
 
+    /// What the user may do about a conflict: nothing while a save is in flight, whose answer changes the text.
+    pub(super) fn choices(&self) -> Choices {
+        match (&self.problem, &self.flight) {
+            (Problem::Conflict(_), Flight::Sent { .. }) | (Problem::Nothing | Problem::Failed(_), _) => Choices::Nothing,
+            (Problem::Conflict(Resolve::Reload), Flight::Idle) => Choices::Reload,
+            (Problem::Conflict(Resolve::ReloadOrOverwrite), Flight::Idle) => Choices::ReloadOrOverwrite,
+        }
+    }
+
     /// An edit restarts the pause; `pause` is the timer that ends it.
     pub(super) fn restart_pause(&mut self, pause: Task<()>) {
         self.pause = Pause::Running { _timer: pause };
     }
 
     /// What to do now about the text of `revision`: `edits` gives its changes since the saved text. An ordinary
-    /// save waits while a conflict is unanswered; one in flight makes this one follow its answer.
+    /// save waits while a conflict is unanswered, an overwrite needs a conflict that allows it; one in flight makes
+    /// this one follow its answer.
     pub(super) fn next(&mut self, kind: SaveKind, revision: u64, edits: impl FnOnce() -> Vec<Edit>) -> Next {
         self.pause = Pause::Idle;
-        if kind == SaveKind::Checked && self.problem == Problem::Conflict {
+        if self.is_held(kind) {
             return Next::Nothing;
         }
         if let Flight::Sent { then, .. } = &mut self.flight {
@@ -111,14 +130,30 @@ impl Saving {
         Next::Send(SaveRequest { base: self.saved, revision, edits, kind })
     }
 
-    /// The host wrote revision `revision`.
-    pub(super) fn saved(&mut self, revision: u64) -> Answer {
+    /// Whether a save of `kind` waits for the user's answer to a conflict.
+    fn is_held(&self, kind: SaveKind) -> bool {
+        match (kind, &self.problem) {
+            (SaveKind::Checked, Problem::Conflict(_)) => true,
+            (SaveKind::Checked, Problem::Nothing | Problem::Failed(_)) => false,
+            (SaveKind::Overwrite, Problem::Conflict(Resolve::ReloadOrOverwrite)) => false,
+            (SaveKind::Overwrite, Problem::Conflict(Resolve::Reload) | Problem::Nothing | Problem::Failed(_)) => true,
+        }
+    }
+
+    /// The host wrote revision `revision`; `rebase` moves the text onto the saved one, given the edits that made it.
+    /// A saved text that cannot be the edited one (another program changed the file right after the write) keeps
+    /// the edits, and only a reload resolves that: the host's text and the panel's differ.
+    pub(super) fn saved(&mut self, revision: u64, rebase: impl FnOnce(&[Edit]) -> Result<(), WrongBase>) -> Answer {
         let Flight::Sent { edits, then, .. } = self.take_flight(revision) else {
             return Answer::Stale;
         };
+        if rebase(&edits).is_err() {
+            self.problem = Problem::Conflict(Resolve::Reload);
+            return Answer::Failed;
+        }
         self.saved = revision;
         self.problem = Problem::Nothing;
-        Answer::Saved { edits, then }
+        Answer::Saved { then }
     }
 
     /// The host could not write revision `revision`; the edits stay, and the next pause or flush tries again.
@@ -127,7 +162,7 @@ impl Saving {
             return Answer::Stale;
         };
         self.problem = match reason {
-            SaveFailure::Conflict => Problem::Conflict,
+            SaveFailure::Conflict(resolve) => Problem::Conflict(resolve),
             SaveFailure::Io(reason) => Problem::Failed(reason),
         };
         Answer::Failed
@@ -151,9 +186,9 @@ pub(super) struct BarActions {
     pub(super) overwrite: Action,
 }
 
-/// The bar above the text while a save failed: the reason, or for a conflict Reload and Overwrite. Click targets
+/// The bar above the text while a save failed: the reason, or for a conflict the [`Saving::choices`]. Click targets
 /// `save-reload` and `save-overwrite`.
-pub(super) fn bar(problem: &Problem, actions: BarActions, cx: &App) -> Option<Div> {
+pub(super) fn bar(saving: &Saving, actions: BarActions, cx: &App) -> Option<Div> {
     let style = ViewStyle::drawing(cx);
     let row = div()
         .flex()
@@ -165,15 +200,18 @@ pub(super) fn bar(problem: &Problem, actions: BarActions, cx: &App) -> Option<Di
         .bg(rgb(style.hover))
         .text_size(px(style.editor_notice_text_size))
         .text_color(rgb(style.error));
-    match problem {
-        Problem::Nothing => None,
-        Problem::Failed(reason) => Some(row.child(format!("not saved: {reason}"))),
-        Problem::Conflict => Some(
-            row.child("changed on disk; not saved")
-                .child(button(Button { name: "save-reload", label: "Reload", action: actions.reload }, style, cx))
-                .child(button(Button { name: "save-overwrite", label: "Overwrite", action: actions.overwrite }, style, cx)),
-        ),
-    }
+    let row = match saving.problem() {
+        Problem::Nothing => return None,
+        Problem::Failed(reason) => return Some(row.child(format!("not saved: {reason}"))),
+        Problem::Conflict(_) => row.child("changed on disk; not saved"),
+    };
+    let reload = Button { name: "save-reload", label: "Reload", action: actions.reload };
+    let overwrite = Button { name: "save-overwrite", label: "Overwrite", action: actions.overwrite };
+    Some(match saving.choices() {
+        Choices::Nothing => row,
+        Choices::Reload => row.child(button(reload, style, cx)),
+        Choices::ReloadOrOverwrite => row.child(button(reload, style, cx)).child(button(overwrite, style, cx)),
+    })
 }
 
 /// A button of the bar; `name` is its element id and its click target.

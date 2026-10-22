@@ -185,9 +185,9 @@ impl TabOwnership {
 }
 
 fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
-    match Document::open(path) {
-        Ok(document) => {
-            let file = FileTab::new(document, cx);
+    match Document::open_stamped(path) {
+        Ok(opened) => {
+            let file = FileTab::new(opened, cx);
             file.cast(Cast::Restore(panel), cx);
             Tab::Document(file)
         }

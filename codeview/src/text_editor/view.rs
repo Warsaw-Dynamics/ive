@@ -19,7 +19,7 @@ use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting
 use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::line_view::{self, LineScroll, Metrics};
 use crate::panel::{Edit, LineSource, ParseJob};
-use crate::piece_table::PieceTable;
+use crate::piece_table::{PieceTable, WrongBase};
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
@@ -82,8 +82,8 @@ impl TextEditor {
     }
 
     /// `saved` was written: `base` holds the text they made, and becomes the base; see [`PieceTable::rebase`].
-    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) {
-        self.model.rebase(base, saved);
+    pub fn rebase(&mut self, base: Arc<dyn LineSource>, saved: &[Edit]) -> Result<(), WrongBase> {
+        self.model.rebase(base, saved)
     }
 
     pub fn revision(&self) -> u64 {

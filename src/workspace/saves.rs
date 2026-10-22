@@ -9,6 +9,7 @@ use gpui::{App, AsyncWindowContext, Context, Entity, WeakEntity, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
+use crate::file_tab;
 use crate::tabs::TabId;
 
 /// How often waiting for saves looks again.
@@ -32,9 +33,9 @@ impl Workspace {
         self.tabs.iter().filter_map(|(id, tab)| panel(tab).map(|panel| (id, panel))).collect()
     }
 
-    /// A save is in flight in some panel.
+    /// A save is in flight in some panel, or one of a closed file tab is still being written.
     fn is_saving(&self, cx: &App) -> bool {
-        self.editing_panels(cx).iter().any(|(_, panel)| panel.read(cx).is_saving())
+        file_tab::is_writing_any() || self.editing_panels(cx).iter().any(|(_, panel)| panel.read(cx).is_saving())
     }
 
     /// The first tab whose edits are not saved: a save failed or waits for the user.

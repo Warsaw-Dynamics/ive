@@ -13,7 +13,7 @@ use tree_sitter::InputEdit;
 
 use super::history::{Change, Cursor, Edit, History};
 use crate::panel;
-use crate::piece_table::PieceTable;
+use crate::piece_table::{PieceTable, WrongBase};
 use crate::syntax::MAX_HIGHLIGHT_BYTES;
 
 /// What Tab inserts.
@@ -193,8 +193,8 @@ impl EditorModel {
     }
 
     /// See [`PieceTable::rebase`]; the text, caret and history stay.
-    pub fn rebase(&mut self, base: Arc<dyn panel::LineSource>, saved: &[panel::Edit]) {
-        self.table.rebase(base, saved);
+    pub fn rebase(&mut self, base: Arc<dyn panel::LineSource>, saved: &[panel::Edit]) -> Result<(), WrongBase> {
+        self.table.rebase(base, saved)
     }
 
     pub fn caret(&self) -> Position {
