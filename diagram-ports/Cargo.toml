@@ -1,6 +1,11 @@
 [workspace]
 members = ["engine", "viewer"]
+exclude = ["vendor/merman-core-0.9.2", "vendor/merman-render-0.9.2"]
 resolver = "3"
+
+[patch.crates-io]
+merman-core = { path = "vendor/merman-core-0.9.2" }
+merman-render = { path = "vendor/merman-render-0.9.2" }
 
 [workspace.package]
 edition = "2024"

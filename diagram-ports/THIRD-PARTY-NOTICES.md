@@ -674,11 +674,11 @@ Used by:
 ## Apache License 2.0
 
 Used by:
+- [merman-core 0.9.2](https://github.com/Latias94/merman)
 - [as-raw-xcb-connection 1.0.1](https://github.com/psychon/as-raw-xcb-connection)
 - [encoding_rs 0.8.42](https://github.com/hsivonen/encoding_rs)
 - [htmlize 1.1.0](https://github.com/danielparks/htmlize)
 - [kurbo 0.13.1](https://github.com/linebender/kurbo)
-- [merman-core 0.9.2](https://github.com/Latias94/merman)
 - [multiversion_no_op 1.0.0](https://github.com/hsivonen/multiversion_no_op)
 - [polycool 0.4.0](https://github.com/linebender/kurbo)
 - [raw-window-metal 1.1.0](https://github.com/rust-windowing/raw-window-metal)
@@ -2397,13 +2397,13 @@ Used by:
 ## Apache License 2.0
 
 Used by:
+- [merman-core 0.9.2](https://github.com/Latias94/merman)
+- [merman-render 0.9.2](https://github.com/Latias94/merman)
+- [merman-render 0.9.2](https://github.com/Latias94/merman)
 - [codespan-reporting 0.13.1](https://github.com/brendanzab/codespan)
 - [dugong-graphlib 0.9.2](https://github.com/Latias94/merman)
 - [dugong 0.9.2](https://github.com/Latias94/merman)
 - [manatee 0.9.2](https://github.com/Latias94/merman)
-- [merman-core 0.9.2](https://github.com/Latias94/merman)
-- [merman-render 0.9.2](https://github.com/Latias94/merman)
-- [merman-render 0.9.2](https://github.com/Latias94/merman)
 - [merman-unicode-linebreak 0.9.2](https://github.com/Latias94/merman)
 - [merman-unicode-linebreak 0.9.2](https://github.com/Latias94/merman)
 - [merman 0.9.2](https://github.com/Latias94/merman)
@@ -13961,7 +13961,7 @@ the following restrictions:
 
 # Embedded translated sources and data
 
-The engine wraps Merman without copying its implementation. Its selected compiled packages include the following source/data notices, retained from their published archives. ELK packages and math font data are not part of the selected graph. Fixture adaptations separately use Mermaid documentation revision `6d8921f94f9a12b76586eddcf45a566080d4767e` (MIT, Knut Sveidqvist 2014–2022).
+The engine wraps Merman and includes narrowly modified copies of the published 0.9.2 core/render crates. Original archive checksums, per-file import hashes and the explicit four-file patch ledger are retained under `vendor/`; original MIT/Apache license texts and all embedded-source notices/legal texts remain in each imported crate. Repairs are authored against MIT Mermaid revision `6d8921f94f9a12b76586eddcf45a566080d4767e` (MIT, Knut Sveidqvist 2014–2022). Its selected compiled packages include the following source/data notices, retained from their published archives. ELK packages and math font data are not part of the selected graph. Fixture adaptations separately use the same Mermaid documentation revision.
 
 ## Published source manifest: merman-core-0.9.2
 

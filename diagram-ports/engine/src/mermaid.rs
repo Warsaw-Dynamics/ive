@@ -1,4 +1,4 @@
-//! Adapter for Merman 0.9.2 (Mermaid 12.1.0); no upstream implementation is copied here.
+//! Adapter for Merman 0.9.2 with audited local Mermaid compatibility repairs.
 
 use crate::{Language, RenderError, RenderOptions, RenderedDiagram, limits, resources, svg};
 use merman::svg::SvgPipeline;
@@ -101,8 +101,8 @@ fn finish(
     svg::validate(output.svg(), &options.limits)?;
     let (svg, evidence) = output.into_parts();
     Ok(RenderedDiagram {
-        svg, language: Language::Mermaid, backend: "merman 0.9.2", upstream: "Mermaid 12.1.0", family,
-        diagnostics: vec!["ELK and math are unavailable; graph layout defaults to Dagre. Font measurement provenance is reported separately.".into()],
+        svg, language: Language::Mermaid, backend: "merman 0.9.2 + local compatibility patches", upstream: "Mermaid 12.1.0 baseline + 12.2 depth coloring", family,
+        diagnostics: vec!["Local patches add Mermaid 12.2 mindmap depth coloring and coherent SVG usecase/tree fonts; full 12.2 parity is not claimed. ELK and math are unavailable; graph layout defaults to Dagre. Font measurement provenance is reported separately.".into()],
         measurement: evidence.measurement().clone(), layout_work_units: evidence.layout_work_units(),
     })
 }

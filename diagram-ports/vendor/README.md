@@ -1,0 +1,13 @@
+# Narrowly patched Merman 0.9.2 sources
+
+Only `merman-core` and `merman-render` are imported; the facade and all other crates remain registry dependencies. These are **modified sources**, not an unmodified upstream release. The original baseline is Mermaid 12.1.0; local repairs add the released Mermaid 12.2 `mindmap.colorBy: depth` behavior and coherent SVG usecase/tree fonts, not complete 12.2 parity.
+
+Sources were mechanically extracted from the exact crates.io 0.9.2 archives. `IMPORTS.json` retains original registry archive SHA-256, published VCS revision, and SHA-256 for every imported file **before editing**. Only irrelevant `Cargo.lock` and `examples/**` archive members are omitted. Original normalized/original Cargo manifests, VCS metadata, MIT/Apache license texts and embedded-source notices/license texts are retained. No build output or registry cache artifact is included.
+
+`PATCHES.json` identifies each of the four changed files, original/modified hashes and purpose. The test-only branch assignment helper is adjusted to the new internal policy argument; other behavior is deliberately unchanged. The renderer patch leaves unsupported specialized glyph/bbox/wrapping measurements on explicit fallback. There are no oracle fixture measurements or font-size/family SVG replacement passes.
+
+Repair sources/specification: MIT Mermaid checkout `6d8921f94f9a12b76586eddcf45a566080d4767e`, `packages/mermaid/src/diagrams/mindmap/mindmapDb.ts` (`assignSections`), `rendering-util/rendering-elements/shapes/{usecaseEllipse,util}.ts`, `diagrams/usecase/styles.ts`, `diagrams/treeView/renderer.ts`, and shared `styles.ts`. Depth coloring is released 12.2 PR [#8394](https://github.com/mermaid-js/mermaid/pull/8394). Tree uses Merman's existing validated family-list handling on both measurement and paint paths; usecase retains actor/HTML font selection and authored node font overrides.
+
+Run `node tools/audit-merman.mjs` from the standalone workspace to verify every imported byte against the original import manifest or explicit patch ledger, including inventory additions/removals. `--record-import ARCHIVE_DIRECTORY` and `--record-patches` are one-time initialization operations and refuse to overwrite their records. Do not regenerate baseline hashes after editing. Source changes require reviewed ledger updates, not silently blessed imports. The runtime engine never executes these development tools or reads these files.
+
+Cargo path patches retain the upstream package version for API/dependency compatibility; runtime diagnostics explicitly identify local modifications. Full original legal texts and embedded-source provenance remain in each crate and in the workspace's `THIRD-PARTY-NOTICES.md`.

@@ -1,0 +1,2656 @@
+{
+  "format": 1,
+  "registry": "https://crates.io",
+  "crates": [
+    {
+      "name": "merman-core",
+      "archiveSha256": "f1d2afe2084c0223b772756489a5da51ad0ecbd195aef90268f3037648738796",
+      "version": "0.9.2",
+      "sourceCommit": "8e303a43b548c9e40e73f0bc657925d66e7d4fb5",
+      "directory": "merman-core-0.9.2",
+      "omitted": [
+        "Cargo.lock",
+        "examples/**"
+      ],
+      "files": [
+        {
+          "path": "merman-core-0.9.2/.cargo_vcs_info.json",
+          "upstreamSha256": "f66297873fed6e4864f4789e7f769008d2c8c3c4b948dcd722d0dfee858f73df"
+        },
+        {
+          "path": "merman-core-0.9.2/Cargo.toml",
+          "upstreamSha256": "93a184e220f31294b6ae3c254a4399933ba96593a41c6f932faa0df3dcbb6bb0"
+        },
+        {
+          "path": "merman-core-0.9.2/Cargo.toml.orig",
+          "upstreamSha256": "5522ae51c2efc59a2cbaa4421b6ba3a2c5ed97b8b767b5967fbbfa635b72ca12"
+        },
+        {
+          "path": "merman-core-0.9.2/LICENSE-APACHE",
+          "upstreamSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "merman-core-0.9.2/LICENSE-MIT",
+          "upstreamSha256": "645fe3acd17f0ec18b05a5cbc8071c16fc888bfa8356d9087c265df69464d893"
+        },
+        {
+          "path": "merman-core-0.9.2/README.md",
+          "upstreamSha256": "01ca2c870fc0af1cd80072cd299b6e7b6f40aaf5af610b4d2b26ac476082963e"
+        },
+        {
+          "path": "merman-core-0.9.2/THIRD_PARTY_LICENSES/dompurify/LICENSE",
+          "upstreamSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "merman-core-0.9.2/THIRD_PARTY_LICENSES/mermaid/LICENSE",
+          "upstreamSha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+        },
+        {
+          "path": "merman-core-0.9.2/THIRD_PARTY_LICENSES/sanitize-url/LICENSE",
+          "upstreamSha256": "0984740e0c3d725c8044dec7edcefe1dbce180ef5a7bc710c251e19607000158"
+        },
+        {
+          "path": "merman-core-0.9.2/THIRD_PARTY_LICENSES/zenuml-core/LICENSE",
+          "upstreamSha256": "d4a77cbf1dc0975cd4be7266972dc6d3a6c6d68d43235384d6e4b6f12934e978"
+        },
+        {
+          "path": "merman-core-0.9.2/THIRD_PARTY_NOTICES.md",
+          "upstreamSha256": "d0a5174ac85b6b0f74bb9e52599528a6397055ccbf0fb20bc8d6b1206b91e26f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/baseline.rs",
+          "upstreamSha256": "ec3d1e0a68b8ce21ea0d036af7573a045879401aa3469f80a07fa39c6ee4db31"
+        },
+        {
+          "path": "merman-core-0.9.2/src/common.rs",
+          "upstreamSha256": "fe4e537f0a3d0d04e897aad8ee09ecd6b6e8e446f8288000105a17f99f10ce3e"
+        },
+        {
+          "path": "merman-core-0.9.2/src/common_db.rs",
+          "upstreamSha256": "957aed5b96d4f43af25a5572cbd418939b9b85a29ad65f8667a7c8ca25bc1187"
+        },
+        {
+          "path": "merman-core-0.9.2/src/compatibility_json.rs",
+          "upstreamSha256": "f41f5ecdc441cfa9556a19103896925addcf51bda24c23611695a2843efad88f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/config/appearance.rs",
+          "upstreamSha256": "599f2b454c3ee29fa795874024ca020d0982d790278122688f4b059ef0a4e10b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/config/mod.rs",
+          "upstreamSha256": "f9db4dd3207a82ccd99145eb7a312fa32c7ac0639529699c4204f6965ea46be6"
+        },
+        {
+          "path": "merman-core-0.9.2/src/config/presentation.rs",
+          "upstreamSha256": "ae95926f76c0cdab630218bb9e796cf078cfa6a7bacede3b9ae25f3a9afc0490"
+        },
+        {
+          "path": "merman-core-0.9.2/src/config/source_presentation.rs",
+          "upstreamSha256": "8660a3083b6098375ab23eb07e894180a7b2432e9c95bba79090851dc4517e7b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/detect/mod.rs",
+          "upstreamSha256": "12e05aee593179cc55a3b4e32b5e5175407fe616b19280510345606d62d7844d"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagram/mod.rs",
+          "upstreamSha256": "8a56d42972aaf5437a9d30e4960bcad0be62e3975ba9765c28d7845a9d7a33aa"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/agentflow.rs",
+          "upstreamSha256": "681147baf160030b9dd77bc0107a801213a280f109bb5f00b05c16c693a8be44"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/agentflow/presentation.rs",
+          "upstreamSha256": "39f76dee7f9634a073d952fba4daf99017de8b21e09fd72a1f65f939a5db3896"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/architecture.rs",
+          "upstreamSha256": "f888e9914f0c691e98cf50ae360d615f3e978f824ba73fc5ba70ceeb3483604a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/architecture/parse.rs",
+          "upstreamSha256": "1cfe8edb4cfce8124bbc698145d56a74d43af4383fd87b1d05892b74cd90d14e"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/block.rs",
+          "upstreamSha256": "bf7a33e81cf169eed00afbf5dcdb36bea0e4c2e8ec4b666459fb96cd87fde1fc"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/c4.rs",
+          "upstreamSha256": "43c91a4ef8f9888c849e011caa5f99b743ddd46306a5502ae3684445875c6692"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/ast.rs",
+          "upstreamSha256": "f6b3495077a137297097a0be211e796e727bcb918485dd706ec0f686fb9fd3ca"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/db.rs",
+          "upstreamSha256": "651921476dd295d3f6cf52ddff79d7b0d1953fd05d83413b9636b4251b963930"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/lexer.rs",
+          "upstreamSha256": "47e6b372f5e0bebe53e186d3685b2489bb5ce440c355a4114964a40cdf31edaf"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/mod.rs",
+          "upstreamSha256": "244e4599cb53e05fd8e26646c539edc4f845026d7975d0c3293fff1e6fcaa99f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/parse.rs",
+          "upstreamSha256": "e89252bcde77bb99ab1e7e267fe4ec1655642a1bf92ba3a0d3b6dc5f2a66c8f5"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class/tests.rs",
+          "upstreamSha256": "6e60cb9df921b82a973df340f56ad7bdcd2e86f1f7c6a67181b0f9859f374a82"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/class_grammar.lalrpop",
+          "upstreamSha256": "f2d4a368436cd65d0d532ff690ab5300ace8d02982882939349b19dd0310d352"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/cynefin.rs",
+          "upstreamSha256": "a4adb43f29c97ddfc5a1b6868414db02b457a5e98f541895d2601f9f72c0ff3b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/er.rs",
+          "upstreamSha256": "a00b796e84dde9a12039f00889da87b5428af2681d4c7dc9170baaee38c7c845"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/er_grammar.lalrpop",
+          "upstreamSha256": "d08cad7418c87e7bee471ddaa4514b3c6afe27abdcef9bb2213b8ba2b980fac8"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/error_diagram.rs",
+          "upstreamSha256": "dadff739c146b8ae0653b4b86938a562bbc3ce38ea43b95f4c15f33fdd8edda4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/eventmodeling.rs",
+          "upstreamSha256": "67fe3f873246cb3faf12934b50f0c0354694b1a3114a8e26518cd20eb370b3d1"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart.rs",
+          "upstreamSha256": "3d20ef12ef30f8fdf5e40133c775a1d856cc5a00096823a7803f290220ee55d8"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/accessibility.rs",
+          "upstreamSha256": "e0ad6b1382dd92b1b3165aa29705388d6739ff4483515cb7787fc721c8322d5f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/ast.rs",
+          "upstreamSha256": "09f314e31583bde1ec437a25ec90b2614268378a92daf978af0dab5d97b98694"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/build.rs",
+          "upstreamSha256": "dda514d6d4a2a49c8530cfc60556cdd1e3d3d1f6657990252b144767f3bd99b0"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/lex.rs",
+          "upstreamSha256": "2bec6f7dad9553b36e10cfaf0c11e41718b5f0676d6a3ce1eee0a01a9c3f1fbd"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/lexer.rs",
+          "upstreamSha256": "602e73c283fb31c727503b77a4b29d420a2fe06b3eaa4e42c75882faa93c03b3"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/lexer_iter.rs",
+          "upstreamSha256": "68b7960f8f2527db80cafd8606c257088214ba618aa84afc72b4f7dc4cf6b8f4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/link.rs",
+          "upstreamSha256": "ccd28165ef9878a0285988010b83b1056a2e4cf7fdff8dc42e8bc24e146b457a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/model.rs",
+          "upstreamSha256": "d6b609106c698c39d36f1b47751dd609f3f9c766a5d6d5d63a3cd76a2d9ea680"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/semantic.rs",
+          "upstreamSha256": "82507c3513f6df7bcb6c808f5274a55be1838afb29149862ef5c386171cb0e12"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/shape_data.rs",
+          "upstreamSha256": "8d3d192f9d0768453a83b584aef167eb36e4ac6362134d28aa9a8c32469c2820"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/subgraph.rs",
+          "upstreamSha256": "a71475cebcd67a4c4e6fe50f646368020d8b0358754ad67acac27c149e31837c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/text.rs",
+          "upstreamSha256": "0204a3a726d5cc890d7cda7631c8a0f303eea71162e49027346c89320be985af"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart/tokens.rs",
+          "upstreamSha256": "bae5f838cb4989d9e443315af1ad39b91b892c596afc056094c2e4246f1a9b79"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/flowchart_grammar.lalrpop",
+          "upstreamSha256": "c1d65ca536f7fa2e099f70e27d2dedcd021f38d6db70a079b59a8fa316ed7290"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/date.rs",
+          "upstreamSha256": "84eb3ae1aae5eb68b16ba879c48c81759140b96a96f93cc40da24dda4d2078a2"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/datetime.rs",
+          "upstreamSha256": "12cfa24e3a5074f9a7f08d15469638f9fbef7d8f251fa173f86f0eaf4dd32020"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/mod.rs",
+          "upstreamSha256": "b22fc407a4d704c969e65db92ae2792ec85b827681ce76830cba1fe0b64b61fa"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/model.rs",
+          "upstreamSha256": "0af13c440bb98dd12f65ce57ebca1c33ca5278e8ab973ebb62dd7c0984a974fe"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/parse.rs",
+          "upstreamSha256": "231c820d16b2eec83e3243c59e87ad8627faab90625ddc38e1904fb471063878"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/gantt/tests.rs",
+          "upstreamSha256": "8821a194ef41363d73b9497c98079eb2fe67ba99f4e9ec10db5d3daa448e2a64"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/git_graph.rs",
+          "upstreamSha256": "feb07397b0dbe6ed642d47eaef69793d7ca4f6248d1122c6aa57473271c90039"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/info.rs",
+          "upstreamSha256": "850e5c41b2c8ff95ddc3f855aeec5dac4a142668be88768e7ede9a6d8e7e1470"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/ishikawa.rs",
+          "upstreamSha256": "6cdff766c78b4b6f01a18a622fa85f5656e28f64efafcbcd492fa290bc24fef2"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/jison_unicode.rs",
+          "upstreamSha256": "cbbf4feb651d286b4374ae9761660e0a5196d4c412c330e26b2f718efbf41940"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/journey.rs",
+          "upstreamSha256": "11b6229a068f3d4a97908c17568f36dfc21829646ac221b5473cbcd5969e9392"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/kanban.rs",
+          "upstreamSha256": "20c24c4e3a9a07abd525ef5b4c72174f4f797a0d95972283bc459ed2aea4b6b7"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/langium_common.rs",
+          "upstreamSha256": "a03c4fff4e7141a6e3d79acefef19e281810d5956170727312ec60a4e0b5793d"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/db.rs",
+          "upstreamSha256": "0bcfdc1d7baf75945d33dc1c9141419d11cb3a5bc3d5742d8cfc0836227989e6"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/mod.rs",
+          "upstreamSha256": "522463c6f85087ff8a319470f0730191acf28bc6d3fcc2a4ec9863add150570b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/parse.rs",
+          "upstreamSha256": "a1efbe497e64ca6cedfb6b128304d2e591f4009c4fc2b94849ab641988f25a41"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/render_model.rs",
+          "upstreamSha256": "d6722b42c97dc6a28cf169a7da52da7b8f9c5cdf68dee0aa3773419f1de1ccf8"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/tests.rs",
+          "upstreamSha256": "536cc56148100b20f4c5727c97b6f5c012f24757b3637d14fe2307cb1f9655e4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mindmap/utils.rs",
+          "upstreamSha256": "600812cab23722d9b3589f7e5cd36b9de3711fd68c88a9dcdb26ca12eb5db4f5"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/mod.rs",
+          "upstreamSha256": "3075ac7eb45bcbe260a9d2b40dbd6be28c16d4f37639785fd2cd242960c36923"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/packet.rs",
+          "upstreamSha256": "dedc72c7589973f9c895c2c45d5d4dcbaf2701f2b4bde619c16bb0909fb186f5"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/pie.rs",
+          "upstreamSha256": "6440905d17f2ba97d5f8faaf9506a9d3f1ab1b50f23ebffc821cde2a40cdb94a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/quadrant_chart.rs",
+          "upstreamSha256": "291e2985284538ffcf651f960f2e55c323a04ab994eaafd0d96f9e86a2b7a0d1"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/radar.rs",
+          "upstreamSha256": "7d7d8fd8c66e6ef86f9fae0aecd9efa39a23ad1200438ce459389140b1597a11"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/railroad.rs",
+          "upstreamSha256": "1323d75787589e41f7e2facad34a157141d0929b8e9a208f5132a7c885e3b63a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/requirement.rs",
+          "upstreamSha256": "1fb6580910fc45f8485fb00778b4755b080d27820b15d6b6091ee7c1bcd2de2a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sankey.rs",
+          "upstreamSha256": "894a86c9417d142daec73ba8d097a81a8c6429a7959b422107cb4ea6a980beb7"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/scan.rs",
+          "upstreamSha256": "3963b12230ccfdf8feb7c7784eea0e36405f2ee81f98a77eca1891cbcb806e41"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/ast.rs",
+          "upstreamSha256": "f8c4f33f9b79f8072e9cb3ef12e3b6bbd2e0234fce51fb56a56a7bb4de618d0f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/db.rs",
+          "upstreamSha256": "f4602241d3b3a4e7e4d2ecd0d34077820164691d41f699887953f613e3d32cee"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/lexer.rs",
+          "upstreamSha256": "1ec2e96ad399ed2f28381aa105ecb945c530984b8b10a9b5d9148c6ed09b3ff9"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/lexer/actor.rs",
+          "upstreamSha256": "62ff69df4f3e8600b74d3addd0b4f168dec3619887fa98b412e40387ee28e520"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/lexer/scanner.rs",
+          "upstreamSha256": "6a56bc472516f809e82920d4798fb6106d41290526c2b18af0d7bb0c6c881877"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/mod.rs",
+          "upstreamSha256": "ca01c7c09fab76473df555565bf5582faf599ae2cdd2c2b2fe90435f7a661350"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/parse.rs",
+          "upstreamSha256": "d5591ec5e9203419675b433c074352fc32c1d3ddaa5dd7ec412dac2d52ab6389"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence/render_model.rs",
+          "upstreamSha256": "359614a07b3ad020061cad495554ce12642ecb9b1cd98f51610d47baf359f873"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/sequence_grammar.lalrpop",
+          "upstreamSha256": "1649bbf7a3bddadc42c6156877c7cdc6b3b37dbaa56080a23b1c96905d804522"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/shapes.rs",
+          "upstreamSha256": "2d0773ac240abba19cfcdac0f6d47bf45cc187aab0cc00141334d7ca07ece854"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/ast.rs",
+          "upstreamSha256": "be6cd908232614ad84099276b18f1aba1de7983a54442711fa9c8878a517adac"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/db.rs",
+          "upstreamSha256": "5d64ecb3ab0159387d5c13b4a243ff5df2e3e195d81828e0f7075807aea11a7c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/mod.rs",
+          "upstreamSha256": "e84853ab991823b459febb638bc50713baa0a061b4a39a1df99f207c725dbd12"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/parse.rs",
+          "upstreamSha256": "f2c59a3c15562cbe7abda1c73f3bf2d9a9c7c2dbbd996a4adef80d64b2fc8a57"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/render_model.rs",
+          "upstreamSha256": "480789c07be7666d22a1b5778f48d0b9fad48f925edc3d4627fb116ea9caa37f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state/tests.rs",
+          "upstreamSha256": "38a182ac144a4eb75aec903fb0f0fadfbf73a9a6de5474596104d929766ccd83"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/state_grammar.lalrpop",
+          "upstreamSha256": "5f5e2d5cbbf04e75b4ed3f439cdf2c0e0eef36d73af57edfdcb74d0c4067a6c3"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/timeline.rs",
+          "upstreamSha256": "c9c86d39a320f40b192e6dbb9b98eba2bf9915a589872ce706580e34e131e687"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/tree_view.rs",
+          "upstreamSha256": "72243037afe3e2cf1c59a0da5fa935014b07cbaa4b2ccca47fcaf272e6625d4c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/treemap.rs",
+          "upstreamSha256": "50119aa9816980bf9beeab3d4a6f29fab1198ff460964a629afeab215a839d30"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase.rs",
+          "upstreamSha256": "31ef059d0676dee13d41055a7aa322431a0169df1d4c11a06e73302d518eb1a4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/json_string.rs",
+          "upstreamSha256": "78598a0589d20b60d0349d6e17649209b9ad488f53f5b5266c9ca3dd3a8e1bab"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/lexer.rs",
+          "upstreamSha256": "34df3171af3005699fe3eacd0e3306ea86bdb9494ad5926c9aaea0a5a4a3c1fc"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/ordered_json.rs",
+          "upstreamSha256": "043cde95ed01c000187ce775d8d07015e40a7c0a4e86c1a458d2991342edcb5f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/parse.rs",
+          "upstreamSha256": "d197b473607be8584ec90c79aeb60d6ca0abc66962143f4b208ddc04f2ea1a1d"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/resolve.rs",
+          "upstreamSha256": "aa6c356d8aaa16b20891b3fbf55b5866e62eae079cf1aefa75dfad2e24b49b34"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/usecase/tests.rs",
+          "upstreamSha256": "0c79f17a902d83b4b35859b61b8f48c4b6695a684f9bf160828f3bdb4508d840"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/venn.rs",
+          "upstreamSha256": "0e6a2ce7bcc9fb8d2227dfc2f78a269e8cfb2916a496dbec5c24134a7f176514"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/wardley.rs",
+          "upstreamSha256": "e2eee0eb5d4845486075f7e7eef5e0ccbd5e7eb11fe694ff40c4228951ad9914"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/xychart.rs",
+          "upstreamSha256": "3b14457539cec341e6909b0d50879a8750a23f861629681576ab649a32ecf1d9"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/ast.rs",
+          "upstreamSha256": "06e2eef1b49bcf0dd55b0105abad3de68dcad18adcf61534dfbeb3bedf45872b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/lexer.rs",
+          "upstreamSha256": "4c6dc954a9eed4cfb7a3faeaf8b37c71bb2c30e15506b724d0843273fae8d500"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/mod.rs",
+          "upstreamSha256": "366e869981dfd2e23a5de1c254a263d04968fb2303b9364654496bf89effd1ec"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/model.rs",
+          "upstreamSha256": "2837ffc5a9e5a462837e6e736c868ec1f2600e51bc381fc6a1c9dffb1a9e84b3"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/parser.rs",
+          "upstreamSha256": "1563f49a383b6390e354bfde5f58a46e3771728862da398421b8e3a6172713ed"
+        },
+        {
+          "path": "merman-core-0.9.2/src/diagrams/zenuml/semantic.rs",
+          "upstreamSha256": "07b6d788e883c9c89877f00336e2168d9ac40b4c505633bc0240463ed5f92429"
+        },
+        {
+          "path": "merman-core-0.9.2/src/editor.rs",
+          "upstreamSha256": "de17fe80a2145cbbd8728d26c38ad6fba8052c7a53f72e95dd13ab259d7b887c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/entities.rs",
+          "upstreamSha256": "e4297650be03722317b6a20affaa0796e54171bd29048eb1544d5f903d0398c7"
+        },
+        {
+          "path": "merman-core-0.9.2/src/error.rs",
+          "upstreamSha256": "1d381f44d6c6792c4d68265518faa3e1a5cae531040245465a8cb3506de26d4f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/family.rs",
+          "upstreamSha256": "01f189b072dd9a26475567733c1927bcd95d0e33c9500e8b4e348751967cee87"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/default_config.json",
+          "upstreamSha256": "7a5e656b90f4cf5d1f53f70b4211e313de4f183d6e82bb6e2a117c045c440b45"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/default_config_shape.json",
+          "upstreamSha256": "56b4f1058cb8f153858b651eef4d33bc466d3a8d07dc16895ebf9e6b0984f247"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/dompurify_defaults.rs",
+          "upstreamSha256": "e5be84096070911907afc8303b093f026f1c728b4946a9d91b54cd565de6d182"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/editor_rename_policy.rs",
+          "upstreamSha256": "7de66fb9f472afb2a7121c3efccb763ab90b2551892568e9b9b36f357af5d9ea"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/lalrpop/class_grammar.rs",
+          "upstreamSha256": "368a147a25e35d51a9594fd06101d2d1c07d81fdd943b43a5486c1ddbc03571c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/lalrpop/er_grammar.rs",
+          "upstreamSha256": "2b60b35956a31663441a25200cf87ed9c9b95441cae8ce053ad1ad6159afbe4a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/lalrpop/flowchart_grammar.rs",
+          "upstreamSha256": "0fc8bbb6ba3067157acd3f5f7f3f6014c7c0f4e2bd832fb072d94cadaab47e48"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/lalrpop/sequence_grammar.rs",
+          "upstreamSha256": "655fbc367a436b01fb58614e4d39bc3686ee1da6a4ecf9bf4ee831c708ab8e9b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/lalrpop/state_grammar.rs",
+          "upstreamSha256": "40b2f9e832d65c5b8ff1d87e1f8af327fcacaf3ab62a5b52c7c81f03fe28bb9f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/mermaid_reference.rs",
+          "upstreamSha256": "87d93dcaa3d2903d19eda1ec6b7204e93b6d71695dd0bbd2c27bd46dafa2d8c2"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/mod.rs",
+          "upstreamSha256": "586f450838383d2cd8e064cf5028c38ef66620b04e524691e706095e9a9d449d"
+        },
+        {
+          "path": "merman-core-0.9.2/src/generated/theme_variables_12_1_0.json",
+          "upstreamSha256": "e078a2b0413cca529e7294d82bb3e658c5f8f8496ceea3488f52996c305f77b6"
+        },
+        {
+          "path": "merman-core-0.9.2/src/geom.rs",
+          "upstreamSha256": "53d8165c6a777be925cd72b47f11cfb1475b9e9d80b094e430d4a426649f2173"
+        },
+        {
+          "path": "merman-core-0.9.2/src/inline_config.rs",
+          "upstreamSha256": "8fcb84400ee9247e0a3cd7a7380c121e93641967c32600c5427b02c6acc1897e"
+        },
+        {
+          "path": "merman-core-0.9.2/src/lib.rs",
+          "upstreamSha256": "fc95204bcaa94551266a8aa007543224e903b15b108eaf2819e9ecdd5f95bc3a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/models/class_diagram.rs",
+          "upstreamSha256": "ce1b40208c0078de7087a442177b09610fd797dcacc41b09070e9aee712302fc"
+        },
+        {
+          "path": "merman-core-0.9.2/src/models/mod.rs",
+          "upstreamSha256": "1a721df67dc59777f800c01af275d968b40870d7d06120335ecf6f1ebd67fa49"
+        },
+        {
+          "path": "merman-core-0.9.2/src/operation.rs",
+          "upstreamSha256": "26540404cbfa900cc3fcaab7b59af10118c3f7011a334fe47bddddcc4cca8f3e"
+        },
+        {
+          "path": "merman-core-0.9.2/src/parse_pipeline.rs",
+          "upstreamSha256": "859265bf03d65f43d55d4ca1e1b3d74c73940888b08386a573e83082a0edc78f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/preprocess/mod.rs",
+          "upstreamSha256": "3ebf3d117c8831301b78b8febe40633f19f50bfca4eafee500a888a856150d2b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/preprocess/source_config.rs",
+          "upstreamSha256": "91197757d7f5494dd3421e4071611b7b3e1a63e2301bb971826cbc5645a23718"
+        },
+        {
+          "path": "merman-core-0.9.2/src/preprocess/source_edit_map.rs",
+          "upstreamSha256": "cd26c2b3c11c1fe41f5f7838acf79efefbc8ccd9012bb550d5d2b5869867ee9e"
+        },
+        {
+          "path": "merman-core-0.9.2/src/resources.rs",
+          "upstreamSha256": "32a6b71a11a81227d2e5d0afbc2ec25b6aee4d649a08c6cf364441ae2885c833"
+        },
+        {
+          "path": "merman-core-0.9.2/src/runtime.rs",
+          "upstreamSha256": "9938ecd4749e81fa96756b66ce1a9bea0ac5102509914637196a1913b1b0fdaf"
+        },
+        {
+          "path": "merman-core-0.9.2/src/sanitize.rs",
+          "upstreamSha256": "ec867880043a3e68d562c02a3d8a46207f50cab8ec26f252008c340bf9406978"
+        },
+        {
+          "path": "merman-core-0.9.2/src/svg_security.rs",
+          "upstreamSha256": "44a1b2ce0c77ee7a80c355eeb408a631882cc3ee09b24df3191ddaa2a60c1df3"
+        },
+        {
+          "path": "merman-core-0.9.2/src/terminal_text.rs",
+          "upstreamSha256": "41193933c76c711081c9c26ca59cfa24e200084d2e548d09445ddb513217951b"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/class.rs",
+          "upstreamSha256": "70066b798215e04902053687d1faaca7dfacf7adaf35962b5f6d9e4b69a876e8"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/cynefin.rs",
+          "upstreamSha256": "3cb005ac66428f83a66b38d36d3ffdebb1b3ff75de683b30279cb3da08af61a4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/detect.rs",
+          "upstreamSha256": "abf17d3633bee5b2c355183773efd4958195b3cc2e8804ac6a1ff7f9f3c933a9"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/er.rs",
+          "upstreamSha256": "e4fbd72bdb2888ceb64c4d654bfcb26c747f3a0aa64650e9a584c6a4dc642a92"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/flowchart.rs",
+          "upstreamSha256": "8f12f2ea2b31dd5530e9d2bc6ee5fe8806e1d86a471657c79d53a848a1bfe7f5"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/flowchart_shared.rs",
+          "upstreamSha256": "2ca4435db1a8fe97f402943069b90d34e5c182634cfdbf43f7e2cf2930f551b3"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/info.rs",
+          "upstreamSha256": "032ad231a63d2911f547eb950bd7b2ff5989bf4888706d89c3e9f1b843ae44a4"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/misc.rs",
+          "upstreamSha256": "d8c01bac731914739f82d17810b66c620bf02a86fdf204eccb099efd7c77be2f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/mod.rs",
+          "upstreamSha256": "a154cd455e98b2f85f5369d3c028fe5b4304ffd42f9fd01906dd6e0dfd7bae15"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/pie.rs",
+          "upstreamSha256": "f0724ce3c6990ddc3241ed46f23f685b6d4851af12d0792dd1f5eab847e9b9da"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/railroad.rs",
+          "upstreamSha256": "c66beb3a2b91eb9606659dd5f637fa7dc7cc2ede8bd2e3041c01e21b74b515be"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/registry.rs",
+          "upstreamSha256": "7ee7fd56d5f97afd20f04fb88cf195feb3701595686ea7c1dedcec416db660a2"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/sequence.rs",
+          "upstreamSha256": "35c0d6e7585e5f5ddcaa72ee6adeec425e959e94a6175d8b4e39ee19c5b3f11c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/state.rs",
+          "upstreamSha256": "80a579e910dc2f301d9bab0990010ea3ebade4d437fa63d41c5767d0da55e82a"
+        },
+        {
+          "path": "merman-core-0.9.2/src/tests/swimlane.rs",
+          "upstreamSha256": "5bde8344d6d8b66dfce374ab0eaa82347a98b7090a380257d249e54a9b129730"
+        },
+        {
+          "path": "merman-core-0.9.2/src/theme.rs",
+          "upstreamSha256": "02429b8a82a5b7b9be6deb13ed238cbff45cb9207ee93226bfe3daa40e2d4f94"
+        },
+        {
+          "path": "merman-core-0.9.2/src/theme/base.rs",
+          "upstreamSha256": "13cf7c497ad7bbb9f03f23e27f1c977a22844370bc0731169e12a6d21ec8cd27"
+        },
+        {
+          "path": "merman-core-0.9.2/src/theme_color.rs",
+          "upstreamSha256": "f86840f5f3a09f7ebaa4c9bca9400ef827de83519e96bab7e52674d53552f6ba"
+        },
+        {
+          "path": "merman-core-0.9.2/src/time.rs",
+          "upstreamSha256": "8e065a29cfd8e5b4b5955453ad6552d17c45b846d22557f723253ff7b7db9692"
+        },
+        {
+          "path": "merman-core-0.9.2/src/time/civil.rs",
+          "upstreamSha256": "665ec0faaa45dadfe601a20a32d41dd4f8f986f1eff1e3a281f76f5d73fd7f5c"
+        },
+        {
+          "path": "merman-core-0.9.2/src/utils.rs",
+          "upstreamSha256": "72c5ca94224fa3e3c8c58f6e09c7ffb6079fc0ec39e8392a7f2c3d32bb067a2f"
+        },
+        {
+          "path": "merman-core-0.9.2/src/yaml_config.rs",
+          "upstreamSha256": "39e5a9d2e60e472f3af4cae158dfec1fb92f78576081443ba1f8b6b53b2ee0cb"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/agentflow_position_contract.rs",
+          "upstreamSha256": "8c5244183937ba612a68aa38d54f8aa37b4ebec47320e36f355ec17604d37c0e"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/appearance_resolution.rs",
+          "upstreamSha256": "c5b5296aca1f6097ce160431cb4e9d7bedb8bc738b7e4918bad6b51905981386"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/block_lifecycle.rs",
+          "upstreamSha256": "64c2a1e308067614d9248f8b89cb27ea0dfff58d207d77d987c837a6aec7437e"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/bounded_lifecycle.rs",
+          "upstreamSha256": "5916b8079085d098455011c94a32602e0dbfc7da84647d8a43362dac813e49fc"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/deep_lifecycle.rs",
+          "upstreamSha256": "bfac3175e9eab7aeb611a1b30211b03e3bfede92094e0c14a4c9801a9f0ef8e3"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/diagram_features.rs",
+          "upstreamSha256": "92c0e52fb436509c9371440600573d3e03d67e68d67a08a60469a6dcd144f4d0"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/editor_semantic_facts.rs",
+          "upstreamSha256": "586cfcce92d75b2ef364aba020c1a0623de5224260e39135c943bc7168157e8c"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/eventmodeling_contract.rs",
+          "upstreamSha256": "014f9f1476d5e4398bbc1226fe248e945d7d2dcc6049ba011377da63d77efa34"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/grammar_carrier_lifecycle.rs",
+          "upstreamSha256": "cf0672baa14c6708a84bc526d527d1fce74c8455e230f4486781b6e0c3d4ecf9"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/jison_accessibility_parity.rs",
+          "upstreamSha256": "d993a6d26d144a03438879f3bd27b5d07dab41ff129975f852b9044f49642a25"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/managed_semantic_json.rs",
+          "upstreamSha256": "cbc78f5540086dacb6fba537a4af1949da4d3ccf282d1e6cef84fb2df5e70f47"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/nesting_depth_limits.rs",
+          "upstreamSha256": "66aa5ef02004ee2a3cb36bc48e384781a35a845c665351737e27ccee114fd711"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/snapshots.rs",
+          "upstreamSha256": "190c94973fbd6237d6996a0675ee0196e869459951e434d52cacc1401e692b7d"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/source_presentation.rs",
+          "upstreamSha256": "c724577db207756ce40677f7b47728f3f06db393c16b6fc2c3b96efc299831a6"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/time_domain.rs",
+          "upstreamSha256": "681090a9e7a9772710c4653207f5d7ed9a8f37e1b580be9fb929bbf22f4a19fd"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/usecase_contract.rs",
+          "upstreamSha256": "fc16505e2794475c57d1c60118fd5240ebc2db4a4208524bf87833172b9374d5"
+        },
+        {
+          "path": "merman-core-0.9.2/tests/zenuml_grammar_test.rs",
+          "upstreamSha256": "5a362b5522ca64652e0b72f2428fc5f40bab0355ba4bfc40d649a3d86e584298"
+        }
+      ]
+    },
+    {
+      "name": "merman-render",
+      "archiveSha256": "321c4ca6f834e07b01790c1bc2591dc3a51f450c56c4c71a8111000a50efec0f",
+      "version": "0.9.2",
+      "sourceCommit": "8e303a43b548c9e40e73f0bc657925d66e7d4fb5",
+      "directory": "merman-render-0.9.2",
+      "omitted": [
+        "Cargo.lock",
+        "examples/**"
+      ],
+      "files": [
+        {
+          "path": "merman-render-0.9.2/.cargo_vcs_info.json",
+          "upstreamSha256": "d106caac93ddb614ab4185d3ce1cc333c4dd1614812a80dce3635aa7e5234e1a"
+        },
+        {
+          "path": "merman-render-0.9.2/Cargo.toml",
+          "upstreamSha256": "50e44db6599934d7c6032aaa68ce278b9fec50517b7511768d433a1f65c90cff"
+        },
+        {
+          "path": "merman-render-0.9.2/Cargo.toml.orig",
+          "upstreamSha256": "482f7bc8dcd9d185bd35a132b8000cab3e63984679a95f9fe0d5a7773861891c"
+        },
+        {
+          "path": "merman-render-0.9.2/LICENSE-APACHE",
+          "upstreamSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "merman-render-0.9.2/LICENSE-MIT",
+          "upstreamSha256": "645fe3acd17f0ec18b05a5cbc8071c16fc888bfa8356d9087c265df69464d893"
+        },
+        {
+          "path": "merman-render-0.9.2/README.md",
+          "upstreamSha256": "837f0b3513c2cef0f81f3941f549109a13a3485e87a26a6afc7d0d65b338b555"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/d3-shape/LICENSE",
+          "upstreamSha256": "faa682e3e430941f958d26180458f5934a62f58dac4d70ccdd15608c15d0f884"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/fmin/LICENSE",
+          "upstreamSha256": "e4503e78185bff178d3ee91835f082d05771da1b3a2d795f17e03a40251bab77"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/mermaid/LICENSE",
+          "upstreamSha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/rough-rs/LICENSE",
+          "upstreamSha256": "0bef4264af5b4af4de4b01700f27afb7bdaf7498949692ff272ebf24489b0531"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/roughjs/LICENSE",
+          "upstreamSha256": "dca9a392272606ac748ac0976a2a1133f14eef841c27beaa51a844d53c56a09d"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/unicode-linebreak/LICENSE",
+          "upstreamSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/venn-js/LICENSE",
+          "upstreamSha256": "6a3508febf2cfccfee96597394543a6154a4bb0b1f91f28404be42c09e9fcb54"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_LICENSES/zenuml-core/LICENSE",
+          "upstreamSha256": "d4a77cbf1dc0975cd4be7266972dc6d3a6c6d68d43235384d6e4b6f12934e978"
+        },
+        {
+          "path": "merman-render-0.9.2/THIRD_PARTY_NOTICES.md",
+          "upstreamSha256": "1e287ec4bcd573267173de85e093c35566ce910d136ad77deafe9598ad4f6ed9"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/README.md",
+          "upstreamSha256": "df1d01993adda5d06ecd2a20f70fccda82a79a604e632f0d3897c167b4cccbd1"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/katex_flowchart_probe.cjs",
+          "upstreamSha256": "bb330fb16de230b6b2db1b61fe3cff4ce624d041392cf5036f91eab4ef024199"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/LICENSE",
+          "upstreamSha256": "d4a77cbf1dc0975cd4be7266972dc6d3a6c6d68d43235384d6e4b6f12934e978"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/README.md",
+          "upstreamSha256": "6e0b2e1e984a34f14070843a0d36fbd6dcbaf75b33c50c38148d6c4776c20c7d"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/actor.svg",
+          "upstreamSha256": "502a5b8566f9d7f3621c9459c3d35cd25a8628fbca4c123d0b023f88a2a333cd"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/azurefunction.svg",
+          "upstreamSha256": "1a6c9c108d5f63f7b78bc6fbc464059acd2eaa8c1d111e9bcd28a8b2cdf470b9"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/boundary.svg",
+          "upstreamSha256": "4c3f60734af2fbd2191f880b2d2ec55225ff339b59f0bdcd4fe77d3b54dbd2f5"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/control.svg",
+          "upstreamSha256": "64d9aa04d905c62762ab7bf19e7f42ba78b4843d026e7d3823db6addb613cae8"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/database.svg",
+          "upstreamSha256": "c400ec7b8da9a1c8e4324e02feb4b4743c528ad45ea0d5d443feb15315b7e400"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/ec2.svg",
+          "upstreamSha256": "155b13065f4420c794f71fcc3c5d3f78be4e1e53d65f3b5388ec7742f8875ddb"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/entity.svg",
+          "upstreamSha256": "0ebeda02e1922d323d7118b7f6025ef28043ceb940b64ba87576cabf009d257d"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-alt.svg",
+          "upstreamSha256": "661310f14d8779bcf6a8171a28905dcc6db69ec8919703bc6c55c5d074815440"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-critical.svg",
+          "upstreamSha256": "2b2634f268f04784d5b9afd5e00cf4eeedd89e78bb52aa7e90228efc68922431"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-loop.svg",
+          "upstreamSha256": "24d3b7bf2b3c53d7463201af017ca46b47cfe8d8ab67c48f2e064d9430a8876e"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-opt.svg",
+          "upstreamSha256": "f06ceede25ac9ab4c669cf9f158b44cfdec7ab6aedf9f49613ba085f592d0dbf"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-par.svg",
+          "upstreamSha256": "82abd7f9b1386281ebaceabf3fbbbab1123cb7e851857e84550f38c39bc5f3be"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-ref.svg",
+          "upstreamSha256": "60d4a29de41e8a6738b5776d4409c55cc72a35fb02a2ccc1d19e00c92d3f6587"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-section.svg",
+          "upstreamSha256": "81fb298a6460f96bc68a79613673b35d1d232ed23f68bfa13ef92cedd0a3c9d2"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/fragment-tcf.svg",
+          "upstreamSha256": "b48b67f7f6d53fc424611cec28f424020434dbd5f46105782e2eb883e398df50"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/iam.svg",
+          "upstreamSha256": "2bdcac04a28e4b5bdfc3cd35d7ca496ad1f6fa0bc70e5f9200599b443af71624"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/lambda.svg",
+          "upstreamSha256": "6f29b9801170221431fbc78f67b689a9580c62f64e453f8d18a5cefd807636bf"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/sns.svg",
+          "upstreamSha256": "1e3d19286abcc04364d5a2e8f83faa1dddf1657d68a1d9e9c6bfe351f0c5e242"
+        },
+        {
+          "path": "merman-render-0.9.2/assets/zenuml/sqs.svg",
+          "upstreamSha256": "39915b6e2eb2d77286a905bb0ca94912bca36605d518433db3b3f0d113e5d07d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/architecture.rs",
+          "upstreamSha256": "0ab0a39ba87f0b92d94af7f94f8a3dbcdfb9e45831decc2ee17f8af35ea54c52"
+        },
+        {
+          "path": "merman-render-0.9.2/src/architecture_metrics.rs",
+          "upstreamSha256": "2ec6b0473bb1f31d339cca296fbe58bc0bbd7efd6d4074515f5234d0bf53146e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/block.rs",
+          "upstreamSha256": "c05b6a215e7cf157e2e2bc64f0d7b7881908543c072845fb2618d7494e726081"
+        },
+        {
+          "path": "merman-render-0.9.2/src/block/config.rs",
+          "upstreamSha256": "77df24158300d1e079d8b885b6c8bc313590076d21c47080cdde30b169db5383"
+        },
+        {
+          "path": "merman-render-0.9.2/src/block/geometry.rs",
+          "upstreamSha256": "8683d7cd4e00ae90ee9977e7e300f9351af17a4a00d37f27d2a74664ab4c30f1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/c4.rs",
+          "upstreamSha256": "2719e20b02c371f710ef3a842ea25a673e7f7f8bc319ca5db7b7772a26a88545"
+        },
+        {
+          "path": "merman-render-0.9.2/src/c4/config.rs",
+          "upstreamSha256": "1d17caa95b97406f191aff662584d1c1436f73d5befeb2a9050066acdd0cb500"
+        },
+        {
+          "path": "merman-render-0.9.2/src/c4/layout.rs",
+          "upstreamSha256": "e7aed3538d637b7d178663cf00155e526b203f63e73969a8e9b926588e94d381"
+        },
+        {
+          "path": "merman-render-0.9.2/src/chart_palette.rs",
+          "upstreamSha256": "86399a9ca007cfd9b0f7041a713a1560846a1864c89cebdbc5949f57f2e087ab"
+        },
+        {
+          "path": "merman-render-0.9.2/src/class.rs",
+          "upstreamSha256": "1d860a480c256633cc09b1e73614b7071950fd4f707afb4294f0f56dfe4237df"
+        },
+        {
+          "path": "merman-render-0.9.2/src/class/config.rs",
+          "upstreamSha256": "05a2eaf719e8b90457a29c75c9de46119c08fa8a80814b491c5b4c63118d9a71"
+        },
+        {
+          "path": "merman-render-0.9.2/src/class/elk_terminals.rs",
+          "upstreamSha256": "96db62b51ab98cba733df6cc4f6078ed234b71640db9f65f6fa6ba6e13627007"
+        },
+        {
+          "path": "merman-render-0.9.2/src/class/measured.rs",
+          "upstreamSha256": "011448ab2d8f7b82b4cf42fa23a5f70577e04f054ebd00cb923d5434a4091108"
+        },
+        {
+          "path": "merman-render-0.9.2/src/config.rs",
+          "upstreamSha256": "c24986791934f76baa8a764586ab531842da22d6f83c84617fee2dd59e0cd35a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/cynefin.rs",
+          "upstreamSha256": "3335dc3a19152549d39a27e447561e66eda29b40ca9bc30214b1bf712c2042fa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/dagre/mod.rs",
+          "upstreamSha256": "ae3a7267d59bfbeeb75ba81609dcfc415268f5beda5d15cf58be516d09718e29"
+        },
+        {
+          "path": "merman-render-0.9.2/src/dagre/self_loop.rs",
+          "upstreamSha256": "a25cc8675f5ead66fc7b5d1898c95e75bef10b725ef1b35e0a67de998b537f13"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_adapter.rs",
+          "upstreamSha256": "818696c043d3af0d9977d236aa2916469d8444c3be51368ac5dffd8f48e2b30c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_edge_geometry.rs",
+          "upstreamSha256": "b12028cde8b88610e35812a3ca6eac09dc116c206e759ad34888b3de0de4bd55"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_feedback_edges.rs",
+          "upstreamSha256": "8e7ed0a212bf03935d6b90b6a2bbd46b66c0cad8735fc89ea7335a90ed456cc9"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_geometry.rs",
+          "upstreamSha256": "7b4cd5f2258cf59a45635a8dbe7eefa76fb303c32c453662dc04a9d4b5287806"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_hierarchy.rs",
+          "upstreamSha256": "9c7a6517378476320765a5a29938777be7b259607bc23e0de25c237045b56e24"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_options.rs",
+          "upstreamSha256": "b94d54785db369c0c13bf3163da292e8131da43b54c158de6e1ccef61e031b59"
+        },
+        {
+          "path": "merman-render-0.9.2/src/elk_terminal_jogs.rs",
+          "upstreamSha256": "eeba05d2162eca85c02b493152c82da2c302d261822067d02a4fdf9f74fa085f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/entities.rs",
+          "upstreamSha256": "f5b038535f68e928ff3861df4e7c2fb3c9cd8b42122b3e3b6de499c3100c4e01"
+        },
+        {
+          "path": "merman-render-0.9.2/src/environment.rs",
+          "upstreamSha256": "4f56f1a5eefe1e07ad45d4f5f5b1fa9f4fa38f41becf66f673f129d1a8387e77"
+        },
+        {
+          "path": "merman-render-0.9.2/src/er.rs",
+          "upstreamSha256": "4f5d602a11ce27153c3fc32ca2f2fc382f2255e13e30ee4800d23e64b1396735"
+        },
+        {
+          "path": "merman-render-0.9.2/src/er/config.rs",
+          "upstreamSha256": "f7f6b67d5a6916d8f6e3d20fe7211563d2663e3d2c514c9e331c5816adfa2748"
+        },
+        {
+          "path": "merman-render-0.9.2/src/error.rs",
+          "upstreamSha256": "38d59eb66504b2de3aae3ae8511b9d23d1b9fa42c7826caa8ee5b086be8ba17d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/eventmodeling.rs",
+          "upstreamSha256": "42508e76b224e20a5243ca29e2034435f36b98da341a0e2ee9fff816d9e21fd5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/eventmodeling/config.rs",
+          "upstreamSha256": "262b6de69fbf08847dc46554f45db9b7a43a8f7a0d30ff191ae864de964fd777"
+        },
+        {
+          "path": "merman-render-0.9.2/src/family.rs",
+          "upstreamSha256": "8ccf9239212815744ed9e239c6d5781189583f06bae17a84c9fbe3c774b23810"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/config.rs",
+          "upstreamSha256": "949193d98a49edede203efcf894b6b85f068759fa3f3766586b50907e9654f4d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/elk.rs",
+          "upstreamSha256": "f13a4d3baa3f6bf02e2a0a74a6648e6cb95fbd0e40e84301827a9bd7b9447c4b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/layout.rs",
+          "upstreamSha256": "c2a084bc28507c63acfb1ca6d9260beee96d7f6a78fd0946417c925f6092edb0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/mod.rs",
+          "upstreamSha256": "df632cc6d25138963b116488cfabb41c08bd76fb7a6abd08d4f3102960b96273"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/node.rs",
+          "upstreamSha256": "953cde541aa8513b2790943c94e1762ab53ab2e7b98c596f7ff095680b105a75"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/self_loop.rs",
+          "upstreamSha256": "fa80a2311f3eecab38065c8caa9bb5e033090db500f496809d1fe66d10ca1a1b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/shapes.rs",
+          "upstreamSha256": "0f6e80642d8d55196c2dcaadf392182df8910e19d657e9e7f25ab5d3be9d8716"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/style.rs",
+          "upstreamSha256": "c9c825489e92dc294272c254cb34d0d98e38e92a2dcac49304a33bf0bbbca09d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/flowchart/svg_label_artifact.rs",
+          "upstreamSha256": "9e028cd6538d2ad17f2708205f9d3dfde20e40ae90aea37dfe606dd02cfc4db2"
+        },
+        {
+          "path": "merman-render-0.9.2/src/gantt.rs",
+          "upstreamSha256": "baf33fe26de003a1bb3628ce3ea2d8d98a44c16afce70b775c847aa40c274461"
+        },
+        {
+          "path": "merman-render-0.9.2/src/generated/mod.rs",
+          "upstreamSha256": "c7b098c93f74c7a357190fe80f82a5f6ac943e7ae9388dade5f57838c401762c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/generated/text_measurement_abi.rs",
+          "upstreamSha256": "c1b5c6f953eb2eafa5df66ecaa2ad2ee67faa56dde93fd0db0f85033250387b1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/gitgraph.rs",
+          "upstreamSha256": "3dbefa707a9fc3957fbfb46c06deda61facc717a4f259a85fc48545bcd1e02e3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/graph_label.rs",
+          "upstreamSha256": "83bdf4249b8df79706f68ab77e5ed625505a1e1cf54ab070b50bf33e034e80c3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/info.rs",
+          "upstreamSha256": "97daf4ba0d88bc933928591a400f63b388bd9da5e7380953f196a6d9b038d66a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/ishikawa.rs",
+          "upstreamSha256": "8e6661b5ed30072b13aa2824b0f18cff7b209ce39d06f875ff79098ae0c2f12b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/ishikawa/config.rs",
+          "upstreamSha256": "6bedcb436522a1ff6dbfd36262d075b2052f7f2291adb56b81c84d6780f4d7f8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/journey.rs",
+          "upstreamSha256": "9bac30d7bd516985e16e2bb56d3f5234b377a25c3ef6d1e9e36174d7b5e192cc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/journey/config.rs",
+          "upstreamSha256": "1cd637cf7c97d354651102f7afe4581f6da9cc0b116ec96c0d26b4fefddcdb41"
+        },
+        {
+          "path": "merman-render-0.9.2/src/kanban.rs",
+          "upstreamSha256": "e88bfb43df5d0072baee09f9c9f6a2bfcea1f268640d107fb432728a6c84e44b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/kanban/config.rs",
+          "upstreamSha256": "0c88831b3c1599bbdcbf5a912b1f7094ee53a5a7a9d095853ae69d791cfbeb18"
+        },
+        {
+          "path": "merman-render-0.9.2/src/layout_backend.rs",
+          "upstreamSha256": "e272520833fb54806c5390dcc57c3aca47cca99019715ac81b280aef3b9935f7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/layout_work.rs",
+          "upstreamSha256": "a1517367e7e82e49c9d4d18c79619e52ce3688e41fc514390ecca3b8581c4954"
+        },
+        {
+          "path": "merman-render-0.9.2/src/lib.rs",
+          "upstreamSha256": "3136ecc8373138682ce6028ad41c335cfb9d773d0c7f6297257df8b17e77646b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/math.rs",
+          "upstreamSha256": "250704f90bb22729c123039eedbdea485bbf33da4acc7a235e9488e77e8fde5c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/mermaid_style.rs",
+          "upstreamSha256": "df1b093e0eb6108cea2f84cebae8abcb2bcc517f2d755b174b013271c035d5e6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/mindmap.rs",
+          "upstreamSha256": "d379f5bd62a8e4e6ec0c4bf8b6f5cde03dc3a3f29737cb0b721adaf179e47856"
+        },
+        {
+          "path": "merman-render-0.9.2/src/mindmap/registered.rs",
+          "upstreamSha256": "d81759e3d33743537f3e24910f4500e89b3b6d4f9e3521c6a6320302e50ccef1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/mindmap/tidy_tree.rs",
+          "upstreamSha256": "e812584b5bc9f709946d32c4d790703b9f35e9b59c2ec34c17a645165ad042d8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/model.rs",
+          "upstreamSha256": "0f229e9ea415e90c955c2fae12363e6d54800b8239b41cd7fa98cd186cad0a15"
+        },
+        {
+          "path": "merman-render-0.9.2/src/packet.rs",
+          "upstreamSha256": "d2fa6e280e6bdc228fa6c3cace42106c1282639b6a422aa02051bc36a3e293d3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/packet/config.rs",
+          "upstreamSha256": "6a25fbd377101c1606543d6c234d21f5fd6b91f4ac036e597274075935c38107"
+        },
+        {
+          "path": "merman-render-0.9.2/src/pie.rs",
+          "upstreamSha256": "6abb8829144c4cebd813a49551108e326f54bd33f42948f4fda91a4d8d2278ba"
+        },
+        {
+          "path": "merman-render-0.9.2/src/pie/config.rs",
+          "upstreamSha256": "5ba7165083a227e4d33aedbd5ab431f8871f3304a5f15fd2803b5249b28ea704"
+        },
+        {
+          "path": "merman-render-0.9.2/src/presentation/compiler.rs",
+          "upstreamSha256": "50b4d48030ebb880b28d04725b751ca937f020e355a1d13cf9222635ca0848ee"
+        },
+        {
+          "path": "merman-render-0.9.2/src/presentation/mod.rs",
+          "upstreamSha256": "0cbb760bbae3b2a438b9defa2faab0e4ca96dc323c727f08d4f1ce0825247489"
+        },
+        {
+          "path": "merman-render-0.9.2/src/presentation/presets.rs",
+          "upstreamSha256": "4015982e2cc8e99a4352770cdf065ca1f90e9f476b469d66a265a4f7cc838f24"
+        },
+        {
+          "path": "merman-render-0.9.2/src/presentation/profile.rs",
+          "upstreamSha256": "0353c89512c8c8abefc8e7d59d0ab454739a821990c965618364378b0bce631e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/presentation/theme.rs",
+          "upstreamSha256": "49697f530062ea42f353f51774b835577c57d58ca6752baae33b2a9940af07fb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/quadrantchart.rs",
+          "upstreamSha256": "95595c6e13873570bd03e116237fa256122167749cc64e417a4d2485eaa4cdec"
+        },
+        {
+          "path": "merman-render-0.9.2/src/quadrantchart/config.rs",
+          "upstreamSha256": "9099d8e35012b7a9294f343a3c7e975850d0b1b414315c69b8d7ffef10cc8fde"
+        },
+        {
+          "path": "merman-render-0.9.2/src/radar.rs",
+          "upstreamSha256": "374cc38a06ad41b7cb1189fc472fd0220e3e3f12b0a1fbdcecc19a820192d009"
+        },
+        {
+          "path": "merman-render-0.9.2/src/radar/config.rs",
+          "upstreamSha256": "80509a40e3c8e5a540bb1378a25123d8eed0a866b24a37768d6f8336b610572e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/railroad.rs",
+          "upstreamSha256": "7f9ff17e1217319c52cc487535d5a49a8365809db4662fb766d548261e1e3343"
+        },
+        {
+          "path": "merman-render-0.9.2/src/requirement.rs",
+          "upstreamSha256": "d9a4bb09fbb9703185c407e0178d7b6caceca4bf70599e8904163809e5eb563e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/requirement/config.rs",
+          "upstreamSha256": "6485deb6f78ea5a7af40c987f89ede7d4f0cb77d5dcb3d4e0e90a44918829d1a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/requirement/elk.rs",
+          "upstreamSha256": "560b9cb75c1ad1197f734ceaa3d7325a866a0dd63126a2c770dc551e19380040"
+        },
+        {
+          "path": "merman-render-0.9.2/src/resources.rs",
+          "upstreamSha256": "33aa8a1dffb30f8e41b00795db58afa04cb35014c390ff16c2a427500a4443de"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sankey.rs",
+          "upstreamSha256": "481010cfe7a75c74ad52cbd3bcceed29bb29641bf391ad407d130e8c32297a44"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sankey/config.rs",
+          "upstreamSha256": "e10fc99e2fc5f28f991355a007e77eb66fbc127fb46d0bff89d7945d6d087928"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence.rs",
+          "upstreamSha256": "f53aee7c713c1f233fc80cdd0e67bffd9eedeb988c159d09b5036e1394509474"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/activation.rs",
+          "upstreamSha256": "5c9aa8ceb30a56c3a61c0ff7deff2e61107d31ca70a03ce37e45db44551b7c2a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/actors.rs",
+          "upstreamSha256": "ab8857280833711f8039d3af841782e48ffc062881d95e92c5df08ecd779333d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/block_steps.rs",
+          "upstreamSha256": "263b867af701d4f773f66c9ec539f69d3d0b820eef86e1b26115490bd19d5c9e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/config.rs",
+          "upstreamSha256": "aa364a21cb46ba317854034318260ad04a8f2d34df60a532826ba32df1d0753b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/constants.rs",
+          "upstreamSha256": "9a5c6c013d99ccabefdc00a691999ba911073dc8209583807411634068e8427e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/message_metrics.rs",
+          "upstreamSha256": "8af3dfec04e312c9387a045a06f1ecbb2324ad63ef97a7aeae4a853518841b8e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/messages.rs",
+          "upstreamSha256": "b77128016e00ddb7697f9ab114571b5fad5493a0776376abedc3593673eb66d1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/metrics.rs",
+          "upstreamSha256": "b6e17806c5565745b14efdac5aaef5aef56544b74ec14f3ac37c93463fdf8013"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/notes.rs",
+          "upstreamSha256": "b41d76c9f92b1cee9979bc2a50b8e3e568d5c8ade96273de30661a330deae828"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/orchestration.rs",
+          "upstreamSha256": "a662dc38ac0811f88cd7ef85dd17e0ef7c411ae95a5d3ad456800d41dbeca90b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/rect.rs",
+          "upstreamSha256": "8a7b1097b1d8de39e749cedc3e7c5af6f08e74f8e6122e76b3ec5e450c3d8e2f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/sequence/root_bounds.rs",
+          "upstreamSha256": "f39885adfc42779571172cc31f6ff19f81f7af84d859b4d3ad51edcd71f0a480"
+        },
+        {
+          "path": "merman-render-0.9.2/src/state.rs",
+          "upstreamSha256": "16b29f72d0e045309ec513646e587394f3677396ba17dcf0ad507bdf289b4ee4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/state/config.rs",
+          "upstreamSha256": "84ff4fbe34e48504ee7b0c69c0dec04d4e157ed48531decd1bdf1085d4a7bcac"
+        },
+        {
+          "path": "merman-render-0.9.2/src/state/elk.rs",
+          "upstreamSha256": "5b11ffe3994ad770bb214c4fb0b5f0d8a40110bccab9da6dee1cad6cf7fa6cf8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/state/label.rs",
+          "upstreamSha256": "c54ceb66e460bcfc6621487cf63e053d49ab5eeeb539cf465e6bd10ddbd79c17"
+        },
+        {
+          "path": "merman-render-0.9.2/src/state/layout.rs",
+          "upstreamSha256": "72897055bf19ead704d53914984f1a27074f9c15fe8ca4e1c0330caa67dc156c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg.rs",
+          "upstreamSha256": "492f50bc59dc41c1669516b7982a73623347bcfb4768c2f66ced3cb5178ff548"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback.rs",
+          "upstreamSha256": "11522fe9ce40e122ad71ff077b2454ebeaf2af8ee729f9a299da355dd77f5492"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/attr.rs",
+          "upstreamSha256": "036f86a317b8dd50402950a8a569bdc6acd6f305749ac560f9fa74a510de453c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/cascade.rs",
+          "upstreamSha256": "915d31ccb371185a3c4987ba771f6b7793f0a9f7824aaeb68c22bd294c5381fb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/context.rs",
+          "upstreamSha256": "c5c1c3be948e530a06f1af6723136c3ee03ba2183468af8a47ce1cb2e658cf02"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/css.rs",
+          "upstreamSha256": "74ff6cf0665495e635f8ab68513b2a4b2c7ccb140f0abeda106fad3bb00ac3de"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/html.rs",
+          "upstreamSha256": "3d1621cfcbdb6ac8d0ae142d076beae642ab999dd8bf02ab6f0c0d43a37eda10"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/fallback/transform.rs",
+          "upstreamSha256": "2450d0a74b362b344f4f4831c5b7937e4f7d657dfc2ef11eb8773fa91ab73049"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry.rs",
+          "upstreamSha256": "d6ecee271917a14aa7c808ad8a5d143ac0547f6bc3bc77dfe810999970cd0d6c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/error.rs",
+          "upstreamSha256": "e1e477ec000ddc3d2123df2f32779dfbf538ff2a2fbd82ba1357cc678edae58f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/ingest.rs",
+          "upstreamSha256": "e2e9e9e45bd298fa235ef90cd1dfcba00acdc316fcdc8ede025c4f68abd88681"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/limits.rs",
+          "upstreamSha256": "535690e9923cdc3c597bbeaa07fed29f0e52e014f03fef85f11ea94ff455cc5e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/lookup.rs",
+          "upstreamSha256": "abe9cc739d28dc3c3355a230c8f1890fa12dca04c4654970007eb1bf884b5f1e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/pack.rs",
+          "upstreamSha256": "1a543c76922ace0c5b54ed15420cff884901dfc6c7672a195509f2e7bc850f0a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/render.rs",
+          "upstreamSha256": "8f6fd12cafea42528a6212c6ecb2370dcc13a6542e3761f34d9e071105bfd871"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/icon_registry/xml.rs",
+          "upstreamSha256": "ad553550ac781e38a0329aae3f612f84eac1d9ea286a571e4b36a3a20244d3b2"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity.rs",
+          "upstreamSha256": "6751af61128cd3a1529b3861032c0a22d5817825847907a55a71f75c37dd4d16"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture.rs",
+          "upstreamSha256": "8cc194b9d3230cba188746a45376e1a6f3b34d5bf54d6d7c41e6e6fbd84eee4a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/edges.rs",
+          "upstreamSha256": "c9664bbfd8d8152c6c7dec348fb3744085f035f77f87e9daac8e65aa7eb62665"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/foreign_object.rs",
+          "upstreamSha256": "a9462829daf803cdfdac2b5604033b226b785620fcb319339d806f80ce656e36"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/geometry.rs",
+          "upstreamSha256": "577d92bd0a086a212eed9c9390c023b12b00ecbcda3306d5be0a7d4052d080c5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/icons.rs",
+          "upstreamSha256": "7023c03947111aa61add36f4ad3681de4785f1d320740dce3a22acf3a8dfc610"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/labels.rs",
+          "upstreamSha256": "cede2f8ad6430059113801689869748497ece8a2a264d6b237285176825e5028"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/model.rs",
+          "upstreamSha256": "474c3085814934632fa423a1745b3d43ef67f666205c774b10251c97ae252231"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/nodes.rs",
+          "upstreamSha256": "ad7455f5334d7196e071f669816ea5f298efce5a175a2664d02a856495758998"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/render.rs",
+          "upstreamSha256": "d3e99dfd9e243348c2a40cb935210423df84b80e361ed2ff069af47865f8e7be"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/root.rs",
+          "upstreamSha256": "9d27bdc6d285baac51618e02f290c8e5ea61c4ed2cba07a7a8a24f078f4a7c86"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/settings.rs",
+          "upstreamSha256": "148b3ef26a7901294acc5ed9ce1069f594208eb80b63d47b15cc498f1ab30ec6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/architecture/viewport.rs",
+          "upstreamSha256": "54d0b06fde66e422633408bba6ab40b46e456f0eab31e42b21a373207baf1b0e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/block.rs",
+          "upstreamSha256": "04cb31072c3350eee7c34f9a1e602dfa8336434a4ebdd5032c78ebe9a4cbf499"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/block/palette.rs",
+          "upstreamSha256": "a1f1f130693683a1ecf32bff6aa43a4995c172d2c8d91bc8006fa4ea740a1ab1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/block/render.rs",
+          "upstreamSha256": "52268eb94a03b612dbadaa9c3d0317807a9378326961a0fd055201411dc88476"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/c4.rs",
+          "upstreamSha256": "986ed6e1ee2a170a511e65824cd4c1e7b4d6c81fcb6cb0e392b59d82ae56f052"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/c4/c4_database_d_11_16_0.txt",
+          "upstreamSha256": "931febbdfadfb1115bddb51397825daaa400369dc42bd4b8d6b732315a3c71b0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/c4/render.rs",
+          "upstreamSha256": "7e0c38779fae95af31c8e8b719bd8fc20a55d6599817a5fcaf2408bd74cb858d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/bounds.rs",
+          "upstreamSha256": "00914af83d6bfb9b429cf883d11c89bfc390d734b7da5493ae134157196270dc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/context.rs",
+          "upstreamSha256": "a37a732837764a1aa1a2925fff51133247e37cc64f676c1d302b584e3baaf37e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/css.rs",
+          "upstreamSha256": "429bd05a6304ac00d0ef4121552c1c1a5f69b23df744da5c572225ede9c9d527"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/defs.rs",
+          "upstreamSha256": "e5c4b7fdbc40948e48cd7022ebb42312475a1216471c708b7e68d73658e68f9c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/edge.rs",
+          "upstreamSha256": "ed01cb5f62ce3bf9c30db9587290bc5047345c19587420d36f4ba7f8952ea753"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/groups.rs",
+          "upstreamSha256": "b8c07f8d9131b58dbab324da1303d9e283dd1b9b15c643ef866b229831c61b91"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/interface.rs",
+          "upstreamSha256": "0db52306ff913b8950a6b10588fdfb0b309a898a5b36fefc4ef505a953887469"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/label.rs",
+          "upstreamSha256": "03e879fddb4112e4eb81ee38280c8c1a281b15bcf8bdc5620981f9315d6919c0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/mod.rs",
+          "upstreamSha256": "1001905ee073dcd23839749b87f74a0565250d76ad05ffd97722accdcbdb180a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/namespace.rs",
+          "upstreamSha256": "3da1a0e4021e2db86899086b26cd1b27797f3913976061d06ae9fc3b7d5b71c4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/node.rs",
+          "upstreamSha256": "db6cd0c54fc53eef4a96ee9f3746e0b8f47e6f86ac695e57ab7e7f8a0b076c9b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/nodes.rs",
+          "upstreamSha256": "83f2981d3b62a13d43b18d73fc4a80acbd3fe2b52164d7379a98e9407cf5d4dc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/note.rs",
+          "upstreamSha256": "2198e6f2a7dea27abf67304578242189d7594c0c0c4ae41f6534b31ea9e08e69"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/render.rs",
+          "upstreamSha256": "e2261f534f579adb8d7d904dec9470c50744b075b3b93ecaf65f4cc4590c2bd0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/root.rs",
+          "upstreamSha256": "dec0312ba4bf680004fead0cd83959d3444c2b7654932b9f6e28ed1693174717"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/rough.rs",
+          "upstreamSha256": "98881bdef88a08cf6f796c9533ec8841032757a87fb50a061c500fc64940f943"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/settings.rs",
+          "upstreamSha256": "f822114f568d422d6dc5baf5d425b60ab638d39fbc98a5f8592722335220f1d1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/class/viewbox.rs",
+          "upstreamSha256": "e68ad940829feb22e22ba26ac1a4072372c7cbb656e892a5be71771b9061efcb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/css.rs",
+          "upstreamSha256": "abe9ced3d91cc6d81d4a6622001f7d4438e468542d6dd5b75306e65e6c6807e3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/css/tests.rs",
+          "upstreamSha256": "0793a05fe93a1c66285c44440da8a86fd162cbf8356c5d9a2f4612041b264a22"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/curve.rs",
+          "upstreamSha256": "3e0519b783c2e2daae4eb6dbe8898512bafc2e06b2930d55a3c53b7d661f909b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/cynefin.rs",
+          "upstreamSha256": "48efeca3a72a43ab031ebaa075bdffb07341d82e09caa058bea57e74ace6580c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/edge_label_geometry.rs",
+          "upstreamSha256": "f0508bb9bdb9716c5bcae30bbfaa325a9e21b65747153bfd7227b3fc16203d23"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/edge_path.rs",
+          "upstreamSha256": "90139671187ae15d1a3e9afc4907d3019aa3fb2a0c23a9d85c7e85b3d06871b0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/edge_path/fix_corners.rs",
+          "upstreamSha256": "806ac79b85aed1e70f4ca9df0452f98b6a427d045a4f12b0c14c5a9962c696b8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/emitted_bounds.rs",
+          "upstreamSha256": "b386ba9df0458927f03f1aee3560d70620ff126084bf5a121471e16ac5b4b5ec"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/er.rs",
+          "upstreamSha256": "d68b72d86770d32b5b24c7ebe3e4511549ef011344a048f9f415878c428fdbb8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/er/render.rs",
+          "upstreamSha256": "2c1eba1256a4569bd387ab88ccd7a804f4a055cb489ab127eda5999635448c3e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/error.rs",
+          "upstreamSha256": "6c83471a8c963058d70bd553304566b209902ef4409e59921634d107bb5e9fcc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/error/render.rs",
+          "upstreamSha256": "9054134e7af5c712e7c15173d1d862fa4f72403513bcd6779130bb83912864a6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/eventmodeling.rs",
+          "upstreamSha256": "7b2fa808839cb80672ccc44d9c25397fadc51804c48584527398426cfb974714"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/eventmodeling/render.rs",
+          "upstreamSha256": "f89fc025636d1523574dfbe4fca8eb73e14225aab3a76f92f2ddc78ec8e9c55d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/agentflow.rs",
+          "upstreamSha256": "5b4028c2836971a11d6377dd7ffa556c242aa4bcdd8a344d5187bffa7f8eca7f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/browser_measurement_tests.rs",
+          "upstreamSha256": "be94cc7cf0b233e5409d44fccc7d91ee28cd158346ba3c04ad559aa2676bb8b6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/css.rs",
+          "upstreamSha256": "ac6971e50d7e8eeeca88a170d3d491cc18fa3bc923b7231c6a20807a48bff89b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/defs.rs",
+          "upstreamSha256": "39ce6442b6bc71c387a7fff9954719d9cd0693414186526e9e1149caa9b0f030"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/document.rs",
+          "upstreamSha256": "79e33f02288cdf83ba85470ad70ffec404fd29b2f4ddc32b135f0487e230b053"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge.rs",
+          "upstreamSha256": "d77f909f74587a56efae845cb4036c2989210e10f131595c0a9d33173955c474"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom.rs",
+          "upstreamSha256": "94fe7f6de891209d849d18492bb09b3b3eee1b58c897f4643baae48682e3defa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/basis.rs",
+          "upstreamSha256": "3b3e55e96aa849848afa2e0bf0784d50262ab394cae800801caf7261a2f54865"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/boundary.rs",
+          "upstreamSha256": "accf2143368e78c2587e772d81287fcbe2207718ae80a36dd513f20428fea7a9"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/compute.rs",
+          "upstreamSha256": "26586077dbc19f70c86df7961bd8fc5e258dbb8e9f81f902868729443e0fc94c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/curve_path.rs",
+          "upstreamSha256": "3dec599257aa20ae64701cbd402db95c59ca6fae35e8ff217f21ccf2d74bf1de"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/elk_points.rs",
+          "upstreamSha256": "c5602cf469199c5aa7fff5e2967deb66e2f187a51f152f081c482cd9e1cf556f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/intersect.rs",
+          "upstreamSha256": "be1bcb45bcc586bae34e0d8f2670fa63d090daa3bae4384be6c580d84ba7f604"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/line_with_offset.rs",
+          "upstreamSha256": "42ddbabcc4b664d31451741bea82f1c39d9590ffbbf9cdb9d6567f0d84794cc8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/rect_clip.rs",
+          "upstreamSha256": "7d41f8593f1024f62d55bb73084a9f236d50386be9f66cf5a1eec20b8e97ec88"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/terminal_jogs.rs",
+          "upstreamSha256": "06f891240918b3578e3ab299f526f607ae07096f7582b43c959ee043539da775"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/edge_geom/trace.rs",
+          "upstreamSha256": "d1383b119c2e6f34ea808e2b42a56704dd695e60776526a6719cb2bc4186700e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/hierarchy.rs",
+          "upstreamSha256": "656e0f0f622f0361ba1890d3874656b44c85ce7673205f2c956b05286f79249c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/label.rs",
+          "upstreamSha256": "95f62b2096cc4f9ab83c58577f2d4b6386310d4b6bc5d4aff81da7f4e484aa5c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/mod.rs",
+          "upstreamSha256": "fae96c3ea1ec6fe01940b3d0a39cf65be431fdfe27d538f2276655386282504d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/cluster.rs",
+          "upstreamSha256": "5a41b3ee52f03155487952598b4398f9c48465c69e30fd76e77850a6988512c1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/edge_label.rs",
+          "upstreamSha256": "7cbece8af026c024adc920ef420d4dab53a70639a6ece2ac8231611e1e04a838"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/edge_path.rs",
+          "upstreamSha256": "f0fe9a5ce54374ecececfb2804cca7789ba263224097c3b5343aaca6f7632d4b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/mod.rs",
+          "upstreamSha256": "38d2278c522b4bcc5abedcef84563fa0d079e8518087f697ce0632dcbc5fdb3e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node.rs",
+          "upstreamSha256": "27d5a92e0d82a65c75e8078e3b0c7d8ba13627677d029d2086f0d764d0fdf800"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/geom.rs",
+          "upstreamSha256": "c9d0b6f9129fc6b276bbb791e5b794993592a4d4387e1aeb4e1431b5bc91e05f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/helpers.rs",
+          "upstreamSha256": "0bda5fcf0c190ccf03b4cf7b649a717e9e58613f1c84d851d974d249d42b4733"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/label.rs",
+          "upstreamSha256": "37791aa99850191993a74bd2e3249015fb90ed499267ce412e5e6782b376a69d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/roughjs.rs",
+          "upstreamSha256": "e5b4cf31f1a3e21b3e262e87bcac4c34588c450582f4819634d14d76167894bc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/basic_geoms.rs",
+          "upstreamSha256": "3f738957cf64a504f403e1f4c80b3adc6b9a1a2813efb999430a822e365145a2"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/bow_tie_rect.rs",
+          "upstreamSha256": "2d53d1960d198f12985010674bb4a4272c5a796ba784bccb80bc199381d696af"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/browser.rs",
+          "upstreamSha256": "3ef24389797dee6c1480f38a3295e35bfd58c0c5ee2c05e3eb7101d591ccd1ff"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/bucket.rs",
+          "upstreamSha256": "605874f0958f0d05f65bcc35f10871b8fe8fcb4d8193b795d63978283bb44c79"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/collapsed_group.rs",
+          "upstreamSha256": "1a55e83a8e97f36d6396585c0c26bb191bcb1942248ec2afdc0fbbe5ee657ba2"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/console.rs",
+          "upstreamSha256": "af46c8b32a602b1c6da08f20479d062b6348646a76ec9f396ae4bd32ebb2d217"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/curly_braces.rs",
+          "upstreamSha256": "6002e10f54e8a33e2fb397b9e799cf0677bc1c8adde6812f16043cc9e81b3a1c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/curved_trapezoid.rs",
+          "upstreamSha256": "47e393939432a013115158a6e52025f25ba84b1fa8d6729252bb9112b0c29148"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/cylinders.rs",
+          "upstreamSha256": "8a82813f24e42d7188c868cc857f1ecf7a092cf1ad81bc7d4cfb4c18c3546d83"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/datastore.rs",
+          "upstreamSha256": "bc5b782adf1b7459fddfeae79a3c43155e9442e9482b8621d759ec63a82f06f4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/delay.rs",
+          "upstreamSha256": "80ab355fe32dab4c86a5c79558e4e68687897e9ebcaf6f1655c2f478ad0a29d8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/dispatch.rs",
+          "upstreamSha256": "b75d050a41fdf1a543b35f329cc42815ec3479df9a6abab2d36cede210351008"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/divided_rect.rs",
+          "upstreamSha256": "030d1b53780d2dab157e793cf06e811d6c25921c69863fdff5974441dc63d393"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/folder.rs",
+          "upstreamSha256": "e8aab1ce2995120a1c9718ff74ec60c52f03984799feec1cb907017ead49c762"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/hexagon.rs",
+          "upstreamSha256": "dbd9649eadbd09c9b8af23508c296e4d002d1c889c31818a578d958fae8934a6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/icon.rs",
+          "upstreamSha256": "ff0fda39f509c5559ca11e7eae9befd43e54a4f467c053ae81803049311cc6fa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/icon_circle.rs",
+          "upstreamSha256": "7b54f0156aa4a24165518d94f06f39a3a40e8f136995abfeccfab6b117f58ef8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/icon_square.rs",
+          "upstreamSha256": "1171cbef017391db6372a9fffcfa30e7d65f158cc783b54eb9265c874c82cf50"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/image_square.rs",
+          "upstreamSha256": "69e7d3c2ff146dc5c18ca906235f7179ec84e3ea216086b45e9252f5fb446f14"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/label_container.rs",
+          "upstreamSha256": "6f762c40108ea15adb5ac33699a72c476930ffeed93ff89eb8f7cccfda3893df"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/lean_trapezoids.rs",
+          "upstreamSha256": "d3e2554782b144e9cbf663c37a6f82c3899eddf996cdaca3b1cab40e85d2517f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/lined_cylinder.rs",
+          "upstreamSha256": "31c8010dc5a3ad3aba8b37fab59b7cc9069181bccf85b285e665a710415239d7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/lined_wave_document.rs",
+          "upstreamSha256": "aa289f3835221468aedc91f44999ae59d4d6b039394f854f5a236dd609e843c0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/manuals.rs",
+          "upstreamSha256": "b6099349ff9fd27e879f5cd48bca7ac90cf28f183b56bf6541243adadd7e5c81"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/mod.rs",
+          "upstreamSha256": "85c4b81d013dca550d48f47cba482db880a6de12b99651cf264e67329aea0833"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/no_label.rs",
+          "upstreamSha256": "fd4f679132c40c56bf342305946b1f504b0f8f6151afd0611d1907287f1f6816"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/notched_pentagon.rs",
+          "upstreamSha256": "baade89693ac559d1c5a7e270c389c0717d2c24273c4f05915b9875a9ce196a6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/note.rs",
+          "upstreamSha256": "bf053bf96f0010c8e2dacccf1f26462a1f7a2623d2e339c901c5a85c7e6bfdc2"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/odd.rs",
+          "upstreamSha256": "46ed3e733606e79d6b8302cf7ea6e091787536913a93a6ccafc9e367cdebc58e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/organic.rs",
+          "upstreamSha256": "2969e2975d0ed96e4126bab79884f3d717a5185bca397164a1946135f97b889d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/paper_tape.rs",
+          "upstreamSha256": "a00a1256b669136f13274a70fc0552f7ba22dad860c6ecded820453d0cfc0e47"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/person.rs",
+          "upstreamSha256": "b4d8a0155f6f489fd01a36de0ec3df4d4001bd3a27acc0b085cd1e0c095dc300"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/process.rs",
+          "upstreamSha256": "e8af90d42afe1d3231c4b2be43a8a1f58836c0df3d5502e5840cd559bba14b1b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/rounded_rect.rs",
+          "upstreamSha256": "a61048683c48f4e7bc3d028611a0ba92987449133a37bf477a288eb1560b2d9b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/shaded_process.rs",
+          "upstreamSha256": "925bb9ba51e158caf308e230f90ff1c0eeb79d6a98b7a39207b7f72682210091"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/stacked_document.rs",
+          "upstreamSha256": "3e2b9af66eb422c75a63141e10f991f2468b424d5d176be78694356838a58675"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/stacked_rectangle.rs",
+          "upstreamSha256": "94bea5a669c34e8bc05bd08fe8d4d6337698912a5cd8de7362698ae7cca81dc0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/stadium.rs",
+          "upstreamSha256": "cf2a9906db72289189fec070f2d6560344ce5550a86e5d02adf04cb71c579938"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/subroutine.rs",
+          "upstreamSha256": "69d5f6c95b0314001a8d01dbbba1648e961a6bb18aae3a2b533354de43562b17"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/tag_rect.rs",
+          "upstreamSha256": "6e5c65105ae27f6340e85b00b0528be0c713b4b7d2591bf979493585655dd9e5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/tagged_wave_document.rs",
+          "upstreamSha256": "dfa70bf4ed2595fd67ced45fc907532885f1439d0e3c39f4c79d9541ac1943d8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/triangle.rs",
+          "upstreamSha256": "840b4e6b37566d557865cbb610d4cf6d49e8f071cbe3673b038deaa19bef3d7f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/wave_document.rs",
+          "upstreamSha256": "80fa49e9d3bb5f5931e7897c4e059e40f205a9eea47bc6922b0a1d32db049a50"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/node/shapes/window_pane.rs",
+          "upstreamSha256": "647b64bab545bb28e0b25d689bc0dd989e4b8711a99c537229b5e85fcf6c6e4b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render/root.rs",
+          "upstreamSha256": "ea88b0ccb2585fc2d9958ead23a4a24c954e74341da13031c0ae01e342564a72"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render_config.rs",
+          "upstreamSha256": "93bb01cce0b8dc5a23334c4a64b1b894e878bd80749a6fe06e36a4dc1980e579"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/render_input.rs",
+          "upstreamSha256": "207743a42caac66a9463cad8f99a7a6ec301836bc25a4a42308cf615f79e16a3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/style.rs",
+          "upstreamSha256": "667ba9902f1c3d30274b34d40041eb8753bbf83de47a66f3ce0d08e1adfab7d8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/svg_emit.rs",
+          "upstreamSha256": "ed375fa25cb7ba26a7ae75bbffe6681af7b5eb2523ecb219b5a0cf01e5de10c5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/swimlane/cluster.rs",
+          "upstreamSha256": "5fbf5de41c7843dd783c3bc8e07602c2a7b33a58596d15983f4b4fc8649bb78a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/swimlane/mod.rs",
+          "upstreamSha256": "e6c057d4c734ecd74c917308962cf416654fa0b8cda61a9f55a4d090e5cb7e05"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/types.rs",
+          "upstreamSha256": "05f1548323f6084a16938677c90071f76f93d4a80b4adcba77cd31f3cf877a7e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/util.rs",
+          "upstreamSha256": "5685b0f721eb7e91ee19d5b5c8cf8716b80f49acace5720d10e6bded772ea155"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/viewbox.rs",
+          "upstreamSha256": "7361d4b1f9ed80f6039be84965cc22dd066b5b8111daf0f5cf4a28f03fc998b3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/flowchart/viewbox_node_bounds.rs",
+          "upstreamSha256": "cb46deb9a2df6806c62ab25a7d3768f90af5ed08a87cf9ca3c20bba70b6a0ced"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/gantt.rs",
+          "upstreamSha256": "2cbd62b262c8525912f4b1a1b552735429753d16f960ee0f81261ae440f27fee"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/gantt/render.rs",
+          "upstreamSha256": "8933bdce41a5de583495edf9adf9d9250ae9365bfa6a2d5713bf86c346634829"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/gitgraph.rs",
+          "upstreamSha256": "d4985eb21f27fc7e6bbf1e84f3fe6d9e8b9e01ddceaed0983eb706a82a74a382"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/gitgraph/render.rs",
+          "upstreamSha256": "f9ad2e2299638e94a819aefa6c74d8d0964e1917af92ba27021ddd606d1298c4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/info.rs",
+          "upstreamSha256": "3b82b54fd3dcb77d1f835af29320ec0226f27c1858760b33d83e7230a344e5c5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/info/render.rs",
+          "upstreamSha256": "a29761d86cb87314ffb7fb0492bfb2fc62e6a1527503189bf952a905412ba1e7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/ishikawa.rs",
+          "upstreamSha256": "1ffd3354aef4375781f1cd2bcd8d2da498430804b510f373528a5cfca9232a9f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/ishikawa/render.rs",
+          "upstreamSha256": "5e114d076b89fab93d3d62b5adb66bc4b2d2603fa85a550bc8e4c9fe9eebc47a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/journey.rs",
+          "upstreamSha256": "c158651accef30773105e9c70070e488e15dc0946ac98ff66c64ec2becf83f77"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/journey/render.rs",
+          "upstreamSha256": "bfda475149691dd4b3bf1446356906b4a68f985bc5c9e13f863da405c6787d32"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/kanban.rs",
+          "upstreamSha256": "97995b52ea7db06bddc82a3f97fc42b7a3fa46068db08af43a5f3b3970aacfd0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/kanban/render.rs",
+          "upstreamSha256": "e52ff2b3716c0b95152c381dadf573046b02caf594246319e1c967d84dcf9f55"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/label.rs",
+          "upstreamSha256": "ce914ceeec7d7569c187412a18f77b85201d4a204d15341ec0e5a15b18d318f7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/layout_debug.rs",
+          "upstreamSha256": "ef237d9b443103996ea72f77ac2fb9487f38ba11329737c15a1556447fe0de7a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/line_hops.rs",
+          "upstreamSha256": "1ddd5b2035d27ca9b4093684c043193222ee167450ef3c89ef9e59b6ed96e670"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/look_defs.rs",
+          "upstreamSha256": "d9ea17ae6d7d097cf4b35857c5c2e4a9b838f8f89a67694184751b41c9bb88ba"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/markers.rs",
+          "upstreamSha256": "72d86be8dc9bf1a7d1f2056618428fe8712de92e037807936f17525738a452ee"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/mindmap.rs",
+          "upstreamSha256": "616262282729431b99f35a6ed0a4cd2cbb0f90bcd127637705d3cc133803a3fd"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/mindmap/render.rs",
+          "upstreamSha256": "03964976ee3563ac70e72bd49ce53d31043f5d392bc88460a783a9800115b2c8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/packet.rs",
+          "upstreamSha256": "fc7b6a63b618209bc4eca3f1c5f6398957f73f1e9e83f178982127f436acb201"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/packet/render.rs",
+          "upstreamSha256": "2952d26a4d3de8d4e244ebb86998aa7da306429553b33f436882fc72388f8aa9"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/path_bounds.rs",
+          "upstreamSha256": "dbc88854d968b8389af920d74c2a631bb9f28961351a8cba42bf43f3e93f0b14"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/pie.rs",
+          "upstreamSha256": "416b3b85a376faf26aafa746cc79a011bcdd20e6fa526e448904ed142397d3f7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/pie/render.rs",
+          "upstreamSha256": "527d45ea863f9fa6dff1aabb6671fbcdabb4e01c12def97e2b589642a3b7ce03"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/quadrantchart.rs",
+          "upstreamSha256": "9bcbfd200300c78d19f92fa2900bcf55802e896cb1a6896d2b45f57464340c10"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/quadrantchart/render.rs",
+          "upstreamSha256": "4d56fb8e01eafb78e4a79d9ba5b1b0a45a69882d19127953e4f43f149b488309"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/radar.rs",
+          "upstreamSha256": "6f3be2e26d166bf156bd9e8f7bec1c47db861170b00c8799e57ab43c62d6a2f1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/radar/render.rs",
+          "upstreamSha256": "5e826b4fbe446c719a87df3ec3863d65336fe4d0010ce1c7bc185f2a80ca1a25"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/railroad.rs",
+          "upstreamSha256": "30145dcb350181fdb0f32217e82e58f9135b7c2314a47e864ecf3e7ebe59bf6e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/requirement.rs",
+          "upstreamSha256": "b0301c30ca2b8e6ec6ecacd1b9827bab14e5a8d47e2226f8c0f1c63315271d26"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/requirement/render.rs",
+          "upstreamSha256": "2024762cd257fd6720fa69a63f303782dcdbcb5a0f8028c6ce3adc35eac23c5f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/root_svg.rs",
+          "upstreamSha256": "69e426c07df5553a81dd7764504d7bdd0be711ce3e085f95868caeb031c909a6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/roughjs_common.rs",
+          "upstreamSha256": "a3bc9a1a7180c27bb2e10f0e45990ed3750c7c5f610ea8a952aa9175f9e3f8ed"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sankey.rs",
+          "upstreamSha256": "bd3b1c85dd8f9303a9ca9c6309324f966413cdf55fce1d0e38fa3e3f7c53fddf"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sankey/render.rs",
+          "upstreamSha256": "690738be6a35315dc10bb2f72c5ad473610b7fdb981a2aa74dd53f348b5cdb23"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/activation.rs",
+          "upstreamSha256": "1bdfefbaa7962a84de9c8d7b32e89497605bce9b8b8434be9c8139f8b18bdd20"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/actor_man.rs",
+          "upstreamSha256": "5277a9f6d1eb0b38214ac0167be059a8273326fcb211a33bdde8127299de83e6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/actor_man_glyphs.rs",
+          "upstreamSha256": "7710027076ed4effdd5ad6607ed0bf0a9a39764f40f44826a9a99f531384e779"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/actor_popup.rs",
+          "upstreamSha256": "c7da64ff10ecb7f457a07b21c25fcd2a7dba8f278d5f8b592b17e93e5999a57e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/actor_shapes.rs",
+          "upstreamSha256": "d26236117cbee08bb728945c7258f084b8d0e4559f9234e4c26cb80541389ac8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/actors.rs",
+          "upstreamSha256": "2b98b23b46c8d445e2960c29834d239413ffe9c3a683c306566af3799e4ef780"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/block_collection.rs",
+          "upstreamSha256": "b210088f1272828f4cc282eb694e49bcc965bcb96f50f1b33790f527d3f8f1c5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/block_geometry.rs",
+          "upstreamSha256": "3a4ded7d56b20f2424e9950a349645d02ebd47f131c6ece36b5c827a33c0901a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/block_text.rs",
+          "upstreamSha256": "7a60465d10e4959a88d923302b33d8c6f442751a884c02302542102daeacccac"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/blocks.rs",
+          "upstreamSha256": "8426d50a9ce79ffa15f42879fc2a0fd4791ec541500c4751ce873eead03b9eff"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/css.rs",
+          "upstreamSha256": "aee35e317565f45e5d6439d823358b7b58d432e851fed7c9d1d6def0a3fea52c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/frames.rs",
+          "upstreamSha256": "c3dfb3c43f936c569ad80dcc6e1882a0f699da3794882d60a15fc256014eff4c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/geometry.rs",
+          "upstreamSha256": "28eae8903204cdc3df9502e8848564aa0f1ddbf75b4a9abc80690c7437a594ff"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/interactions.rs",
+          "upstreamSha256": "07c84b14a0798e08d94643378fa34dd53ab86d26422329210c48375a19ac5e91"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/math_label.rs",
+          "upstreamSha256": "667ac52136094c9db9f5f692fa32fad6c813bfad27c2db73cb4b572dd00ea6cb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/messages.rs",
+          "upstreamSha256": "6a42f67e8bd8c882c653d5b33b335f6abb0000c169206831da5abacc80028a4a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/mod.rs",
+          "upstreamSha256": "8445030ad7b92513d3f0b82d79cb077f2d9ea97756cdf79f3b95084b65575ffb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/model.rs",
+          "upstreamSha256": "a30f20ff8a647c4439f3213b5360c390408588b0fd0cf75a7e5b8d0603ada940"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/notes.rs",
+          "upstreamSha256": "7b51acfabcab3f5d15f432e8c9495c0e2baf575d4624a8b8733f38e0a97692d7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/render.rs",
+          "upstreamSha256": "3edbf83d0c345427c01483815d4d35d96d199146ccc2f38ebded31dd307cc70b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/root.rs",
+          "upstreamSha256": "77ad6c51ffd36c958f60b588decad9226e088bbf46b2fecabab724e292e8ddca"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/sequence_base_defs_11_16_0.svgfrag",
+          "upstreamSha256": "06a84b747e8bbdcef19bc0847127d33dd56eb05968703e580c51666d646208c6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/settings.rs",
+          "upstreamSha256": "2f7454b11ce72caa4afc51bba19eed96c51fd11839f2d6de2fc047e073840abf"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/sequence/text.rs",
+          "upstreamSha256": "5b9c3540ec995b2a12290408b4f101c3c78b6f4df77fc8c95f0fd42e00710002"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/context.rs",
+          "upstreamSha256": "b644975365c86dd6e0eb79194b9fc7136a4025671232252b94111a0a841de134"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/edge.rs",
+          "upstreamSha256": "2a8bbff6db0537a6b608b9ad727f7b690e1a00a7f571f38f10c5584b351ffe1f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/mod.rs",
+          "upstreamSha256": "40368f0aac446e5bbff6b4628900cacdc14759ae76522573d4815dcf1659f752"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/node.rs",
+          "upstreamSha256": "8799aba3239166d70789fb67aa737ed638574b9af6c7c857c56247b7a6f468f1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/render.rs",
+          "upstreamSha256": "fa5de5f43a953d081b561068e85b6c1c0496537ddfba0705077c259c251be9ec"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/rough_cache.rs",
+          "upstreamSha256": "d5c2d6670ab4dbc1f0a3acb544889436485972560ebe3e53b32efc402a84cb8d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/roughjs.rs",
+          "upstreamSha256": "322a2c7467064e60bb2a5026b708f9efe800283c1a544bc976b666a5ad0eb610"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/style.rs",
+          "upstreamSha256": "a4762a00ff4ad0f05a5d0b084bdb634964636cd011052a5263627192c53a0db0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/state/viewport.rs",
+          "upstreamSha256": "0be7298994985685e679e1144f9fc1455a732ec338be6ca7397b9cbba22d4a6c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/style.rs",
+          "upstreamSha256": "dcd9f9ef431792e2cd507c1d23eec1277bcc191f27e757e3b3723df8e84ffb9f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/theme.rs",
+          "upstreamSha256": "595ff3aca5dbea63ab62f64c9fbcf45b0e51f9369d6440a3499c8fb040cec70e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/theme/families.rs",
+          "upstreamSha256": "5d15658fcfbae2560e45b23d9be632e589fdb66e82d314784062021d25818372"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/theme/helpers.rs",
+          "upstreamSha256": "c10e7f1d71f9b394c36385269eded88a1c8313c5f4cb6b40feccf6d9fc4cf7f1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/theme/tests.rs",
+          "upstreamSha256": "2876655b58e5f23f1313cbf34b41d00d00c769f778f0c8aaa0ce1690b7255ce3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/timeline.rs",
+          "upstreamSha256": "f804a883d29757aa093e075458104fe0c51e5035eaac321b2a99c3318fa75c07"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/timeline/render.rs",
+          "upstreamSha256": "353ca00b05eff6d00fed56243663865ee3ed628ff1a5131ed02b885e00b2217e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/timing.rs",
+          "upstreamSha256": "eee0b010d203b255741579b454e162b68f596bf5a8c209fa79afb98b73a42723"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/tree_view.rs",
+          "upstreamSha256": "bff722035f5c04e6d8a3e81bd896d93eac28af961a154b93f0a521d36248cd5b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/tree_view/render.rs",
+          "upstreamSha256": "d0d9d75754b25346773f53ecd738d1c503b97506152fdaff3a8800c3d0a0fd1c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/treemap.rs",
+          "upstreamSha256": "5c5a206e59f2bee4ef58673a7e17df7a4cdfd50a0bee735846732e9e45ee3b5b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/treemap/render.rs",
+          "upstreamSha256": "7f476ff984a85a74f62b7ec452127f534105f0aa7dca93e7d7f97671731eb7e0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/usecase.rs",
+          "upstreamSha256": "21b8c192d6e04ec8d37f295ac012670210ccfc5f07dcb37b54b119bfbc18b089"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/usecase/shapes.rs",
+          "upstreamSha256": "ac949c45416c9479d2a409b1e2d1f122495c51afbdeb9b05772f91e2c2a3685c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/usecase/theme.rs",
+          "upstreamSha256": "5daf27e720890d9eabdb24f73c6a712f4866bb68c987e1fd9c1e01c447d8bc50"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/util.rs",
+          "upstreamSha256": "650f57670fecaaed5e1763fb91941748847eef079327eb9f31c84bbeff1860eb"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/venn.rs",
+          "upstreamSha256": "a0bec88cf738adff76547dc15775c7ce568b1f41a040a82b8e2a0da66287bec0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/venn/render.rs",
+          "upstreamSha256": "67397acbd4f938f5e38cf61e96e2d8f65b9d2dbb1021ad81b63b7f87dedb4a5e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/wardley.rs",
+          "upstreamSha256": "a90fcfcf560e2e5914ff9482f99eb992faea8d3cdea49aaa953f8239f2c31005"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/xychart.rs",
+          "upstreamSha256": "b4fa3d921921b89534e68b496375dc1fc6e2ce4889e471226df2a3da3918ee6b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/xychart/render.rs",
+          "upstreamSha256": "8788223eb582fc921fd98b91a2acaf329cd964c38758b144693e82d4e9738d3c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/parity/zenuml.rs",
+          "upstreamSha256": "5a8ee27310c0b91c082b744c90dac4c00c39212b3234c59eaa514c547b43a775"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/attr_sanitize.rs",
+          "upstreamSha256": "63164c4828abe1ca98516110871f3373d349da29ae6625648c0349fc07f0872b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/css_override.rs",
+          "upstreamSha256": "2b957c65e0c9a9a254795307a2e136d11189db36388f8a06b8ce5a3647d0505b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/css_sanitize.rs",
+          "upstreamSha256": "c9186a03e4f3ec284ce1678be0d2f99ba0d7b0e539f252d573a78add638f65da"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/foreign_object.rs",
+          "upstreamSha256": "6c4150bc49114514d5834351dd21238a36343de3dd694657ce14d76361d0de60"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/gitgraph_label.rs",
+          "upstreamSha256": "4aec25bd8f1d74761e5ad5f31095cf19a3166f5fa4deb604515b9435802d9c5d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/id_rebase.rs",
+          "upstreamSha256": "e393b2db5ae4b34528427b38c34d8e8d655ae2a0d6a45eb4a2e250bcd0174c62"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/id_suffix.rs",
+          "upstreamSha256": "6af2c9072ed9c2c8562b48eeab9cd68174e9db246609bf64cc48c03dfab667f1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/mod.rs",
+          "upstreamSha256": "087215eaa5b1ddf4805e1b173dddf6a322fed161998b9a4158e127fa35310f5e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/presentation_fallback.rs",
+          "upstreamSha256": "818819f3977a4598d901ad49f696bba5baeb711bac064b6c59b1fc5a70f27987"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/root_background.rs",
+          "upstreamSha256": "46b580df26998d1247a9039ba56ba3e382f8506a3118df46606d5bc1bb74cd05"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/scoped_css.rs",
+          "upstreamSha256": "a218ab0fc4c021534aa98a4f5ac58532325bb9fa421715f08d242d470245b40b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/scoped_css/rewrite.rs",
+          "upstreamSha256": "926e54d8047613ff9516859fd19768f7a5d619477c7042cb12dd42c7460a01c1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/builtin/util.rs",
+          "upstreamSha256": "fbe22ccab58ab81b0e25eb7c825bc75a793086ce5594c3fd20c9a57f54071c09"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/context.rs",
+          "upstreamSha256": "8f350be10819adacedb8f89b93484215fba6b17aad6363bfe868f8d9595bf865"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/embedding.rs",
+          "upstreamSha256": "8745b0b4850aff7d523fab732e6e40c9b3a143f308f1dbbc28ad53636fbf83fa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/final_validation.rs",
+          "upstreamSha256": "a6d6306514dd28f190217d89e31933c73d08e687ff4a1dd1a85c81c5883e51c8"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/mod.rs",
+          "upstreamSha256": "ef0909500a34b3450777a077a658f2dd47b7371281d6cc7e36db0bfd04f20a2f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/policy.rs",
+          "upstreamSha256": "fd7c9987d2f4d6638da678b13bf9f5c431dc469f6953278053dc09b29be19d1b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/preset.rs",
+          "upstreamSha256": "241f32829396eae744bc35a00595517f15b72ffe3410703be6f854c49b5229bc"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/pipeline/static_validation.rs",
+          "upstreamSha256": "94f55d066bd89ffd743cf3349041030caa9d3336a4e8e7bf623f69a3253709a1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/svg/scanner.rs",
+          "upstreamSha256": "63bcfb10bbe9d4e713b0feabb9d7a05e0bba38b959e2ed25a64cf70afaf4f817"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/bounds.rs",
+          "upstreamSha256": "1f4171efd8865cac97c668fab19500d596eb9cdc6f8e9873f6e567ac75c78b45"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/config.rs",
+          "upstreamSha256": "9a615946e8481a42df164ea4106960fb6ee6f3963af86f0ca33fc6af7ae5f2be"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction.rs",
+          "upstreamSha256": "4e70d019bb8d78763f450085ff87501413dde574ebe87bc9ebedbe90fe0cf914"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/detour_simplification.rs",
+          "upstreamSha256": "4e650718875845cf28df6590e1994897d08eea1be532fa8302ae3335656c8b04"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/endpoint_clip.rs",
+          "upstreamSha256": "aa4c8fcff3e1c374788911cedc42f9f53b5dac120153a8f8db58c02e609d0b11"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/geometry.rs",
+          "upstreamSha256": "b8221c1a9d41fb9e692b6d1b35e2653aefb2f5a4ae2ef66effec3473f237abbd"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/label_anchoring.rs",
+          "upstreamSha256": "08048afa01d8568e82b735d37ff0233e067be2af05d9fc9689861cf5b6a83b4d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/collapse_doglegs.rs",
+          "upstreamSha256": "c69edb1e5ceeff6fc2efc30d069c913b4da9e1cb5d9f502b318c765f9f268658"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/common.rs",
+          "upstreamSha256": "4c8b3fd835ad5e9abfadf7b02ff63e2eeb745b4bbbccf36968ca1aa7a36bfcaa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/external_rail_channels.rs",
+          "upstreamSha256": "8ca39e77a3b23d591103cd081a7c239e2141b04468320c057cce8c888a5bd703"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/lane_title_bands.rs",
+          "upstreamSha256": "248a9a330fb06e57c6cefaff8488ea0c5f6d33311c2b8178dcaf158972957b65"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/mod.rs",
+          "upstreamSha256": "f2a2c359ffe15f33526633db91912a97f034e64d8bc8abeb2cb9b348dfa710fa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/obstacle_rails.rs",
+          "upstreamSha256": "72e442f529ea331d2a92f74d06607ca3f63c8ad890f08994e9b88b44eeb3e334"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/resolve_crossings.rs",
+          "upstreamSha256": "d3ba1509f0a41f75bf73d78c0816281496ef3aa23c38f99028c4ff6438744c9a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/shortcut_jogs.rs",
+          "upstreamSha256": "f58daf4e90d0d17a3f959e42ab8c876c78ee0af0b0b9194f0bd21b02dcef1204"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/swap_terminal_tails.rs",
+          "upstreamSha256": "1d3c60e214e6537680fc855f818af4d7e529f4db0ade039c5425769677120f2f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/terminal_lanes.rs",
+          "upstreamSha256": "b0387fdd71990cf4f03c66c0fe1d11dbc1570dd8ca9b96b9e1dc633b90a0281c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/materialized_geometry/tests.rs",
+          "upstreamSha256": "e39c22d6ecf2f87ee80e96fecbdefd8760fc2e0def4c90576d498550160ac2d4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/port_swap.rs",
+          "upstreamSha256": "bee24aa28c2afa3689a653afe79f090e89a6cfb6552653fe94ad6c00816c60d5"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/shared_track_nudging.rs",
+          "upstreamSha256": "460a1bfe97f313f88dc8423aa99194f6457d71479db94cb624c0a6ef5a8c01ca"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/sibling_shared_face_routing.rs",
+          "upstreamSha256": "05d78f404279da0eef3c257876d32eb8e3ecd53c335d0c57dd7b4003c077585b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/terminal_stub.rs",
+          "upstreamSha256": "0755efedc5e73b816c6196cb4ea7feb120751aa484316159663928776e4b2f9a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/direction/validation.rs",
+          "upstreamSha256": "8c16dafe6bb36072459419176c7324407be8a825b832f30adba2f692b1b8115a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/flat.rs",
+          "upstreamSha256": "2dd3b296b39eac0e9cdaf4effaf242499c45fbf52a847c0b1bac285074f3be7d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/geometry.rs",
+          "upstreamSha256": "173f5e254a8fab9d90a0b32f19d7e79a87b3481a673ae9890f60c128fcad6353"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/mod.rs",
+          "upstreamSha256": "72ac60bb20e279676aab0d526abcad00cd1bade4594d51b5963e5f190bf1a91e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/prepare.rs",
+          "upstreamSha256": "f39e7eb67c97593dbf4b2b6869d475341c473ae321bb7f4f4909fdba90d89667"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/routing.rs",
+          "upstreamSha256": "db12378cfd0233f72d6a3a6fd99598ff85cc5f1da465cbd8a04e3e65ecd1aaaa"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/routing/tracks.rs",
+          "upstreamSha256": "adc7825fbe0c54a082b69785cf574d1553b40e6f818482cddff6830ae3f6e92d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/sugiyama.rs",
+          "upstreamSha256": "70c1c57a79576e3c295ec761f5d81a239379e9927a53a0ed56edffa9048c65f6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/work_budget.rs",
+          "upstreamSha256": "36694e9c831d1e840f566c6bfe8e28838c9a0ccc5e42e849e2dcb236e059bb09"
+        },
+        {
+          "path": "merman-render-0.9.2/src/swimlane/working.rs",
+          "upstreamSha256": "ec09df41ec2c0d6910c09422eba9f6e49f207df558abbef0832d63dd4f3ad3e4"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text.rs",
+          "upstreamSha256": "d2acbe3fd97fe1fd70650c09e326c5e5e625621be06537b41cb3536ed311c4c3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/create_text.rs",
+          "upstreamSha256": "1c0effb3e8ee89e77a53b90e316c92b54ac0a524e673966699580e656a2d0819"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/deterministic.rs",
+          "upstreamSha256": "ea81106b920ed2007500ce1ee25b38ec8664c780cda97f295cb66c9505b8a2ce"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/flowchart_parity.rs",
+          "upstreamSha256": "c17326ba99cf495e65687739840831496eb00499b32bc598432caa11f72b5765"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/heuristic.rs",
+          "upstreamSha256": "ffa15e16ec45f8e0db983409a001e609d3026a64099bec63a1774d36670baa24"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/html_wrap.rs",
+          "upstreamSha256": "06e871f16c265a98b3e51e11e88876e0a42db9b74ae0c7708304f14faeccd1ec"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/icons.rs",
+          "upstreamSha256": "5ab5edff784e0ce21c451d305e2cfd2e88637f6cfc26738d76d4e24be1fb7cd1"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/line_break.rs",
+          "upstreamSha256": "b938e7214193b89878de212dbfb0d321a850bd937eac1089733c9ec4da393d75"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/markdown.rs",
+          "upstreamSha256": "a959ce722d8fed1cfd3d6ae09ac90b72a509e9ebbc7029a0f06460d69ab6e433"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/markdown_label.rs",
+          "upstreamSha256": "162fa21cdacbac8c286e0c3e26496a85cbab96d15778ffacffd1d21a3c1d9ae7"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/measure.rs",
+          "upstreamSha256": "59e3821de546e8f71660d596134133e2b93196d6c3eca63b3b80269d7962a76f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/metrics.rs",
+          "upstreamSha256": "297f5f176ee8077b0795c0d8e7d2f0c52ca3a1d6a37515ae96eb78c54ccde240"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/svg_metrics.rs",
+          "upstreamSha256": "5c2976b3ff0b5ec99aad0b962d7c391513c0a2fe21b0c767642e38918dd1c30a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/tests.rs",
+          "upstreamSha256": "e4c41cc412c7fad7ec86dce10831a540f4ec152167cea5de674a1a76ab4d4481"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/types.rs",
+          "upstreamSha256": "b27958f7e209e3686f12d199b0fe7f829e6336b73f2a93c0d82a9c69eb7ef479"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/whitespace.rs",
+          "upstreamSha256": "fbe8eaff24adef3a10d9567a55b03152e695dc246e1c10f52ba89d630af2c645"
+        },
+        {
+          "path": "merman-render-0.9.2/src/text/wrap.rs",
+          "upstreamSha256": "5aa34c011445d02471963091dcce52064142d1e79322d302add375fada69f93c"
+        },
+        {
+          "path": "merman-render-0.9.2/src/theme.rs",
+          "upstreamSha256": "6df3ab44968f4ce7106ff5f2c3efc0d406254130a0e54d47aeb9344bfb4c065f"
+        },
+        {
+          "path": "merman-render-0.9.2/src/timeline.rs",
+          "upstreamSha256": "4334de4573fd8dae5e472751a51c65381475bfbcbcedd5aef0e0eacb84415946"
+        },
+        {
+          "path": "merman-render-0.9.2/src/timeline/config.rs",
+          "upstreamSha256": "46a575d96dc130082c6f968fcc770e7ad0213ddd64eae708025c5521123b3b9a"
+        },
+        {
+          "path": "merman-render-0.9.2/src/tree_view.rs",
+          "upstreamSha256": "d9a3bc8d135cf6560540af77d2a5b20301fbd2f851fe9eb698c1b7e09fc205c0"
+        },
+        {
+          "path": "merman-render-0.9.2/src/tree_view/config.rs",
+          "upstreamSha256": "06e8e77124c34c046b7bf9eba8b81dc272ac2e791442d6c6ac60409cfa164c29"
+        },
+        {
+          "path": "merman-render-0.9.2/src/treemap.rs",
+          "upstreamSha256": "83366be2659f6b7604e8a3fbeac384916269e002552c24a310d9f6bfe1682723"
+        },
+        {
+          "path": "merman-render-0.9.2/src/treemap/config.rs",
+          "upstreamSha256": "5950c04d79ecb4bd25ea55f24eeac221a3135ef3730b2b1994143702592d3669"
+        },
+        {
+          "path": "merman-render-0.9.2/src/usecase.rs",
+          "upstreamSha256": "6b45b98b9e3331bc3d7e99eabf47bf3d9fadbaeb1722fbce7fbfdf9cba20659b"
+        },
+        {
+          "path": "merman-render-0.9.2/src/usecase/dagre.rs",
+          "upstreamSha256": "bc5658ddefc21c6ef57a0fee5c2830311d595ed0f21b302c6400d3cb46a3f2e3"
+        },
+        {
+          "path": "merman-render-0.9.2/src/usecase/layout.rs",
+          "upstreamSha256": "96a75be22dfca776582441cb5920b0b59d9db1c71a0b3eeb5fd48850238c8618"
+        },
+        {
+          "path": "merman-render-0.9.2/src/usecase/measure.rs",
+          "upstreamSha256": "bf439b66dfe0317c3154fe073cfbf796f8fb15b150e72f320a821f1f04caa696"
+        },
+        {
+          "path": "merman-render-0.9.2/src/venn.rs",
+          "upstreamSha256": "1401dd9f150b1262e41b0028845d4581058b86fe136dd67a3bc4550800c300d6"
+        },
+        {
+          "path": "merman-render-0.9.2/src/venn/config.rs",
+          "upstreamSha256": "283d933da7f6d2c1fc2820780e0c1631e5cdb0f7b39b313350b6dde7ac567d4d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/wardley.rs",
+          "upstreamSha256": "b274f32408bd5223f22a6b8238f851e1d94ec137f12b17617ce912cd6d56dc78"
+        },
+        {
+          "path": "merman-render-0.9.2/src/wardley_layout_tests.rs",
+          "upstreamSha256": "de76d143851f1715559772ea5d34871e8ea29345c84dd4b91cbc1100dc103390"
+        },
+        {
+          "path": "merman-render-0.9.2/src/xml.rs",
+          "upstreamSha256": "7e937cbb25b76d2c5afbde429f8c7627e90a52d4712ca808bcbc7e7d4be4c86e"
+        },
+        {
+          "path": "merman-render-0.9.2/src/xychart.rs",
+          "upstreamSha256": "4054b9c2465d4af79e6b167e23131a62827cb076ca5afca66386e92f6a707870"
+        },
+        {
+          "path": "merman-render-0.9.2/src/zenuml.rs",
+          "upstreamSha256": "5d1cb7cad976297faea4a03fa8e8aaea0ee5c52bfe293148f996a03661672b7d"
+        },
+        {
+          "path": "merman-render-0.9.2/src/zenuml/theme.rs",
+          "upstreamSha256": "496ccc373fff01df9b4a2ab05ac9f8dbefbd8d0455f2a8d7cd1f6885495f5550"
+        }
+      ]
+    }
+  ]
+}

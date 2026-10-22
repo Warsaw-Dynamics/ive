@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "files": [
+    {
+      "path": "merman-core-0.9.2/src/diagrams/mindmap/db.rs",
+      "upstreamSha256": "0bcfdc1d7baf75945d33dc1c9141419d11cb3a5bc3d5742d8cfc0836227989e6",
+      "patchedSha256": "07faaa7b6a4bdf4d0c1f13a18ad6d0a10cd779747e564b5a7fe8c97788da1d74",
+      "reason": "Controlled structural-depth section assignment; retain branch defaults, eleven colors, decorations and child-edge projection."
+    },
+    {
+      "path": "merman-core-0.9.2/src/diagrams/mindmap/parse.rs",
+      "upstreamSha256": "a1efbe497e64ca6cedfb6b128304d2e591f4009c4fc2b94849ab641988f25a41",
+      "patchedSha256": "2ae36649a8b9805b6557d76b698431e6772e5e6fbcfeece9034e7c01ee60475f",
+      "reason": "Read effective mindmap.colorBy before constructing consumed typed nodes/edges."
+    },
+    {
+      "path": "merman-render-0.9.2/src/svg/parity/tree_view/render.rs",
+      "upstreamSha256": "d0d9d75754b25346773f53ecd738d1c503b97506152fdaff3a8800c3d0a0fd1c",
+      "patchedSha256": "76ed60544eb20779226bdc390ae760dc0100d92edd0294331d0946eee0b321cc",
+      "reason": "Emit the same validated effective family list used by tree layout."
+    },
+    {
+      "path": "merman-render-0.9.2/src/usecase/measure.rs",
+      "upstreamSha256": "bf439b66dfe0317c3154fe073cfbf796f8fb15b150e72f320a821f1f04caa696",
+      "patchedSha256": "ab357be54176f929a19c67378f84b24d5d4c1b5d1590e487020ab78eb5cdde26",
+      "reason": "Measure generic SVG usecase labels with their inherited global font, preserving actor/HTML and node-style overrides."
+    }
+  ]
+}

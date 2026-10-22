@@ -1,0 +1,2 @@
+# Exact imported-source hashes must survive checkout on every platform.
+vendor/** -text
