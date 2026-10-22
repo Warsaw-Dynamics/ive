@@ -18,7 +18,7 @@ use gpui::{
 };
 
 pub use protocol::{
-    Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
+    Cast, Content, DiffInput, DiffLayout, Edit, EditBase, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
     SaveFailure, SaveKind, SaveRequest, TextPurpose, TextsRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
@@ -114,6 +114,8 @@ impl Panel {
             Cast::SetTexts { file, generation, old, new } => {
                 self.set_texts(generation, [(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx);
             }
+            Cast::SetEditBase { generation, base } => self.set_edit_base(generation, base, cx),
+            Cast::SetBaseDiff { base, diff } => self.set_base_diff(&base, diff, cx),
         }
         self.notice_state(cx);
         cx.notify();
@@ -155,6 +157,14 @@ impl Panel {
     pub fn is_editable_diff(&self, cx: &App) -> bool {
         match &self.body {
             Body::Diff(diff) => diff.read(cx).is_editable(),
+            Body::Empty | Body::View(_) | Body::Edit(_) => false,
+        }
+    }
+
+    /// Whether a diff's rows show its edited new side: taken to edit, so [`Cast::SetFiles`] no longer reaches them.
+    pub fn edits_new_side(&self, cx: &App) -> bool {
+        match &self.body {
+            Body::Diff(diff) => diff.read(cx).edits_rows(),
             Body::Empty | Body::View(_) | Body::Edit(_) => false,
         }
     }
@@ -302,6 +312,23 @@ impl Panel {
             if let Some(job) = job {
                 cx.emit(Event::NeedParse(job));
             }
+        }
+    }
+
+    /// The new side to edit, answering ask `generation`, and the parses that colour its texts.
+    fn set_edit_base(&self, generation: u64, base: EditBase, cx: &mut Context<Self>) {
+        let Body::Diff(diff) = &self.body else {
+            return;
+        };
+        let jobs = diff.update(cx, |diff, cx| diff.set_edit_base(generation, base, cx));
+        for job in jobs {
+            cx.emit(Event::NeedParse(job));
+        }
+    }
+
+    fn set_base_diff(&self, base: &Arc<dyn LineSource>, file: FileDiff, cx: &mut Context<Self>) {
+        if let Body::Diff(diff) = &self.body {
+            diff.update(cx, |diff, cx| diff.set_base_diff(base, file, cx));
         }
     }
 

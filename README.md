@@ -58,7 +58,7 @@ Run it again to rebuild and reinstall.
 | Edit a scratch | type in its tab; it saves itself half a second after you stop, and when the tab closes or IVE quits; a change made outside IVE reloads it, or asks (Reload / Overwrite) when you have unsaved edits |
 | Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh` |
 | Open a file | click it in the tree; an open file shows its existing tab; or Ctrl+Shift+E (see [Hub](#hub-ctrlshifte)) |
-| Edit an uncommitted change | in a diff tab of uncommitted changes, type on the new side (added and context lines; side by side, the right panel): the file in the work tree is edited and saved as a file tab saves it, and the diff is read again after each save. Caret and undo outlive the new diff; when a change you undid disappears, the caret goes to the nearest line left. Since base and commit diffs, and the hub's preview, are read-only. While a file's tab and a diff tab of it are both open, one with unsaved edits makes the other read-only (it says why) until its edits are saved |
+| Edit an uncommitted change | in a diff tab of uncommitted changes, type on the new side (added and context lines; side by side, the right panel): the file in the work tree is edited and saved as a file tab saves it, and the rows are always the diff of the text you edit (HEAD as checked out against the text read or saved). A change made on disk outside IVE is taken in while nothing is unsaved; with unsaved edits the rows keep showing them and the next save meets the change. A file that cannot be read to edit leaves the diff read-only, saying why in its header (Reload tries again). Caret and undo outlive the new diff; when a change you undid disappears, the caret goes to the nearest line left. Since base and commit diffs, and the hub's preview, are read-only. While a file's tab and a diff tab of it are both open, one with unsaved edits makes the other read-only (it says why) until its edits are saved |
 | Edit a file | type in its tab; there is no save: edits reach the disk half a second after you stop (longer for files over 8 MiB), and when you switch tabs or windows, run something, close the tab or quit; closing and quitting wait for the save, and a tab whose edits cannot be saved stays open with the reason. A change made outside IVE reloads the tab, unless it holds edits: then the save stops with a bar (Reload / Overwrite; Reload only for files over 8 MiB). A symbolic link stays: the file it points at is written |
 | Hub | Ctrl+Shift+E (Cmd+Shift+E on macOS): recent tabs, uncommitted changes, running processes, and a search over every file of every open project; see [Hub](#hub-ctrlshifte) |
 | Select and copy in a file or a diff | drag, double-click (a word), triple-click (a line) or Shift+click (extend); Ctrl+A selects all, Ctrl+C copies (Cmd on macOS); a diff copies its code lines, without line numbers and +/- |
@@ -226,7 +226,7 @@ polls instead.
 
 Git is read with libgit2 and never written, except by New worktree. A worktree's git folders in the tree follow
 changes on disk and re-read every 2 s while one is shown or its row is hovered; the Git log tab follows the repository's git dir; a commit tab shows its
-commit as read once; diff tabs stay as they opened until Reload, or until an edit of an uncommitted diff is saved.
+commit as read once; diff tabs stay as they opened until Reload; an uncommitted diff tab edits its file and follows it on disk.
 
 | In a terminal | How |
 |---|---|

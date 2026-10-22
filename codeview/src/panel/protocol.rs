@@ -22,10 +22,18 @@ pub enum Cast {
     Open(Content),
     /// held until the content is known, then clamped to it and applied
     Restore(PanelState),
-    /// a diff reloaded: keeps the scroll and the collapsed files
+    /// a diff reloaded: keeps the scroll and the collapsed files; ignored while the new side is edited, whose rows
+    /// show only diffs of the edited text's base ([`Cast::SetEditBase`], [`Cast::SetBaseDiff`])
     SetFiles(Vec<FileDiff>),
-    /// the answer to [`Event::NeedTexts`], with its `generation`: an answer to an older ask is dropped
+    /// the answer to [`Event::NeedTexts`] with [`TextPurpose::Colours`], with its `generation`: an answer to an older
+    /// ask is dropped
     SetTexts { file: usize, generation: u64, old: Option<Source>, new: Option<Source> },
+    /// the answer to [`Event::NeedTexts`] with [`TextPurpose::Editing`], with its `generation`: an answer to an older
+    /// ask is dropped
+    SetEditBase { generation: u64, base: EditBase },
+    /// while the new side is edited: `diff`, the host's diff of `base`, the text the edits apply to (taken with
+    /// [`Cast::SetEditBase`] or [`Cast::Saved`]); dropped when they apply to another text by then
+    SetBaseDiff { base: Arc<dyn LineSource>, diff: FileDiff },
     /// the answer to [`Event::NeedParse`]; in View mode one for an older revision than the panel's is dropped, in
     /// Edit mode it is shown moved by the edits made since
     Parsed { target: ParseTarget, revision: u64, syntax: Syntax },
@@ -51,6 +59,15 @@ pub enum Cast {
     /// [`TextPurpose::Editing`]; [`Editable::No`] makes it read-only, dropping the edited text and its history (the
     /// host sends it only while nothing is unsaved)
     SetEditable(Editable),
+}
+
+/// A diff's new side to edit, read for an ask with [`TextPurpose::Editing`].
+pub enum EditBase {
+    /// `new`, the text to edit, with the old side's text (for colours) and `diff`, the host's diff of the two, which
+    /// the rows show
+    Text { old: Option<Source>, new: Arc<dyn LineSource>, diff: FileDiff },
+    /// the new side cannot be edited: the diff stays read-only
+    Unavailable,
 }
 
 /// What a panel shows.
@@ -145,8 +162,8 @@ pub struct TextsRequest {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextPurpose {
     Colours,
-    /// also to edit the new side: the host reads the file on disk and checks the saves against what it read, as for
-    /// a file it opened for editing
+    /// also to edit the new side: the host reads the file on disk, diffs that very text, and checks the saves
+    /// against what it read, as for a file it opened for editing; it answers [`Cast::SetEditBase`]
     Editing,
 }
 

@@ -15,10 +15,11 @@ use super::data::{DiffBody, DiffLine, FileDiff, Hunk, LineKind};
 use super::patch::{LineEdit, base_line, line_edits, patched};
 use super::rows::DiffRow;
 use super::side_by_side::Side;
+use crate::code_view::HighlightCache;
 use super::{DiffEvent, DiffView};
-use crate::document::{DisplayLine, Source, TextSource};
+use crate::document::DisplayLine;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
-use crate::panel::{DiffLayout, Edit, Editable, LineSource};
+use crate::panel::{DiffLayout, Edit, EditBase, Editable, LineSource, ParseJob, ParseTarget};
 use crate::piece_table::{PieceTable, WrongBase};
 use crate::scrollbar::{Axis, Scrollable};
 use crate::text_editor::keys;
@@ -54,9 +55,9 @@ pub(crate) struct EditMarks {
 }
 
 impl EditedSide {
-    /// Edits `source`, the new side `base_diff` was read from, with the caret on its first added line.
-    fn new(source: Source, base_diff: FileDiff) -> Self {
-        let table = PieceTable::new(Arc::new(TextSource::from_source(source)));
+    /// Edits `base`, the new side `base_diff` is the host's diff of, with the caret on its first added line.
+    fn new(base: Arc<dyn LineSource>, base_diff: FileDiff) -> Self {
+        let table = PieceTable::new(base);
         let mut side = Self { model: EditorModel::new(table, None), shown: shown_lines(&base_diff), base_diff, edits: Vec::new() };
         let first = first_added(&side.base_diff).or_else(|| side.shown.first().copied()).unwrap_or(0);
         side.model.set_caret(Position::new(first, 0), Selecting::Move);
@@ -262,14 +263,55 @@ impl DiffView {
         Ok(())
     }
 
-    /// Takes `source`, the new side asked for to edit, as the edited text; an answer without it leaves the diff
-    /// read-only.
-    pub(crate) fn adopt(&mut self, source: Option<Source>) {
-        let (Some(source), Some(diff)) = (source, self.files.first()) else {
+    /// The new side to edit, answering ask `generation` (an answer to another ask is dropped): its text becomes the
+    /// edited one and its diff the rows; [`EditBase::Unavailable`] leaves the diff read-only. The parses that colour
+    /// the two sides.
+    pub fn set_edit_base(&mut self, generation: u64, base: EditBase, cx: &mut Context<Self>) -> Vec<ParseJob> {
+        if self.waits_to_edit(generation) {
+            return self.adopt(generation, base, cx);
+        }
+        Vec::new()
+    }
+
+    fn adopt(&mut self, generation: u64, base: EditBase, cx: &mut Context<Self>) -> Vec<ParseJob> {
+        let EditBase::Text { old, new, diff } = base else {
             self.editing = Editing::Off;
-            return;
+            // asked for again, to colour the read-only diff
+            self.texts.forget(0);
+            cx.notify();
+            return Vec::new();
         };
-        self.editing = Editing::Ready(Box::new(EditedSide::new(source, diff.clone())));
+        let new_text = new.source();
+        self.editing = Editing::Ready(Box::new(EditedSide::new(new, diff.clone())));
+        self.show(vec![diff], cx);
+        let sides = [(ParseTarget::DiffOld(0), old), (ParseTarget::DiffNew(0), new_text)];
+        let file = &self.files[0];
+        sides.into_iter().filter_map(|(target, text)| self.texts.set(target, generation, text?, file)).collect()
+    }
+
+    /// `diff`, the host's diff of `base`, becomes the edited text's while its edits apply to `base`: the rows show it
+    /// patched with the edits since, and the caret stays on its line (or the nearest one shown) and on screen.
+    pub fn set_base_diff(&mut self, base: &Arc<dyn LineSource>, diff: FileDiff, cx: &mut Context<Self>) {
+        let caret_row = self.caret_row();
+        let side = match &mut self.editing {
+            Editing::Ready(side) if Arc::ptr_eq(side.model.table().base(), base) => side,
+            Editing::Ready(_) | Editing::Off | Editing::Waiting => return,
+        };
+        side.base_diff = diff;
+        let rows = side.refresh();
+        // the base's text may have moved: its colours are asked for again
+        self.texts.forget(0);
+        self.show(vec![rows], cx);
+        self.keep_caret(caret_row, cx);
+    }
+
+    /// Shows `files` as they are, keeping the scroll.
+    fn show(&mut self, files: Vec<FileDiff>, cx: &mut Context<Self>) {
+        self.files = files;
+        self.colours = HighlightCache::default();
+        self.measure_numbers();
+        self.rebuild();
+        cx.notify();
     }
 
     /// Whether the diff edits its new side, or waits for its text to.
@@ -290,20 +332,14 @@ impl DiffView {
         self.waits_for_text() && self.texts.awaits(0, generation)
     }
 
-    /// `files` from the host, as the rows show them: while editing, the file's diff of the base becomes the edited
-    /// text's, patched with the edits since (and its texts are asked for again: the base may have moved).
-    pub(crate) fn edited_files(&mut self, files: Vec<FileDiff>) -> Vec<FileDiff> {
-        let Editing::Ready(side) = &mut self.editing else {
-            return files;
-        };
-        side.base_diff = files.into_iter().next().unwrap_or_else(|| with_hunks(&side.base_diff, |_| Vec::new()));
-        self.texts.forget(0);
-        vec![side.refresh()]
+    /// Whether the rows show the edited text, so only diffs of its base reach them.
+    pub(crate) fn edits_rows(&self) -> bool {
+        matches!(self.editing, Editing::Ready(_))
     }
 
     /// After a new diff: the caret goes to the nearest shown line if its own went, and its row stays where it was on
     /// screen (`before` is the row it was on).
-    pub(crate) fn keep_caret(&mut self, before: Option<usize>, cx: &mut Context<Self>) {
+    fn keep_caret(&mut self, before: Option<usize>, cx: &mut Context<Self>) {
         if let Editing::Ready(side) = &mut self.editing {
             side.keep_caret_shown();
         }
@@ -520,10 +556,7 @@ impl DiffView {
 
     /// Scrolls the caret's row and column into view, after it moved.
     pub(crate) fn reveal(&mut self) {
-        if !std::mem::take(&mut self.reveal_caret) {
-            return;
-        }
-        let (Some(row), Some(model)) = (self.caret_row(), self.edited()) else {
+        let (true, Some(row), Some(model)) = (std::mem::take(&mut self.reveal_caret), self.caret_row(), self.edited()) else {
             return;
         };
         self.list.list_handle().scroll_to_item(row, ScrollStrategy::Top);

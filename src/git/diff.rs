@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree};
 
+use super::blob_filter;
 use super::repo::{self, GitError};
 use super::status::{Change, relative_path};
 use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy, mark_of_delta};
@@ -142,12 +143,51 @@ pub fn texts(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<Sour
     Ok((old, new))
 }
 
-/// The old text of `file` between `sides`, as [`texts`] reads it.
-pub fn old_text(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<Option<Source>, GitError> {
-    let fail = failed("read the old text of a diff", dir);
+/// An uncommitted diff of a file as IVE edits it: HEAD's text of it against the text IVE read or saved.
+pub struct EditedDiff {
+    /// HEAD's text, when it is one to colour
+    pub old: Option<Source>,
+    pub body: DiffBody,
+}
+
+/// The uncommitted diff of `file` whose work tree text is `new` (as IVE read or saved it, not as the work tree holds it
+/// now): against HEAD's text as a checkout writes it (its filters applied), so a line `new` did not change is context.
+/// A file HEAD lacks is all added; one HEAD has as other than a regular file, or too large, is an error.
+pub fn edited_uncommitted(dir: &Path, file: &FilePaths, new: &[u8]) -> Result<EditedDiff, GitError> {
+    let fail = failed("diff the edited text with HEAD", dir);
     let repo = repo::open(dir)?;
-    let (old_tree, _) = side_trees(&repo, sides).map_err(&fail)?;
-    blob_text(&repo, old_tree.as_ref(), file.old_path.as_ref().unwrap_or(&file.path)).map_err(fail)
+    let old = checked_out_head(&repo, file).map_err(&fail)?;
+    let body = buffers_body(&old, new).map_err(&fail)?;
+    let binary = memchr::memchr(0, &old[..old.len().min(BINARY_SNIFF_BYTES)]).is_some();
+    let colourable = old.len() <= MAX_HIGHLIGHT_BYTES && !binary;
+    Ok(EditedDiff { old: colourable.then(|| Source::from_vec(old)), body })
+}
+
+/// The diff of two texts of one file, as [`uncommitted`] reads it.
+fn buffers_body(old: &[u8], new: &[u8]) -> Result<DiffBody, git2::Error> {
+    let patch = Patch::from_buffers(old, None, new, None, Some(&mut options()))?;
+    patch_body(&patch, Budget { lines: FILE_LINE_LIMIT, cut: Cut::FileLimit(FILE_LINE_LIMIT) })
+}
+
+/// HEAD's text of `file` (by its name before a rename) as a checkout to its name writes it; empty when HEAD lacks it.
+fn checked_out_head(repo: &Repository, file: &FilePaths) -> Result<Vec<u8>, git2::Error> {
+    let Some(tree) = head_tree(repo)? else {
+        return Ok(Vec::new());
+    };
+    let name = file.old_path.as_ref().unwrap_or(&file.path);
+    let entry = match tree.get_path(&relative_path(name.as_bytes())) {
+        Ok(entry) => entry,
+        Err(error) if error.code() == ErrorCode::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    if entry.filemode() != i32::from(FileMode::Blob) && entry.filemode() != i32::from(FileMode::BlobExecutable) {
+        return Err(git2::Error::from_str(&format!("{} is not a regular file in HEAD", name.display())));
+    }
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size as u64 > MAX_FILE_BYTES {
+        return Err(git2::Error::from_str(&format!("{} is too large in HEAD ({size} bytes)", name.display())));
+    }
+    blob_filter::checked_out(&repo.find_blob(entry.id())?, &file.path)
 }
 
 /// Where the work tree of the repository at `dir` keeps `path`.
@@ -358,12 +398,16 @@ fn body(diff: &Diff<'_>, index: usize, budget: Budget) -> Result<DiffBody, git2:
     let Some(patch) = Patch::from_diff(diff, index)? else {
         return Ok(diff.get_delta(index).map_or(DiffBody::Text { hunks: Vec::new(), cut: None }, |delta| binary_or_empty(&delta)));
     };
+    patch_body(&patch, budget)
+}
+
+fn patch_body(patch: &Patch<'_>, budget: Budget) -> Result<DiffBody, git2::Error> {
     let delta = patch.delta();
     if delta.flags().is_binary() {
         let size = delta.new_file().size().max(delta.old_file().size());
         return Ok(if size > MAX_FILE_BYTES { DiffBody::TooLarge } else { DiffBody::Binary });
     }
-    text(&patch, budget)
+    text(patch, budget)
 }
 
 fn binary_or_empty(delta: &DiffDelta<'_>) -> DiffBody {
@@ -748,6 +792,45 @@ mod tests {
         let after = (fs::read(&index).expect("index"), fs::metadata(&index).and_then(|meta| meta.modified()).expect("mtime"));
         assert!(before == after, "the index changed");
         assert!(!repo.repo.path().join("index.lock").exists());
+    }
+
+    fn edited_lines(diff: EditedDiff) -> Vec<(LineKind, Option<u32>, Option<u32>, String)> {
+        lines(&FileDiff { path: path("a.txt"), old_path: None, mark: Mark::Modified, body: diff.body })
+    }
+
+    #[test]
+    fn should_diff_an_edited_text_against_heads_text_as_a_checkout_writes_it() {
+        // given
+        let repo = TestRepo::init();
+        repo.write(".gitattributes", "*.txt text eol=crlf\n");
+        repo.write("a.txt", "one\ntwo\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"one\r\nTWO\r\n").expect("diff");
+
+        // then
+        let old = found.old.as_ref().map(|old| old.as_bytes().to_vec());
+        assert_eq!(old, Some(b"one\r\ntwo\r\n".to_vec()));
+        assert_eq!(edited_lines(found), [
+            (LineKind::Context, Some(1), Some(1), "one".to_owned()),
+            (LineKind::Removed, Some(2), None, "two".to_owned()),
+            (LineKind::Added, None, Some(2), "TWO".to_owned()),
+        ]);
+    }
+
+    #[test]
+    fn should_diff_an_edited_text_head_lacks_as_all_added() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("other.txt", "x\n");
+        repo.commit("first");
+
+        // when
+        let found = edited_uncommitted(repo.path(), &file("a.txt"), b"new\n").expect("diff");
+
+        // then
+        assert_eq!(edited_lines(found), [(LineKind::Added, None, Some(1), "new".to_owned())]);
     }
 
     /// Both sides of `paths` between `sides`, as text; `None` for a side without one.

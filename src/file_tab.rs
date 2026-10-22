@@ -55,7 +55,7 @@ impl FileTab {
 
     /// What a re-read compares the file with.
     pub fn stamp(&self, cx: &App) -> Option<Stamp> {
-        self.file.read(cx).disk.stamp()
+        self.file.read(cx).stamp()
     }
 
     pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
@@ -104,8 +104,10 @@ pub(crate) enum Shows {
 
 /// What an edited file tells the tab holding it.
 pub(crate) enum FileEvent {
-    /// the file changed on disk: IVE saved it, or read it again
-    Changed,
+    /// IVE saved the file: the base is the text saved
+    Saved,
+    /// the file went away on disk
+    Gone,
 }
 
 /// Whether a panel holds edits not on disk yet.
@@ -246,15 +248,27 @@ impl EditedFile {
         }
     }
 
-    /// A diff's new side, read again to edit: it becomes the base, checked against its stamp on the next save. The
-    /// panel waits for that text (it holds no edits, nothing is being written), so nothing is lost.
-    pub(crate) fn adopt(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) {
+    /// A diff's new side, read again to edit: it becomes the base, checked against its stamp on the next save, and
+    /// the panel takes the base returned. The panel waits for that text (it holds no edits, nothing is being
+    /// written), so nothing is lost.
+    pub(crate) fn adopt(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) -> Arc<Document> {
         debug_assert!(self.writing == Writing::Idle, "a diff's text replaced while it is being saved");
         let (document, stamp) = opened;
         self.base = Arc::new(document);
         self.disk = stamp.map_or(Disk::Unstamped, Disk::Read);
         self.version += 1;
         self.answer(Cast::SetPolicy(policy(&self.base)), cx);
+        self.base.clone()
+    }
+
+    /// The panel's base: the file as last read or written.
+    pub(crate) fn base(&self) -> Arc<Document> {
+        self.base.clone()
+    }
+
+    /// What a re-read compares the file with.
+    pub(crate) fn stamp(&self) -> Option<Stamp> {
+        self.disk.stamp()
     }
 
     /// Why the file is read-only here: another panel holds edits to it.
@@ -266,7 +280,8 @@ impl EditedFile {
         Some(format!("read-only: {name} has unsaved edits in another tab").into())
     }
 
-    /// Shows the base: editable, or read-only while another panel holds edits to the file.
+    /// Shows the base: editable, or read-only while another panel holds edits to the file. Either way the panel
+    /// starts over from the base, so its undo history goes (it holds no unsaved edits when this runs).
     fn present(&self, cx: &mut App) {
         let cast = match (self.shows, self.locked_by.is_empty()) {
             (Shows::File, true) => Cast::Open(edited(&self.base)),
@@ -378,7 +393,12 @@ impl EditedFile {
         self.writing = Writing::Idle;
         self.version += 1;
         let answer = self.take_written(revision, written, cx);
+        let saved = matches!(answer, Cast::Saved { .. });
         self.answer(answer, cx);
+        // after the panel took the saved text as its base, so the tab's diff of it reaches the rows
+        if saved {
+            cx.emit(FileEvent::Saved);
+        }
         self.notice_holding(cx);
         match after {
             AfterWrite::Check => self.check_disk(cx),
@@ -393,7 +413,6 @@ impl EditedFile {
                 self.base = Arc::new(document);
                 self.disk = Disk::Read(stamp);
                 self.answer(Cast::SetPolicy(policy(&self.base)), cx);
-                cx.emit(FileEvent::Changed);
                 Cast::Saved { revision, source: self.base.clone() }
             }
             Written::Unconfirmed(reason) => {
@@ -440,6 +459,11 @@ impl EditedFile {
         }
     }
 
+    /// Reads the file again and shows it as it is now, as [`Self::reload`] does.
+    pub(crate) fn read_again(&mut self, cx: &mut Context<Self>) {
+        self.reload(cx);
+    }
+
     /// Reload on a conflict: the file as it is now replaces the edits; after the write in flight, if there is one.
     fn reload(&mut self, cx: &mut Context<Self>) {
         if let Writing::Busy(after) = &mut self.writing {
@@ -477,7 +501,7 @@ impl EditedFile {
 
     /// A change on disk: the panel shows it unless it holds edits, which the next save checks against the file.
     /// IVE's own writes, seen late, change nothing; changes seen while writing wait for the write to land.
-    fn take_reread(&mut self, reread: Reread, cx: &mut Context<Self>) {
+    pub(crate) fn take_reread(&mut self, reread: Reread, cx: &mut Context<Self>) {
         let own = matches!(&reread, Reread::Changed(_, Some(stamp)) if Some(*stamp) == self.disk.stamp());
         let editing = self.writing != Writing::Idle || self.panel.read(cx).has_unsaved(cx);
         if own || editing {
@@ -503,10 +527,12 @@ impl EditedFile {
                 self.answer(Cast::Open(viewed(&self.base)), cx);
                 self.answer(Cast::MarkDeleted, cx);
             }
-            (Reread::Gone, Shows::DiffSide) => self.answer(Cast::SetEditable(Editable::No), cx),
+            (Reread::Gone, Shows::DiffSide) => {
+                self.answer(Cast::SetEditable(Editable::No), cx);
+                cx.emit(FileEvent::Gone);
+            }
             (Reread::Unchanged | Reread::Failed(_), _) => {}
         }
-        cx.emit(FileEvent::Changed);
         self.notice_holding(cx);
         cx.notify();
     }

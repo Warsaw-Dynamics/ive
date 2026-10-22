@@ -3,6 +3,8 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 
+use codeview::document::{Reread, Stamp};
+
 use gpui::{
     AnyElement, App, AppContext, Bounds, Context, Div, DragMoveEvent, FocusHandle, MouseButton, MouseDownEvent, SharedString, Focusable,
     Stateful, Window, WindowControlArea, div, img, prelude::*, px, rgb, size, transparent_black,
@@ -328,9 +330,9 @@ impl Tab {
             Self::ProjectOverview(overview) if overview.section == ProjectSection::Scratches => {
                 scratch::store_of(&overview.project).ok().map(|store| Watched::Folder(store.dir().to_path_buf()))
             }
+            Self::Diff(diff) => diff.edited_path().map(Watched::File),
             Self::Process(_)
             | Self::ProjectOverview(_)
-            | Self::Diff(_)
             | Self::Commit(_)
             | Self::GitLog(_)
             | Self::Settings(_)
@@ -339,6 +341,35 @@ impl Tab {
             | Self::RunConfigs(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => None,
+        }
+    }
+
+    /// What a re-read of the file at `path` compares it with, when this tab edits that file (a file tab, or a diff
+    /// tab editing its new side).
+    pub fn edited_stamp(&self, path: &Path, cx: &App) -> Option<Option<Stamp>> {
+        match self {
+            Self::Document(file) if file.path() == path => Some(file.stamp(cx)),
+            Self::Diff(diff) if diff.edited_path().as_deref() == Some(path) => diff.edited_stamp(cx),
+            _ => None,
+        }
+    }
+
+    /// What re-reading the file this tab edits found.
+    pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
+        match self {
+            Self::Document(file) => file.take_reread(reread, cx),
+            Self::Diff(diff) => diff.take_reread(reread, cx),
+            Self::Process(_)
+            | Self::ProjectOverview(_)
+            | Self::Commit(_)
+            | Self::GitLog(_)
+            | Self::Settings(_)
+            | Self::Failed { .. }
+            | Self::Scratch(_)
+            | Self::RunValues(_)
+            | Self::RunConfigs(_)
+            | Self::Unloaded(_)
+            | Self::Hub(_) => {}
         }
     }
 

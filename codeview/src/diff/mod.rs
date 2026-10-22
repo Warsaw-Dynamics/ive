@@ -166,8 +166,10 @@ impl DiffView {
     /// Shows `files`, keeping the scroll. The same files again (a reload) keep what was collapsed; new ones in a
     /// commit tab start collapsed when over [`COLLAPSE_LINES`].
     pub fn set_files(&mut self, files: Vec<FileDiff>, cx: &mut Context<Self>) {
-        let caret_row = self.caret_row();
-        let files = self.edited_files(files);
+        // the edited text's rows come from diffs of its base only
+        if self.edits_rows() {
+            return;
+        }
         let same_files = files.len() == self.files.len() && files.iter().zip(&self.files).all(|(new, old)| new.path == old.path);
         self.collapsed = match (same_files, self.shape.headers) {
             (true, _) => std::mem::take(&mut self.collapsed),
@@ -178,7 +180,6 @@ impl DiffView {
         self.files = files;
         self.measure_numbers();
         self.rebuild();
-        self.keep_caret(caret_row, cx);
         cx.notify();
     }
 
@@ -250,12 +251,8 @@ impl DiffView {
     }
 
     /// Keeps `source` as side `target` of its file when it answers the last ask, `generation`, for that file; the
-    /// parse that colours it. The new side asked for to edit becomes the edited text (missing, the diff stays
-    /// read-only).
+    /// parse that colours it.
     pub fn set_text(&mut self, target: ParseTarget, generation: u64, source: Option<Source>, cx: &mut Context<Self>) -> Option<ParseJob> {
-        if target == ParseTarget::DiffNew(0) && self.waits_to_edit(generation) {
-            self.adopt(source.clone());
-        }
         let file = match target {
             ParseTarget::DiffOld(file) | ParseTarget::DiffNew(file) => self.files.get(file)?,
             ParseTarget::Text => return None,

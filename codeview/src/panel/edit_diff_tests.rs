@@ -10,6 +10,7 @@ use super::*;
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
 use crate::diff::{DiffBody, DiffLine, GitPath, Headers, Hunk, LineKind, Mark};
 use crate::style::{Appearance, ViewStyle};
+use crate::document::TextSource;
 use crate::text_editor::model::Position;
 
 /// What an editable diff panel told its host.
@@ -73,11 +74,28 @@ fn opened(panel: &Entity<Panel>, input: DiffInput, texts: (&str, &str), cx: &mut
     answer_texts(panel, texts, heard, cx);
 }
 
-/// Answers the last ask for file 0's texts with `old` and `new`.
+/// Answers the last ask for file 0's texts with `old` and `new`; one to edit with the diff the rows show now as the
+/// diff of the two.
 fn answer_texts(panel: &Entity<Panel>, (old, new): (&str, &str), heard: &RefCell<Heard>, cx: &mut VisualTestContext) {
-    let generation = heard.borrow().texts.last().expect("the texts were asked for").generation;
-    let source = |text: &str| Some(Source::from_vec(text.as_bytes().to_vec()));
-    cast(panel, Cast::SetTexts { file: 0, generation, old: source(old), new: source(new) }, cx);
+    let diff = diff_of(panel, cx).read_with(cx, |diff, _| diff.file(0).cloned()).expect("one file");
+    answer_to_edit(panel, (old, Arc::new(TextSource::new(new))), diff, heard, cx);
+}
+
+/// Answers the last ask for file 0's texts with `old` and `new`; one to edit with `diff` as their diff.
+fn answer_to_edit(panel: &Entity<Panel>, (old, new): (&str, Arc<TextSource>), diff: FileDiff, heard: &RefCell<Heard>, cx: &mut VisualTestContext) {
+    let request = *heard.borrow().texts.last().expect("the texts were asked for");
+    let old = Some(Source::from_vec(old.as_bytes().to_vec()));
+    let generation = request.generation;
+    match request.purpose {
+        TextPurpose::Colours => cast(panel, Cast::SetTexts { file: 0, generation, old, new: new.source() }, cx),
+        TextPurpose::Editing => cast(panel, Cast::SetEditBase { generation, base: EditBase::Text { old, new, diff } }, cx),
+    }
+}
+
+/// The text the edits apply to: as last taken to edit or saved.
+fn edited_base(panel: &Entity<Panel>, cx: &mut VisualTestContext) -> Arc<dyn LineSource> {
+    let diff = diff_of(panel, cx);
+    diff.read_with(cx, |diff, _| diff.edited().expect("the new side is edited").table().base().clone())
 }
 
 fn editable(files: Vec<FileDiff>, layout: DiffLayout) -> DiffInput {
@@ -169,7 +187,8 @@ fn should_keep_the_caret_by_new_line_after_a_rediff(cx: &mut TestAppContext) {
     press(&panel, point(px(799.), px(90.)), cx);
     cast(&panel, typed("!"), cx);
     cast(&panel, Cast::Command(Command::Flush), cx);
-    cast(&panel, Cast::Saved { revision: 1, source: Arc::new(crate::document::TextSource::new("one\nTWO\nthree!\n")) }, cx);
+    let saved_text: Arc<dyn LineSource> = Arc::new(TextSource::new("one\nTWO\nthree!\n"));
+    cast(&panel, Cast::Saved { revision: 1, source: saved_text.clone() }, cx);
     let saved = rows(&panel, cx);
 
     // when
@@ -180,7 +199,7 @@ fn should_keep_the_caret_by_new_line_after_a_rediff(cx: &mut TestAppContext) {
         line(LineKind::Added, None, Some(2), "TWO"),
         line(LineKind::Added, None, Some(3), "three!"),
     ])]);
-    cast(&panel, Cast::SetFiles(vec![rediffed]), cx);
+    cast(&panel, Cast::SetBaseDiff { base: saved_text, diff: rediffed }, cx);
     let kept = caret(&panel, cx);
     cast(&panel, Cast::Command(Command::Undo), cx);
 
@@ -213,12 +232,14 @@ fn should_move_the_caret_when_its_hunk_disappears(cx: &mut TestAppContext) {
     let (panel, heard, cx) = window(cx);
     opened(&panel, editable(vec![hunks_at(&[2, 30])], DiffLayout::Inline), ("", &numbers()), cx, &heard);
     let started = caret(&panel, cx);
+    let base = edited_base(&panel, cx);
+    let rediffed = |changed: &[u32]| Cast::SetBaseDiff { base: base.clone(), diff: hunks_at(changed) };
 
     // when
-    cast(&panel, Cast::SetFiles(vec![hunks_at(&[30])]), cx);
+    cast(&panel, rediffed(&[30]), cx);
     let moved = caret(&panel, cx);
-    cast(&panel, Cast::SetFiles(vec![hunks_at(&[10, 30, 50])]), cx);
-    cast(&panel, Cast::SetFiles(vec![hunks_at(&[30, 50])]), cx);
+    cast(&panel, rediffed(&[10, 30, 50]), cx);
+    cast(&panel, rediffed(&[30, 50]), cx);
 
     // then
     // the caret started on the first added line, line 2; the nearest line left is the far hunk's first, 27
@@ -256,4 +277,72 @@ fn rows_of(diff: &FileDiff) -> Vec<(char, Option<u32>, Option<u32>, String)> {
         LineKind::NoNewline => '\\',
     };
     hunks.iter().flat_map(|hunk| &hunk.lines).map(|line| (sign(line.kind), line.old, line.new, line.text.clone())).collect()
+}
+
+#[gpui::test]
+fn should_show_the_diff_of_the_text_taken_to_edit_not_the_one_opened(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    cast(&panel, Cast::Open(Content::Diff(editable(vec![changed_second_line()], DiffLayout::Inline))), cx);
+    draw(&panel, cx);
+    // the file changed after the diff opened: a line came at the top
+    let now = file(vec![hunk(vec![
+        line(LineKind::Added, None, Some(1), "zero"),
+        line(LineKind::Context, Some(1), Some(2), "one"),
+        line(LineKind::Removed, Some(2), None, "two"),
+        line(LineKind::Added, None, Some(3), "TWO"),
+        line(LineKind::Context, Some(3), Some(4), "three"),
+    ])]);
+
+    // when
+    answer_to_edit(&panel, ("one\ntwo\nthree\n", Arc::new(TextSource::new("zero\none\nTWO\nthree\n"))), now, &heard, cx);
+    // rows: the hunk header, "zero", "one", "two", "TWO", "three"; the text starts right of the gutter
+    press(&panel, point(px(799.), px(90.)), cx);
+    cast(&panel, typed("!"), cx);
+    cast(&panel, Cast::Command(Command::Flush), cx);
+
+    // then
+    let edits = heard.borrow().saves.last().map(|save| save.edits.clone());
+    assert_eq!(edits, Some(vec![edit(12..12, "!")]));
+    let expected = [('-', Some(2), None, "two".to_owned()), ('+', None, Some(3), "TWO!".to_owned()), (' ', Some(3), Some(4), "three".to_owned())];
+    assert_eq!(rows(&panel, cx)[2..], expected);
+}
+
+#[gpui::test]
+fn should_keep_the_rows_of_the_edited_text_when_a_diff_of_another_text_comes(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    opened(&panel, editable(vec![changed_second_line()], DiffLayout::Inline), ("one\ntwo\nthree\n", "one\nTWO\nthree\n"), cx, &heard);
+    cast(&panel, typed("x"), cx);
+    // a save in flight: a diff read meanwhile may see the file half written
+    cast(&panel, Cast::Command(Command::Flush), cx);
+    let typed_rows = rows(&panel, cx);
+    let written = file(vec![hunk(vec![line(LineKind::Added, None, Some(1), "garbled")])]);
+
+    // when
+    cast(&panel, Cast::SetFiles(vec![written.clone()]), cx);
+    cast(&panel, Cast::SetBaseDiff { base: Arc::new(TextSource::new("garbled\n")), diff: written }, cx);
+
+    // then
+    assert_eq!(heard.borrow().saves.len(), 1);
+    assert_eq!(rows(&panel, cx), typed_rows);
+    assert_eq!(typed_rows[2], ('+', None, Some(2), "xTWO".to_owned()));
+}
+
+#[gpui::test]
+fn should_leave_the_diff_read_only_when_its_new_side_cannot_be_read_to_edit(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    cast(&panel, Cast::Open(Content::Diff(editable(vec![changed_second_line()], DiffLayout::Inline))), cx);
+    draw(&panel, cx);
+    let generation = heard.borrow().texts[0].generation;
+
+    // when
+    cast(&panel, Cast::SetEditBase { generation, base: EditBase::Unavailable }, cx);
+    draw(&panel, cx);
+
+    // then
+    assert!(panel.read_with(cx, |panel, cx| !panel.is_editable_diff(cx)));
+    // asked for again, to colour the read-only diff
+    assert_eq!(heard.borrow().texts.last().map(|request| request.purpose), Some(TextPurpose::Colours));
 }

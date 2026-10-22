@@ -12,7 +12,7 @@ use futures::channel::mpsc::{UnboundedReceiver, unbounded};
 use gpui::{App, Context, Task, Window};
 
 use super::Workspace;
-use crate::editor::Tab;
+use crate::tabs::TabId;
 use crate::open_project::OpenProject;
 use crate::project::{CheckoutRef, ProjectId, Statuses};
 use crate::script::state::ScriptState;
@@ -169,7 +169,7 @@ impl Workspace {
                     documents.insert(path);
                 }
                 Change::FileRemoved(path) => {
-                    self.take_reread(&path, Reread::Gone, cx);
+                    self.take_removed(&path, cx);
                     self.scratch_changed_on_disk(&path, cx);
                 }
                 Change::Git(dir) => {
@@ -213,32 +213,37 @@ impl Workspace {
         files.collect()
     }
 
-    /// Gives the tab showing the document at `path` what re-reading it found.
-    fn take_reread(&mut self, path: &Path, reread: Reread, cx: &mut App) {
-        let shown = self.tabs.find(|tab| tab.shows(path)).and_then(|id| self.tabs.get_mut(id));
-        if let Some(Tab::Document(file)) = shown {
-            file.take_reread(reread, cx);
+    /// Tells the tabs editing the file at `path` that it went away.
+    fn take_removed(&mut self, path: &Path, cx: &mut App) {
+        for (id, _) in self.document_stamps(path, cx) {
+            self.take_reread(id, Reread::Gone, cx);
         }
     }
 
-    /// Re-reads the open documents at `paths` on the background executor; one whose size and modification time
-    /// are unchanged is not read.
+    /// Gives tab `id` what re-reading the file it edits found.
+    fn take_reread(&mut self, id: TabId, reread: Reread, cx: &mut App) {
+        if let Some(tab) = self.tabs.get_mut(id) {
+            tab.take_reread(reread, cx);
+        }
+    }
+
+    /// Re-reads the open documents at `paths` on the background executor, once for each tab editing one (a file tab
+    /// and a diff tab may have read it at different times); one whose size and modification time are unchanged is
+    /// not read.
     fn reread_documents(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
-        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path, cx).map(|stamp| (path, stamp))).collect();
+        let known: Vec<(TabId, PathBuf, Option<Stamp>)> =
+            paths.into_iter().flat_map(|path| self.document_stamps(&path, cx).into_iter().map(move |(id, stamp)| (id, path.clone(), stamp))).collect();
         if known.is_empty() {
             return;
         }
         let rereads = cx.background_executor().spawn(async move {
-            known.into_iter().map(|(path, stamp)| {
-                let reread = document::reread(&path, stamp);
-                (path, reread)
-            }).collect::<Vec<(PathBuf, Reread)>>()
+            known.into_iter().map(|(id, path, stamp)| (id, document::reread(&path, stamp))).collect::<Vec<(TabId, Reread)>>()
         });
         cx.spawn(async move |this, cx| {
             let rereads = rereads.await;
             this.update(cx, |workspace, cx| {
-                for (path, reread) in rereads {
-                    workspace.take_reread(&path, reread, cx);
+                for (id, reread) in rereads {
+                    workspace.take_reread(id, reread, cx);
                 }
                 cx.notify();
             })
@@ -247,12 +252,9 @@ impl Workspace {
         .detach();
     }
 
-    /// The stamp of the document `path` shows, while a tab shows it.
-    fn document_stamp(&self, path: &Path, cx: &App) -> Option<Option<Stamp>> {
-        match self.tabs.get(self.tabs.find(|tab| tab.shows(path))?) {
-            Some(Tab::Document(file)) => Some(file.stamp(cx)),
-            _ => None,
-        }
+    /// The tabs editing the document at `path`, each with the stamp it last read or wrote it with.
+    fn document_stamps(&self, path: &Path, cx: &App) -> Vec<(TabId, Option<Stamp>)> {
+        self.tabs.iter().filter_map(|(id, tab)| tab.edited_stamp(path, cx).map(|stamp| (id, stamp))).collect()
     }
 
     fn git_dir_changed(&mut self, dir: &Path, cx: &mut Context<Self>) {

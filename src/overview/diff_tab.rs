@@ -1,8 +1,10 @@
 //! A diff tab: one file's diff, frozen when it opened, with Reload. A diff of uncommitted changes edits its new
-//! side, the file in the work tree, saved as a file tab saves it; each save reads the diff again.
+//! side, the file in the work tree, saved as a file tab saves it; its rows are always the diff of the very text
+//! edited: as read to edit, or as saved.
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Subscription, Task, Window, div, prelude::*, rgb};
 
@@ -12,12 +14,13 @@ use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serv
 use crate::document::Document;
 use crate::file_tab::{EditedFile, FileEvent, Shown, Shows};
 use crate::file_write;
-use codeview::diff::Headers;
-use codeview::document::{Source, Stamp};
-use codeview::panel::{Cast, EditPolicy, Editable, Event, Panel, PanelState, TextPurpose, TextsRequest};
+use codeview::diff::{DiffBody, Headers};
+use codeview::document::{Reread, Stamp};
+use codeview::panel::{Cast, EditBase, EditPolicy, Editable, Event, Panel, PanelState, TextPurpose, TextsRequest};
 use codeview::syntax::MAX_HIGHLIGHT_BYTES;
 use crate::git::base::{ForkPoint, fork_point};
-use crate::git::diff::{self, FileDiff, FilePaths, Sides, SinceRange, Uncommitted};
+use crate::git::diff::{self, EditedDiff, FileDiff, FilePaths, Sides, SinceRange, Uncommitted};
+use crate::git::status::relative_path;
 use crate::git::repo::GitError;
 use crate::git::types::{GitPath, Mark, Sha};
 use crate::git::worktrees::BaseBranch;
@@ -172,9 +175,35 @@ impl DiffTab {
     pub fn editing_panel(&self, cx: &App) -> Option<Entity<Panel>> {
         let body = self.body.read(cx);
         match body.new_side {
-            NewSide::ReadOnly => None,
+            NewSide::ReadOnly | NewSide::Unreadable(_) => None,
             NewSide::Unread | NewSide::Edited { .. } => Some(body.panel.clone()),
         }
+    }
+
+    /// The work tree's file the tab edits (a diff of uncommitted changes), which the workspace watches for it.
+    pub fn edited_path(&self) -> Option<PathBuf> {
+        match self.request.source {
+            DiffSource::Uncommitted => Some(self.request.dir.join(relative_path(self.request.file.path.as_bytes()))),
+            DiffSource::Since { .. } | DiffSource::Commit { .. } => None,
+        }
+    }
+
+    /// What a re-read of the edited file compares it with, once the tab edits it.
+    pub fn edited_stamp(&self, cx: &App) -> Option<Option<Stamp>> {
+        match &self.body.read(cx).new_side {
+            NewSide::Edited { file, .. } => Some(file.read(cx).stamp()),
+            NewSide::ReadOnly | NewSide::Unread | NewSide::Unreadable(_) => None,
+        }
+    }
+
+    /// A change of the edited file on disk: with nothing unsaved, the tab takes the file as it is now to edit, rows
+    /// and all; with unsaved edits, the rows keep showing them, and the next save meets the change.
+    pub fn take_reread(&self, reread: Reread, cx: &mut App) {
+        let file = match &self.body.read(cx).new_side {
+            NewSide::Edited { file, .. } => file.clone(),
+            NewSide::ReadOnly | NewSide::Unread | NewSide::Unreadable(_) => return,
+        };
+        file.update(cx, |file, cx| file.take_reread(reread, cx));
     }
 
     /// Scrolls the diff back to where a saved tab had it.
@@ -197,17 +226,20 @@ enum NewSide {
     ReadOnly,
     /// editable once its text is read to edit
     Unread,
-    /// the file behind it, read to edit; each save reads the diff again
+    /// its text could not be read to edit, for this reason: read-only until Reload tries again
+    Unreadable(String),
+    /// the file behind it, read to edit; each save diffs the text saved again
     Edited { file: Entity<EditedFile>, _changes: Subscription },
 }
 
 /// What the panel saves with until it knows the file's size.
 const FIRST_POLICY: EditPolicy = EditPolicy { save_delay: file_write::SMALL_FILE_SAVE_DELAY, limit: None };
 
-/// A file's texts read to edit its new side: the old one to colour, and the file in the work tree with its stamp.
-struct EditTexts {
-    old: Option<Source>,
-    new: Option<(Document, Option<Stamp>)>,
+/// A diff's new side read to edit: the file in the work tree with its stamp, HEAD's text of it to colour, and the
+/// diff of the two, made from the very text read.
+struct EditRead {
+    opened: (Document, Option<Stamp>),
+    head: EditedDiff,
 }
 
 pub struct DiffTabBody {
@@ -246,45 +278,115 @@ impl DiffTabBody {
             return send_texts(&self.panel, WantedTexts { request, origin }, cx);
         }
         let file = self.request.file.clone();
-        let reading = cx.background_executor().spawn(async move { read_to_edit(&origin, &file) });
+        let reading = cx.background_executor().spawn(async move { read_to_edit(&origin.dir, &file) });
         cx.spawn(async move |body, cx| {
             let read = reading.await;
-            body.update(cx, |body, cx| body.take_texts(request, read, cx)).ok();
+            body.update(cx, |body, cx| body.take_texts(request.generation, read, cx)).ok();
         })
         .detach();
     }
 
-    /// Answers ask `request` with texts read to edit; the new side becomes the edited file's base only when the
-    /// panel takes it as its text, so the two always agree.
-    fn take_texts(&mut self, request: TextsRequest, read: Result<EditTexts, String>, cx: &mut Context<Self>) {
-        let EditTexts { old, new } = match read {
-            Ok(texts) => texts,
-            Err(message) => return eprintln!("ive: the diff of {} cannot be edited: {message}", self.request.file.path.display()),
-        };
-        let waits = self.panel.read(cx).waits_to_edit(request.generation, cx);
-        let new = new.filter(|_| waits).map(|opened| self.take_base(opened, cx));
-        let TextsRequest { file, generation, .. } = request;
-        self.panel.update(cx, |panel, cx| panel.handle(Cast::SetTexts { file, generation, old, new }, cx));
-    }
-
-    /// The file read to edit becomes the base of the file behind the new side; its text, for the panel.
-    fn take_base(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) -> Source {
-        let source = opened.0.source();
-        match &self.new_side {
-            NewSide::Edited { file, .. } => file.update(cx, |file, cx| file.adopt(opened, cx)),
-            NewSide::ReadOnly | NewSide::Unread => {
-                let shown = Shown { panel: self.panel.clone(), shows: Shows::DiffSide };
-                let file = cx.new(|cx| EditedFile::new(opened, shown, cx));
-                let changes = cx.subscribe(&file, |body, _file, event: &FileEvent, cx| match event {
-                    FileEvent::Changed => body.reload(cx),
-                });
-                self.new_side = NewSide::Edited { file, _changes: changes };
-            }
+    /// Answers ask `generation` with the new side read to edit, while the panel waits for it: the text becomes the
+    /// edited file's base and the panel's together, with the diff of that very text; one that cannot be read leaves
+    /// the diff read-only, saying why.
+    fn take_texts(&mut self, generation: u64, read: Result<EditRead, String>, cx: &mut Context<Self>) {
+        if self.panel.read(cx).waits_to_edit(generation, cx) {
+            let base = match read {
+                Ok(read) => self.take_base(read, cx),
+                Err(reason) => self.unreadable(reason),
+            };
+            self.panel.update(cx, |panel, cx| panel.handle(Cast::SetEditBase { generation, base }, cx));
+            cx.notify();
         }
-        source
     }
 
+    fn unreadable(&mut self, reason: String) -> EditBase {
+        eprintln!("ive: the diff of {} cannot be edited: {reason}", self.request.file.path.display());
+        self.new_side = NewSide::Unreadable(reason);
+        EditBase::Unavailable
+    }
+
+    /// The file read to edit becomes the base of the file behind the new side, and the panel's.
+    fn take_base(&mut self, read: EditRead, cx: &mut Context<Self>) -> EditBase {
+        let EditRead { opened, head } = read;
+        let new = match &self.new_side {
+            NewSide::Edited { file, .. } => file.update(cx, |file, cx| file.adopt(opened, cx)),
+            NewSide::ReadOnly | NewSide::Unread | NewSide::Unreadable(_) => self.edit_file(opened, cx),
+        };
+        let diff = self.shown_diff(head.body);
+        EditBase::Text { old: head.old, new, diff }
+    }
+
+    /// Edits the new side as `opened`; its base, for the panel.
+    fn edit_file(&mut self, opened: (Document, Option<Stamp>), cx: &mut Context<Self>) -> Arc<Document> {
+        let shown = Shown { panel: self.panel.clone(), shows: Shows::DiffSide };
+        let file = cx.new(|cx| EditedFile::new(opened, shown, cx));
+        let base = file.read(cx).base();
+        let changes = cx.subscribe(&file, |body, _file, event: &FileEvent, cx| match event {
+            FileEvent::Saved => body.rediff(cx),
+            FileEvent::Gone => body.reload_diff(cx),
+        });
+        self.new_side = NewSide::Edited { file, _changes: changes };
+        base
+    }
+
+    /// `body` as the file's diff, which the header follows.
+    fn shown_diff(&mut self, body: DiffBody) -> FileDiff {
+        let diff = FileDiff { path: self.request.file.path.clone(), old_path: self.request.file.old_path.clone(), mark: self.mark, body };
+        self.state = state_of(&diff);
+        diff
+    }
+
+    /// The edited file was saved: the diff of the text saved becomes the rows' (a diff of the work tree, which may
+    /// hold a later write already, never numbers them).
+    fn rediff(&mut self, cx: &mut Context<Self>) {
+        let NewSide::Edited { file, .. } = &self.new_side else {
+            return;
+        };
+        let (base, dir, paths) = (file.read(cx).base(), self.request.dir.clone(), self.request.file.clone());
+        let saved = base.clone();
+        let diffing = cx.background_executor().spawn(async move { diff::edited_uncommitted(&dir, &paths, saved.bytes()) });
+        cx.spawn(async move |body, cx| {
+            let diffed = diffing.await;
+            body.update(cx, |body, cx| body.rediffed(base, diffed, cx)).ok();
+        })
+        .detach();
+    }
+
+    /// The diff of `base`, a text saved; the panel drops it if its edits apply to another text by now.
+    fn rediffed(&mut self, base: Arc<Document>, diffed: Result<EditedDiff, GitError>, cx: &mut Context<Self>) {
+        let diff = match diffed {
+            Ok(edited) => self.shown_diff(edited.body),
+            Err(error) => {
+                self.state = BodyState::Failed(error.to_string());
+                return cx.notify();
+            }
+        };
+        self.panel.update(cx, |panel, cx| panel.handle(Cast::SetBaseDiff { base, diff }, cx));
+        cx.notify();
+    }
+
+    /// Reload: an edited new side with nothing unsaved is read again to edit, rows and all (with unsaved edits the
+    /// rows keep showing them); one that could not be read is tried again; any other diff is read again.
     fn reload(&mut self, cx: &mut Context<Self>) {
+        let panel = self.panel.read(cx);
+        let edited = panel.edits_new_side(cx);
+        let unsaved = panel.has_unsaved(cx);
+        match (&self.new_side, edited) {
+            // the rows keep showing the edits; the next save meets the change
+            (NewSide::Edited { .. }, true) if unsaved => {}
+            (NewSide::Edited { file, .. }, true) => file.clone().update(cx, |file, cx| file.read_again(cx)),
+            (NewSide::Unreadable(_), _) => {
+                self.new_side = NewSide::Unread;
+                self.panel.update(cx, |panel, cx| panel.handle(Cast::SetEditable(Editable::NewSide { policy: FIRST_POLICY }), cx));
+            }
+            _ => self.reload_diff(cx),
+        }
+        cx.notify();
+    }
+
+    /// Reads the diff of the work tree again, for a diff the panel does not edit.
+    fn reload_diff(&mut self, cx: &mut Context<Self>) {
         self.state = BodyState::Reloading;
         let request = self.request.clone();
         self._reload = Some(cx.spawn(async move |this, cx| {
@@ -295,6 +397,11 @@ impl DiffTabBody {
     }
 
     fn reloaded(&mut self, result: Result<(DiffRequest, Option<FileDiff>), String>, cx: &mut Context<Self>) {
+        // taken to edit meanwhile: the rows show the diff of the text taken
+        if self.panel.read(cx).edits_new_side(cx) {
+            self.state = BodyState::Shown;
+            return cx.notify();
+        }
         let files = match result {
             Ok((request, Some(file))) => {
                 self.request = request;
@@ -321,7 +428,7 @@ impl DiffTabBody {
 impl Render for DiffTabBody {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = crate::theme::tabs(cx);
-        let reload = target("reload-diff".to_owned(), cx.listener(|body, _event, _window, cx| body.reload(cx)), cx);
+        let reload = target("reload-diff".to_owned(), cx.listener(|body: &mut Self, _event, _window, cx| body.reload(cx)), cx);
         let status = match &self.state {
             BodyState::Shown => None,
             BodyState::Reloading => Some(muted("reloading…", theme)),
@@ -342,7 +449,7 @@ impl Render for DiffTabBody {
             .child(div().flex_none().font_weight(theme.sizes.git.diff_header_weight.font_weight()).text_size(theme.sizes.git.text_size.px()).child(self.request.file.path.display()))
             .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(self.source.clone()))
             .children(status)
-            .children(self.lock_note(cx).map(|note| div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(note)))
+            .children(self.edit_note(cx).map(|note| div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(note)))
             .child(layout_switch(&self.panel, theme, cx))
             .child(toggle_button("reload-diff", icons::HISTORY, "Reload", theme).on_click(reload));
         div().flex().flex_col().flex_1().min_h_0().child(header).child(self.panel.clone())
@@ -350,12 +457,28 @@ impl Render for DiffTabBody {
 }
 
 impl DiffTabBody {
-    /// Why the new side is read-only for now: another tab holds unsaved edits to the file.
-    fn lock_note(&self, cx: &App) -> Option<gpui::SharedString> {
+    /// Why the new side is read-only for now: another tab holds unsaved edits to the file, or it could not be read
+    /// to edit.
+    fn edit_note(&self, cx: &App) -> Option<gpui::SharedString> {
         match &self.new_side {
             NewSide::Edited { file, .. } => file.read(cx).lock_note(),
+            NewSide::Unreadable(reason) => Some(format!("read-only: {reason}").into()),
             NewSide::ReadOnly | NewSide::Unread => None,
         }
+    }
+
+    /// The note in the header saying why the new side is read-only, if it is.
+    #[cfg(test)]
+    fn note(&self, cx: &App) -> Option<String> {
+        self.edit_note(cx).map(|note| note.to_string())
+    }
+}
+
+/// Shown, or gone when git finds no change any more.
+fn state_of(diff: &FileDiff) -> BodyState {
+    match &diff.body {
+        DiffBody::Text { hunks, .. } if hunks.is_empty() => BodyState::Gone,
+        DiffBody::Text { .. } | DiffBody::Binary | DiffBody::TooLarge => BodyState::Shown,
     }
 }
 
@@ -367,21 +490,31 @@ fn new_side_of(source: &DiffSource) -> NewSide {
     }
 }
 
-/// The old text of `file` and its file in the work tree, read to edit.
-fn read_to_edit(origin: &DiffOrigin, file: &FilePaths) -> Result<EditTexts, String> {
-    let old = diff::old_text(&origin.dir, &origin.sides, file).map_err(|error| error.to_string())?;
-    let path = diff::work_tree_path(&origin.dir, &file.path).map_err(|error| error.to_string())?;
-    Ok(EditTexts { old, new: editable_file(&path) })
+/// The work tree's file of `file` in the repository at `dir`, read to edit, with its diff against HEAD.
+fn read_to_edit(dir: &Path, file: &FilePaths) -> Result<EditRead, String> {
+    let path = diff::work_tree_path(dir, &file.path).map_err(|error| error.to_string())?;
+    let opened = editable_file(&path)?;
+    let head = diff::edited_uncommitted(dir, file, opened.0.bytes()).map_err(|error| error.to_string())?;
+    match head.body {
+        DiffBody::Text { .. } => Ok(EditRead { opened, head }),
+        DiffBody::Binary | DiffBody::TooLarge => Err(format!("{} is binary or too large in HEAD", file.path.display())),
+    }
 }
 
 /// The file at `path` with the stamp it had when read, when a diff edits it: a regular file, not binary, small enough
 /// to colour (so held in memory, never mapped).
-fn editable_file(path: &Path) -> Option<(Document, Option<Stamp>)> {
-    let metadata = fs::symlink_metadata(path).ok()?;
-    if !metadata.is_file() || metadata.len() > MAX_HIGHLIGHT_BYTES as u64 {
-        return None;
+fn editable_file(path: &Path) -> Result<(Document, Option<Stamp>), String> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    match (metadata.is_file(), metadata.len()) {
+        (true, length) if length <= MAX_HIGHLIGHT_BYTES as u64 => {}
+        (true, length) => return Err(format!("{} is too large to edit in a diff ({length} bytes)", path.display())),
+        (false, _) => return Err(format!("{} is not a regular file", path.display())),
     }
-    Document::open_stamped(path).ok().filter(|(document, _)| document.byte_len() <= MAX_HIGHLIGHT_BYTES)
+    let opened = Document::open_stamped(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    match opened.0.byte_len() <= MAX_HIGHLIGHT_BYTES {
+        true => Ok(opened),
+        false => Err(format!("{} is too large to edit in a diff ({} bytes)", path.display(), opened.0.byte_len())),
+    }
 }
 
 #[cfg(test)]
@@ -585,5 +718,118 @@ mod editing_tests {
         assert_eq!(before_save, ["one", "two", "three"]);
         // git finds no change any more: the diff has no lines left
         assert_eq!(new_lines(&panel, cx), Vec::<String>::new());
+    }
+
+    /// Types `text` at the caret and lets the save land.
+    fn type_and_save(panel: &Entity<Panel>, text: &str, cx: &mut VisualTestContext) {
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type(text.to_owned()), cx));
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Flush), cx));
+        cx.run_until_parked();
+    }
+
+    fn on_disk(repo: &TestRepo) -> String {
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap()
+    }
+
+    #[gpui::test]
+    fn should_edit_the_line_shown_when_the_file_changed_before_the_tab_was_shown(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        // a restored tab not shown yet: its diff was read, then the file changed
+        repo.write("a.txt", "zero\none\nTWO\nthree\n");
+        let cx = cx.add_empty_window();
+
+        // when
+        draw(&panel, cx);
+        let shown = new_lines(&panel, cx);
+        // the caret starts on the first added line
+        type_and_save(&panel, "x", cx);
+
+        // then
+        assert_eq!(shown, ["zero", "one", "TWO", "three"]);
+        assert_eq!(on_disk(&repo), "xzero\none\nTWO\nthree\n");
+        assert_eq!(new_lines(&panel, cx), ["xzero", "one", "TWO", "three"]);
+    }
+
+    #[gpui::test]
+    fn should_take_the_file_again_to_edit_when_reloaded_after_an_outside_change(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        repo.write("a.txt", "one\nTWO\nthree\nfour\n");
+
+        // when
+        tab.body.update(cx, |body, cx| body.reload(cx));
+        cx.run_until_parked();
+        draw(&panel, cx);
+        let shown = new_lines(&panel, cx);
+        type_and_save(&panel, "x", cx);
+
+        // then
+        assert_eq!(shown, ["one", "TWO", "three", "four"]);
+        // no conflict: the edit applies to the file as it is now
+        assert_eq!(on_disk(&repo), "one\nxTWO\nthree\nfour\n");
+    }
+
+    #[gpui::test]
+    fn should_take_an_outside_change_to_edit_only_while_nothing_is_unsaved(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        let cx = cx.add_empty_window();
+        draw(&panel, cx);
+        let path = repo.path().join("a.txt");
+        let changed = |text: &str, cx: &mut VisualTestContext| {
+            repo.write("a.txt", text);
+            let stamp = cx.read(|cx| tab.edited_stamp(cx)).expect("the file is edited");
+            cx.update(|_, cx| tab.take_reread(codeview::document::reread(&path, stamp), cx));
+            cx.run_until_parked();
+            draw(&panel, cx);
+        };
+
+        // when
+        changed("one\nTWO\nthree\nfour\n", cx);
+        let taken = new_lines(&panel, cx);
+        panel.update(cx, |panel, cx| panel.handle(Cast::Type("x".to_owned()), cx));
+        changed("theirs\n", cx);
+        let kept = new_lines(&panel, cx);
+        panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::Flush), cx));
+        cx.run_until_parked();
+
+        // then
+        assert_eq!(taken, ["one", "TWO", "three", "four"]);
+        // with an unsaved edit the rows go on showing the text edited, and the save meets the change
+        assert_eq!(kept, ["one", "xTWO", "three", "four"]);
+        assert_eq!(on_disk(&repo), "theirs\n");
+        assert!(panel.read_with(cx, |panel, cx| panel.has_unsaved(cx)));
+    }
+
+    #[gpui::test]
+    fn should_leave_the_diff_read_only_with_a_note_when_its_file_cannot_be_read_to_edit(cx: &mut TestAppContext) {
+        // given
+        styled(cx);
+        let (repo, _) = changed_repo();
+        let tab = cx.update(|cx| diff_tab(&repo, DiffSource::Uncommitted, cx));
+        let panel = cx.read(|cx| tab.editing_panel(cx)).expect("an uncommitted diff edits");
+        // the repository went before the tab was shown
+        std::fs::remove_dir_all(repo.path().join(".git")).unwrap();
+        let cx = cx.add_empty_window();
+
+        // when
+        draw(&panel, cx);
+
+        // then
+        assert!(panel.read_with(cx, |panel, cx| !panel.is_editable_diff(cx)));
+        let note = tab.body.read_with(cx, |body, cx| body.note(cx)).unwrap_or_default();
+        assert!(note.starts_with("read-only: cannot open the repository"), "{note}");
     }
 }
