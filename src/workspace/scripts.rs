@@ -137,8 +137,8 @@ impl Workspace {
             // the log could not be written either; its writer said why on stderr
             Err(reason) => return eprintln!("ive: cannot show the script log: {reason}"),
         };
-        if let Some(Tab::Document(editor)) = self.tabs.get(shown) {
-            editor.reveal_end();
+        if let Some(Tab::Document(file)) = self.tabs.get(shown) {
+            file.view.read(cx).reveal_end();
         }
     }
 
@@ -226,19 +226,12 @@ impl Workspace {
             }
             Builtin::SelectAll => {
                 if let Some(shown) = self.tabs.active_id() {
-                    self.update_document_tab(
-                        shown,
-                        |editor| {
-                            editor.select_all();
-                            true
-                        },
-                        cx,
-                    );
+                    self.update_document_tab(shown, |view, cx| view.select_all(cx), cx);
                 }
             }
             Builtin::CopyTo(target) => {
-                if let Some(Tab::Document(editor)) = self.tabs.active() {
-                    editor.copy(target, cx);
+                if let Some(shown) = self.tabs.active_id() {
+                    self.update_document_tab(shown, |view, cx| view.copy(target, cx), cx);
                 }
             }
             // the keymap allows no other action in the window scope; a shown file ignores the editing ones

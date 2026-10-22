@@ -73,7 +73,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::{App, Bounds, prelude::*};
 
 use args::{Args, McpPort};
-use codeview::{document, line_view, parallel, scrollbar, syntax, text_selection};
+use codeview::{document, parallel, scrollbar, syntax};
 use assets::Assets;
 use api::Call;
 use mcp::Token;

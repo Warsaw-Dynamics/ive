@@ -38,6 +38,10 @@ pub struct ViewStyle {
     pub editor_text_size: f32,
     pub editor_line_height_factor: f32,
     pub editor_caret_width: f32,
+    /// the bar above a file's text saying it was deleted on disk, or why it could not be re-read
+    pub editor_notice_padding_x: f32,
+    pub editor_notice_padding_y: f32,
+    pub editor_notice_text_size: f32,
     pub scrollbar_thickness: f32,
     pub scrollbar_min_thumb: f32,
     pub scrollbar_inset: f32,

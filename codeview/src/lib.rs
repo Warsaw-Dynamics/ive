@@ -1,5 +1,6 @@
 //! Viewing, editing and diffing code: syntax highlighting, colour keys and schemes.
 
+pub mod code_view;
 pub mod colors;
 pub mod diff;
 pub mod document;

@@ -12,11 +12,11 @@ use super::store::{FileStamp, LineEnding, MAX_SCRATCH_BYTES, ScratchContent, Scr
 use super::{ScratchRef, log_error, run};
 use crate::click_targets::target;
 use crate::document::Document;
-use crate::editor::{self, EditorView, Reread};
 use crate::icons;
 use crate::paths::tilde_home;
 use crate::project::ProjectId;
 use crate::saved_tabs::{CaretPosition, ScrollPosition};
+use codeview::code_view::{self, CodeView, Reread};
 use codeview::text_editor::{SizeLimit, TextEditor, TextEditorEvent};
 use crate::theme::Theme;
 use crate::workspace::Workspace;
@@ -188,8 +188,7 @@ impl ScratchTab {
 
 enum Body {
     Editing { editor: Entity<TextEditor>, ending: LineEnding, save: SaveState },
-    /// boxed: a document view is many times the size of the editing variant
-    ReadOnly { document: Result<Box<EditorView>, String>, note: &'static str },
+    ReadOnly { document: Result<Entity<CodeView>, String>, note: &'static str },
 }
 
 /// A red bar under the header.
@@ -237,8 +236,8 @@ impl ScratchView {
                 subscriptions.push(cx.observe(&editor, |view, _editor, cx| view.schedule_workspace_save(cx)));
                 Body::Editing { editor, ending, save: SaveState::new(0, stamp) }
             }
-            ScratchContent::TooLarge => read_only(&target, TOO_LARGE),
-            ScratchContent::NotUtf8 => read_only(&target, NOT_UTF8),
+            ScratchContent::TooLarge => read_only(&target, TOO_LARGE, cx),
+            ScratchContent::NotUtf8 => read_only(&target, NOT_UTF8, cx),
         };
         Self { target, body, bar: None, save_task: None, read_task: None, _subscriptions: subscriptions }
     }
@@ -246,7 +245,7 @@ impl ScratchView {
     fn restore_view(&self, caret: CaretPosition, scroll: ScrollPosition, cx: &mut Context<Self>) {
         match &self.body {
             Body::Editing { editor, .. } => editor.update(cx, |editor, cx| editor.restore_view(caret, scroll, cx)),
-            Body::ReadOnly { document: Ok(document), .. } => document.restore_scroll(scroll),
+            Body::ReadOnly { document: Ok(document), .. } => document.read(cx).restore_scroll(scroll),
             Body::ReadOnly { document: Err(_), .. } => {}
         }
     }
@@ -259,7 +258,7 @@ impl ScratchView {
     fn view_state(&self, cx: &App) -> (CaretPosition, ScrollPosition) {
         match &self.body {
             Body::Editing { editor, .. } => (editor.read(cx).caret_position(), editor.read(cx).scroll_position()),
-            Body::ReadOnly { document: Ok(document), .. } => (CaretPosition::default(), document.scroll_position()),
+            Body::ReadOnly { document: Ok(document), .. } => (CaretPosition::default(), document.read(cx).scroll_position()),
             Body::ReadOnly { document: Err(_), .. } => (CaretPosition::default(), ScrollPosition::default()),
         }
     }
@@ -374,17 +373,17 @@ impl ScratchView {
         let Body::ReadOnly { document: Ok(document), .. } = &self.body else {
             return;
         };
+        let document = document.read(cx);
         let (path, known) = (document.path().to_path_buf(), document.stamp());
         self.read_task = Some(cx.spawn(async move |view, cx| {
-            let reread = cx.background_executor().spawn(async move { editor::reread(&path, known) }).await;
+            let reread = cx.background_executor().spawn(async move { code_view::reread(&path, known) }).await;
             view.update(cx, |view, cx| view.take_reread(reread, cx)).ok();
         }));
     }
 
     fn take_reread(&mut self, reread: Reread, cx: &mut Context<Self>) {
-        if let Body::ReadOnly { document: Ok(document), .. } = &mut self.body {
-            document.take_reread(reread);
-            cx.notify();
+        if let Body::ReadOnly { document: Ok(document), .. } = &self.body {
+            document.update(cx, |document, cx| document.take_reread(reread, cx));
         }
     }
 
@@ -504,7 +503,7 @@ impl ScratchView {
         })
     }
 
-    fn render_body(&self, theme: Theme, window: &mut Window, cx: &App) -> AnyElement {
+    fn render_body(&self, theme: Theme) -> AnyElement {
         let sizes = &theme.sizes.editor;
         let note = |note: &'static str| {
             div()
@@ -517,7 +516,7 @@ impl ScratchView {
         match &self.body {
             Body::Editing { editor, .. } => editor.clone().into_any_element(),
             Body::ReadOnly { document: Ok(document), note: text } => {
-                div().flex().flex_col().flex_1().min_h_0().child(note(text)).child(document.render(theme, window, cx)).into_any_element()
+                div().flex().flex_col().flex_1().min_h_0().child(note(text)).child(document.clone()).into_any_element()
             }
             Body::ReadOnly { document: Err(error), note: text } => div()
                 .flex()
@@ -530,7 +529,7 @@ impl ScratchView {
 }
 
 impl Render for ScratchView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = crate::theme::tabs(cx);
         // child views render after the workspace's own render returned, so reading it here is safe
         let runs_in = self.target.workspace.upgrade().and_then(|workspace| workspace.read(cx).scratch_run_label(&self.target.scratch.project));
@@ -541,7 +540,7 @@ impl Render for ScratchView {
             .min_h_0()
             .child(self.render_header(runs_in, theme, cx))
             .children(self.render_bar(theme, cx))
-            .child(self.render_body(theme, window, cx))
+            .child(self.render_body(theme))
     }
 }
 
@@ -549,8 +548,11 @@ fn limit(ending: LineEnding) -> SizeLimit {
     SizeLimit { max_bytes: MAX_SCRATCH_BYTES as usize, newline_bytes: ending.newline_bytes() }
 }
 
-fn read_only(target: &ScratchTarget, note: &'static str) -> Body {
-    let document = Document::open(&target.store.path(&target.scratch.name)).map(|document| Box::new(EditorView::new(document))).map_err(|error| error.to_string());
+/// The file in a view that only shows it: the mouse selects no text in a read-only scratch.
+fn read_only(target: &ScratchTarget, note: &'static str, cx: &mut App) -> Body {
+    let document = Document::open(&target.store.path(&target.scratch.name))
+        .map(|document| cx.new(|cx| CodeView::new(document, cx).unselectable()))
+        .map_err(|error| error.to_string());
     Body::ReadOnly { document, note }
 }
 

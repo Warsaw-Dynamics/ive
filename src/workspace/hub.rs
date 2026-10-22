@@ -375,7 +375,7 @@ impl Workspace {
             Target::File { path, .. } => in_checkout(path).map_or_else(|| message(item.title.clone()), |path| text(path, *line)),
             Target::Reopen(SavedTab::File { path, .. }) => text(path.clone(), *line),
             Target::Tab(id) => match self.tabs.get(*id) {
-                Some(Tab::Document(editor)) => text(editor.path().to_path_buf(), *line),
+                Some(Tab::Document(file)) => text(file.path().to_path_buf(), *line),
                 Some(Tab::Process(process)) => self.process_preview(*process),
                 _ => message(item.title.clone()),
             },
@@ -388,7 +388,7 @@ impl Workspace {
             Target::RunConfig { folder, key, .. } => self.config_preview(item, folder, key, sources),
             Target::Worktree(checkout) => self.worktree_preview(checkout, sources),
             Target::Line(number) => match sources.back.as_ref().and_then(|back| self.tabs.get(back.tab)) {
-                Some(Tab::Document(editor)) => text(editor.path().to_path_buf(), usize::try_from(*number).ok()),
+                Some(Tab::Document(file)) => text(file.path().to_path_buf(), usize::try_from(*number).ok()),
                 _ => message(crate::hub::rows::LINE_NEEDS_TEXT.to_owned()),
             },
             Target::Reopen(saved) => message(format!("{} · Enter opens it again", saved.title())),
@@ -941,14 +941,7 @@ impl Workspace {
     pub(crate) fn open_document_at(&mut self, path: &Path, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
         self.open_document(path, window, cx);
         if let (Some(line), Some(shown)) = (line, self.tabs.active_id()) {
-            self.update_document_tab(
-                shown,
-                |editor| {
-                    editor.reveal_line(line);
-                    true
-                },
-                cx,
-            );
+            self.update_document_tab(shown, |view, cx| view.reveal_line(line, cx), cx);
         }
     }
 
@@ -1049,14 +1042,7 @@ impl Workspace {
         let Some(back) = self.hub_back() else {
             return;
         };
-        self.update_document_tab(
-            back,
-            |editor| {
-                editor.reveal_line(line);
-                true
-            },
-            cx,
-        );
+        self.update_document_tab(back, |view, cx| view.reveal_line(line, cx), cx);
         self.activate_tab(back, window, cx);
     }
 

@@ -14,7 +14,7 @@ use super::runs::{RunInputs, RunValues, read_run_values};
 use super::{AfterOpen, Workspace};
 use crate::run::wallet::OsWallet;
 use crate::document::Document;
-use crate::editor::{EditorView, Tab};
+use crate::editor::{FileTab, Tab};
 use crate::click_targets::ClickTargets;
 use crate::api::{Call, Reply, Request, WindowInput};
 use crate::window_capture;
@@ -382,7 +382,7 @@ impl Workspace {
             return Ok(open);
         }
         let document = Document::open(&path).map_err(|error| error.to_string())?;
-        Ok(self.open_tab(Tab::Document(EditorView::new(document)), window, cx))
+        Ok(self.open_tab(Tab::Document(FileTab::new(document, cx)), window, cx))
     }
 
     /// Starts a terminal in the checkout holding `directory` (the current checkout without one) and types

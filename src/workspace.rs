@@ -2,15 +2,16 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+use codeview::code_view::CodeView;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, SharedString,
+    AnyWindowHandle, App, Context, CursorStyle, Div, ExternalPaths, FocusHandle, Img, IntoElement, KeyDownEvent, MouseButton, MouseMoveEvent, MouseUpEvent, Render, SharedString,
     ScrollHandle, Stateful, Subscription, Svg, Task, Window, canvas, div, img, prelude::*, rgb, svg,
 };
 
 use crate::click_targets::{ClickTargets, target};
 use crate::age::Clock;
-use crate::editor::{self, EditorView, Tab};
+use crate::editor::{self, Tab};
 use crate::hub::corpus::Corpus;
 use crate::hub::history::{History, Shown, WorktreeUse};
 use crate::hub::index::HubIndex;
@@ -440,13 +441,13 @@ impl Workspace {
     }
 
     fn start_highlighting(&mut self, id: TabId, cx: &mut Context<Self>) {
-        let Some(Tab::Document(editor)) = self.tabs.get(id) else {
+        let Some(Tab::Document(file)) = self.tabs.get(id) else {
             return;
         };
-        let Some(job) = editor.parse_job() else {
+        let Some(job) = file.view.read(cx).parse_job() else {
             return;
         };
-        let path = editor.path().to_path_buf();
+        let path = file.path().to_path_buf();
         let stale = job.cancel();
         let parsing = cx.background_executor().spawn(async move { job.run() });
         cx.spawn(async move |workspace, cx| {
@@ -460,11 +461,8 @@ impl Workspace {
 
     /// The tab may be gone by now; then the result is dropped.
     fn finish_highlighting(&mut self, id: TabId, path: &Path, result: Result<Syntax, ParseError>, cx: &mut Context<Self>) {
-        match (result, self.tabs.get_mut(id)) {
-            (Ok(syntax), Some(Tab::Document(editor))) => {
-                editor.set_syntax(syntax);
-                cx.notify();
-            }
+        match (result, self.tabs.get(id)) {
+            (Ok(syntax), Some(Tab::Document(file))) => file.view.update(cx, |view, cx| view.set_syntax(syntax, cx)),
             (Err(ParseError::Cancelled), _) | (Ok(_), _) => {}
             (Err(error), _) => eprintln!("ive: {} shown without highlighting: {error}", path.display()),
         }
@@ -537,26 +535,10 @@ impl Workspace {
         }
     }
 
-    /// A left press in document tab `id`: the workspace takes the keys (a sidebar field may have had them), so the
-    /// editor scope's Copy and Select All reach the document.
-    pub fn press_document(&mut self, id: TabId, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        window.focus(&self.focus_handle, cx);
-        self.update_document_tab(
-            id,
-            |editor| {
-                editor.press(event);
-                true
-            },
-            cx,
-        );
-    }
-
-    /// Changes document tab `id`; redraws when `update` says it changed what shows.
-    pub fn update_document_tab(&mut self, id: TabId, update: impl FnOnce(&mut EditorView) -> bool, cx: &mut Context<Self>) {
-        if let Some(Tab::Document(editor)) = self.tabs.get_mut(id)
-            && update(editor)
-        {
-            cx.notify();
+    /// Changes the view of document tab `id`; a closed tab or one of another kind is ignored.
+    pub fn update_document_tab(&self, id: TabId, update: impl FnOnce(&mut CodeView, &mut Context<CodeView>), cx: &mut App) {
+        if let Some(Tab::Document(file)) = self.tabs.get(id) {
+            file.view.update(cx, update);
         }
     }
 
@@ -638,7 +620,7 @@ impl Workspace {
     /// The tree row standing for `tab`, selected while it is shown.
     fn tree_key_of(&self, tab: &Tab) -> Option<TreeKey> {
         match tab {
-            Tab::Document(editor) => Some(TreeKey::Entry(editor.path().to_path_buf())),
+            Tab::Document(file) => Some(TreeKey::Entry(file.path().to_path_buf())),
             Tab::Process(id) => match self.processes.get(*id).and_then(|process| process.run.as_ref()) {
                 Some(_) => Some(TreeKey::LiveRun(RunId::Process(*id))),
                 None => Some(TreeKey::Process(*id)),

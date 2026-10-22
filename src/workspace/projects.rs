@@ -7,7 +7,7 @@ use gpui::{App, Context, ExternalPaths, PathPromptOptions, PromptLevel, Task, Wi
 
 use super::Workspace;
 use crate::document::Document;
-use crate::editor::{EditorView, Tab};
+use crate::editor::{FileTab, Tab};
 use crate::file_tree::{Entry, EntryKind, FileTreeError, Listing, read_folder};
 use crate::open_project::{OpenProject, PagedList};
 use crate::overview::ProjectOverview;
@@ -523,7 +523,7 @@ impl Workspace {
         }
         let name = project::folder_name(path);
         let tab = match Document::open(path) {
-            Ok(document) => Tab::Document(EditorView::new(document)),
+            Ok(document) => Tab::Document(FileTab::new(document, cx)),
             Err(error) => Tab::Failed { title: name, error: error.to_string().into() },
         };
         self.open_tab(tab, window, cx);

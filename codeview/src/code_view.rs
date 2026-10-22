@@ -1,0 +1,742 @@
+//! The code view entity: a read-only view of a file that draws only the lines on screen, highlighted once parsed.
+
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::fs;
+use std::ops::Range;
+use std::path::Path;
+use std::rc::Rc;
+use std::time::SystemTime;
+
+use gpui::{
+    App, Context, CursorStyle, DispatchPhase, Div, Entity, FocusHandle, Focusable, KeyDownEvent, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString, Stateful, StyledText, Window, canvas, div, prelude::*, px, rgb,
+};
+
+use crate::colors::{ColorKey, ResolvedScheme};
+use crate::document::{DisplayLine, Document, Source};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
+use crate::line_view::{self, LineScroll, Metrics};
+use crate::position::ScrollPosition;
+use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
+use crate::style::ViewStyle;
+use crate::syntax::{self, Cancel, Highlight, Language, MAX_HIGHLIGHT_BYTES, PARSE_BUDGET, ParseError, Syntax};
+use crate::text_selection::{TextSelection, whole_line, word_around};
+
+/// Columns kept between the pointer and the view's edge when a selection drag scrolls sideways.
+const DRAG_MARGIN_CHARS: f32 = 2.;
+
+/// A read-only view of a document that draws only the lines on screen.
+/// It does its own scrolling instead of using GPUI's list: with 10M lines the list's f32 pixel
+/// positions (200M px) are only accurate to 16 px, so rows would overlap; here the position is a
+/// line number plus a fraction.
+pub struct CodeView {
+    state: State,
+    focus_handle: FocusHandle,
+    /// the mouse selects text; off, the view only shows it
+    selectable: bool,
+}
+
+/// What the view shows and where: everything but its gpui handles.
+struct State {
+    document: Document,
+    scroll: Rc<LineScroll>,
+    scrollbars: ScrollState,
+    /// size and modification time when read; a reload of an unchanged file is skipped
+    stamp: Option<Stamp>,
+    /// a bar above the text: "deleted on disk", or why a reload failed
+    notice: Option<SharedString>,
+    /// set once the background parse finished; plain text until then
+    syntax: Option<Syntax>,
+    /// stops the background parse when this view goes away or its text is re-read
+    cancel: Cancel,
+    highlights: HighlightCache,
+    /// what the mouse or Select All marked; dropped when the text is re-read, since it holds file offsets
+    selection: Option<TextSelection>,
+    /// a left-button drag that started in the text goes on
+    dragging: bool,
+    /// where the last frame put the view, for the mouse
+    placed: Rc<Cell<Option<Placed>>>,
+    /// the line `file:42` went to (from 0), drawn marked until the next press
+    marked: Option<usize>,
+}
+
+/// The view's top-left corner in the window and its font metrics, as last painted.
+#[derive(Clone, Copy)]
+struct Placed {
+    origin: Point<Pixels>,
+    metrics: Metrics,
+}
+
+/// The line under the pointer and the file offset nearest to it.
+struct Hit {
+    index: usize,
+    line: DisplayLine,
+    column: usize,
+    offset: usize,
+}
+
+/// A background parse of one document.
+pub struct ParseJob {
+    source: Source,
+    language: Language,
+    cancel: Cancel,
+}
+
+impl ParseJob {
+    /// Set when the view went away or re-read its text; a result finished before that is stale then.
+    pub fn cancel(&self) -> Cancel {
+        self.cancel.clone()
+    }
+
+    pub fn run(self) -> Result<Syntax, ParseError> {
+        syntax::parse(self.source.as_bytes(), self.language, &self.cancel, PARSE_BUDGET)
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        self.cancel.cancel();
+    }
+}
+
+impl CodeView {
+    /// A view of `document` where the mouse selects text.
+    pub fn new(document: Document, cx: &mut Context<Self>) -> Self {
+        Self { state: State::new(document), focus_handle: cx.focus_handle(), selectable: true }
+    }
+
+    /// This view without selecting by mouse.
+    pub fn unselectable(self) -> Self {
+        Self { selectable: false, ..self }
+    }
+
+    pub fn path(&self) -> &Path {
+        self.state.document.path()
+    }
+
+    /// Scrolls line `line` (from 1; past the end, the last) a third of the way down the view and marks it.
+    pub fn reveal_line(&mut self, line: usize, cx: &mut Context<Self>) {
+        self.state.reveal_line(line);
+        cx.notify();
+    }
+
+    /// Scrolls to the last line, where a log's newest lines are.
+    pub fn reveal_end(&self) {
+        self.state.scroll.reveal_line(self.state.document.line_count().saturating_sub(1));
+    }
+
+    pub fn scroll_position(&self) -> ScrollPosition {
+        self.state.scroll_position()
+    }
+
+    pub fn restore_scroll(&self, position: ScrollPosition) {
+        self.state.scroll.set_position(position);
+    }
+
+    /// The parse this document needs, if it gets highlighting at all: a known language, at most 8 MB.
+    pub fn parse_job(&self) -> Option<ParseJob> {
+        self.state.parse_job()
+    }
+
+    pub fn set_syntax(&mut self, syntax: Syntax, cx: &mut Context<Self>) {
+        self.state.set_syntax(syntax);
+        cx.notify();
+    }
+
+    /// What a re-read compares the file with; none while a notice shows, so the next re-read reads.
+    pub fn stamp(&self) -> Option<Stamp> {
+        self.state.stamp()
+    }
+
+    /// Takes what re-reading the file after a change on disk found; see [`State::take_reread`].
+    pub fn take_reread(&mut self, reread: Reread, cx: &mut Context<Self>) {
+        self.state.take_reread(reread);
+        cx.notify();
+    }
+
+    /// The file was removed or renamed away; the text stays until it comes back.
+    pub fn mark_deleted(&mut self, cx: &mut Context<Self>) {
+        self.state.mark_deleted();
+        cx.notify();
+    }
+
+    pub fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.state.selection = Some(TextSelection::of(0..self.state.document.byte_len()));
+        cx.notify();
+    }
+
+    /// Puts the selected text in `target`; a selection too large to copy is refused, with the reason on stderr.
+    pub fn copy(&self, target: ClipboardTarget, cx: &mut App) {
+        let Some(selection) = self.state.selection else {
+            return;
+        };
+        match selection.text(self.state.document.bytes()) {
+            Ok(text) if text.is_empty() => {}
+            Ok(text) => Host::write_clipboard(target, text, cx),
+            Err(reason) => eprintln!("ive: {} not copied: {reason}", self.path().display()),
+        }
+    }
+
+    /// A left press takes the keys, so the host's Copy and Select All reach the view.
+    fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus(&self.focus_handle, cx);
+        self.state.press(event);
+        cx.notify();
+    }
+
+    fn on_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, _cx: &mut Context<Self>) {
+        self.state.dragging = false;
+    }
+
+    /// The host's Copy and Select All; other keys go on to the window's bindings.
+    fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        match Host::key_outcome(event, KeyScope::Viewer, cx) {
+            KeyOutcome::Command(Command::Copy(target)) => self.copy(target, cx),
+            KeyOutcome::Command(Command::SelectAll) => self.select_all(cx),
+            KeyOutcome::Handled => {}
+            // a read-only view has no other commands; a window action is the host's to run
+            KeyOutcome::Command(_) | KeyOutcome::Foreign | KeyOutcome::Unbound => return,
+        }
+        cx.stop_propagation();
+    }
+}
+
+impl State {
+    fn new(document: Document) -> Self {
+        let scroll = Rc::new(LineScroll::new(document.line_count()));
+        let scrollbars = ScrollState::new(scroll.clone());
+        Self {
+            stamp: stamp(document.path()),
+            document,
+            scroll,
+            scrollbars,
+            notice: None,
+            syntax: None,
+            cancel: Cancel::default(),
+            highlights: HighlightCache::default(),
+            selection: None,
+            dragging: false,
+            placed: Rc::default(),
+            marked: None,
+        }
+    }
+
+    fn reveal_line(&mut self, line: usize) {
+        let index = line.saturating_sub(1).min(self.document.line_count().saturating_sub(1));
+        let top = (index as f64 - self.scroll.viewport_lines() / 3.).max(0.).floor();
+        self.scroll.set_position(ScrollPosition { top_line: top, left: 0. });
+        self.marked = Some(index);
+    }
+
+    /// The marked line, from 1.
+    #[cfg(test)]
+    fn marked_line(&self) -> Option<usize> {
+        self.marked.map(|index| index + 1)
+    }
+
+    /// A left press: places the start of a selection, selects a word on a double click and a line on a triple
+    /// one; with Shift, extends the selection.
+    fn press(&mut self, event: &MouseDownEvent) {
+        self.marked = None;
+        let Some(hit) = self.hit(event.position) else {
+            return;
+        };
+        let bytes = self.document.bytes();
+        let selection = match event.click_count {
+            2 => TextSelection::of(word_around(bytes, &hit.line, hit.offset)),
+            3.. => TextSelection::of(whole_line(bytes, &hit.line)),
+            _ if event.modifiers.shift => self.selection.unwrap_or(TextSelection::at(hit.offset)).extended_to(hit.offset),
+            _ => TextSelection::at(hit.offset),
+        };
+        self.selection = Some(selection);
+        self.dragging = true;
+    }
+
+    /// A move of the pointer anywhere in the window; while a drag that began in the text goes on, the selection
+    /// follows it, and past the view's edges scrolls lines and columns into view. False when nothing changed.
+    fn drag_to(&mut self, point: Point<Pixels>) -> bool {
+        let Some(selection) = self.selection.filter(|_| self.dragging) else {
+            return false;
+        };
+        let (Some(hit), Some(placed)) = (self.hit(point), self.placed.get()) else {
+            return false;
+        };
+        self.scroll.reveal_line(hit.index);
+        let char_width = placed.metrics.char_width;
+        self.scroll.reveal_x(f64::from(f32::from(char_width * hit.column as f32)), f64::from(f32::from(char_width * DRAG_MARGIN_CHARS)));
+        self.selection = Some(selection.extended_to(hit.offset));
+        true
+    }
+
+    /// The line under window point `point` (the first or last one above or below the text) and the column
+    /// boundary nearest to it.
+    fn hit(&self, point: Point<Pixels>) -> Option<Hit> {
+        let Placed { origin, metrics } = self.placed.get()?;
+        let row = f64::from(f32::from(point.y - origin.y) / f32::from(metrics.line_height)) + self.scroll.top();
+        let index = (row.max(0.).floor() as usize).min(self.document.line_count().saturating_sub(1));
+        let line = self.document.lines(index..index + 1).pop()?;
+        let x = f64::from(f32::from(point.x - origin.x - metrics.gutter_width())) + self.scroll.left();
+        let column = (x / f64::from(f32::from(metrics.char_width))).max(0.).round() as usize;
+        let offset = line.offset_at(column);
+        Some(Hit { index, line, column, offset })
+    }
+
+    fn scroll_position(&self) -> ScrollPosition {
+        self.scroll.position()
+    }
+
+    fn parse_job(&self) -> Option<ParseJob> {
+        let language = Language::for_path(self.document.path(), self.document.bytes())?;
+        (self.document.byte_len() <= MAX_HIGHLIGHT_BYTES).then(|| ParseJob {
+            source: self.document.source(),
+            language,
+            cancel: self.cancel.clone(),
+        })
+    }
+
+    fn set_syntax(&mut self, syntax: Syntax) {
+        self.syntax = Some(syntax);
+        self.highlights = HighlightCache::default();
+    }
+
+    /// Highlights of what `line` displays, queried per line so a huge line costs only its shown part, and once
+    /// while the line stays on screen.
+    fn highlights_of(&self, line: &DisplayLine) -> Rc<[Highlight]> {
+        let Some(syntax) = &self.syntax else {
+            return Rc::from([]);
+        };
+        let bytes = line.file_bytes();
+        self.highlights.get_or_query(bytes.start, || syntax::spans(syntax, self.document.bytes(), bytes.clone()))
+    }
+
+    fn stamp(&self) -> Option<Stamp> {
+        match self.notice {
+            Some(_) => None,
+            None => self.stamp,
+        }
+    }
+
+    /// New text keeps the scroll position (clamped to the new length) and shows plain until it is parsed again
+    /// (`parse_job`); a file that is gone or cannot be read keeps the old text, with a note saying why.
+    fn take_reread(&mut self, reread: Reread) {
+        match reread {
+            Reread::Unchanged => {}
+            Reread::Changed(document, stamp) => {
+                self.scroll.set_line_count(document.line_count());
+                self.document = document;
+                self.stamp = stamp;
+                self.notice = None;
+                self.selection = None;
+                self.dragging = false;
+                self.forget_syntax();
+            }
+            Reread::Gone => self.mark_deleted(),
+            Reread::Failed(reason) => self.notice = Some(format!("cannot reload: {reason}").into()),
+        }
+    }
+
+    /// The old tree's offsets do not fit new text, and a parse still running for it is stale.
+    fn forget_syntax(&mut self) {
+        self.cancel.cancel();
+        self.cancel = Cancel::default();
+        self.syntax = None;
+        self.highlights = HighlightCache::default();
+    }
+
+    fn mark_deleted(&mut self) {
+        self.notice = Some("deleted on disk".into());
+    }
+
+    /// `interact` adds the mouse handling to the text area.
+    fn render_with(
+        &self,
+        theme: &ViewStyle,
+        window: &mut Window,
+        cx: &App,
+        interact: impl FnOnce(Stateful<Div>, Metrics) -> Stateful<Div>,
+    ) -> Div {
+        let scheme = cx.global::<ResolvedScheme>();
+        let metrics = Metrics::measure(window, cx, self.document.line_count());
+        let top = self.scroll.top();
+        let first = top.floor() as usize;
+        let visible = self.scroll.viewport_lines().ceil() as usize + 1;
+        let lines = self.document.lines(first..first + visible);
+        self.highlights.start_frame();
+        let widest_chars = lines.iter().map(|line| line.text.chars().count()).max().unwrap_or(0);
+        self.scroll.set_content_width(metrics.text_width(widest_chars));
+        let shift = px(self.scroll.left() as f32);
+        let rows: Vec<Div> = lines
+            .iter()
+            .enumerate()
+            .map(|(offset, line)| {
+                let text = styled_line(line, &self.highlights_of(line), scheme);
+                let selected = self.selection.and_then(|selection| selection.columns_on(line));
+                let marked = self.marked == Some(first + offset);
+                render_line(first + offset, Row { text, selected, marked }, shift, &metrics, theme)
+            })
+            .collect();
+        let wheel_scroll = self.scroll.clone();
+        let line_height = metrics.line_height;
+        let text = div()
+            .id("editor")
+            .relative()
+            .flex_1()
+            .min_h_0()
+            .overflow_hidden()
+            .font_family(theme.mono_font.clone())
+            .text_size(metrics.font_size)
+            .line_height(metrics.line_height)
+            .text_color(rgb(scheme.get(ColorKey::TEXT).foreground.unwrap_or(theme.text)))
+            .on_scroll_wheel(move |event, window, _cx| wheel_scroll.scroll_by_wheel(event, line_height, window))
+            .child(line_view::measure_viewport(self.scroll.clone(), metrics));
+        let text = interact(text, metrics)
+            .child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .right_0()
+                    .top(-metrics.line_height * (top - first as f64) as f32)
+                    .children(rows),
+            )
+            .child(vertical_scrollbar(&self.scrollbars, theme))
+            .child(horizontal_scrollbar(&self.scrollbars, theme));
+        let notice = self.notice.clone().map(|notice| {
+            div()
+                .flex_none()
+                .px(px(theme.editor_notice_padding_x))
+                .py(px(theme.editor_notice_padding_y))
+                .bg(rgb(theme.hover))
+                .text_size(px(theme.editor_notice_text_size))
+                .text_color(rgb(theme.error))
+                .child(notice)
+        });
+        div().flex().flex_col().flex_1().min_h_0().children(notice).child(text)
+    }
+}
+
+impl Focusable for CodeView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
+impl Render for CodeView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let style = ViewStyle::drawing(cx).clone();
+        let selectable = self.selectable;
+        let press = cx.listener(Self::on_mouse_down);
+        let release = cx.listener(Self::on_mouse_up);
+        let release_out = cx.listener(Self::on_mouse_up);
+        let (view, placed) = (cx.entity(), self.state.placed.clone());
+        self.state
+            .render_with(&style, window, cx, move |text, metrics| match selectable {
+                true => text
+                    .cursor(CursorStyle::IBeam)
+                    .on_mouse_down(MouseButton::Left, press)
+                    .on_mouse_up(MouseButton::Left, release)
+                    // a drag that ends outside the text still ends
+                    .on_mouse_up_out(MouseButton::Left, release_out)
+                    .child(follow_drag(metrics, placed, view)),
+                false => text,
+            })
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(Self::on_key_down))
+    }
+}
+
+/// Records where the view was painted, and follows a selection drag over the whole window: an element's own
+/// mouse-move listener hears only moves over it.
+fn follow_drag(metrics: Metrics, into: Rc<Cell<Option<Placed>>>, view: Entity<CodeView>) -> impl IntoElement {
+    canvas(
+        |_bounds, _window, _cx| {},
+        move |bounds, (), window, _cx| {
+            into.set(Some(Placed { origin: bounds.origin, metrics }));
+            window.on_mouse_event(move |event: &MouseMoveEvent, phase, _window, cx| {
+                if phase == DispatchPhase::Bubble && event.pressed_button == Some(MouseButton::Left) {
+                    view.update(cx, |view, cx| {
+                        if view.state.drag_to(event.position) {
+                            cx.notify();
+                        }
+                    });
+                }
+            });
+        },
+    )
+    .absolute()
+    .size_full()
+}
+
+/// Highlights of the lines drawn in the last frame, by the file offset each starts at; repaints and horizontal
+/// scrolling reuse them instead of querying the tree again.
+#[derive(Default)]
+struct HighlightCache {
+    current: RefCell<HashMap<usize, Rc<[Highlight]>>>,
+    previous: RefCell<HashMap<usize, Rc<[Highlight]>>>,
+}
+
+impl HighlightCache {
+    /// Lines not asked for until the next frame starts are forgotten then.
+    fn start_frame(&self) {
+        let current = self.current.take();
+        self.previous.replace(current);
+    }
+
+    fn get_or_query(&self, line_start: usize, query: impl FnOnce() -> Vec<Highlight>) -> Rc<[Highlight]> {
+        let known = self.current.borrow().get(&line_start).cloned();
+        let highlights = known
+            .or_else(|| self.previous.borrow_mut().remove(&line_start))
+            .unwrap_or_else(|| Rc::from(query()));
+        self.current.borrow_mut().insert(line_start, highlights.clone());
+        highlights
+    }
+}
+
+/// A file's size and modification time: when both are as before, the file is not read again.
+pub type Stamp = (u64, SystemTime);
+
+/// What re-reading an open document found.
+pub enum Reread {
+    /// size and modification time as when it was last read
+    Unchanged,
+    Changed(Document, Option<Stamp>),
+    Gone,
+    Failed(String),
+}
+
+/// Re-reads the document at `path` unless its stamp is still `known`. Reads the disk; run it on the background
+/// executor.
+pub fn reread(path: &Path, known: Option<Stamp>) -> Reread {
+    let now = stamp(path);
+    if now.is_some() && now == known {
+        return Reread::Unchanged;
+    }
+    match Document::open(path) {
+        Ok(document) => Reread::Changed(document, now),
+        Err(error) if path.exists() => Reread::Failed(error.to_string()),
+        Err(_) => Reread::Gone,
+    }
+}
+
+fn stamp(path: &Path) -> Option<Stamp> {
+    let metadata = fs::metadata(path).ok()?;
+    Some((metadata.len(), metadata.modified().ok()?))
+}
+
+fn styled_line(line: &DisplayLine, highlights: &[Highlight], scheme: &ResolvedScheme) -> StyledText {
+    let styles = line.place(highlights).into_iter().map(|(range, key)| (range, scheme.get(key).highlight_style()));
+    StyledText::new(line.text.clone()).with_highlights(styles)
+}
+
+/// A line's text and the columns of it that are selected.
+struct Row {
+    text: StyledText,
+    selected: Option<Range<usize>>,
+    /// the line `file:42` went to
+    marked: bool,
+}
+
+fn render_line(index: usize, row: Row, shift: Pixels, metrics: &Metrics, theme: &ViewStyle) -> Div {
+    let number = format!("{:>width$}", index + 1, width = metrics.number_chars);
+    div()
+        .flex()
+        .h(metrics.line_height)
+        .when(row.marked, |line| line.bg(rgb(theme.hover)))
+        .child(
+            div()
+                .flex_none()
+                .w(metrics.gutter_width())
+                .pl(metrics.char_width)
+                .text_color(rgb(theme.muted))
+                .child(number),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .overflow_hidden()
+                .child(div().relative().left(-shift).whitespace_nowrap().children(row.selected.map(|columns| selection_bar(columns, metrics, theme))).child(row.text)),
+        )
+}
+
+/// The selection's background behind `columns` of a line; glyphs of the monospace font sit on the column grid.
+fn selection_bar(columns: Range<usize>, metrics: &Metrics, theme: &ViewStyle) -> Div {
+    div()
+        .absolute()
+        .top_0()
+        .h(metrics.line_height)
+        .left(metrics.char_width * columns.start as f32)
+        .w(metrics.char_width * columns.len() as f32)
+        .bg(rgb(theme.selected))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use super::*;
+
+    fn editor_for(name: &str, text: &[u8]) -> (tempfile::TempDir, State) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(name);
+        fs::write(&path, text).unwrap();
+        let editor = State::new(Document::open(&path).unwrap());
+        (dir, editor)
+    }
+
+    #[test]
+    fn should_query_each_shown_line_once_across_repaints() {
+        // given
+        let cache = HighlightCache::default();
+        let queries = Cell::new(0);
+        let query = || {
+            queries.set(queries.get() + 1);
+            Vec::new()
+        };
+
+        // when
+        for _ in 0..3 {
+            cache.start_frame();
+            cache.get_or_query(0, query);
+            cache.get_or_query(10, query);
+        }
+
+        // then
+        assert_eq!(queries.get(), 2);
+    }
+
+    #[test]
+    fn should_forget_lines_not_shown_in_the_last_frame() {
+        // given
+        let cache = HighlightCache::default();
+        let queries = Cell::new(0);
+        let query = || {
+            queries.set(queries.get() + 1);
+            Vec::new()
+        };
+        cache.start_frame();
+        cache.get_or_query(0, query);
+        cache.start_frame();
+        cache.get_or_query(10, query);
+
+        // when
+        cache.start_frame();
+        cache.get_or_query(0, query);
+
+        // then
+        assert_eq!(queries.get(), 3);
+    }
+
+    #[test]
+    fn should_parse_only_known_languages_up_to_the_limit() {
+        // given
+        let small = editor_for("data.json", b"{}");
+        let big = editor_for("big.json", &vec![b' '; MAX_HIGHLIGHT_BYTES + 1]);
+        let log = editor_for("server.log", b"plain");
+
+        // when
+        let jobs = [small.1.parse_job().is_some(), big.1.parse_job().is_some(), log.1.parse_job().is_some()];
+
+        // then
+        assert_eq!(jobs, [true, false, false]);
+    }
+
+    #[test]
+    fn should_colour_java_line_with_tab_and_crlf() {
+        // given
+        let (_dir, mut editor) = editor_for("A.java", b"class A {\r\n\tint x;\r\n}\r\n");
+        editor.set_syntax(editor.parse_job().unwrap().run().unwrap());
+
+        // when
+        let line = editor.document.lines(1..2).remove(0);
+        let placed = line.place(&editor.highlights_of(&line));
+
+        // then
+        let int = placed.iter().find(|(range, _)| &line.text[range.clone()] == "int").map(|(_, key)| key.id());
+        assert_eq!((line.text.as_ref(), int), ("    int x;", Some("JAVA_KEYWORD")));
+    }
+
+    #[test]
+    fn should_bound_highlighting_to_displayed_part_of_long_line() {
+        // given
+        let json = format!("[{}1]", "1, ".repeat(1_000_000));
+        let (_dir, mut editor) = editor_for("long.json", json.as_bytes());
+        editor.set_syntax(editor.parse_job().unwrap().run().unwrap());
+        let line = editor.document.lines(0..1).remove(0);
+
+        // when
+        let highlights = editor.highlights_of(&line);
+
+        // then
+        let end = highlights.iter().map(|highlight| highlight.bytes.end).max().unwrap();
+        assert!(end <= line.file_bytes().end, "{end} > {:?}", line.file_bytes());
+        assert!(line.file_bytes().len() <= crate::document::MAX_LINE_CHARS * 4);
+    }
+
+    #[test]
+    fn should_reload_a_changed_file_and_say_when_it_is_deleted() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.md");
+        fs::write(&path, "one\ntwo\n").unwrap();
+        let mut editor = State::new(Document::open(&path).unwrap());
+        fs::write(&path, "one\ntwo\nthree\nfour\n").unwrap();
+
+        // when
+        editor.take_reread(reread(&path, editor.stamp()));
+        let lines = editor.document.line_count();
+        fs::remove_file(&path).unwrap();
+        editor.take_reread(reread(&path, editor.stamp()));
+
+        // then
+        assert_eq!((lines, editor.notice.as_ref().map(SharedString::as_ref)), (4, Some("deleted on disk")));
+        assert_eq!(editor.document.line_count(), 4, "the text stays");
+    }
+
+    #[test]
+    fn should_not_read_a_file_whose_size_and_modification_time_are_unchanged() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.md");
+        fs::write(&path, "one\n").unwrap();
+        let editor = State::new(Document::open(&path).unwrap());
+
+        // when
+        let reread = reread(&path, editor.stamp());
+
+        // then
+        assert!(matches!(reread, Reread::Unchanged));
+    }
+
+    #[test]
+    fn should_mark_the_revealed_line() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        std::fs::write(&path, (1..=100).map(|line| format!("line {line}\n")).collect::<String>()).unwrap();
+        let mut editor = State::new(Document::open(&path).unwrap());
+
+        // when
+        editor.reveal_line(42);
+
+        // then
+        let top = editor.scroll_position().top_line;
+        assert_eq!(editor.marked_line(), Some(42));
+        assert!(top <= 41. && 41. < top + editor.scroll.viewport_lines(), "top {top}");
+    }
+
+    #[test]
+    fn should_keep_a_line_past_the_end_inside_the_text() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        std::fs::write(&path, "one\ntwo\n").unwrap();
+        let mut editor = State::new(Document::open(&path).unwrap());
+
+        // when
+        editor.reveal_line(500);
+
+        // then
+        assert_eq!(editor.marked_line(), Some(editor.document.line_count()));
+    }
+}

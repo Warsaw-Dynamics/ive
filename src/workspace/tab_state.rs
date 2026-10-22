@@ -7,7 +7,7 @@ use gpui::{App, Context, Window};
 
 use super::Workspace;
 use crate::document::Document;
-use crate::editor::{EditorView, Tab};
+use crate::editor::{FileTab, Tab};
 use crate::git::types::Sha;
 use crate::hub::model::HubState;
 use crate::overview::commit_tab::CommitTab;
@@ -85,7 +85,7 @@ impl Workspace {
 
     pub(super) fn loaded_tab(&mut self, saved: &SavedTab, window: &mut Window, cx: &mut Context<Self>) -> Option<Tab> {
         let tab = match saved {
-            SavedTab::File { path, scroll } => file_tab(path, *scroll),
+            SavedTab::File { path, scroll } => file_tab(path, *scroll, cx),
             SavedTab::Scratch { project, name, caret, scroll } => {
                 let scratch = ScratchRef { project: ProjectId::parse(project).ok()?, name: name.clone() };
                 let tab = self.scratch_tab_of(&scratch, cx).ok()?;
@@ -180,12 +180,12 @@ impl TabOwnership {
     }
 }
 
-fn file_tab(path: &Path, scroll: ScrollPosition) -> Tab {
+fn file_tab(path: &Path, scroll: ScrollPosition, cx: &mut App) -> Tab {
     match Document::open(path) {
         Ok(document) => {
-            let editor = EditorView::new(document);
-            editor.restore_scroll(scroll);
-            Tab::Document(editor)
+            let file = FileTab::new(document, cx);
+            file.view.read(cx).restore_scroll(scroll);
+            Tab::Document(file)
         }
         Err(error) => Tab::Failed { title: project::folder_name(path), error: error.to_string().into() },
     }

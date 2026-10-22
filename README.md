@@ -764,7 +764,7 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 |---|---|
 | `src/workspace.rs`, `src/workspace/` | main window: projects, processes, tabs, saved state, actions |
 | `src/sidebar/` | the tree: rows (pure), drawing, width |
-| `src/editor.rs` | tab kinds, tab row, the coloured, read-only document view |
+| `src/editor.rs` | tab kinds, tab row, detached tabs' windows; a file tab's view is `codeview/src/code_view.rs` |
 | `src/line_view.rs` | scrolling and metrics shared by the document view and the editor |
 | `src/overview/` | the project overview tab, its Worktrees list, its Git section, the Git log, commit and diff tabs |
 | `src/git/` | reading repositories with git2 (libgit2): checkouts, status, changes, diffs, log, branches; New worktree, the one write |

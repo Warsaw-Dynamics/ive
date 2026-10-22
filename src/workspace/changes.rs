@@ -6,12 +6,13 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use codeview::code_view::{self, CodeView, Reread, Stamp};
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
-use gpui::{Context, Task, Window};
+use gpui::{App, Context, Task, Window};
 
 use super::Workspace;
-use crate::editor::{self, EditorView, Reread, Tab};
+use crate::editor::Tab;
 use crate::open_project::OpenProject;
 use crate::project::{CheckoutRef, ProjectId, Statuses};
 use crate::script::state::ScriptState;
@@ -168,7 +169,7 @@ impl Workspace {
                     documents.insert(path);
                 }
                 Change::FileRemoved(path) => {
-                    self.update_document(&path, EditorView::mark_deleted);
+                    self.update_document(&path, CodeView::mark_deleted, cx);
                     self.scratch_changed_on_disk(&path, cx);
                 }
                 Change::Git(dir) => {
@@ -212,11 +213,9 @@ impl Workspace {
         files.collect()
     }
 
-    fn update_document(&mut self, path: &Path, update: impl FnOnce(&mut EditorView)) {
-        if let Some(id) = self.tabs.find(|tab| tab.shows(path))
-            && let Some(Tab::Document(editor)) = self.tabs.get_mut(id)
-        {
-            update(editor);
+    fn update_document(&self, path: &Path, update: impl FnOnce(&mut CodeView, &mut Context<CodeView>), cx: &mut App) {
+        if let Some(id) = self.tabs.find(|tab| tab.shows(path)) {
+            self.update_document_tab(id, update, cx);
         }
     }
 
@@ -230,13 +229,13 @@ impl Workspace {
     /// Re-reads the open documents at `paths` on the background executor; one whose size and modification time
     /// are unchanged is not read.
     fn reread_documents(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
-        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path).map(|stamp| (path, stamp))).collect();
+        let known: Vec<_> = paths.into_iter().filter_map(|path| self.document_stamp(&path, cx).map(|stamp| (path, stamp))).collect();
         if known.is_empty() {
             return;
         }
         let rereads = cx.background_executor().spawn(async move {
             known.into_iter().map(|(path, stamp)| {
-                let reread = editor::reread(&path, stamp);
+                let reread = code_view::reread(&path, stamp);
                 (path, reread)
             }).collect::<Vec<(PathBuf, Reread)>>()
         });
@@ -245,7 +244,7 @@ impl Workspace {
             this.update(cx, |workspace, cx| {
                 for (path, reread) in rereads {
                     let changed = matches!(reread, Reread::Changed(..));
-                    workspace.update_document(&path, |editor| editor.take_reread(reread));
+                    workspace.update_document(&path, |view, cx| view.take_reread(reread, cx), cx);
                     if changed {
                         workspace.rehighlight(&path, cx);
                     }
@@ -258,9 +257,9 @@ impl Workspace {
     }
 
     /// The stamp of the document `path` shows, while a tab shows it.
-    fn document_stamp(&self, path: &Path) -> Option<Option<editor::Stamp>> {
+    fn document_stamp(&self, path: &Path, cx: &App) -> Option<Option<Stamp>> {
         match self.tabs.get(self.tabs.find(|tab| tab.shows(path))?) {
-            Some(Tab::Document(editor)) => Some(editor.stamp()),
+            Some(Tab::Document(file)) => Some(file.view.read(cx).stamp()),
             _ => None,
         }
     }
