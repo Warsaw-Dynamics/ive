@@ -11,10 +11,10 @@
     </template>
     <input class="hub__input" x-ref="query" :value="hubInputValue()" @input="hubInput($event.target.value)" @keydown="hubKey($event)"
            x-init="$nextTick(() => $el.focus())" x-effect="focus === 'hub' && $nextTick(() => $el.focus())"
-           :placeholder="hub.pick ? 'Worktree…' : hub.newTerminal ? 'New terminal in… type a project, worktree or branch' : 'Recent, changes and every file of every project. Type to search; > actions, @ processes, # branches, : scope, :42 line'"
+           :placeholder="hub.pick ? 'Worktree…' : hub.newTerminal ? 'New terminal in… type a project, worktree or branch' : hub.content ? 'Search the files\' contents: plain text, Alt+R regex, Alt+W whole words' : 'Recent, changes and every file of every project. Type to search; > actions, @ processes, # branches, : scope, :42 line'"
            spellcheck="false" autocomplete="off" />
     <!-- scope: Tab cycles the chips (all, the back tab's project, its worktree, a scope picked with :); :… lists any -->
-    <template x-if="v.mode === 'files' || v.mode === 'changed' || v.mode === 'scope'">
+    <template x-if="v.mode === 'files' || v.mode === 'changed' || v.mode === 'scope' || (v.mode === 'content' && hub.paths.length === 0)">
       <div class="hub__scopes" title="Tab switches; Backspace on an empty query goes back to All projects">
         <template x-for="s in hubScopeStops()" :key="s">
           <button class="hub__scope" type="button" :class="{ 'hub__scope--on': hubScope() === s }" @click="setHubScope(s)">
@@ -26,7 +26,13 @@
       </div>
     </template>
     <!-- excluded folders (init.rn's config.excluded) and gitignored files: left out unless switched on -->
-    <template x-if="v.mode === 'files'">
+    <template x-if="v.mode === 'content'">
+      <span class="hub__toggles">
+        <button class="hub__scope" type="button" :class="{ 'hub__scope--on': hub.regex }" @click="hub.regex = !hub.regex" title="Alt+R: the query as a regex">.*</button>
+        <button class="hub__scope" type="button" :class="{ 'hub__scope--on': hub.word }" @click="hub.word = !hub.word" title="Alt+W: whole words only">W</button>
+      </span>
+    </template>
+    <template x-if="v.mode === 'files' || v.mode === 'content'">
       <button class="hub__scope hub__excluded-toggle" type="button" :class="{ 'hub__scope--on': hub.withExcluded }" @click="toggleExcluded()"
               :title="hub.withExcluded ? 'Searching excluded and gitignored files too (Alt+I)' : 'Alt+I: search excluded and gitignored files too'">
         <img class="icon" :src="icon('folder-excluded.svg')" alt="" /><span>Excluded</span>
@@ -88,8 +94,8 @@
           <template x-if="p.lines">
             <div class="hub__preview-text" :class="{ 'hub__preview-text--mono': p.mono || p.numbered }">
               <template x-for="(text, i) in p.lines.slice(0, 60)" :key="i">
-                <div class="hub__preview-line" :class="{ 'hub__preview-line--at': p.line === i + 1 }">
-                  <template x-if="p.numbered"><span class="hub__preview-number" x-text="i + 1"></span></template>
+                <div class="hub__preview-line" :class="{ 'hub__preview-line--at': p.line === (p.first || 1) + i }">
+                  <template x-if="p.numbered"><span class="hub__preview-number" x-text="(p.first || 1) + i"></span></template>
                   <span x-text="text"></span>
                 </div>
               </template>

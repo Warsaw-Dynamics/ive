@@ -5,11 +5,12 @@
      Run rows (a worktree's Processes, and the run configurations tab): the run's state, Restart + Stop or Start + Remove on hover;
      the tab's folder rows carry ● n (a folder's icon has the run badge in the Files tree, without a count).
      A changed file: its git mark after its name, a deleted file struck through.
-     A middle click activates the row and keeps the tab it shows. -->
+     A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js). -->
 <template x-for="row in rows" :key="row.node.key">
   <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty }"
        :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="activateNode(row.node)"
        @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && activateNodeToKeep(row.node)"
+       @contextmenu.prevent="openTreeMenu(row.node, $event.clientX, $event.clientY)"
        :title="row.node.warning || row.node.hint || row.node.label">
     <template x-if="row.node.children">
       <img class="icon tree__chevron" :src="icon(isNodeOpen(row.node) ? 'chevron-down.svg' : 'chevron-right.svg')" alt=""

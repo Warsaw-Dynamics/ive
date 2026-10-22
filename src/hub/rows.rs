@@ -1,7 +1,9 @@
 //! The rows the hub shows for a state: its sections, the matches highlighted, the numbers 1-9.
 
 use std::ops::Range;
+use std::path::Path;
 
+use super::content::{ContentFound, ContentHit, MAX_MATCHES, MIN_QUERY_CHARS};
 use super::corpus::{Corpus, Origin};
 use super::matcher::{Query, lowered, split_line};
 use super::model::{HubState, Mode, mode};
@@ -16,6 +18,9 @@ pub const RECENT_EMPTY: usize = 12;
 pub const RECENT_WHILE_SEARCHING: usize = 5;
 pub const LOADING_FILES: &str = "Loading the file lists…";
 pub const LINE_NEEDS_TEXT: &str = "Line numbers go to a file shown before the hub";
+pub const CONTENT_NEEDS_TEXT: &str = "Type 2 characters or more to search the files' contents";
+pub const SEARCHING_CONTENTS: &str = "Searching…";
+pub const NO_CONTENT_MATCHES: &str = "No line matches";
 /// New terminal mode: a project's newest branches without a worktree before typing, the best matches while typing.
 pub const NEW_TERMINAL_BRANCHES: usize = 5;
 pub const NEW_TERMINAL_MATCHES: usize = 20;
@@ -97,8 +102,67 @@ pub fn list(state: &HubState, sources: &Sources, files: Option<(&Corpus, &Found)
             _ => list.message = Some(LINE_NEEDS_TEXT.to_owned()),
         },
         Mode::NewTerminal => list.new_terminal(&state.query, sources),
+        // the workspace lists the contents search's lines itself (`content_list`)
+        Mode::Content => {}
     }
     list.finish()
+}
+
+/// Where a contents search's file is, as rows show it.
+pub struct Located {
+    pub place: Place,
+    pub project: Option<ProjectId>,
+    /// relative to its checkout, or absolute outside every checkout
+    pub path: String,
+}
+
+/// The rows of a contents search: one per matching line, `path:line` and the line with its matches; `locate` places
+/// each file in its checkout.
+pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn Fn(&Path) -> Located) -> List {
+    let mut list = Builder::new(&state.scope);
+    let title = match &state.paths[..] {
+        [] => "Contents".to_owned(),
+        [only] => format!("Contents of {}", file_name(only)),
+        [first, rest @ ..] => format!("Contents of {} +{}", file_name(first), rest.len()),
+    };
+    if let Some(Err(error)) = state.content_query().map(|query| query.compile()) {
+        list.message = Some(error);
+        return list.finish();
+    }
+    let Some(found) = found.filter(|_| state.query.chars().count() >= MIN_QUERY_CHARS) else {
+        list.message = Some(if state.query.chars().count() < MIN_QUERY_CHARS { CONTENT_NEEDS_TEXT } else { SEARCHING_CONTENTS }.to_owned());
+        return list.finish();
+    };
+    let rows: Vec<Row> = found.hits.iter().map(|hit| hit_row(hit, locate(&hit.path))).collect();
+    if rows.is_empty() && found.done {
+        list.message = Some(NO_CONTENT_MATCHES.to_owned());
+    }
+    list.section(&title, rows);
+    if found.limited
+        && let Some(section) = list.sections.last_mut()
+    {
+        section.more = Some(format!("the first {} matches", MAX_MATCHES));
+    }
+    let searching = if found.done { "" } else { " …" };
+    let mut list = list.finish();
+    let counted = |count: usize, one: &str, many: &str| format!("{count} {}", if count == 1 { one } else { many });
+    list.counter = Some(format!("{} in {} · {} ms{searching}", counted(found.hits.len(), "match", "matches"), counted(found.files, "file", "files"), found.millis));
+    list
+}
+
+fn hit_row(hit: &ContentHit, located: Located) -> Row {
+    let mut item = Item::new(Target::Hit { path: hit.path.clone(), line: hit.line }, format!("{}:{}", located.path, hit.line), icons::file_icon(&located.path));
+    item.detail = hit.text.clone();
+    item.place = located.place;
+    item.project = located.project;
+    item.path = Some(located.path);
+    // the matches' bytes as char positions, as rows mark them
+    let detail_hits = hit.text.char_indices().enumerate().filter(|(_, (at, _))| hit.ranges.iter().any(|range| range.contains(at))).map(|(index, _)| index).collect();
+    Row { item, title_hits: Vec::new(), detail_hits, number: None, tag: Tag::None, depth: 0 }
+}
+
+fn file_name(path: &Path) -> String {
+    path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned())
 }
 
 /// The Recent rows a files query matches, which the files under them leave out.
@@ -399,4 +463,30 @@ pub fn thousands(count: usize) -> String {
         grouped.push(digit);
     }
     grouped
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use crate::hub::content::Matching;
+
+    fn nowhere(path: &Path) -> Located {
+        Located { place: Place::Nowhere, project: None, path: path.display().to_string() }
+    }
+
+    #[test]
+    fn should_say_why_a_regex_does_not_compile() {
+        // given
+        let state = HubState { content: true, matching: Matching::Regex, query: "foo(".to_owned(), ..HubState::default() };
+        let old = ContentFound { hits: vec![ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect() }], files: 1, done: true, ..ContentFound::default() };
+
+        // when
+        let list = content_list(&state, Some(&old), &nowhere);
+
+        // then
+        assert!(list.rows.is_empty(), "{:?}", list.rows);
+        assert!(list.message.as_deref().is_some_and(|message| message.contains("foo(")), "{:?}", list.message);
+    }
 }

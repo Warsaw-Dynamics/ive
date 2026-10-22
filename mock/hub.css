@@ -41,6 +41,8 @@
 .hub__state--live { color: var(--mark-added); }
 .hub__co { flex: none; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; border-radius: 4px; font-size: 12px;
   border-left: 3px solid var(--co); background: var(--hover); }
+/* the content mode's switches: .* (Alt+R) and W (Alt+W) */
+.hub__toggles { display: flex; gap: 4px; }
 .hub__excluded-toggle { display: flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--hover); border-radius: 6px; }
 .hub__excluded-toggle.hub__scope--on { background: var(--excluded-bg); color: var(--excluded-text); box-shadow: inset 0 0 0 1px var(--excluded-text); }
 .hub__excluded { flex: none; padding: 0 5px; border-radius: 4px; font-size: 12px; background: var(--excluded-bg); color: var(--excluded-text); }

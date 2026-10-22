@@ -6,17 +6,18 @@ use std::collections::HashMap;
 use rune::{Any, ContextError, Module, Value};
 
 /// Actions without an argument: in WezTerm's Lua these are plain strings, and so they are here.
-const UNIT_ACTIONS: [&str; 39] = [
+const UNIT_ACTIONS: [&str; 58] = [
     "Nop", "DisableDefaultAssignment", "OpenSettings", "OpenTerminal", "ActivateTab", "CloseTab", "KeepTab", "StopProgram", "KillProgram",
     "CloseOtherTabs", "CloseTabsToTheLeft", "CloseTabsToTheRight", "ToggleChangesLayout", "OpenTerminalIn", "ActivateRow", "ActivateRowToKeep",
     "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "SelectAll", "Cut", "Undo", "Redo",
     "OpenHub", "HubDown", "HubUp", "HubPageDown", "HubPageUp", "HubOpen", "HubOpenBehind", "HubTypePath", "HubCopyPath",
     "HubStop", "CopyFullPath", "HubCycleScope", "HubWiden", "HubToggleExcluded", "HubToggleChanged", "HubBack",
+    "SendPathsToTerminal", "CopyRelativePath", "CopyFileName", "FindInFiles", "OpenFindInFiles", "OpenTerminalHere", "RevealInFileManager", "OpenWithDefaultApp", "OpenInBrowser", "RunFile", "GitShowDiff", "GitCompareWithBase", "GitHistory", "GitIgnore", "CompareFiles", "OpenInNewWindow", "HubToggleContent", "HubToggleRegex", "HubToggleWholeWord",
 ];
 
 /// `config` in `pub fn init(config)`: the lists of bindings, as WezTerm's `config.keys` and `config.mouse_bindings`,
 /// the font families: `config.font` for code and terminals, as WezTerm's, and `config.ui_font` for the rest, and
-/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.quit_countdown` and
+/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.tree_menus`, `config.quit_countdown` and
 /// `config.open_folders`, which start as the script before left them.
 #[derive(Any)]
 #[rune(item = ::ive)]
@@ -38,6 +39,8 @@ pub struct Config {
     #[rune(get, set)]
     tab_menus: Value,
     #[rune(get, set)]
+    tree_menus: Value,
+    #[rune(get, set)]
     quit_countdown: Value,
     #[rune(get, set)]
     open_folders: Value,
@@ -58,6 +61,7 @@ pub struct Carried {
     pub excluded: Value,
     pub temporary_tabs: Value,
     pub tab_menus: Value,
+    pub tree_menus: Value,
     pub quit_countdown: Value,
     pub open_folders: Value,
 }
@@ -65,12 +69,12 @@ pub struct Carried {
 impl Config {
     /// A `config` with nothing declared yet but what the script before left in `carried`.
     pub fn new(carried: Carried) -> Self {
-        let Carried { theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders } = carried;
-        Self { keys: Value::from(()), mouse_bindings: Value::from(()), font: Value::from(()), ui_font: Value::from(()), theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders }
+        let Carried { theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders } = carried;
+        Self { keys: Value::from(()), mouse_bindings: Value::from(()), font: Value::from(()), ui_font: Value::from(()), theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders }
     }
 
     pub fn into_parts(self) -> Parts {
-        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders };
+        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, tree_menus: self.tree_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders };
         Parts { keys: self.keys, mouse_bindings: self.mouse_bindings, font: self.font, ui_font: self.ui_font, carried }
     }
 }
@@ -99,6 +103,7 @@ pub fn act_module() -> Result<Module, ContextError> {
     }
     module.function("SendString", |text: &str| tagged("SendString", text)).build()?;
     module.function("ShowTabMenu", |name: &str| tagged("ShowTabMenu", name)).build()?;
+    module.function("ShowTreeMenu", |name: &str| tagged("ShowTreeMenu", name)).build()?;
     module.function("CopyTo", |target: &str| tagged("CopyTo", target)).build()?;
     module.function("PasteFrom", |source: &str| tagged("PasteFrom", source)).build()?;
     module.function("PasteTextFrom", |source: &str| tagged("PasteTextFrom", source)).build()?;

@@ -68,6 +68,11 @@ code { font-family: var(--mono); }
 .menu__separator { height: 1px; margin: 4px 0; background: var(--border); }
 /* editor.rs tab menu: at the pointer, as wide as its items */
 .menu--at { position: fixed; top: auto; right: auto; width: max-content; z-index: 60; }
+/* workspace/menu.rs: a submenu beside its line, ▸ on the line */
+.menu__line { position: relative; }
+.menu__arrow { color: var(--muted); padding-left: 16px; }
+.menu__item--open { background: var(--hover); }
+.menu__sub { top: -5px; left: 100%; right: auto; width: max-content; min-width: 180px; }
 
 /* sidebar/view.rs: the panel on theme.tree; header 36 px, "Projects" 14 px semibold, Select opened file and Open project. */
 .window__content > .sidebar, .fill > .sidebar { position: relative; width: 288px; background: var(--tree); }

@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use git2::{Commit, Oid, Repository};
 
@@ -79,6 +79,65 @@ pub fn commits(dir: &Path, range: &CommitRange, page: Page) -> Result<Vec<Commit
     DateWalk::new(&repo, tips)
         .and_then(|walk| walk.skip(page.skip).take(page.limit).map(|commit| commit.map(|commit| info(&commit))).collect())
         .map_err(&fail)
+}
+
+/// The commits of HEAD's history that changed `path` (relative, a file or a folder), newest first; a file is followed
+/// across renames. Reads only as far as the page ends.
+pub fn path_history(dir: &Path, path: &Path, page: Page) -> Result<Vec<CommitInfo>, GitError> {
+    let fail = failed("read the history of a path", dir);
+    let repo = repo::open(dir)?;
+    let walk = DateWalk::new(&repo, head_tip(&repo).map_err(&fail)?).map_err(&fail)?;
+    let mut tracked = path.to_path_buf();
+    let mut touching = Vec::new();
+    for commit in walk {
+        let commit = commit.map_err(&fail)?;
+        let Some(change) = path_change(&repo, &commit, &tracked).map_err(&fail)? else {
+            continue;
+        };
+        if let PathChange::RenamedFrom(old) = change {
+            tracked = old;
+        }
+        touching.push(commit);
+        if touching.len() == page.skip + page.limit {
+            break;
+        }
+    }
+    Ok(touching.iter().skip(page.skip).map(info).collect())
+}
+
+/// How a commit changed a path against its first parent.
+enum PathChange {
+    Changed,
+    /// added under this name by renaming the one given
+    RenamedFrom(PathBuf),
+}
+
+/// How `commit` changed `path` against its first parent; `None` when it did not.
+fn path_change(repo: &Repository, commit: &Commit, path: &Path) -> Result<Option<PathChange>, git2::Error> {
+    // the root: every commit
+    if path.as_os_str().is_empty() {
+        return Ok(Some(PathChange::Changed));
+    }
+    let entry = |tree: Option<&git2::Tree>| tree.and_then(|tree| tree.get_path(path).ok()).map(|entry| entry.id());
+    let tree = commit.tree()?;
+    let parent = commit.parents().next().map(|parent| parent.tree()).transpose()?;
+    let (now, before) = (entry(Some(&tree)), entry(parent.as_ref()));
+    if now == before {
+        return Ok(None);
+    }
+    let added_file = before.is_none() && tree.get_path(path).is_ok_and(|entry| entry.kind() == Some(git2::ObjectType::Blob));
+    match (added_file, parent) {
+        (true, Some(parent)) => Ok(Some(renamed_from(repo, &parent, &tree, path)?.map_or(PathChange::Changed, PathChange::RenamedFrom))),
+        _ => Ok(Some(PathChange::Changed)),
+    }
+}
+
+/// The name `path` had in `before` when `after` renamed it.
+fn renamed_from(repo: &Repository, before: &git2::Tree, after: &git2::Tree, path: &Path) -> Result<Option<PathBuf>, git2::Error> {
+    let mut diff = repo.diff_tree_to_tree(Some(before), Some(after), None)?;
+    diff.find_similar(Some(git2::DiffFindOptions::new().renames(true)))?;
+    let renamed = diff.deltas().find(|delta| delta.status() == git2::Delta::Renamed && delta.new_file().path() == Some(path));
+    Ok(renamed.and_then(|delta| delta.old_file().path().map(Path::to_path_buf)))
 }
 
 /// The commits from `fork` (excluded) to `head`, newest first, at most [`SINCE_LIMIT`]; each is diffed once against
@@ -404,6 +463,82 @@ mod tests {
         let mut counts: Vec<_> = touched.iter().map(|(path, count)| (path.display(), *count)).collect();
         counts.sort();
         assert_eq!(counts, [("a.txt".to_owned(), 2), ("b.txt".to_owned(), 1)]);
+    }
+
+    fn whole() -> Page {
+        Page { skip: 0, limit: 100 }
+    }
+
+    #[test]
+    fn should_list_only_commits_touching_the_path() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "a\n");
+        repo.commit("add a");
+        repo.write("b.txt", "b\n");
+        repo.commit("add b");
+        repo.write("a.txt", "a2\n");
+        repo.commit("change a");
+
+        // when
+        let commits = path_history(repo.path(), Path::new("a.txt"), whole()).expect("history");
+
+        // then
+        assert_eq!(subjects(&commits), ["change a", "add a"]);
+    }
+
+    #[test]
+    fn should_list_commits_touching_a_folder() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("src/a.rs", "a\n");
+        repo.commit("add src");
+        repo.write("README.md", "r\n");
+        repo.commit("readme");
+        repo.write("src/b.rs", "b\n");
+        repo.commit("more src");
+
+        // when
+        let commits = path_history(repo.path(), Path::new("src"), whole()).expect("history");
+
+        // then
+        assert_eq!(subjects(&commits), ["more src", "add src"]);
+    }
+
+    #[test]
+    fn should_list_every_commit_for_the_root() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "a\n");
+        repo.commit("one");
+        repo.write("b.txt", "b\n");
+        repo.commit("two");
+
+        // when
+        let commits = path_history(repo.path(), Path::new(""), whole()).expect("history");
+
+        // then
+        assert_eq!(subjects(&commits), ["two", "one"]);
+    }
+
+    #[test]
+    fn should_follow_a_renamed_file() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("old.txt", "line 1\nline 2\nline 3\nline 4\nline 5\n");
+        repo.commit("add old");
+        repo.write("old.txt", "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n");
+        repo.commit("grow old");
+        repo.rename("old.txt", "new.txt");
+        repo.commit("rename");
+        repo.write("other.txt", "x\n");
+        repo.commit("unrelated");
+
+        // when
+        let commits = path_history(repo.path(), Path::new("new.txt"), whole()).expect("history");
+
+        // then
+        assert_eq!(subjects(&commits), ["rename", "grow old", "add old"]);
     }
 
     #[test]

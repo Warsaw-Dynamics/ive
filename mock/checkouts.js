@@ -752,6 +752,7 @@
         // The tab context menu: a right press opens it at the pointer without showing the tab.
         openTabMenu: function (tab, x, y) {
           this.tabMenu = { key: tab.key, x: x, y: y };
+          this.menuSub = null;
           this.menu = 'tab';
           var self = this;
           this.$nextTick(function () { self.keepTabMenuInWindow(document.querySelector('.menu--at')); });
@@ -774,7 +775,8 @@
           var key = this.tabMenu.key;
           return this.tabs.find(function (t) { return t.key === key; }) || null;
         },
-        // The menu's items, top to bottom; null is the separator, shown when Keep Tab, Stop or Kill is.
+        // The menu's items, top to bottom (ive.rn's config.tab_menus.main): Keep Tab, Stop, Kill, then a file's items
+        // (menus.js), then the Close items; null is a separator, dropped where it would dangle.
         tabMenuItems: function (tab) {
           var self = this;
           var c = tab.kind === 'console' ? this.consoleOf(tab) : null;
@@ -790,7 +792,7 @@
             { title: 'Close Tabs to the Left', enabled: this.tabsBeside(tab, 'left').length > 0, run: function () { self.closeTabs(tab, self.tabsBeside(tab, 'left')); } },
             { title: 'Close Tabs to the Right', enabled: this.tabsBeside(tab, 'right').length > 0, run: function () { self.closeTabs(tab, self.tabsBeside(tab, 'right')); } }
           ];
-          return top.length ? top.concat([null], close) : close;
+          return window.IVE_MENUS.pruned(top.concat([null], this.tabFileItems(tab), [null], close));
         },
         runTabMenuItem: function (item) {
           this.menu = null;
@@ -906,6 +908,7 @@
           return c.kind === 'agent' ? 'Claude Code session' : 'terminal';
         },
         openConsole: function (c) {
+          this.usedConsole(c);
           this.openTab({ key: 'c:' + c.id, kind: 'console', title: c.title, co: c.co, project: c.co.split('@')[0] });
         },
         newTerminal: function (co) { this.openConsole(this.addConsole(co, 'shell', [])); },
@@ -946,6 +949,7 @@
           var command = c.input.trim();
           c.input = '';
           this.useWorktree(c.co);
+          this.usedConsole(c);
           if (c.kind === 'agent' && command === '/exit') { c.lines.push('> /exit', ''); this.becomeShell(c); return; }
           if (c.kind === 'agent') {
             if (command) c.lines.push('> ' + command, '● (mock) Claude Code works on it in ' + this.checkout(c.co).path);
@@ -1019,14 +1023,16 @@
             var key = 'f:' + co.id + entry.path;
             // A folder with a .run.toml: the folder icon with a run badge (as IntelliJ marks modules), nothing else:
             // its runs are in the worktree's Processes. A broken .run.toml leaves a plain folder: only the file's own row warns.
+            // what the row's menu applies to (menus.js)
+            var subject = { co: co.id, path: entry.path, folder: Boolean(entry.children) };
             if (entry.children && self.hasRunFile(entry) && RUN_FILES[entry.path].error === undefined) {
-              return { key: key, label: entry.name, icon: 'folder-run.svg', open: false, children: self.sortedNodes(co, entry.path, entry.children, build) };
+              return { key: key, entry: subject, label: entry.name, icon: 'folder-run.svg', open: false, children: self.sortedNodes(co, entry.path, entry.children, build) };
             }
-            if (entry.children) return { key: key, label: entry.name, icon: 'folder.svg', open: false, children: self.sortedNodes(co, entry.path, entry.children, build) };
+            if (entry.children) return { key: key, entry: subject, label: entry.name, icon: 'folder.svg', open: false, children: self.sortedNodes(co, entry.path, entry.children, build) };
             // a broken .run.toml: a warning after its name, the error as its tooltip
             var folder = entry.path.slice(0, entry.path.lastIndexOf('/'));
             var error = entry.name === '.run.toml' && RUN_FILES[folder] ? RUN_FILES[folder].error : undefined;
-            return { key: key, tab: key, label: entry.name, icon: self.fileIcon(entry.name), slot: true, warning: error,
+            return { key: key, tab: key, entry: subject, label: entry.name, icon: self.fileIcon(entry.name), slot: true, warning: error,
               click: function () { self.openFile(co.id, entry.path); } };
           };
           return this.sortedNodes(co, '', co.tree, build);
@@ -1146,7 +1152,7 @@
           var self = this;
           var fileNode = function (x) {
             var at = x.path.lastIndexOf('/');
-            return { key: 'cg:' + co.id + '/' + source + ':' + x.path, tab: 'df:' + co.id + '/' + source + ':' + x.path, label: x.path.slice(at + 1),
+            return { key: 'cg:' + co.id + '/' + source + ':' + x.path, tab: 'df:' + co.id + '/' + source + ':' + x.path, entry: { co: co.id, path: '/' + x.path, folder: false }, label: x.path.slice(at + 1),
               icon: self.fileIcon(x.path), slot: true, mark: x.mark, struck: x.mark === 'D', hint: x.path,
               meta: self.gitLayout === 'flat' && at !== -1 ? x.path.slice(0, at) : null, click: function () { self.openDiff(co, x, source); } };
           };
@@ -1164,7 +1170,7 @@
         },
         worktreeNode: function (co) {
           var self = this;
-          return { key: 'w:' + co.id, label: co.label, icon: 'branch.svg', open: true,
+          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', open: true,
             children: this.checkoutChildren(co), badges: this.folderBadges(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };
         },
@@ -1175,6 +1181,7 @@
           var body = single ? this.checkoutChildren(project.checkouts[0]) : this.shownCheckouts(project).map(function (co) { return self.worktreeNode(co); });
           var running = this.projectConsoles(project).length;
           return { tab: 'pp:' + project.name, click: function () { self.openProjectPage(project); }, key: 'p:' + project.name, label: project.name,
+            entry: { co: project.checkouts[0].id, path: '', folder: true },
             project: project, strong: true, open: true, children: body, badges: single ? this.folderBadges(project.checkouts[0]) : null,
             pill: single && project.git ? project.checkouts[0].label : null,
             meta: project.git ? null : 'no git', running: running ? '● ' + running + ' running' : null,
@@ -1650,7 +1657,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
     });
   });
 })();

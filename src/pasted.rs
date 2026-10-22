@@ -19,8 +19,15 @@ pub fn shell_words(paths: &[PathBuf]) -> String {
     paths.iter().map(|path| shell_word(path)).collect::<Vec<_>>().join(" ")
 }
 
-/// `path` as is when the shell reads it as one plain word, else in single quotes.
-fn shell_word(path: &Path) -> String {
+/// `path` as is when the shell reads it as one plain word, else in single quotes; a path holding control characters
+/// or bytes that are not UTF-8 in `$'…'` with those as `\xNN`, so that typed into a terminal they cannot act as keys
+/// (Ctrl+U, Enter) and name the file as it is.
+pub fn shell_word(path: &Path) -> String {
+    use std::os::unix::ffi::OsStrExt as _;
+    let bytes = path.as_os_str().as_bytes();
+    if std::str::from_utf8(bytes).map_or(true, |text| text.chars().any(char::is_control)) {
+        return ansi_c_quoted(bytes);
+    }
     let text = path.to_string_lossy();
     // no `~`: at the start of a word the shell would expand it
     let plain = |c: char| c.is_ascii_alphanumeric() || "/._-+,:@%=".contains(c);
@@ -28,6 +35,38 @@ fn shell_word(path: &Path) -> String {
         return text.into_owned();
     }
     format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+/// `bytes` in bash/zsh/dash's `$'…'`: printable ASCII as is (`'` and `\` escaped), everything else as `\xNN`, UTF-8
+/// text bytes included only when it is not text.
+fn ansi_c_quoted(bytes: &[u8]) -> String {
+    let text = std::str::from_utf8(bytes).ok();
+    let mut quoted = String::from("$'");
+    let push_byte = |byte: u8, quoted: &mut String| quoted.push_str(&format!("\\x{byte:02x}"));
+    match text {
+        Some(text) => {
+            for c in text.chars() {
+                match c {
+                    '\'' => quoted.push_str("\\'"),
+                    '\\' => quoted.push_str("\\\\"),
+                    c if c.is_control() => c.to_string().bytes().for_each(|byte| push_byte(byte, &mut quoted)),
+                    c => quoted.push(c),
+                }
+            }
+        }
+        None => {
+            for &byte in bytes {
+                match byte {
+                    b'\'' => quoted.push_str("\\'"),
+                    b'\\' => quoted.push_str("\\\\"),
+                    0x20..=0x7e => quoted.push(char::from(byte)),
+                    other => push_byte(other, &mut quoted),
+                }
+            }
+        }
+    }
+    quoted.push('\'');
+    quoted
 }
 
 /// The text a paste of `kind` types, with `save` turning the image into a file; `None` when `contents` has
@@ -140,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn should_quote_a_path_with_a_newline() {
+    fn should_write_a_newline_as_an_escape_not_a_key() {
         // given
         let paths = [PathBuf::from("/tmp/a\nb")];
 
@@ -148,7 +187,33 @@ mod tests {
         let words = shell_words(&paths);
 
         // then
-        assert_eq!(words, "'/tmp/a\nb'");
+        assert_eq!(words, r"$'/tmp/a\x0ab'");
+    }
+
+    #[test]
+    fn should_write_control_characters_as_escapes_so_they_cannot_act_as_keys() {
+        // given
+        let paths = [PathBuf::from("/r/x\u{15}touch /tmp/pwned\n"), PathBuf::from("/r/\u{3}\u{1b}[2~it's\u{7f}")];
+
+        // when
+        let words = shell_words(&paths);
+
+        // then
+        assert_eq!(words, r"$'/r/x\x15touch /tmp/pwned\x0a' $'/r/\x03\x1b[2~it\'s\x7f'");
+        assert!(!words.chars().any(|c| c.is_control()), "{words:?}");
+    }
+
+    #[test]
+    fn should_write_bytes_that_are_not_utf8_as_escapes() {
+        // given
+        use std::os::unix::ffi::OsStrExt as _;
+        let path = PathBuf::from(std::ffi::OsStr::from_bytes(b"/r/caf\xe9 \\x"));
+
+        // when
+        let words = shell_words(&[path]);
+
+        // then
+        assert_eq!(words, r"$'/r/caf\xe9 \\x'");
     }
 
     #[test]

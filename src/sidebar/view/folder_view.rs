@@ -69,7 +69,7 @@ pub(super) fn folder_row(line: RowLine, row: &FolderRow, cx: &mut Context<Worksp
         Some(nothing) => line.text_color(rgb(secondary(theme))).child(dot_note(nothing.mark.to_owned(), theme)).tooltip(tooltip::text_tooltip(nothing.tip.clone())),
         None => line,
     };
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// An empty git folder's icon, as faded as its muted name.
@@ -100,7 +100,7 @@ pub(super) fn change_row(line: RowLine, row: &ChangeRow, cx: &mut Context<Worksp
         .child(mark_label(row.change.mark, theme, cx))
         .children(folder)
         .tooltip(tooltip::text_tooltip(row.change.path.display()));
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// A folder of changed files in the tree layout, with how many it holds.
@@ -118,7 +118,7 @@ pub(super) fn change_folder_row(line: RowLine, row: &ChangeFolderRow, cx: &mut C
         .child(row.label.clone())
         .children((row.files > 1).then(|| count_badge(row.files, theme)))
         .tooltip(tooltip::text_tooltip(row.path.clone()));
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// A commit: a click, or its chevron, folds its files out and in.
@@ -136,7 +136,7 @@ pub(super) fn commit_row(line: RowLine, row: &CommitRow, cx: &mut Context<Worksp
         .child(row.label.clone())
         .child(div().text_color(rgb(secondary(theme))).child(row.meta.clone()))
         .tooltip(tooltip::text_tooltip(row.hint.clone()));
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// `Load 20 more · 10 of 32`: lists more commits in place.
@@ -148,7 +148,7 @@ pub(super) fn commits_more_row(line: RowLine, row: &CommitsMoreRow, cx: &mut Con
     }), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("commits-more"), checkout: Some(row.checkout.path.clone()), activate: more, keep: None, toggle: None };
     let line = line.div.child(slot(theme)).child(div().text_color(rgb(theme.accent)).child(row.text.clone()));
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// Why an open commit's files could not be read.
@@ -168,7 +168,7 @@ pub(super) fn live_run_row(line: RowLine, run: &RunRow, cx: &mut Context<Workspa
     let actions = row_actions(actions, theme, line.group.clone(), Shown::OnHover);
     let kind_icon = if run.serve { icons::FILE_HTML } else { icons::RUN_CONFIG };
     let line = line.div.child(slot(theme)).child(icon(theme, kind_icon)).child(run.name.clone()).child(run_label(run, theme)).child(actions);
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// A running static server's link, as the bar over its output has it: Open in the browser and Copy the link.

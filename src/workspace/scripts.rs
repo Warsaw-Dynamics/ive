@@ -96,8 +96,13 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if let ScriptEvent::Tested { request, answer } = event {
+            return self.menu_answered(request, answer, window, cx);
+        }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {
+                // its items may name functions of the load before
+                self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
                 let open_changed = cx.try_global::<OpenFolders>() != Some(open_folders);
                 cx.set_global(open_folders.clone());
@@ -105,7 +110,7 @@ impl Workspace {
                     self.tree_changed(cx);
                 }
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
-                cx.set_global(tab_menus.clone());
+                cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
                 apply_fonts(fonts.clone(), cx)
             }
@@ -169,9 +174,14 @@ impl Workspace {
             // a shown tab that is not a terminal takes no text
             Action::Send(text) => drop(self.send_to_active(&text)),
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
+            // the keymap allows Copy Absolute Path in the tree only, where it has its own key
+            Action::Builtin(builtin) if builtin != Builtin::CopyFullPath && super::path_actions::is_path_action(builtin) => {
+                self.run_bound_path_action(builtin, place == Place::Tree, window, cx);
+            }
             Action::Builtin(builtin) => self.run_window_builtin(builtin, window, cx),
             // the keymap allows it only in the tab scope
-            Action::ShowTabMenu(_) | Action::Disable => {}
+            Action::ShowTreeMenu(name) if place == Place::Tree => self.open_tree_menu_on_selection(&name, window, cx),
+            Action::ShowTabMenu(_) | Action::ShowTreeMenu(_) | Action::Disable => {}
         }
         cx.stop_propagation();
         window.refresh();
@@ -205,7 +215,7 @@ impl Workspace {
         Ok(())
     }
 
-    fn run_window_builtin(&mut self, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn run_window_builtin(&mut self, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
         match builtin {
             Builtin::OpenSettings => self.open_settings(window, cx),
             Builtin::OpenHub => {
@@ -220,6 +230,10 @@ impl Workspace {
                 self.open_terminal_picker(window, cx);
             }
             Builtin::CopyFullPath => self.copy_selected_paths(cx),
+            Builtin::OpenFindInFiles => {
+                let scope = self.hub_scope.clone();
+                self.open_hub(Some(crate::hub::model::HubState { content: true, scope, ..Default::default() }), window, cx);
+            }
             tab_command if tab_command.is_tab_command() => {
                 if let Some(shown) = self.tabs.active_id() {
                     self.run_tab_command(tab_command, shown, window, cx);

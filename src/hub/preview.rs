@@ -7,6 +7,8 @@ use std::path::Path;
 
 /// Lines a file preview shows.
 pub const PREVIEW_LINES: usize = 200;
+/// Lines shown above a `:line` preview's line, so it is in view in a pane of any height.
+pub const PREVIEW_LEAD: usize = 8;
 /// Bytes of them at most: a preview never holds a big file.
 pub const PREVIEW_BYTES: usize = 256 * 1024;
 /// A process's last lines.
@@ -17,8 +19,8 @@ const SNIFF_BYTES: usize = 8 * 1024;
 /// How far into a file a `:line` preview reads to reach its line.
 const SCAN_BYTES: u64 = 32 * 1024 * 1024;
 
-/// The first line shown (from 1) and up to [`PREVIEW_LINES`] lines: from the top, or around `line` with it a third
-/// of the way down. Reads the disk: run it on the background executor.
+/// The first line shown (from 1) and up to [`PREVIEW_LINES`] lines: from the top, or from [`PREVIEW_LEAD`] lines above
+/// `line`. Reads the disk: run it on the background executor.
 pub fn read_text(path: &Path, line: Option<u32>) -> Result<(usize, Vec<String>), String> {
     let failed = |error: std::io::Error| format!("cannot read {}: {error}", path.display());
     let mut reader = BufReader::new(File::open(path).map_err(failed)?.take(SCAN_BYTES));
@@ -26,7 +28,7 @@ pub fn read_text(path: &Path, line: Option<u32>) -> Result<(usize, Vec<String>),
         return Err(BINARY.to_owned());
     }
     let wanted = line.map_or(1, |line| line as usize);
-    let first = wanted.saturating_sub(PREVIEW_LINES / 3).max(1);
+    let first = wanted.saturating_sub(PREVIEW_LEAD).max(1);
     let mut lines = Vec::new();
     let mut kept = 0;
     let mut raw = Vec::new();
@@ -99,6 +101,18 @@ mod tests {
         // then
         assert!(first <= 250 && 250 < first + lines.len(), "first {first}, {} lines", lines.len());
         assert_eq!(lines[250 - first], "line 250");
+    }
+
+    #[test]
+    fn should_show_the_requested_line_among_the_first_lines() {
+        // given
+        let (_dir, path) = file_of(&numbered(300));
+
+        // when
+        let (first, _) = read_text(&path, Some(152)).unwrap();
+
+        // then
+        assert_eq!(first, 152 - PREVIEW_LEAD);
     }
 
     #[test]

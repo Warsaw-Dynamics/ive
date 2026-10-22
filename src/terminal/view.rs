@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitStatus;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -80,6 +80,7 @@ enum Start {
 
 /// A shell session, drawn cell by cell; shown by a process tab.
 pub struct TerminalView {
+    process: ProcessId,
     session: Rc<Session>,
     focus_handle: FocusHandle,
     title: Option<String>,
@@ -107,6 +108,7 @@ impl TerminalView {
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
         Ok(Self {
+            process,
             session: Rc::new(session),
             focus_handle,
             title: None,
@@ -166,6 +168,11 @@ impl TerminalView {
 
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus_handle.clone()
+    }
+
+    /// Pastes `text`, bracketed when the program asked for that, as a drop does.
+    pub fn paste(&self, text: &str) {
+        self.session.paste(text);
     }
 
     /// Types `text` into the shell as it is; a trailing `\r` presses Enter.
@@ -263,6 +270,7 @@ impl TerminalView {
     pub fn render(&self, theme: Theme, window: &mut Window, cx: &App) -> impl IntoElement {
         let metrics = CellMetrics::measure(window, cx);
         let focused = self.focus_handle.is_focused(window);
+        let process = self.process;
         div()
             .id("terminal")
             .flex_1()
@@ -283,8 +291,8 @@ impl TerminalView {
             .on_mouse_up_out(MouseButton::Middle, on_mouse_up(self.session.clone(), self.pointer.clone()))
             .on_mouse_up_out(MouseButton::Right, on_mouse_up(self.session.clone(), self.pointer.clone()))
             .on_scroll_wheel(on_scroll_wheel(self.session.clone(), self.pointer.clone()))
-            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dropped: &ExternalPaths, _cx| dropped.paths().to_vec()))
-            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dragged: &DraggedFiles, cx| dragged.paths(cx)))
+            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dropped: &ExternalPaths, _cx| pasted::shell_words(dropped.paths())))
+            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), move |dragged: &DraggedFiles, cx| dragged.typed_into(process, cx)))
             .child(grid(self.session.clone(), self.pointer.clone(), metrics, theme.terminal, focused))
     }
 }
@@ -604,7 +612,7 @@ fn run_bound_key(session: &Session, action: keymap::Action, cx: &App) -> bool {
         keymap::Action::Builtin(Builtin::PasteFrom(source)) => paste(session, PasteKind::TextElseImage, source, cx),
         keymap::Action::Builtin(Builtin::Paste(kind, source)) => paste(session, kind, source, cx),
         keymap::Action::Builtin(Builtin::Nop) => {}
-        keymap::Action::Builtin(_) | keymap::Action::ShowTabMenu(_) | keymap::Action::Disable => return false,
+        keymap::Action::Builtin(_) | keymap::Action::ShowTabMenu(_) | keymap::Action::ShowTreeMenu(_) | keymap::Action::Disable => return false,
     }
     true
 }
@@ -619,10 +627,11 @@ fn paste(session: &Session, kind: PasteKind, source: ClipboardTarget, cx: &App) 
     }
 }
 
-/// Types the paths of what was dropped, from a file manager or the project tree, and takes the keyboard.
-fn on_drop_paths<T: 'static>(session: Rc<Session>, focus: FocusHandle, paths: impl Fn(&T, &App) -> Vec<PathBuf> + 'static) -> impl Fn(&T, &mut Window, &mut App) {
+/// Types the paths of what was dropped, from a file manager or the project tree, as `typed` writes them, and takes
+/// the keyboard.
+fn on_drop_paths<T: 'static>(session: Rc<Session>, focus: FocusHandle, typed: impl Fn(&T, &App) -> String + 'static) -> impl Fn(&T, &mut Window, &mut App) {
     move |dropped, window, cx| {
-        session.paste(&pasted::shell_words(&paths(dropped, cx)));
+        session.paste(&typed(dropped, cx));
         window.focus(&focus, cx);
     }
 }

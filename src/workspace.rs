@@ -56,7 +56,10 @@ mod runs;
 mod scratches;
 mod scripts;
 mod settings_actions;
-mod tab_menu;
+mod menu;
+mod path_actions;
+mod send_paths;
+mod git_actions;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -70,7 +73,8 @@ pub use quit::{add_app_menu, show_main_window};
 pub use quit::OnQuit;
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
-pub use tab_menu::{DEFAULT_MENU, MenuLine, label as tab_command_label, target as tab_command_target};
+pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
+pub use path_actions::is_path_action;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -102,7 +106,10 @@ pub struct Workspace {
     /// the menu was open when the + button was pressed: that press closed it, so the click must not reopen it
     menu_open_at_press: bool,
     /// the menu a right click on a tab opened
-    tab_menu: Option<tab_menu::TabMenu>,
+    /// the open menu of a tab or tree row
+    menu: Option<menu::OpenMenu>,
+    /// predicates asked for menus so far, numbering the next request
+    menu_requests: u64,
     /// the row Select Opened File is expanding the tree towards, while folders above it are read
     locating: Option<TreeKey>,
     /// `--restart`: the start script the Restart button runs
@@ -140,6 +147,8 @@ pub struct Workspace {
     history: History,
     /// the last input or run start per checkout, for the hub's worktree order
     worktree_use: WorktreeUse,
+    /// which terminals were used last, for Send to Terminal and the hub's Alt+Enter
+    terminal_use: crate::terminal_use::TerminalUse,
     hub_index: HubIndex,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
@@ -257,7 +266,8 @@ impl Workspace {
             tree_git: tree_git::TreeGit::default(),
             menu_open: false,
             menu_open_at_press: false,
-            tab_menu: None,
+            menu: None,
+            menu_requests: 0,
             locating: None,
             restart_script: startup.restart_script.clone(),
             restart_terminal: None,
@@ -284,6 +294,7 @@ impl Workspace {
             pending: runs::PendingRuns::default(),
             history: History::restore(startup.saved.history.clone()),
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
+            terminal_use: Default::default(),
             hub_index: HubIndex::default(),
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
@@ -614,6 +625,9 @@ impl Workspace {
         let Some(identity) = tab.identity(self) else {
             return;
         };
+        if let Tab::Process(id) = tab {
+            self.terminal_use.used(*id);
+        }
         let checkout = tab.checkout(self).map(|checkout| checkout.path);
         let shown = Shown { identity, saved: tab.saved(self, cx), checkout, title: tab.title(self), shown_at: Clock::system().now() };
         self.history.shown(shown);
@@ -622,6 +636,7 @@ impl Workspace {
 
     /// Input was submitted to process `id` (Enter in its terminal): its checkout counts as used now.
     pub fn process_input(&mut self, id: ProcessId, cx: &mut Context<Self>) {
+        self.terminal_use.used(id);
         if let Some(checkout) = self.processes.get(id).and_then(|process| process.checkout.clone()) {
             self.worktree_use.used(&checkout.path, Clock::system().now());
             self.schedule_save(cx);
@@ -728,10 +743,14 @@ impl Workspace {
         }
     }
 
+    /// The open context menu's keys, else Escape closing the sidebar's menu.
     fn close_menu_on_escape(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if self.menu_key(event, window, cx) {
+            cx.stop_propagation();
+            return;
+        }
         if event.keystroke.key == "escape" {
             self.close_menu(window, cx);
-            self.close_tab_menu(window, cx);
         }
     }
 

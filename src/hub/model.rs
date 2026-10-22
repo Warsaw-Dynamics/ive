@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::matcher::split_line;
 use super::rows::List;
 use super::rows::recent_matches;
+use super::content::{ContentQuery, MIN_QUERY_CHARS, Matching};
 use super::corpus::MAX_CHECKOUTS;
 use super::search::Filter;
 pub use super::sources::HubScope;
@@ -39,6 +40,12 @@ pub struct HubState {
     pub back: Option<TabId>,
     /// Ctrl+Shift+T: the hub only asks where a new terminal goes
     pub new_terminal: bool,
+    /// Ctrl+Shift+F: the query searches the files' contents, not their names
+    pub content: bool,
+    /// how a contents query matches: plain or regex, any or whole words
+    pub matching: Matching,
+    /// a contents search limited to these files and folders, picked in the tree; empty: the scope
+    pub paths: Vec<PathBuf>,
 }
 
 /// The worktree question for a row in several worktrees.
@@ -75,6 +82,8 @@ pub enum Mode {
     Pick,
     /// projects, worktrees and branches a new terminal can go to; the query is plain text
     NewTerminal,
+    /// the files' contents; the query is plain text or a regex
+    Content,
 }
 
 pub fn mode(state: &HubState) -> Mode {
@@ -83,6 +92,9 @@ pub fn mode(state: &HubState) -> Mode {
     }
     if state.new_terminal {
         return Mode::NewTerminal;
+    }
+    if state.content {
+        return Mode::Content;
     }
     let query = state.query.trim_start();
     match query.chars().next() {
@@ -125,6 +137,12 @@ impl HubState {
         }
     }
 
+    /// The contents query, once it is long enough to search with.
+    pub fn content_query(&self) -> Option<ContentQuery> {
+        let long_enough = self.query.chars().count() >= MIN_QUERY_CHARS;
+        (mode(self) == Mode::Content && long_enough).then(|| ContentQuery { text: self.query.clone(), mode: self.matching })
+    }
+
     /// The query field's text changed.
     pub fn typed(&mut self, text: String) -> Effect {
         if let Some(pick) = &mut self.pick {
@@ -147,12 +165,16 @@ impl HubState {
             Builtin::HubOpen => self.open(self.selected_row(), list, sources, false),
             Builtin::HubOpenBehind => self.open(self.selected_row(), list, sources, true),
             Builtin::HubOpenRow(number) => self.open(usize::from(number).saturating_sub(1), list, sources, false),
-            Builtin::HubTypePath => self.row_path(list, sources).map_or(Effect::Nothing, |(absolute, _)| Effect::TypePath(absolute)),
+            Builtin::HubTypePath => self.row_path(list, sources).map_or(Effect::Nothing, |(absolute, _)| Effect::TypePath(self.with_hit_line(absolute, list))),
             Builtin::HubCopyPath => self.row_path(list, sources).map_or(Effect::Nothing, |(_, relative)| Effect::CopyPath(relative)),
             Builtin::CopyFullPath => self.row_path(list, sources).map_or(Effect::Nothing, |(absolute, _)| Effect::CopyPath(absolute)),
             Builtin::HubStop => self.stop(list),
             Builtin::HubCycleScope if mode(self) == Mode::Scopes => self.open(self.selected_row(), list, sources, false),
             Builtin::HubCycleScope => self.cycle_scope(sources),
+            Builtin::HubWiden if self.query.is_empty() && self.pick.is_none() && !self.paths.is_empty() => {
+                self.paths.clear();
+                Effect::Search
+            }
             Builtin::HubWiden if self.query.is_empty() && self.pick.is_none() && self.scope != HubScope::All => {
                 self.scope = HubScope::All;
                 Effect::Search
@@ -172,6 +194,19 @@ impl HubState {
                 Effect::Redraw
             }
             Builtin::HubBack => self.back(),
+            Builtin::HubToggleContent => {
+                self.content = !self.content;
+                self.selected = 0;
+                Effect::Search
+            }
+            Builtin::HubToggleRegex => {
+                self.matching = self.matching.with_regex();
+                Effect::Search
+            }
+            Builtin::HubToggleWholeWord => {
+                self.matching = self.matching.with_whole_word();
+                Effect::Search
+            }
             _ => Effect::Nothing,
         }
     }
@@ -273,9 +308,10 @@ impl HubState {
             };
             return Effect::Open { target: pick.target.clone(), checkout, line: pick.line, behind: pick.behind || behind };
         }
-        let line = match mode(self) {
-            Mode::Files { line } => line,
-            Mode::Line(line) => Some(line),
+        let line = match (mode(self), &row.item.target) {
+            (Mode::Files { line }, _) => line,
+            (Mode::Line(line), _) => Some(line),
+            (Mode::Content, Target::Hit { line, .. }) => Some(*line),
             _ => None,
         };
         // nothing opens behind a new terminal's place
@@ -341,6 +377,14 @@ impl HubState {
         Effect::Search
     }
 
+    /// `path`, and `:<line>` for a contents search's line, as Alt+Enter types it.
+    fn with_hit_line(&self, path: String, list: &List) -> String {
+        match list.rows.get(self.selected_row()).map(|row| &row.item.target) {
+            Some(Target::Hit { line, .. }) => format!("{path}:{line}"),
+            _ => path,
+        }
+    }
+
     fn stop(&self, list: &List) -> Effect {
         match list.rows.get(self.selected_row()).map(|row| &row.item.target) {
             Some(target @ (Target::Process(_) | Target::Tab(_))) if self.pick.is_none() => Effect::Stop(target.clone()),
@@ -366,6 +410,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::*;
+    use crate::hub::content::Matching;
     use crate::hub::corpus::{Corpus, ProjectInput, build};
     use crate::hub::files::{CheckoutFiles, Class};
     use crate::hub::rows::{LINE_NEEDS_TEXT, LOADING_FILES, Tag, list};
@@ -733,6 +778,75 @@ mod tests {
         // then
         assert_eq!(titles(&list), ["All projects", "atlassian", "GEN-817-ive", "dev", "old", "notes", "notes"]);
         assert_eq!(list.rows.iter().map(|row| row.depth).collect::<Vec<_>>(), [0, 0, 1, 1, 1, 0, 1]);
+    }
+
+    #[test]
+    fn should_enter_content_mode_keeping_query_and_scope() {
+        // given
+        let mut state = HubState { scope: HubScope::Project(atlassian()), ..HubState::default() };
+        typed(&mut state, "fn main");
+
+        // when
+        let effect = act(&mut state, Builtin::HubToggleContent, &sources());
+
+        // then
+        assert_eq!((effect, mode(&state), state.query.as_str(), state.scope.clone()), (Effect::Search, Mode::Content, "fn main", HubScope::Project(atlassian())));
+        assert_eq!(state.search_text(), None);
+    }
+
+    #[test]
+    fn should_not_search_contents_below_two_characters() {
+        // given
+        let mut state = HubState { content: true, ..HubState::default() };
+
+        // when
+        typed(&mut state, "f");
+        let short = state.content_query();
+        typed(&mut state, "fn");
+        let long = state.content_query();
+
+        // then
+        assert_eq!((short, long.map(|query| query.text)), (None, Some("fn".to_owned())));
+    }
+
+    #[test]
+    fn should_switch_regex_and_whole_word() {
+        // given
+        let mut state = HubState { content: true, ..HubState::default() };
+        typed(&mut state, "menu");
+
+        // when
+        act(&mut state, Builtin::HubToggleRegex, &sources());
+        act(&mut state, Builtin::HubToggleWholeWord, &sources());
+
+        // then
+        assert_eq!(state.content_query().map(|query| query.mode), Some(Matching::RegexWholeWord));
+    }
+
+    #[test]
+    fn should_drop_the_path_scope_on_backspace_with_empty_query() {
+        // given
+        let mut state = HubState { content: true, paths: vec![PathBuf::from("/a/dev/src")], scope: HubScope::Project(atlassian()), ..HubState::default() };
+
+        // when
+        let first = act(&mut state, Builtin::HubWiden, &sources());
+        let paths_after_first = state.paths.len();
+        let second = act(&mut state, Builtin::HubWiden, &sources());
+
+        // then
+        assert_eq!((first, paths_after_first, second, state.scope), (Effect::Search, 0, Effect::Search, HubScope::All));
+    }
+
+    #[test]
+    fn should_restore_content_mode_from_saved_state() {
+        // given
+        let state = HubState { content: true, matching: Matching::Regex, paths: vec![PathBuf::from("/a/dev/src")], query: "fn \\w+".to_owned(), ..HubState::default() };
+
+        // when
+        let restored: HubState = serde_json::from_value(serde_json::to_value(&state).unwrap()).unwrap();
+
+        // then
+        assert_eq!(restored, state);
     }
 
     #[test]

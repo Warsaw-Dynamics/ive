@@ -3,6 +3,7 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use std::rc::Rc;
 
 use futures::StreamExt;
@@ -22,7 +23,7 @@ use super::open_folders::OpenFolders;
 use super::quit_countdown::QuitCountdown;
 use super::fingerprint::fingerprint;
 use super::keymap::Keymap;
-use super::tab_menus::TabMenus;
+use super::menus::Menus;
 use super::temporary_tabs::TemporaryTabs;
 use crate::theme::Fonts;
 use crate::theme_config::ThemeSpec;
@@ -39,7 +40,7 @@ pub enum ScriptEvent {
         theme: Box<ThemeSpec>,
         excluded: Excluded,
         temporary_tabs: TemporaryTabs,
-        tab_menus: TabMenus,
+        menus: Box<Menus>,
         quit_countdown: QuitCountdown,
         open_folders: OpenFolders,
         has_init: bool,
@@ -48,6 +49,8 @@ pub enum ScriptEvent {
     LoadFailed { message: String, errors: usize },
     /// a bound function failed; the log says why
     RunFailed,
+    /// the menu condition asked as `request` answered
+    Tested { request: u64, answer: bool },
 }
 
 /// What the gpui thread asks of the script thread.
@@ -58,6 +61,9 @@ pub enum ScriptCommand {
     /// a trigger bound to function `function` of load `generation` fired; `context` is what it fired on, `None`
     /// for the shown tab
     Invoke { generation: u64, function: usize, context: Option<serde_json::Value> },
+    /// a menu opened on `context`: does the condition function `function` of load `generation` hold? Answered as
+    /// [`ScriptEvent::Tested`], false when it errs or takes longer than `timeout`
+    Test { generation: u64, function: usize, context: serde_json::Value, request: u64, timeout: Duration },
 }
 
 /// The gpui thread's ends of the script thread's channels, and the log it writes.
@@ -143,6 +149,7 @@ impl Runner {
             match command {
                 ScriptCommand::Reload => self.reload(),
                 ScriptCommand::Invoke { generation, function, context } => self.invoke(generation, function, context),
+                ScriptCommand::Test { generation, function, context, request, timeout } => self.test(Asked { generation, function, request, timeout }, context),
             }
         }
     }
@@ -180,7 +187,7 @@ impl Runner {
             theme: Box::new(loaded.theme.clone()),
             excluded: loaded.excluded.clone(),
             temporary_tabs: loaded.temporary_tabs.clone(),
-            tab_menus: loaded.tab_menus.clone(),
+            menus: Box::new(loaded.menus.clone()),
             quit_countdown: loaded.quit_countdown,
             open_folders: loaded.open_folders.clone(),
             has_init: loaded.has_init,
@@ -203,7 +210,7 @@ impl Runner {
 
     fn invoke(&self, generation: u64, function: usize, context: Option<serde_json::Value>) {
         let bound = self.current.as_ref().filter(|(current, _)| *current == generation).and_then(|(_, loaded)| {
-            let key = loaded.keymap.invoked(function)?;
+            let key = loaded.keymap.invoked(function).or_else(|| loaded.menus.function_label(function))?;
             Some((key, loaded.functions.get(function)?.try_clone().ok()?))
         });
         let Some((key, function)) = bound else {
@@ -219,6 +226,36 @@ impl Runner {
                 log.append(&format!("{key}: {error}"));
                 let _ = events.unbounded_send(ScriptEvent::RunFailed);
             }
+        });
+    }
+
+    /// Runs a menu condition as a task of its own and sends its answer; one of an older load answers false.
+    fn test(&self, asked: Asked, context: serde_json::Value) {
+        let bound = self.current.as_ref().filter(|(current, _)| *current == asked.generation).and_then(|(_, loaded)| {
+            let label = loaded.menus.function_label(asked.function)?;
+            Some((label, loaded.functions.get(asked.function)?.try_clone().ok()?))
+        });
+        let Some((label, function)) = bound else {
+            return self.send(ScriptEvent::Tested { request: asked.request, answer: false });
+        };
+        let (events, engine, log) = (self.events.clone(), self.engine.clone(), self.log.clone());
+        tokio::task::spawn_local(async move {
+            let answer = tokio::time::timeout(asked.timeout, call_test(&function, context)).await;
+            for line in engine.drain_output() {
+                log.append(&line);
+            }
+            let answer = match answer {
+                Ok(Ok(answer)) => answer,
+                Ok(Err(error)) => {
+                    log.append(&format!("{label}: {error}"));
+                    false
+                }
+                Err(_) => {
+                    log.append(&format!("{label}: did not answer within {} ms, so the item stays hidden", asked.timeout.as_millis()));
+                    false
+                }
+            };
+            let _ = events.unbounded_send(ScriptEvent::Tested { request: asked.request, answer });
         });
     }
 
@@ -255,6 +292,30 @@ async fn call_bound(function: &Function, calls: &UnboundedSender<Call>, context:
     match rune::from_value::<Result<Value, Value>>(returned) {
         Ok(Err(error)) => Err(describe(error)),
         _ => Ok(()),
+    }
+}
+
+/// Which menu condition to ask, and for how long.
+struct Asked {
+    generation: u64,
+    function: usize,
+    request: u64,
+    timeout: Duration,
+}
+
+/// Calls a menu condition with `context`, awaiting it when async: `true` or `Ok(true)` holds, any other value does not;
+/// a run-time error or an `Err` is the error.
+async fn call_test(function: &Function, context: serde_json::Value) -> Result<bool, String> {
+    let context = serde_json::from_value::<Value>(context).unwrap_or_else(|_| Value::empty());
+    let returned = budget::with(STEP_BUDGET, || function.call::<Value>((context,))).call().into_result().map_err(run_error)?;
+    let returned = match rune::from_value::<RuneFuture>(returned.clone()) {
+        Ok(future) => PerPoll(future).await.into_result().map_err(run_error)?,
+        Err(_) => returned,
+    };
+    match rune::from_value::<Result<Value, Value>>(returned.clone()) {
+        Ok(Ok(value)) => Ok(rune::from_value::<bool>(value).unwrap_or(false)),
+        Ok(Err(error)) => Err(describe(error)),
+        Err(_) => Ok(rune::from_value::<bool>(returned).unwrap_or(false)),
     }
 }
 
@@ -379,6 +440,22 @@ mod tests {
 
     fn invoke_function(scripts: &Scripts, generation: u64, function: usize) {
         scripts.commands.unbounded_send(ScriptCommand::Invoke { generation, function, context: None }).unwrap();
+    }
+
+    /// Asks the first function `init.rn` names whether it holds, with `timeout`, and waits for the answer.
+    fn ask_test(scripts: &mut Scripts, generation: u64, timeout: Duration) -> bool {
+        let command = ScriptCommand::Test { generation, function: defaults_functions(), context: json!({ "paths": [] }), request: 7, timeout };
+        scripts.commands.unbounded_send(command).unwrap();
+        loop {
+            match next_event(scripts, WAIT).expect("no answer") {
+                ScriptEvent::Tested { request: 7, answer } => return answer,
+                _ => continue,
+            }
+        }
+    }
+
+    fn when_test(body: &str) -> String {
+        format!("pub fn init(config) {{ config.tree_menus.main = [#{{ label: \"X\", action: act::CopyFullPath, when: check }}]; }}\n{body}")
     }
 
     fn defaults_functions() -> usize {
@@ -510,6 +587,91 @@ mod tests {
         // then
         let expected = format!("{:?}", Request::WindowInput(WindowInput::Click("restart".to_owned())));
         assert!(wait_for(&seen, &expected));
+    }
+
+    #[test]
+    fn should_run_a_function_named_only_by_a_menu() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let init = "pub fn init(config) { config.tree_menus.main = [#{ label: \"Restart\", action: restart }]; }\n\
+            async fn restart(context) { ive::click(\"restart\").await?; Ok(()) }";
+        let (scripts, seen, _) = start_with(dir.path(), init, answer_terminal);
+
+        // when
+        invoke(&scripts, 1);
+
+        // then
+        let expected = format!("{:?}", Request::WindowInput(WindowInput::Click("restart".to_owned())));
+        assert!(wait_for(&seen, &expected));
+    }
+
+    #[test]
+    fn should_answer_a_sync_test_true() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (mut scripts, _, _) = start_with(dir.path(), &when_test("fn check(context) { context.paths.len() == 0 }"), answer_terminal);
+
+        // when
+        let answer = ask_test(&mut scripts, 1, WAIT);
+
+        // then
+        assert!(answer);
+    }
+
+    #[test]
+    fn should_answer_an_async_test_after_it_awaits() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let body = "async fn check(context) { time::sleep(time::Duration::from_millis(50)).await; Ok(true) }";
+        let (mut scripts, _, _) = start_with(dir.path(), &when_test(body), answer_terminal);
+
+        // when
+        let answer = ask_test(&mut scripts, 1, WAIT);
+
+        // then
+        assert!(answer);
+    }
+
+    #[test]
+    fn should_answer_false_and_log_when_a_test_errs() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (mut scripts, _, log) = start_with(dir.path(), &when_test("fn check(context) { Err(\"no deploy key\") }"), answer_terminal);
+
+        // when
+        let answer = ask_test(&mut scripts, 1, WAIT);
+
+        // then
+        assert!(!answer);
+        assert!(logged(&log, "no deploy key").contains("the condition of X"));
+    }
+
+    #[test]
+    fn should_answer_false_after_the_timeout() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let body = "async fn check(context) { time::sleep(time::Duration::from_secs(60)).await; Ok(true) }";
+        let (mut scripts, _, log) = start_with(dir.path(), &when_test(body), answer_terminal);
+
+        // when
+        let answer = ask_test(&mut scripts, 1, Duration::from_millis(100));
+
+        // then
+        assert!(!answer);
+        assert!(logged(&log, "the condition of X").contains("did not answer"));
+    }
+
+    #[test]
+    fn should_answer_false_for_an_older_generation() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (mut scripts, _, _) = start_with(dir.path(), &when_test("fn check(context) { true }"), answer_terminal);
+
+        // when
+        let answer = ask_test(&mut scripts, 0, WAIT);
+
+        // then
+        assert!(!answer);
     }
 
     #[test]

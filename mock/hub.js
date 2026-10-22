@@ -8,6 +8,9 @@
   var DAY = 24 * 3600 * 1000;
   // Rows rendered per section: fzf shows what fits; the counter tells how many more matched.
   var RENDERED = 80;
+  // hub/content.rs: lines listed at most; a preview starts this many lines above its line (preview.rs PREVIEW_LEAD)
+  var CONTENT_LIMIT = 2000;
+  var CONTENT_LEAD = 8;
   var RECENT = 12;
   var RECENT_WHILE_SEARCHING = 5;
   // New terminal: a project's newest branches without a worktree listed before typing; the best matches while typing
@@ -242,7 +245,10 @@
         // "show changed only"; back: the tab Escape returns to; pick: the worktree question after Enter on a row that
         // is in several ({ item, behind, query, selected, back (the row to return to) }), else null; newTerminal:
         // opened with Ctrl+Shift+T, the hub only asks where a new terminal goes.
-        hub: { query: '', selected: 0, scope: 'all', withExcluded: false, changedOnly: false, back: null, pick: null, loaded: 0, note: '', newTerminal: false },
+        // content: Ctrl+Shift+F, the query searches the files' lines (regex: Alt+R, word: Alt+W); paths: the files and
+        // folders Find in Files was picked on ({ co, path }), else the scope.
+        hub: { query: '', selected: 0, scope: 'all', withExcluded: false, changedOnly: false, back: null, pick: null, loaded: 0, note: '', newTerminal: false,
+          content: false, regex: false, word: false, paths: [] },
         // Every tab shown, newest last: { key, tab, at }. Closed tabs stay, so the hub reopens them.
         history: [],
         // Per checkout id, the last input typed into one of its terminals or Claude Code, or run started in it.
@@ -302,19 +308,32 @@
         this.hub.changedOnly = false;
         this.hub.pick = null;
         this.hub.newTerminal = newTerminal;
+        this.hub.content = false;
+        this.hub.paths = [];
         this.menu = null;
         var title = newTerminal ? 'New terminal' : 'Hub';
         var open = this.tabs.find(function (t) { return t.key === 'hub'; });
         if (open) open.title = title;
         this.openTab({ key: 'hub', kind: 'hub', title: title, co: null, project: null });
       },
-      // The window's keys the hub adds: Ctrl+Shift+T (Firefox keeps Ctrl+Shift+T for itself, so the mock takes
-      // Alt+Shift+T too).
+      // Find in Files (Ctrl+Shift+F, or a menu's Find in Files… on `paths`): the hub searching the files' lines.
+      openContentHub: function (paths) {
+        this.showHub(false);
+        this.hub.content = true;
+        this.hub.paths = paths || [];
+      },
+      // The window's keys the hub adds: Ctrl+Shift+T, Ctrl+Shift+F (Firefox keeps Ctrl+Shift+T for itself, so the mock
+      // takes Alt+Shift+T too).
       newTerminalKey: function (event) {
         var modifier = event.ctrlKey || event.altKey;
         if (modifier && event.shiftKey && event.code === 'KeyT' && event.metaKey === false) {
           event.preventDefault();
           this.openNewTerminalHub();
+        }
+        var current = this.currentTab();
+        if (event.ctrlKey && event.shiftKey && event.code === 'KeyF' && (current === null || current.kind !== 'hub')) {
+          event.preventDefault();
+          this.openContentHub([]);
         }
       },
       // Escape: back to the tab shown before; the hub, temporary, goes.
@@ -398,6 +417,7 @@
       hubMode: function () {
         if (this.hub.pick !== null) return 'pick';
         if (this.hub.newTerminal) return 'terminal';
+        if (this.hub.content) return 'content';
         var q = this.hub.query.trimStart();
         if (q[0] === '>') return 'actions';
         if (q[0] === '@') return 'processes';
@@ -412,6 +432,7 @@
         if (mode === 'pick') return this.hub.pick.query;
         if (mode === 'scope') return this.hub.query.trimStart().slice(1);
         if (mode === 'line') return '';
+        if (mode === 'content') return '';
         return mode === 'files' || mode === 'changed' || mode === 'terminal' ? this.hub.query : this.hub.query.trimStart().slice(1);
       },
       // The query box edits the search, or the worktree filter while asking.
@@ -454,6 +475,95 @@
       },
       hub_changed: function (groups) {
         return [{ key: 'changed', title: 'Changed only', hint: 'Ctrl+E for everything', items: this.hubScoped(this.hubChanged(groups)), empty: 'Nothing uncommitted' }];
+      },
+      // Contents (hub/content.rs): one row per matching line, `path:line` and the line with its matches; plain text from
+      // 2 characters, smart case, Alt+R regex, Alt+W whole words; the list stops at CONTENT_LIMIT lines.
+      hub_content: function () {
+        var self = this;
+        var paths = this.hub.paths;
+        var title = paths.length === 0 ? 'Contents' : 'Contents of ' + this.subjectName(paths[0]) + (paths.length > 1 ? ' +' + (paths.length - 1) : '');
+        var hint = paths.length ? 'Backspace on an empty query searches the scope' : this.hubScopeLabel(this.hubScope());
+        var section = function (items, empty, more) { return [{ key: 'content', title: title, hint: hint, items: items, empty: empty, more: more, moreText: 'lines; the first ' + CONTENT_LIMIT + ' are listed' }]; };
+        if (this.hub.query.length < 2) return section([], "Type 2 characters or more to search the files' contents");
+        var regex = this.contentRegex();
+        if (typeof regex === 'string') return section([], regex);
+        var items = [];
+        var total = 0;
+        this.contentFiles().forEach(function (file) {
+          file.text.split('\n').forEach(function (line, at) {
+            regex.lastIndex = 0;
+            var spans = [];
+            var from = 0;
+            var m;
+            while ((m = regex.exec(line)) !== null && m[0] !== '') {
+              spans.push({ t: line.slice(from, m.index), on: false }, { t: m[0], on: true });
+              from = m.index + m[0].length;
+            }
+            if (spans.length === 0) return;
+            total += 1;
+            if (items.length >= CONTENT_LIMIT) return;
+            spans.push({ t: line.slice(from), on: false });
+            items.push(self.contentRow(file, at + 1, spans));
+          });
+        });
+        return section(items, 'No line matches', Math.max(0, total - items.length));
+      },
+      contentRow: function (file, line, spans) {
+        var self = this;
+        var lines = file.text.split('\n');
+        var first = Math.max(1, line - CONTENT_LEAD);
+        return this.hubItem({
+          id: 'ct:' + file.key + ':' + line, icon: this.fileIcon(file.name), title: file.title + ':' + line, detail: spans.map(function (s) { return s.t; }).join(''),
+          detailSpans: spans, co: file.co, path: file.co ? file.path.slice(1) : undefined,
+          open: function () {
+            file.open();
+            var tab = self.currentTab();
+            if (tab) self.goToLine(tab, line);
+          },
+          preview: function () { return { title: file.title, sub: file.sub, lines: lines.slice(first - 1), first: first, line: line, numbered: true }; }
+        });
+      },
+      // The query as a RegExp (smart case: a capital of its own, not a regex escape's, makes it exact), or why it is not one.
+      contentRegex: function () {
+        var text = this.hub.query;
+        var source = this.hub.regex ? text : text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (this.hub.word) source = '\\b(?:' + source + ')\\b';
+        var own = this.hub.regex ? text.replace(/\\./g, '') : text;
+        try {
+          return new RegExp(source, own !== own.toLowerCase() ? 'g' : 'gi');
+        } catch (error) {
+          return JSON.stringify(text) + ' is not a regex: ' + error.message;
+        }
+      },
+      // The files searched: those under the picked paths, else the scope's worktrees and, for a project or all, its
+      // scratches. { key, co, path, name, title, sub, text, open }
+      contentFiles: function () {
+        var self = this;
+        var out = [];
+        var picked = this.hub.paths;
+        var inPicked = function (co, path) {
+          return picked.length === 0 || picked.some(function (p) { return p.co === co.id && (p.path === '' || path === p.path || path.startsWith(p.path + '/')); });
+        };
+        var scoped = this.openProjects().flatMap(function (p) { return self.shownCheckouts(p); }).filter(function (co) {
+          return picked.length ? picked.some(function (p) { return p.co === co.id; }) : self.hubInScope({ co: co.id, project: co.project });
+        });
+        scoped.forEach(function (co) {
+          (function walk(entries) {
+            entries.forEach(function (e) {
+              if (e.children) { walk(e.children); return; }
+              if (typeof e.text !== 'string' || inPicked(co, e.path) === false) return;
+              out.push({ key: co.id + e.path, co: co.id, path: e.path, name: e.name, title: e.path.slice(1), sub: self.label(co.id), text: e.text,
+                open: function () { self.openFile(co.id, e.path); } });
+            });
+          })(co.tree);
+        });
+        if (picked.length === 0 && this.hubScopeCheckout() === null) {
+          this.scratches.filter(function (s) { return self.hubInScope({ co: null, project: s.project }); }).forEach(function (s) {
+            out.push({ key: 's:' + s.name, co: null, path: s.name, name: s.name, title: 'scratches/' + s.name, sub: 'scratch · ' + s.project, text: s.text,
+              open: function () { self.openScratch(s); } });
+          });
+        }
+        return out;
       },
       hub_actions: function (groups) {
         return [{ key: 'actions', title: 'Actions', items: this.hubMatching(this.hubActions(), groups), empty: 'No action matches' }];
@@ -861,6 +971,11 @@
         var view = this.hubView();
         var stats = view.stats;
         if (view.mode === 'terminal') return view.sections.length ? view.sections[0].counter : '';
+        if (view.mode === 'content') {
+          var files = new Set(view.items.map(function (item) { return item.id.slice(0, item.id.lastIndexOf(':')); })).size;
+          var lines = view.items.length + (view.sections.length && view.sections[0].more ? view.sections[0].more : 0);
+          return lines === 0 ? '' : lines.toLocaleString('en') + (lines === 1 ? ' match' : ' matches') + ' in ' + files + (files === 1 ? ' file' : ' files');
+        }
         if (stats === null) {
           return this.hub.loaded ? this.hub.loaded.toLocaleString('en') + ' files' : 'loading…';
         }
@@ -888,6 +1003,14 @@
         if (event.altKey && /^[1-9]$/.test(event.key)) { event.preventDefault(); this.hubOpen(view.items[Number(event.key) - 1], event); return; }
         if (event.key === 'Enter' && item) { event.preventDefault(); this.hubOpen(item, event); return; }
         if (event.altKey && event.key.toLowerCase() === 'i' && this.hub.pick === null) { event.preventDefault(); this.toggleExcluded(); return; }
+        // Ctrl+Shift+F: file names or contents; Alt+R, Alt+W: a contents query as a regex, whole words
+        if (event.ctrlKey && event.shiftKey && event.code === 'KeyF' && this.hub.pick === null && this.hub.newTerminal === false) {
+          event.preventDefault(); this.hub.content = !this.hub.content; this.hub.selected = 0; return;
+        }
+        if (event.altKey && event.key.toLowerCase() === 'r' && this.hub.content) { event.preventDefault(); this.hub.regex = !this.hub.regex; this.hub.selected = 0; return; }
+        if (event.altKey && event.key.toLowerCase() === 'w' && this.hub.content) { event.preventDefault(); this.hub.word = !this.hub.word; this.hub.selected = 0; return; }
+        // Backspace on an empty query: first the picked files and folders go, then the scope widens
+        if (event.key === 'Backspace' && this.hub.query === '' && this.hub.pick === null && this.hub.paths.length) { event.preventDefault(); this.hub.paths = []; return; }
         if (event.key === 'Tab' && view.mode === 'scope') { event.preventDefault(); if (item) item.open(); return; }
         if (event.key === 'Tab' && this.hub.pick === null) { event.preventDefault(); this.hubCycleScope(); return; }
         // Backspace on an empty query widens the scope back to all projects
@@ -944,6 +1067,11 @@
         if (mode === 'scope') return [['↑↓', 'move'], ['Enter', 'search there'], ['Tab', 'search there'], ['Esc', 'clear']];
         if (mode === 'line') return [['Enter', 'go to the line'], ['Esc', 'clear']];
         if (mode === 'terminal') return [['↑↓', 'move'], ['Enter', 'new terminal there'], ['type', 'filter'], ['Esc', this.hub.query === '' ? 'back' : 'clear'], ['Ctrl+E', 'hub']];
+        if (mode === 'content') {
+          return [['↑↓', 'move'], ['Enter', 'open at the line'], ['Shift+Enter', 'behind'], ['Alt+Enter', 'to terminal'], ['Ctrl+Y', 'copy'],
+            ['Alt+R', this.hub.regex ? 'regex on' : 'regex'], ['Alt+W', this.hub.word ? 'words on' : 'words'], ['Alt+I', this.hub.withExcluded ? 'excluded on' : 'excluded'],
+            ['Ctrl+Shift+F', 'names'], ['Esc', this.hub.query === '' ? 'back' : 'clear']];
+        }
         var common = [['↑↓', 'move'], ['Enter', 'open'], ['Shift+Enter', 'behind'], ['Esc', this.hub.query === '' ? 'back' : 'clear']];
         if (mode === 'files' || mode === 'changed') {
           return common.concat([['Alt+Enter', 'to terminal'], ['Ctrl+Y', 'copy'], ['Tab', 'scope'], [':', 'any scope'], [':42', 'line'], ['Alt+I', this.hub.withExcluded ? 'hide excluded' : 'excluded'],

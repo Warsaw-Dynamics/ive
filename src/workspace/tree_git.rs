@@ -324,6 +324,18 @@ impl Workspace {
         .detach();
     }
 
+    /// The change of `relative` in checkout `checkout`'s Uncommitted or Since base folder, as last read; `None` when it
+    /// is not listed there or the checkout's git was not read.
+    pub(super) fn known_change(&self, checkout: &Path, relative: &str, source: &ChangeSource) -> Option<Change> {
+        let known = self.tree_git.known.get(checkout)?;
+        let changes = match source {
+            ChangeSource::Uncommitted => &known.changes,
+            ChangeSource::SinceBase => &known.since.as_ref()?.files,
+            ChangeSource::Commit(_) => return None,
+        };
+        changes.iter().find(|change| change.path.as_bytes() == relative.as_bytes()).cloned()
+    }
+
     /// A changed file's row: its diff, read in the background, in a tab.
     pub(crate) fn open_change(&mut self, checkout: &CheckoutRef, source: &ChangeSource, change: &Change, window: &mut Window, cx: &mut Context<Self>) {
         let Some(source) = self.diff_source(&checkout.path, source) else {

@@ -429,7 +429,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .child(badges)
         .children(hide)
         .on_hover(want_git(&row.checkout, cx));
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// Pointing at a checkout's row reads its git data for the badges' counts, and keeps it fresh until the pointer leaves.
@@ -455,7 +455,7 @@ fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> 
     let show: Listener = Rc::new(target(line.name("process"), cx.listener(move |workspace, _event, window, cx| workspace.show_process(id, window, cx)), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("process"), checkout: None, activate: show, keep: None, toggle: None };
     let row_div = line.div.child(folder_view::slot(line.theme)).child(icon(line.theme, row.kind.icon())).children(progress_bar(row.progress, line.theme)).child(row.title.clone()).child(action);
-    bind_row(row_div, mouse)
+    bind_row(row_div, mouse, cx)
 }
 
 /// A file or folder row; dragged onto a terminal, it types its path, or the selection's when it is selected.
@@ -490,9 +490,9 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
     let line = line.div.child(disclosure).child(icon(theme, file_icon)).child(name).children(warning);
     if multi {
         let dragged = DraggedFiles { pressed: entry.path.clone(), workspace: cx.entity().downgrade() };
-        return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse);
+        return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse, cx);
     }
-    bind_row(line, mouse)
+    bind_row(line, mouse, cx)
 }
 
 /// Where a run's actions are drawn. Each place names its own click targets: a run shown in both would otherwise
@@ -644,7 +644,7 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
             workspace.show_project_overview(&shown, window, cx);
         }), cx));
         let keep = keep_shown(&select, cx);
-        return bind_row(line, RowMouse { select, name: project_target, checkout: None, activate: show, keep, toggle });
+        return bind_row(line, RowMouse { select, name: project_target, checkout: None, activate: show, keep, toggle }, cx);
     }
     line
 }
@@ -667,9 +667,13 @@ fn keep_shown(select: &RowSelect, cx: &mut Context<Workspace>) -> Option<Listene
     Some(Rc::new(cx.listener(move |workspace, _event, _window, cx| workspace.keep_shown_tab_of(&row, cx))))
 }
 
-fn bind_row(line: Stateful<Div>, row: RowMouse) -> Stateful<Div> {
+fn bind_row(line: Stateful<Div>, row: RowMouse, cx: &App) -> Stateful<Div> {
     let RowMouse { select, name, checkout, activate, keep, toggle } = row;
     let context = serde_json::json!({ "row": name, "checkout": checkout });
+    let menu_row = name.clone();
+    // for MCP's click: opens the row's default menu, as a right press does, at the pointer
+    let (opened, opened_row) = (select.clone(), name.clone());
+    drop(target(format!("tree-menu:{name}"), move |_event, window, cx| open_menu(&opened, &opened_row, crate::workspace::DEFAULT_MENU, window, cx), cx));
     let selected = select.clone();
     let click = move |window: &mut Window, cx: &mut App| {
         selected.update(cx, |selection, key, _listed| selection.select_only(key));
@@ -697,9 +701,21 @@ fn bind_row(line: Stateful<Div>, row: RowMouse) -> Stateful<Div> {
             }
         }
         Some(Action::Invoke { generation, function }) => invoke(generation, function, Some(context.clone()), cx),
+        Some(Action::ShowTreeMenu(menu)) => open_menu(&select, &menu_row, &menu, window, cx),
+        Some(Action::Builtin(builtin)) if crate::workspace::is_path_action(builtin) => {
+            let key = select.key.clone();
+            let _ = select.workspace.update(cx, |workspace, cx| workspace.run_row_path_action(key, builtin, window, cx));
+        }
         // the keymap allows no other action in the tree scope
         _ => {}
     })
+}
+
+/// Opens tree menu `menu` on the row of `select`, named `row` for MCP.
+fn open_menu(select: &RowSelect, row: &str, menu: &str, window: &mut Window, cx: &mut App) {
+    let key = select.key.clone();
+    // the workspace is gone only while the window closes
+    let _ = select.workspace.update(cx, |workspace, cx| workspace.open_tree_menu(key, row.to_owned(), menu, window, cx));
 }
 
 /// What a row's selection clicks change: the workspace's tree selection, by the row's key.

@@ -2,6 +2,7 @@
 //! open project.
 
 pub mod matcher;
+pub mod content;
 pub mod corpus;
 pub mod creations;
 pub mod files;

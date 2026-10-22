@@ -2,6 +2,8 @@
 
 use gpui::{Keystroke, Modifiers};
 
+use super::menus::MenuKind;
+
 /// Where a binding applies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Scope {
@@ -201,6 +203,35 @@ pub enum Builtin {
     HubToggleChanged,
     /// the worktree question, else the query, else the hub
     HubBack,
+    /// the paths into a terminal picked from a list, most recently used first
+    SendPathsToTerminal,
+    /// paths relative to their checkout, one per line
+    CopyRelativePath,
+    CopyFileName,
+    /// the hub searching the contents of the paths
+    FindInFiles,
+    /// the hub searching contents in its usual scope
+    OpenFindInFiles,
+    /// a new terminal in the folder, or a file's folder
+    OpenTerminalHere,
+    RevealInFileManager,
+    OpenWithDefaultApp,
+    OpenInBrowser,
+    /// a shell file, or a run configuration of a folder's `.run.toml`
+    RunFile,
+    /// a file's uncommitted changes
+    GitShowDiff,
+    GitCompareWithBase,
+    /// the Git log of the commits touching a path
+    GitHistory,
+    GitIgnore,
+    /// two files, side by side in a diff tab
+    CompareFiles,
+    OpenInNewWindow,
+    /// the hub between searching names and contents
+    HubToggleContent,
+    HubToggleRegex,
+    HubToggleWholeWord,
 }
 
 impl Builtin {
@@ -235,7 +266,26 @@ impl Builtin {
             | Self::HubWiden
             | Self::HubToggleExcluded
             | Self::HubToggleChanged
-            | Self::HubBack => scope == Scope::Hub,
+            | Self::HubBack
+            | Self::HubToggleContent
+            | Self::HubToggleRegex
+            | Self::HubToggleWholeWord => scope == Scope::Hub,
+            Self::SendPathsToTerminal
+            | Self::CopyRelativePath
+            | Self::CopyFileName
+            | Self::FindInFiles
+            | Self::OpenTerminalHere
+            | Self::RevealInFileManager
+            | Self::OpenInNewWindow => matches!(scope, Scope::Window | Scope::Tree),
+            Self::OpenFindInFiles => scope == Scope::Window,
+            Self::OpenWithDefaultApp
+            | Self::OpenInBrowser
+            | Self::RunFile
+            | Self::GitShowDiff
+            | Self::GitCompareWithBase
+            | Self::GitHistory
+            | Self::GitIgnore
+            | Self::CompareFiles => false,
         }
     }
 
@@ -250,6 +300,32 @@ impl Builtin {
             self,
             Self::KeepTab | Self::StopProgram | Self::KillProgram | Self::CloseTab | Self::CloseOtherTabs | Self::CloseTabsToTheLeft | Self::CloseTabsToTheRight
         )
+    }
+
+    /// The menus that can hold the action as an item.
+    pub fn menu_kinds(&self) -> &'static [MenuKind] {
+        const BOTH: &[MenuKind] = &[MenuKind::Tab, MenuKind::Tree];
+        match self {
+            Self::SendPathsToTerminal
+            | Self::CopyFullPath
+            | Self::CopyRelativePath
+            | Self::CopyFileName
+            | Self::FindInFiles
+            | Self::OpenTerminalHere
+            | Self::RevealInFileManager
+            | Self::OpenWithDefaultApp
+            | Self::OpenInBrowser
+            | Self::RunFile
+            | Self::GitShowDiff
+            | Self::GitCompareWithBase
+            | Self::GitHistory
+            | Self::GitIgnore
+            | Self::CompareFiles
+            | Self::OpenInNewWindow => BOTH,
+            Self::OpenHub | Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::OpenFindInFiles | Self::ToggleChangesLayout => BOTH,
+            tab if tab.is_tab_command() => &[MenuKind::Tab],
+            _ => &[],
+        }
     }
 
     /// Whether the action needs a place the mouse points at, so a key cannot run it.
@@ -281,6 +357,8 @@ pub enum Action {
     Disable,
     /// opens the clicked tab's menu of that name, from `config.tab_menus`, at the pointer
     ShowTabMenu(String),
+    /// opens the menu of that name from `config.tree_menus` on the clicked row (a key: the selected one)
+    ShowTreeMenu(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -333,10 +411,10 @@ impl Keymap {
         self.bindings.iter().find(invokes).map(|binding| binding.trigger.describe())
     }
 
-    /// The names of the tab menus the bindings open.
-    pub fn tab_menu_names(&self) -> impl Iterator<Item = &str> {
-        self.bindings.iter().filter_map(|binding| match &binding.action {
-            Action::ShowTabMenu(name) => Some(name.as_str()),
+    /// The names of the menus of `kind` the bindings open.
+    pub fn menu_names(&self, kind: MenuKind) -> impl Iterator<Item = &str> {
+        self.bindings.iter().filter_map(move |binding| match (&binding.action, kind) {
+            (Action::ShowTabMenu(name), MenuKind::Tab) | (Action::ShowTreeMenu(name), MenuKind::Tree) => Some(name.as_str()),
             _ => None,
         })
     }
@@ -586,6 +664,42 @@ mod tests {
 
         // then
         assert_eq!(supported, [true, true, false, true, false]);
+    }
+
+    #[test]
+    fn should_allow_path_actions_in_tree_and_window_scopes() {
+        // when
+        let supported = [
+            Builtin::CopyRelativePath.supports(Scope::Tree),
+            Builtin::CopyRelativePath.supports(Scope::Window),
+            Builtin::SendPathsToTerminal.supports(Scope::Tree),
+            Builtin::OpenTerminalHere.supports(Scope::Hub),
+            Builtin::OpenFindInFiles.supports(Scope::Window),
+            Builtin::HubToggleContent.supports(Scope::Hub),
+        ];
+
+        // then
+        assert_eq!(supported, [true, true, true, false, true, true]);
+    }
+
+    #[test]
+    fn should_allow_menu_only_actions_in_no_binding_scope() {
+        // when
+        let scopes = [Scope::Window, Scope::Terminal, Scope::Editor, Scope::Tab, Scope::Tree, Scope::Hub];
+        let bindable = [Builtin::GitHistory, Builtin::CompareFiles, Builtin::RunFile].map(|builtin| scopes.iter().any(|scope| builtin.supports(*scope)));
+
+        // then
+        assert_eq!(bindable, [false, false, false]);
+    }
+
+    #[test]
+    fn should_allow_tab_commands_only_in_tab_menus() {
+        // when
+        let kinds = [Builtin::CloseTab.menu_kinds(), Builtin::GitHistory.menu_kinds(), Builtin::HubDown.menu_kinds(), Builtin::OpenSettings.menu_kinds()];
+
+        // then
+        let both: &[MenuKind] = &[MenuKind::Tab, MenuKind::Tree];
+        assert_eq!(kinds, [&[MenuKind::Tab][..], both, &[], both]);
     }
 
     #[test]

@@ -11,7 +11,9 @@ use crate::editor::Tab;
 use crate::overview::commit_tab::CommitTab;
 use crate::overview::diff_tab::{DiffTab, DiffTabSpec};
 use crate::overview::git_event::{CommitLink, GitEvent};
-use crate::overview::git_log_tab::{GitLogTab, GitLogView};
+use crate::overview::git_log_tab::{GitLogTab, GitLogView, LogOf};
+use crate::project::CheckoutRef;
+use std::path::PathBuf;
 use crate::overview::worktree_list::WorktreeList;
 use crate::overview::project_git::{ProjectContext, ProjectGit};
 use crate::overview::{ProjectGitViews, ProjectOverview, ProjectSection};
@@ -157,16 +159,28 @@ impl Workspace {
         if let Some(id) = open {
             return self.activate_tab(id, window, cx);
         }
-        if let Some(tab) = self.git_log_tab_of(project, window, cx) {
+        if let Some(tab) = self.git_log_tab_of(project, LogOf::Project, window, cx) {
+            self.open_tab(Tab::GitLog(tab), window, cx);
+        }
+    }
+
+    /// Show History: a Git log of the commits of `checkout` that changed `path`, relative to it; one tab per path.
+    pub(super) fn open_path_history(&mut self, checkout: &CheckoutRef, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        let of = LogOf::Path { dir: checkout.path.clone(), path };
+        let open = self.tabs.find(|tab| matches!(tab, Tab::GitLog(log) if log.of == of));
+        if let Some(id) = open {
+            return self.activate_tab(id, window, cx);
+        }
+        if let Some(tab) = self.git_log_tab_of(&checkout.project, of, window, cx) {
             self.open_tab(Tab::GitLog(tab), window, cx);
         }
     }
 
     /// A Git log tab for `project`, not shown yet; `None` when the project is not open.
-    pub(super) fn git_log_tab_of(&mut self, project: &ProjectId, window: &mut Window, cx: &mut Context<Self>) -> Option<GitLogTab> {
+    pub(super) fn git_log_tab_of(&mut self, project: &ProjectId, of: LogOf, window: &mut Window, cx: &mut Context<Self>) -> Option<GitLogTab> {
         let context = self.project(project).map(ProjectContext::of)?;
-        let body = cx.new(|_| GitLogView::new(context));
+        let body = cx.new(|_| GitLogView::new(context, of.clone()));
         let events = cx.subscribe_in(&body, window, |workspace, _view, event: &GitEvent, window, cx| workspace.on_git_event(event, window, cx));
-        Some(GitLogTab::new(project.clone(), body, events))
+        Some(GitLogTab::new(project.clone(), of, body, events))
     }
 }

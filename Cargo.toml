@@ -28,6 +28,8 @@ ignore = "0.4.33"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 libc = "0.2"
 memchr = "2.8"
+# globs of menu conditions (`when: #{ name: "*.rs" }`); already built for `ignore`
+globset = "0.4.20"
 memmap2 = "0.9.11"
 # OS file notifications (inotify, FSEvents, ReadDirectoryChangesW) for what IVE shows
 notify = "8.2.0"

@@ -211,7 +211,7 @@ impl TextEditor {
             }
             // the shown tab is this editor, not a terminal, so a bound `SendString` has nowhere to go
             Action::Builtin(Builtin::Nop) | Action::Send(_) => return true,
-            Action::Builtin(_) | Action::ShowTabMenu(_) | Action::Disable => return false,
+            Action::Builtin(_) | Action::ShowTabMenu(_) | Action::ShowTreeMenu(_) | Action::Disable => return false,
         };
         self.run(command, cx);
         true

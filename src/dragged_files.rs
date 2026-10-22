@@ -24,6 +24,15 @@ impl DraggedFiles {
         }
     }
 
+    /// What a drop on terminal `process` types: the paths relative to its directory when it works in their checkout.
+    pub fn typed_into(&self, process: crate::process::ProcessId, cx: &App) -> String {
+        let paths = self.paths(cx);
+        match self.workspace.upgrade() {
+            Some(workspace) => workspace.read(cx).typed_for_process(&paths, process),
+            None => crate::path_text::typed_paths(&paths, crate::path_text::Base::Absolute),
+        }
+    }
+
     /// The chip under the pointer.
     pub fn chip(&self, cx: &App) -> DragChip {
         DragChip { label: label(&self.paths(cx)).into() }

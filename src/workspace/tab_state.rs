@@ -100,7 +100,7 @@ impl Workspace {
                 Tab::ProjectOverview(ProjectOverview { section: section.unwrap_or_default(), ..ProjectOverview::new(id, git) })
             }
             SavedTab::GitLog { project, view } => {
-                let tab = self.git_log_tab_of(&ProjectId::parse(project).ok()?, window, cx)?;
+                let tab = self.git_log_tab_of(&ProjectId::parse(project).ok()?, crate::overview::git_log_tab::LogOf::Project, window, cx)?;
                 tab.body.update(cx, |body, cx| body.show_named(view, cx));
                 Tab::GitLog(tab)
             }
