@@ -1,7 +1,7 @@
 //! A worktree's folders in the tree (Processes, Uncommitted, Since base, Commits, Files), their badges, and the rows of
 //! the three git folders; pure, so it is tested without gpui.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,9 @@ use crate::icons;
 use crate::overview::file_list::{self, FileEntry, FileLayout, FileOrder, FileSort, Modified};
 use crate::git::worktree_data::WorktreeData;
 use crate::project::CheckoutRef;
+use crate::script::open_folders::OpenFolders;
+#[cfg(test)]
+use crate::script::open_folders::ALL_OPEN;
 
 /// The Commits folder lists this many at first, and this many more on each Load more.
 pub const COMMITS_SHOWN: usize = 10;
@@ -36,6 +39,8 @@ pub enum FolderKind {
 }
 
 impl FolderKind {
+    pub const ALL: [Self; 5] = [Self::Processes, Self::Uncommitted, Self::SinceBase, Self::Commits, Self::Files];
+
     /// Its part of click target names: `folder:atlassian/dev/since-base`.
     pub fn name(self) -> &'static str {
         match self {
@@ -68,12 +73,13 @@ impl FolderKind {
     }
 }
 
-/// What the tree shows of a checkout's folders: which are switched on by their badges, which are folded, and inside
-/// the git folders the change folders the user opened or closed and the open commits.
+/// What the tree shows of a checkout's folders: which are switched on by their badges, which the user folded or
+/// unfolded, and inside the git folders the change folders the user opened or closed and the open commits.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckoutFolders {
     pub shown: BTreeSet<FolderKind>,
-    pub folded: BTreeSet<FolderKind>,
+    /// `true`: folded; the others open as `config.open_folders` says
+    pub folds: BTreeMap<FolderKind, bool>,
     /// `true`: open; the others open while [`CHANGE_ROWS`] allows
     pub change_folders: HashMap<(ChangeSource, String), bool>,
     pub open_commits: HashSet<Sha>,
@@ -85,7 +91,7 @@ impl Default for CheckoutFolders {
     fn default() -> Self {
         Self {
             shown: BTreeSet::from([FolderKind::Processes, FolderKind::Files]),
-            folded: BTreeSet::new(),
+            folds: BTreeMap::new(),
             change_folders: HashMap::new(),
             open_commits: HashSet::new(),
             commits_shown: COMMITS_SHOWN,
@@ -100,15 +106,16 @@ impl CheckoutFolders {
     /// Whether `state.toml` has nothing to keep for it.
     pub fn is_default_saved(&self) -> bool {
         let git_default = self.change_folders.is_empty() && self.open_commits.is_empty() && self.commits_shown == COMMITS_SHOWN;
-        self.shown == DEFAULT_FOLDERS.shown && self.folded.is_empty() && git_default
+        self.shown == DEFAULT_FOLDERS.shown && self.folds.is_empty() && git_default
     }
 
     pub fn is_shown(&self, kind: FolderKind) -> bool {
         self.shown.contains(&kind)
     }
 
-    pub fn is_expanded(&self, kind: FolderKind) -> bool {
-        !self.folded.contains(&kind)
+    /// Whether `kind` is open: as the user left it, else as `open` says.
+    pub fn is_expanded(&self, kind: FolderKind, open: &OpenFolders) -> bool {
+        self.folds.get(&kind).map_or_else(|| open.is_open(kind), |folded| !folded)
     }
 
     pub fn toggle_shown(&mut self, kind: FolderKind) {
@@ -118,11 +125,13 @@ impl CheckoutFolders {
         self.shown.insert(kind);
     }
 
-    pub fn toggle_folded(&mut self, kind: FolderKind) {
-        if self.folded.remove(&kind) {
-            return;
-        }
-        self.folded.insert(kind);
+    pub fn toggle_folded(&mut self, kind: FolderKind, open: &OpenFolders) {
+        let fold = self.is_expanded(kind, open);
+        self.folds.insert(kind, fold);
+    }
+
+    pub fn unfold(&mut self, kind: FolderKind) {
+        self.folds.insert(kind, false);
     }
 
     /// Keeps change folder `path` of `source` open or closed, whatever room the list has.
@@ -480,6 +489,22 @@ fn count_of(git: &CheckoutGit, kind: FolderKind) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_fold_what_the_config_leaves_out_until_the_user_unfolds_it() {
+        // given
+        let open = crate::script::open_folders::parse(&serde_json::from_value(serde_json::json!(["processes"])).unwrap()).unwrap();
+        let mut folders = CheckoutFolders::default();
+        let before = [folders.is_expanded(FolderKind::Processes, &open), folders.is_expanded(FolderKind::Files, &open)];
+
+        // when
+        folders.toggle_folded(FolderKind::Files, &open);
+
+        // then
+        assert_eq!(before, [true, false]);
+        assert!(folders.is_expanded(FolderKind::Files, &open));
+        assert!(folders.is_expanded(FolderKind::Files, &ALL_OPEN));
+    }
 
     #[test]
     fn should_show_git_while_a_git_folder_is_switched_on() {

@@ -11,6 +11,7 @@ use gpui::{App, Context, KeyDownEvent, Task, Window};
 use super::Workspace;
 use crate::editor::Tab;
 use crate::script::excluded::Excluded;
+use crate::script::open_folders::OpenFolders;
 use crate::script::keymap::Place;
 use crate::script::keymap::{Action, Builtin, MouseTrigger, Scope};
 use crate::script::state::{ScriptState, bound_action, bound_mouse, invoke};
@@ -96,9 +97,11 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, quit_countdown, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders, .. } => {
                 apply_theme(theme.as_ref().clone(), cx);
-                if apply_excluded(excluded.clone(), cx) {
+                let open_changed = cx.try_global::<OpenFolders>() != Some(open_folders);
+                cx.set_global(open_folders.clone());
+                if apply_excluded(excluded.clone(), cx) || open_changed {
                     self.tree_changed(cx);
                 }
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);

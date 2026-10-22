@@ -87,8 +87,11 @@ pub struct SavedFolders {
     /// Files was switched off; not part of `shown`, where state saved before Files had a badge never lists it
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub files_hidden: bool,
+    /// folded by the user; the folders in neither list open as `config.open_folders` says
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub folded: Vec<FolderKind>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unfolded: Vec<FolderKind>,
     /// full shas
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub open_commits: Vec<String>,
@@ -331,6 +334,7 @@ mod tests {
                     shown: vec![FolderKind::Processes, FolderKind::Commits],
                     files_hidden: true,
                     folded: vec![FolderKind::Files],
+                    unfolded: vec![FolderKind::Processes],
                     open_commits: vec!["ab".repeat(20)],
                     commits_shown: Some(30),
                     files: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive/src")],

@@ -254,7 +254,7 @@ impl OpenProject {
     pub fn reveal_process(&mut self, checkout: &Path, index: usize) {
         let folders = self.folders_mut(checkout);
         folders.shown.insert(FolderKind::Processes);
-        folders.folded.remove(&FolderKind::Processes);
+        folders.unfold(FolderKind::Processes);
         self.process_paging.entry(checkout.to_path_buf()).or_default().reveal(index);
     }
 
@@ -262,7 +262,7 @@ impl OpenProject {
     pub fn reveal_entry(&mut self, checkout: &Path, path: &Path) -> Vec<PathBuf> {
         let folders = self.folders_mut(checkout);
         folders.shown.insert(FolderKind::Files);
-        folders.folded.remove(&FolderKind::Files);
+        folders.unfold(FolderKind::Files);
         self.files.get_mut(checkout).map(|files| files.expand_to(path)).unwrap_or_default()
     }
 
@@ -428,13 +428,19 @@ fn saved_folders(checkout: &Path, folders: &CheckoutFolders, expansion: Option<&
         checkout: checkout.to_path_buf(),
         shown: folders.shown.iter().copied().filter(|kind| *kind != FolderKind::Files).collect(),
         files_hidden: !folders.shown.contains(&FolderKind::Files),
-        folded: folders.folded.iter().copied().collect(),
+        folded: folded(folders, true),
+        unfolded: folded(folders, false),
         open_commits: capped(open_commits),
         commits_shown: Some(folders.commits_shown.min(MAX_COMMITS_SHOWN)).filter(|shown| *shown != COMMITS_SHOWN),
         files: utf8(&expansion.folders),
         hidden_groups: utf8(&expansion.hidden),
         change_folders: capped(change_folders),
     })
+}
+
+/// The folders the user folded (`fold`) or unfolded.
+fn folded(folders: &CheckoutFolders, fold: bool) -> Vec<FolderKind> {
+    folders.folds.iter().filter(|(_, folded)| **folded == fold).map(|(kind, _)| *kind).collect()
 }
 
 fn capped<T>(mut items: Vec<T>) -> Vec<T> {
@@ -450,7 +456,7 @@ fn restored_folders(saved: &SavedFolders) -> (PathBuf, CheckoutFolders) {
     let change_folders = saved.change_folders.iter().filter_map(|folder| Some(((ChangeSource::parse(&folder.list)?, folder.path.clone()), folder.open)));
     let folders = CheckoutFolders {
         shown,
-        folded: saved.folded.iter().copied().collect(),
+        folds: saved.folded.iter().map(|kind| (*kind, true)).chain(saved.unfolded.iter().map(|kind| (*kind, false))).collect(),
         change_folders: change_folders.collect(),
         open_commits: saved.open_commits.iter().filter_map(|sha| Sha::parse(sha)).collect(),
         commits_shown: saved.commits_shown.unwrap_or(COMMITS_SHOWN),
@@ -695,8 +701,10 @@ mod tests {
         let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
         project.apply(1, Ok(scan(Path::new("/p"), &["a"])));
         let folders = project.folders_mut(Path::new("/p/a"));
+        let open = crate::script::open_folders::parse(&serde_json::from_value(serde_json::json!(["processes"])).unwrap()).unwrap();
         folders.toggle_shown(FolderKind::SinceBase);
-        folders.toggle_folded(FolderKind::Files);
+        folders.toggle_folded(FolderKind::Processes, &open);
+        folders.toggle_folded(FolderKind::Files, &open);
 
         // when
         let restored = OpenProject::restored(&project.saved(), ProjectId::new("p"));
@@ -706,7 +714,8 @@ mod tests {
             checkout: PathBuf::from("/p/a"),
             shown: vec![FolderKind::Processes, FolderKind::SinceBase],
             files_hidden: false,
-            folded: vec![FolderKind::Files],
+            folded: vec![FolderKind::Processes],
+            unfolded: vec![FolderKind::Files],
             open_commits: Vec::new(),
             commits_shown: None,
             files: Vec::new(),
@@ -714,7 +723,7 @@ mod tests {
             change_folders: Vec::new(),
         }]);
         assert_eq!(restored.folders(Path::new("/p/a")).shown, project.folders(Path::new("/p/a")).shown);
-        assert_eq!(restored.folders(Path::new("/p/a")).folded, project.folders(Path::new("/p/a")).folded);
+        assert_eq!(restored.folders(Path::new("/p/a")).folds, project.folders(Path::new("/p/a")).folds);
     }
 
     #[test]
@@ -806,8 +815,8 @@ mod tests {
         // given
         let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
         project.apply(1, Ok(scan(Path::new("/p"), &["a", "b"])));
-        project.folders_mut(Path::new("/p/a")).toggle_folded(FolderKind::Processes);
-        project.folders_mut(Path::new("/p/b")).toggle_folded(FolderKind::Processes);
+        project.folders_mut(Path::new("/p/a")).unfold(FolderKind::Processes);
+        project.folders_mut(Path::new("/p/b")).unfold(FolderKind::Processes);
 
         // when
         project.apply(2, Ok(scan(Path::new("/p"), &["a"])));

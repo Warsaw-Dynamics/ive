@@ -689,7 +689,8 @@ impl Workspace {
         // no names before the scripts first load; that load rebuilds the rows
         let excluded = cx.try_global::<crate::script::excluded::Excluded>().map_or(&[][..], |excluded| excluded.names());
         let layout = cx.global::<SettingsStore>().current().git_files.layout;
-        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, git: self.tree_git(), layout, clock: crate::age::Clock::system() };
+        let open_folders = cx.try_global::<crate::script::open_folders::OpenFolders>().unwrap_or(&crate::script::open_folders::ALL_OPEN);
+        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system() };
         self.tree.rows = rows::build(&self.projects, &self.processes, &*self, &look);
         self.read_tree_statuses(cx);
         self.sync_watches();

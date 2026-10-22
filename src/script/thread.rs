@@ -18,6 +18,7 @@ use rune::alloc::clone::TryClone;
 use super::defaults_file;
 use super::engine::{Engine, Loaded, describe, is_out_of_budget};
 use super::excluded::Excluded;
+use super::open_folders::OpenFolders;
 use super::quit_countdown::QuitCountdown;
 use super::fingerprint::fingerprint;
 use super::keymap::Keymap;
@@ -40,6 +41,7 @@ pub enum ScriptEvent {
         temporary_tabs: TemporaryTabs,
         tab_menus: TabMenus,
         quit_countdown: QuitCountdown,
+        open_folders: OpenFolders,
         has_init: bool,
     },
     /// the load failed (the log says why); the previous bindings stay
@@ -180,6 +182,7 @@ impl Runner {
             temporary_tabs: loaded.temporary_tabs.clone(),
             tab_menus: loaded.tab_menus.clone(),
             quit_countdown: loaded.quit_countdown,
+            open_folders: loaded.open_folders.clone(),
             has_init: loaded.has_init,
         };
         self.current = Some((self.loads, loaded));

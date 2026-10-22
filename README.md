@@ -417,6 +417,9 @@ async fn restart(context) {
   another tab is shown; a new tab takes its place in the row.
 - `config.quit_countdown` (`10`): the seconds the quit prompt counts down before IVE quits and leaves the running
   processes running, 1 to 60.
+- `config.open_folders` (`["processes", "uncommitted", "since-base", "commits"]`): a worktree's folders in the project tree
+  that start open, any of these and `"files"`; the others start folded. A folder you fold or unfold stays as you
+  left it; `config.open_folders.push("files");` starts them all open.
 - `config.tab_menus` (filled in with `ive.rn`'s, per menu name): menus that `act::ShowTabMenu(name)` opens, each a
   list of tab actions (`act::KeepTab`, `act::StopProgram`, `act::KillProgram`, `act::CloseTab`,
   `act::CloseOtherTabs`, `act::CloseTabsToTheLeft`, `act::CloseTabsToTheRight`) and `"Separator"`; at most 32 menus

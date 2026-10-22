@@ -16,8 +16,8 @@ const UNIT_ACTIONS: [&str; 39] = [
 
 /// `config` in `pub fn init(config)`: the lists of bindings, as WezTerm's `config.keys` and `config.mouse_bindings`,
 /// the font families: `config.font` for code and terminals, as WezTerm's, and `config.ui_font` for the rest, and
-/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus` and `config.quit_countdown`, which
-/// start as the script before left them.
+/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.quit_countdown` and
+/// `config.open_folders`, which start as the script before left them.
 #[derive(Any)]
 #[rune(item = ::ive)]
 pub struct Config {
@@ -39,6 +39,8 @@ pub struct Config {
     tab_menus: Value,
     #[rune(get, set)]
     quit_countdown: Value,
+    #[rune(get, set)]
+    open_folders: Value,
 }
 
 /// What `init` left in `config`; anything it did not set is `()`.
@@ -57,17 +59,18 @@ pub struct Carried {
     pub temporary_tabs: Value,
     pub tab_menus: Value,
     pub quit_countdown: Value,
+    pub open_folders: Value,
 }
 
 impl Config {
     /// A `config` with nothing declared yet but what the script before left in `carried`.
     pub fn new(carried: Carried) -> Self {
-        let Carried { theme, excluded, temporary_tabs, tab_menus, quit_countdown } = carried;
-        Self { keys: Value::from(()), mouse_bindings: Value::from(()), font: Value::from(()), ui_font: Value::from(()), theme, excluded, temporary_tabs, tab_menus, quit_countdown }
+        let Carried { theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders } = carried;
+        Self { keys: Value::from(()), mouse_bindings: Value::from(()), font: Value::from(()), ui_font: Value::from(()), theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders }
     }
 
     pub fn into_parts(self) -> Parts {
-        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, quit_countdown: self.quit_countdown };
+        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders };
         Parts { keys: self.keys, mouse_bindings: self.mouse_bindings, font: self.font, ui_font: self.ui_font, carried }
     }
 }

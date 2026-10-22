@@ -15,6 +15,7 @@ use crate::open_project::{OpenProject, PagedList};
 use crate::process::{ProcessId, ProcessKind, Processes, RunId};
 use crate::terminal::Progress;
 use crate::project::{Checkout, CheckoutRef, ProjectId, ProjectKind};
+use crate::script::open_folders::OpenFolders;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeRow {
@@ -114,11 +115,13 @@ pub struct EntryRow {
 }
 
 /// What file rows are drawn by besides their names: each shown checkout's git status (by checkout path; none
-/// until it was read), and the folder names excluded besides gitignored folders; and what the git folders list:
+/// until it was read), and the folder names excluded besides gitignored folders; which folders the user left alone
+/// are open; and what the git folders list:
 /// each checkout's git data (none until read), the Flat/Tree layout, and the clock commit ages count from.
 pub struct TreeLook<'a> {
     pub statuses: &'a HashMap<PathBuf, TreeStatus>,
     pub excluded: &'a [String],
+    pub open_folders: &'a OpenFolders,
     pub git: &'a HashMap<PathBuf, CheckoutGit>,
     pub layout: FileLayout,
     pub clock: Clock,
@@ -316,7 +319,7 @@ fn push_checkout_content<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, checkou
     let git = git_folders(open, checkout, &target, tree.look);
     let shown = git.badges(processes_count(checkout, tree)).into_iter().filter(|badge| badge.shown).map(|badge| (badge.kind, badge.count));
     for (kind, count) in shown {
-        let expanded = git.folders.is_expanded(kind);
+        let expanded = git.folders.is_expanded(kind, tree.look.open_folders);
         let nothing = git.nothing(kind);
         // an empty Processes has no chevron, as an empty git folder; its + still starts a terminal
         let empty = nothing.is_some() || (kind == FolderKind::Processes && count == Some(0));
@@ -475,7 +478,7 @@ mod tests {
     fn no_look() -> TreeLook<'static> {
         static NONE: std::sync::LazyLock<HashMap<PathBuf, TreeStatus>> = std::sync::LazyLock::new(HashMap::new);
         static NO_DATA: std::sync::LazyLock<HashMap<PathBuf, CheckoutGit>> = std::sync::LazyLock::new(HashMap::new);
-        TreeLook { statuses: &NONE, excluded: &[], git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0) }
+        TreeLook { statuses: &NONE, excluded: &[], open_folders: &crate::script::open_folders::ALL_OPEN, git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0) }
     }
 
     /// Two days after the epoch: the tests' commits are a day old.
@@ -1242,7 +1245,7 @@ mod tests {
         // given
         let mut project = single();
         project.read_files_now();
-        project.folders_mut(Path::new("/forge")).toggle_folded(FolderKind::Files);
+        project.folders_mut(Path::new("/forge")).toggle_folded(FolderKind::Files, &crate::script::open_folders::ALL_OPEN);
 
         // when
         let rows = folder_outline(&project, None, FileLayout::Flat);

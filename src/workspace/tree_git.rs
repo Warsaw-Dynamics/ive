@@ -17,6 +17,7 @@ use crate::git::worktree_data::{SinceData, WorktreeData, load_worktree};
 use crate::overview::diff_tab::{DiffRequest, DiffSource, DiffTabSpec};
 use crate::overview::file_list::FileOrder;
 use crate::project::{CheckoutRef, ProjectKind};
+use crate::script::open_folders::{OpenFolders, ALL_OPEN};
 use crate::settings::SettingsStore;
 use crate::sidebar::folders::{ChangeSource, CheckoutGit, FolderKind};
 use crate::sidebar::rows::TreeItem;
@@ -238,7 +239,8 @@ impl Workspace {
         let Some(open) = self.open_project_mut(&checkout.project) else {
             return;
         };
-        open.folders_mut(&checkout.path).toggle_folded(kind);
+        let open_folders = cx.try_global::<OpenFolders>().unwrap_or(&ALL_OPEN);
+        open.folders_mut(&checkout.path).toggle_folded(kind, open_folders);
         self.tree_changed(cx);
         self.schedule_save(cx);
     }

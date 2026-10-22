@@ -17,6 +17,7 @@ use super::declare::{self, FontChoice, Functions};
 use super::keymap::Keymap;
 use super::tab_menus::{self, TabMenus};
 use super::excluded::{self, Excluded};
+use super::open_folders::{self, OpenFolders};
 use super::quit_countdown::{self, QuitCountdown};
 use super::temporary_tabs::{self, TemporaryTabs};
 use crate::api::Call;
@@ -41,6 +42,7 @@ pub struct Loaded {
     pub temporary_tabs: TemporaryTabs,
     pub tab_menus: TabMenus,
     pub quit_countdown: QuitCountdown,
+    pub open_folders: OpenFolders,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -87,6 +89,7 @@ impl Engine {
             temporary_tabs: rune::Value::from(()),
             tab_menus: rune::Value::from(()),
             quit_countdown: rune::Value::from(()),
+            open_folders: rune::Value::from(()),
         };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
@@ -96,6 +99,7 @@ impl Engine {
             temporary_tabs: default_carried.temporary_tabs.clone(),
             tab_menus: default_carried.tab_menus.clone(),
             quit_countdown: rune::Value::from(()),
+            open_folders: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -108,6 +112,7 @@ impl Engine {
                 temporary_tabs: checked.temporary_tabs,
                 tab_menus: checked.tab_menus,
                 quit_countdown: checked.quit_countdown,
+                open_folders: checked.open_folders,
                 functions: bound,
                 has_init: false,
             });
@@ -124,6 +129,7 @@ impl Engine {
             temporary_tabs: checked.temporary_tabs,
             tab_menus: checked.tab_menus,
             quit_countdown: checked.quit_countdown,
+            open_folders: checked.open_folders,
             functions: bound,
             has_init: true,
         })
@@ -175,6 +181,7 @@ struct Checked {
     temporary_tabs: TemporaryTabs,
     tab_menus: TabMenus,
     quit_countdown: QuitCountdown,
+    open_folders: OpenFolders,
 }
 
 /// The theme, excluded folders, temporary tabs and tab menus `file` left, checked: keys of `temporary_tabs` and menus of `tab_menus`
@@ -187,7 +194,8 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, file: &str) -
     let tab_menus = tab_menus::parse(&defaults.tab_menus, &carried.tab_menus).map_err(named)?;
     tab_menus::check_shown(&tab_menus, keymap.tab_menu_names()).map_err(named)?;
     let quit_countdown = quit_countdown::parse(&carried.quit_countdown).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, tab_menus, quit_countdown })
+    let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
+    Ok(Checked { theme, excluded, temporary_tabs, tab_menus, quit_countdown, open_folders })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -255,6 +263,7 @@ mod tests {
     use gpui::{Keystroke, Modifiers};
 
     use super::*;
+    use crate::sidebar::folders::FolderKind;
     use crate::theme::Fonts;
     use crate::theme_config::{Height, Px, Rgb};
     use crate::script::keymap::{Action, Builtin, ClipboardTarget, MouseButton, MouseKind, MouseTrigger, PasteKind, Place, Scope, SelectionMode};
@@ -478,6 +487,29 @@ mod tests {
 
         // then
         assert_eq!(error, "init.rn: quit_countdown must be whole seconds from 1 to 60, not 0");
+    }
+
+    #[test]
+    fn should_open_all_folders_but_files_by_default() {
+        // when
+        let open = defaults().open_folders;
+
+        // then
+        let kinds = FolderKind::ALL.map(|kind| open.is_open(kind));
+        assert_eq!(kinds, [true, true, true, true, false]);
+    }
+
+    #[test]
+    fn should_take_the_open_folders_from_init() {
+        // given
+        let init = "pub fn init(config) { config.open_folders = [\"processes\"]; }";
+
+        // when
+        let open = load(init).1.unwrap().open_folders;
+
+        // then
+        assert!(open.is_open(FolderKind::Processes));
+        assert!(!open.is_open(FolderKind::Uncommitted));
     }
 
     #[test]
