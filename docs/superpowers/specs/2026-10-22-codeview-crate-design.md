@@ -26,7 +26,8 @@ The user wants:
 - Three modes of one component:
   - **View**: read-only text. Must stay fast on enormous files (100M lines): the component never holds the whole
     file, it asks the host for line ranges.
-  - **Edit**: editable text with syntax colours that keep up while typing (incremental re-parse).
+  - **Edit**: editable text with syntax colours that keep up while typing (incremental re-parse). Works on files of
+    any size (user's decision): the text is a piece table over the host's `LineSource`, never copied whole.
   - **Diff**: `Inline` or `SideBySide` layout, switchable at runtime; **read-only or editable decided by the host**
     per use (git history and commit tabs: read-only; worktree diff: right side editable).
 - Diffs coloured by parsing the **full** old and new texts, then mapping each diff row to its line in them, so
@@ -40,7 +41,6 @@ The user wants:
   gpui window. `codeview` is a **library crate** (path dependency), like ptyhost's library side.
 - Highlighting beyond the existing limits (`MAX_HIGHLIGHT_BYTES` = 8 MiB, `PARSE_BUDGET` = 2 s). Big files show
   plain text.
-- Editing huge files. Edit mode works on text held in memory (the scratch size limit stays).
 - Language servers, completion, folding, minimap: out of scope.
 - Changing what git computes (`src/git/diff.rs` stays in IVE).
 
@@ -52,6 +52,7 @@ The user wants:
 - `codeview` reaching back into IVE (`crate::workspace`, `crate::script`, `crate::theme`…). Dependencies point one
   way: IVE → codeview.
 - Typing lag in a scratch because highlighting runs on the UI thread.
+- Typing or saving a big file holding the UI thread, or the whole file crossing the panel/IVE boundary on a save.
 
 ## Constraints
 
@@ -82,16 +83,23 @@ pub enum Cast {
     SetFiles(Vec<FileDiff>),             // diff reload: keeps scroll, collapsed files, caret
     SetTexts { file: usize, old: Option<Source>, new: Option<Source> },  // answer to Event::NeedTexts
     Parsed { target: ParseTarget, revision: u64, syntax: Syntax },        // answer to Event::NeedParse
-    Saved { revision: u64 },             // the text up to `revision` is on disk
-    Command(Command),                    // from the keymap, menus, MCP, Rune: moves, copy, undo, toggle layout…
+    Saved { revision: u64, source: Option<Arc<dyn LineSource>> },  // answer to SaveRequested; new source if rewritten
+    SaveFailed { revision: u64, reason: SaveFailure },              // Conflict (disk changed) | Io(String)
+    Command(Command),                    // keymap, menus, MCP, Rune: moves, copy, undo, toggle layout, Flush…
     RevealLine(usize),
     MarkDeleted,
 }
 
 pub enum Content {
-    Text { text: String, limit: SizeLimit, language: Option<Language> },  // Edit mode (scratches)
-    Lines(Arc<dyn LineSource>),                                          // View mode (files, any size)
+    /// View or Edit mode, any size: scratches and files
+    Lines { source: Arc<dyn LineSource>, language: Option<Language>, edit: Option<EditPolicy> },
     Diff(DiffInput),                                                     // Diff mode
+}
+
+/// Given by IVE, which knows what a write costs (file size, filesystem). The panel runs the timers.
+pub struct EditPolicy {
+    pub save_delay: Duration,            // pause after the last edit before SaveRequested
+    pub limit: Option<SizeLimit>,        // scratches keep their size limit; files have none
 }
 ```
 
@@ -101,11 +109,11 @@ pub enum Content {
 
 ```rust
 pub enum Event {
-    Edited { revision: u64 },            // IVE schedules the save (see Saving)
+    Edited { revision: u64 },            // dirty marker; IVE does nothing else
+    SaveRequested { base: u64, revision: u64, edits: Vec<Edit> },  // see Saving
     Refused(String),                     // edit over the size limit
     StateChanged,                        // scroll / caret / layout / collapsed changed: IVE marks saved tabs dirty
     LayoutToggled(DiffLayout),           // IVE also remembers it as the layout for the next new diff tab
-    FocusLost,                           // IVE saves now (see Saving)
     NeedParse(ParseJob),                 // IVE runs it on the background executor, answers Cast::Parsed
     NeedTexts { file: usize },           // a diff file came on screen: IVE fetches blobs, answers Cast::SetTexts
     OpenAt { path: PathBuf, line: usize }, // e.g. double-click a diff line → open the file there
@@ -120,8 +128,8 @@ site, methods give the same synchronous answer with typed results.
 ```rust
 impl Panel {
     pub fn state(&self) -> PanelState;
-    pub fn text(&self) -> Option<String>;     // Edit mode and editable diffs: what to write to disk
     pub fn revision(&self) -> u64;
+    pub fn has_unsaved(&self) -> bool;        // the quit prompt; Command::Flush then Saved before quitting
 }
 ```
 
@@ -201,16 +209,58 @@ trip (today's `ParseJob` with `Cancel`); a stale `revision` is dropped. Edit mod
 incrementally after each edit, a newer job cancelling the older one; colours of the previous parse stay, shifted by
 the edit, until the new one lands (never block typing).
 
+### Editing model
+
+The panel's text is a **piece table**: pieces pointing either into the host's `LineSource` (the mmap of the file, never
+copied) or into an append-only buffer of typed text. Opening a 100M-line file for editing costs what viewing it
+costs; edits cost their own size. Undo history records edits on the piece table. Line lookup keeps the `LineSource`
+index plus per-piece line counts, so scrolling stays line-number-plus-fraction as today. Highlighting still applies
+only up to `MAX_HIGHLIGHT_BYTES`.
+
 ### Saving: IntelliJ-style, no Ctrl+S (user's decision)
 
 Edits reach the disk almost at once without the user doing anything; there is no save shortcut to press.
 
-- IVE writes `panel.text()` **`SAVE_DELAY` (500 ms, as scratches today) after the last `Edited`**, and immediately on
-  `FocusLost`, tab switch or close, window deactivation, quit, and before a run.
-- On success IVE casts `Saved { revision }`; the panel shows no dirty marker beyond the moment in between.
-- Conflicts reuse the scratch `SaveState`/`FileStamp` logic: with unwritten edits and an outside change on disk, the
-  conflict bar offers reload / overwrite.
-- The same rule for scratches and editable diffs.
+**Who does what:** the panel decides *when*, IVE decides *how and where*, and only the changes cross between them.
+
+- **When (panel):** `EditPolicy::save_delay` after the last edit, and at once when focus leaves the panel and on
+  `Command::Flush` (IVE sends it on tab switch or close, window deactivation, quit, and before a run). The panel then
+  emits:
+
+  ```rust
+  pub struct Edit {
+      pub bytes: Range<u64>,   // range in the text as of `base` (the last saved revision)
+      pub text: String,        // what replaces it
+  }
+  Event::SaveRequested { base: u64, revision: u64, edits: Vec<Edit> }  // sorted, non-overlapping, merged since `base`
+  ```
+
+  A hundred keystrokes on one line become one `Edit`. One request is in flight at a time; edits typed meanwhile go
+  into the next.
+
+- **Delay (IVE):** IVE picks `save_delay` per panel from what a write costs: 500 ms (today's scratch `SAVE_DELAY`)
+  for small files, growing with file size for files that need a rewrite (thresholds are the builder's; the rule is
+  "typing never waits, a huge file is not rewritten on every pause"). IVE may update it with a new `EditPolicy`.
+
+- **How (IVE), by edit:**
+  - **Same length** (every `Edit` replaces exactly as many bytes as it removes): `pwrite` at each offset, in place.
+    Cost = size of the edits, at any file size. The mmap sees the new bytes; the length is unchanged, so no SIGBUS.
+  - **Length changes:** write a temp file in the same folder: the unchanged start (up to the first edit) is cloned
+    with `FICLONERANGE`/`copy_file_range` where the filesystem can (btrfs, XFS, APFS `clonefile`: instant), copied
+    otherwise (ext4, where the user's disks are: in-kernel copy, fast but linear); then the edits and shifted
+    remainder are streamed from the old mmap; fsync, rename over the original. Crash-safe, memory stays small. Never
+    shrink or rewrite a mapped file in place (SIGBUS).
+  - Small files (scratches) may simply splice in memory and write the whole text: same result, simpler.
+  - `fallocate` INSERT_RANGE/COLLAPSE_RANGE is not used: it shifts only whole 4 KiB blocks, text edits do not.
+
+- **Answer (IVE):** `Cast::Saved { revision, source }`, with a new `LineSource` for the rewritten file; the panel
+  re-points its pieces to it and drops the typed buffer up to `revision`. Failure: `Cast::SaveFailed`.
+
+- **Conflicts:** IVE checks the `FileStamp` against the one it recorded at `base`. A changed file answers
+  `SaveFailed { Conflict }` and IVE shows today's scratch conflict bar (reload / overwrite). Merging an outside change
+  into unsaved edits automatically is out of scope for now.
+
+- The same rule for scratches, files and editable diffs. IVE's own writes are ignored by its file watcher as today.
 
 ## Behaviour
 
@@ -293,6 +343,8 @@ over MCP with an `--profile agent-…` instance.
 - Diff data types move into codeview; libgit2 stays in IVE.
 - Scrollbar module moves into codeview.
 - Diff full texts load per file, lazily, for what is on screen.
+- One save request in flight at a time; scratches may splice in memory; outside changes give a conflict, no automatic
+  merge.
 - Rune script bindings stay in IVE behind the `keys` callback.
 
 ## Left to the builder
