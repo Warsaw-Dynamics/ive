@@ -3,6 +3,7 @@
 pub mod base;
 pub mod diff;
 pub mod files;
+pub mod ignore_file;
 pub mod log;
 pub mod refs;
 pub mod repo;

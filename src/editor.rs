@@ -23,7 +23,7 @@ use crate::line_view::{self, LineScroll, Metrics};
 use crate::mouse_binding;
 use crate::overview::commit_tab::CommitTab;
 use crate::overview::diff_tab::DiffTab;
-use crate::overview::git_log_tab::GitLogTab;
+use crate::overview::git_log_tab::{GitLogTab, LogOf};
 use crate::overview::{self, ProjectOverview, ProjectSection};
 use crate::process::{ProcessId, ProcessKind};
 use crate::run::configs_tab::{RunConfigsTab, render_run_configs_tab};
@@ -116,7 +116,7 @@ impl Tab {
 
     pub fn is_git_log(&self, id: &ProjectId) -> bool {
         match self {
-            Self::GitLog(tab) => &tab.project == id,
+            Self::GitLog(tab) => &tab.project == id && tab.of == LogOf::Project,
             Self::Unloaded(SavedTab::GitLog { project, .. }) => project == id.as_str(),
             _ => false,
         }
@@ -173,6 +173,9 @@ impl Tab {
             }
             Self::Diff(tab) => tab.title.clone(),
             Self::Commit(tab) => tab.title.clone(),
+            Self::GitLog(GitLogTab { of: LogOf::Path { path, .. }, .. }) => {
+                format!("History · {}", path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned()))
+            }
             Self::GitLog(_) => "Git log".to_owned(),
             Self::Settings(_) => "Settings".to_owned(),
             Self::Failed { title, .. } => title.clone(),
@@ -231,6 +234,8 @@ impl Tab {
             Self::ProjectOverview(overview) => {
                 SavedTab::ProjectOverview { project: overview.project.as_str().to_owned(), section: overview.section.label().to_owned() }
             }
+            // a path's history is not restored
+            Self::GitLog(GitLogTab { of: LogOf::Path { .. }, .. }) => return None,
             Self::GitLog(tab) => SavedTab::GitLog { project: tab.project.as_str().to_owned(), view: tab.body.read(cx).section_name().to_owned() },
             Self::Commit(tab) => {
                 SavedTab::Commit { project: tab.project.as_str().to_owned(), sha: tab.sha.as_str().to_owned(), title: tab.title.clone() }
@@ -255,6 +260,7 @@ impl Tab {
             Self::ProjectOverview(overview) => TabIdentity::ProjectOverview(overview.project.as_str().to_owned()),
             Self::Diff(tab) => TabIdentity::Diff { checkout: tab.checkout.path.clone(), path: tab.request.saved().path },
             Self::Commit(tab) => TabIdentity::Commit { project: tab.project.as_str().to_owned(), sha: tab.sha.as_str().to_owned() },
+            Self::GitLog(GitLogTab { of: LogOf::Path { .. }, .. }) => return None,
             Self::GitLog(tab) => TabIdentity::GitLog(tab.project.as_str().to_owned()),
             Self::Settings(_) => TabIdentity::Settings,
             Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) => return None,

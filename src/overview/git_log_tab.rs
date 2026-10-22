@@ -1,6 +1,7 @@
 //! The project's Git log tab: Log · Stashes · Worktrees · Branches.
 
 use std::ops::Range;
+use std::path::PathBuf;
 
 use gpui::{
     AnyElement, Context, Div, Entity, EventEmitter, IntoElement, Render, ScrollHandle, Stateful, Subscription, Task, Window, div, prelude::*,
@@ -25,14 +26,24 @@ const LOG_PAGE: usize = 100;
 
 pub struct GitLogTab {
     pub project: ProjectId,
+    pub of: LogOf,
     pub body: Entity<GitLogView>,
     _events: Subscription,
 }
 
 impl GitLogTab {
-    pub fn new(project: ProjectId, body: Entity<GitLogView>, events: Subscription) -> Self {
-        Self { project, body, _events: events }
+    pub fn new(project: ProjectId, of: LogOf, body: Entity<GitLogView>, events: Subscription) -> Self {
+        Self { project, of, body, _events: events }
     }
+}
+
+/// Whose commits a Git log lists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LogOf {
+    /// every branch and tag of the project
+    Project,
+    /// those of checkout `dir`'s HEAD that changed `path`, relative to it
+    Path { dir: PathBuf, path: PathBuf },
 }
 
 #[derive(Debug, Clone)]
@@ -45,11 +56,16 @@ pub struct GitLogData {
     pub branches: Vec<BranchInfo>,
 }
 
-pub fn load_log(context: &ProjectContext, limit: usize, previous: Option<&Refs>) -> Result<GitLogData, GitError> {
+pub fn load_log(context: &ProjectContext, of: &LogOf, limit: usize, previous: Option<&Refs>) -> Result<GitLogData, GitError> {
     let dir = &context.main_dir;
     let refs = refs::read(dir, previous)?;
     let branches = refs::without_worktree(&refs.branches, &context.checked_out());
-    Ok(GitLogData { log: log::commits(dir, &CommitRange::AllRefs, Page { skip: 0, limit })?, refs, stashes: log::stashes(dir)?, branches })
+    let page = Page { skip: 0, limit };
+    let log = match of {
+        LogOf::Project => log::commits(dir, &CommitRange::AllRefs, page)?,
+        LogOf::Path { dir, path } => log::path_history(dir, path, page)?,
+    };
+    Ok(GitLogData { log, refs, stashes: log::stashes(dir)?, branches })
 }
 
 /// A full page means the walk may have more.
@@ -80,6 +96,7 @@ impl Section {
 
 pub struct GitLogView {
     context: ProjectContext,
+    of: LogOf,
     section: Section,
     limit: usize,
     data: Option<Result<GitLogData, String>>,
@@ -110,11 +127,12 @@ impl GitLogView {
     }
 
     /// Reads git once it is first shown.
-    pub fn new(context: ProjectContext) -> Self {
+    pub fn new(context: ProjectContext, of: LogOf) -> Self {
         let log_scroll = ListScroll::new();
         let log_scrollbar = ScrollState::for_list(&log_scroll);
         Self {
             context,
+            of,
             section: Section::Log,
             limit: LOG_PAGE,
             data: None,
@@ -155,13 +173,13 @@ impl GitLogView {
             return;
         }
         self.loading = true;
-        let (context, limit) = (self.context.clone(), self.limit);
+        let (context, of, limit) = (self.context.clone(), self.of.clone(), self.limit);
         let previous = match &self.data {
             Some(Ok(data)) => Some(data.refs.clone()),
             _ => None,
         };
         self._load = Some(cx.spawn(async move |this, cx| {
-            let result = cx.background_executor().spawn(async move { load_log(&context, limit, previous.as_ref()) }).await;
+            let result = cx.background_executor().spawn(async move { load_log(&context, &of, limit, previous.as_ref()) }).await;
             this.update(cx, |view, cx| view.loaded(result, cx)).ok();
         }));
         cx.notify();
@@ -315,7 +333,7 @@ mod tests {
         };
 
         // when
-        let data = load_log(&context, 2, None).expect("load");
+        let data = load_log(&context, &LogOf::Project, 2, None).expect("load");
 
         // then
         let branches: Vec<_> = data.branches.iter().map(|branch| branch.name.display()).collect();

@@ -59,6 +59,7 @@ mod settings_actions;
 mod menu;
 mod path_actions;
 mod send_paths;
+mod git_actions;
 mod tab_state;
 mod tab_windows;
 mod tree_git;

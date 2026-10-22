@@ -339,6 +339,7 @@ impl Workspace {
         match super::path_actions::path_applies(builtin, subject) {
             Some(_) => self.run_path_action(builtin, subject, window, cx),
             None if builtin == Builtin::RunFile => self.run_from_menu(None, subject, window, cx),
+            None if self.git_applies(builtin, subject).is_some() => self.run_git_action(builtin, subject, window, cx),
             None => self.run_window_builtin(builtin, window, cx),
         }
     }
@@ -354,6 +355,7 @@ impl Workspace {
             (Builtin::OpenHub | Builtin::OpenSettings | Builtin::OpenTerminal | Builtin::OpenTerminalIn | Builtin::ToggleChangesLayout, _) => Applies::Shown { enabled: true },
             (Builtin::SendPathsToTerminal, _) => self.terminal_choices(subject),
             (Builtin::RunFile, _) => self.run_file_applies(subject),
+            (git_action, _) if self.git_applies(git_action, subject).is_some() => self.git_applies(git_action, subject).unwrap_or(Applies::Hidden),
             (path_action, _) => super::path_actions::path_applies(path_action, subject).unwrap_or(Applies::Hidden),
         }
     }
