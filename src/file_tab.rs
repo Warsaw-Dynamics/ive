@@ -175,7 +175,7 @@ pub(crate) struct EditedFile {
     writing: Writing,
     /// counts the changes of `base` and `disk`: a re-read started before the last change is stale
     version: u64,
-    /// counts the reads of the change markers' base: an answer to an earlier read is stale
+    /// counts the reads of the change markers' base, numbering them
     change_reads: u64,
     /// what the change markers were last given and why a read failed, so a read with the same HEAD is skipped and a
     /// failure is logged once
@@ -190,14 +190,22 @@ struct ChangeSent {
     head_id: String,
     /// the message of the failure last logged; empty after a read that worked
     failure: String,
+    /// the number of the read whose answer was last taken: an earlier read's answer is stale, while a read that
+    /// skipped (another repository, the same HEAD) leaves earlier reads in flight standing
+    taken: u64,
 }
 
 impl ChangeSent {
-    /// What to cast for a read's result, if anything: a skipped read and a failure already logged cast nothing.
-    fn took(&mut self, read: Result<Option<ChangeBase>, git::repo::GitError>) -> Option<ChangeBase> {
-        match read {
+    /// What to cast for the answer of read number `read`, if anything: a skipped read, an answer older than the one
+    /// last taken and a failure already logged cast nothing.
+    fn took(&mut self, read: u64, answer: Result<Option<ChangeBase>, git::repo::GitError>) -> Option<ChangeBase> {
+        if read < self.taken {
+            return None;
+        }
+        match answer {
             Ok(None) => None,
             Ok(Some(base)) => {
+                self.taken = read;
                 self.failure.clear();
                 self.head_id = match &base {
                     ChangeBase::Tracked { head_id, .. } => head_id.clone(),
@@ -206,6 +214,7 @@ impl ChangeSent {
                 Some(base)
             }
             Err(error) => {
+                self.taken = read;
                 let message = error.to_string();
                 self.head_id.clear();
                 if message == self.failure {
@@ -438,10 +447,7 @@ impl EditedFile {
         cx.spawn(async move |file, cx| {
             let read_base = reading.await;
             file.update(cx, |file, cx| {
-                if file.change_reads != read {
-                    return;
-                }
-                if let Some(base) = file.change_sent.took(read_base) {
+                if let Some(base) = file.change_sent.took(read, read_base) {
                     file.answer(Cast::SetChangeBase { base }, cx);
                 }
             })
@@ -705,6 +711,23 @@ mod tests {
         let (document, stamp) = Document::open_stamped(&path).unwrap();
         let job = WriteJob { path, base: Arc::new(document), expected: Expected::Stamp(stamp.unwrap()), edits };
         (dir, job)
+    }
+
+    #[test]
+    fn should_keep_the_base_read_when_another_repository_changes_meanwhile() {
+        // given
+        let mut sent = ChangeSent::default();
+        let base = || ChangeBase::Tracked { head: codeview::document::Source::from_vec(b"one\n".to_vec()), head_id: "abc".into() };
+        // when
+        let skipped = sent.took(2, Ok(None));
+        let first = sent.took(1, Ok(Some(base())));
+        let newer = sent.took(3, Ok(Some(base())));
+        let older = sent.took(2, Ok(Some(base())));
+        // then
+        assert!(skipped.is_none(), "a read skipped for another repository casts nothing");
+        assert!(first.is_some(), "the earlier read in flight is still cast");
+        assert!(newer.is_some());
+        assert!(older.is_none(), "an answer older than one taken is stale");
     }
 
     #[test]
