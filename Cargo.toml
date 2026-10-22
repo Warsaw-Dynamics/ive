@@ -1,5 +1,7 @@
 [workspace]
 members = [".", "codeview"]
+# plain `cargo test` and `cargo clippy` from here cover the code view too
+default-members = [".", "codeview"]
 
 [package]
 name = "ive"
