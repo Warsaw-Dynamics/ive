@@ -18,7 +18,7 @@ use super::sources::HubScope;
 use crate::age::Clock;
 use crate::click_targets::target;
 use crate::colors::checkout_colour;
-use crate::diff_view::DiffView;
+use codeview::diff::DiffView;
 use crate::icons;
 use crate::overview::git_ui::{mark_label, tag};
 use crate::scratch::search::Generations;

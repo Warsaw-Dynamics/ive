@@ -215,7 +215,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
 /// What the code views draw with: `theme`'s colours and sizes they read, in the default monospace font until
 /// [`ViewStyle::with_mono_font`] names the one in use.
 pub fn view_style(theme: &Theme) -> ViewStyle {
-    let (editor, controls) = (&theme.sizes.editor, &theme.sizes.controls);
+    let (editor, controls, diff) = (&theme.sizes.editor, &theme.sizes.controls, &theme.sizes.diff);
     ViewStyle {
         appearance: theme.appearance,
         text: theme.text,
@@ -242,6 +242,17 @@ pub fn view_style(theme: &Theme) -> ViewStyle {
         scrollbar_min_thumb: controls.scrollbar_min_thumb.0,
         scrollbar_inset: controls.scrollbar_inset.0,
         mono_font: MONOSPACE.into(),
+        icon_size: theme.sizes.icon.0,
+        diff: codeview::style::DiffSizes {
+            row_height: diff.row_height.0,
+            text_size: diff.text_size.0,
+            line_padding: diff.line_padding.0,
+            hunk_padding_left: diff.hunk_padding_left.0,
+            header_gap: diff.header_gap.0,
+            header_padding_x: diff.header_padding_x.0,
+            header_weight: diff.header_weight.font_weight(),
+            number_padding_right: diff.number_padding_right.0,
+        },
     }
 }
 

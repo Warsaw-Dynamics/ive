@@ -1,6 +1,6 @@
 //! How the host looks, as far as codeview cares.
 
-use gpui::{App, Global, SharedString};
+use gpui::{App, FontWeight, Global, SharedString};
 
 /// Dark or light: picks the colour scheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +42,26 @@ pub struct ViewStyle {
     pub scrollbar_min_thumb: f32,
     pub scrollbar_inset: f32,
     pub mono_font: SharedString,
+    /// the size of the icons the views draw
+    pub icon_size: f32,
+    pub diff: DiffSizes,
+}
+
+/// Sizes of a diff view, in pixels.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DiffSizes {
+    pub row_height: f32,
+    pub text_size: f32,
+    /// before a code line's line numbers
+    pub line_padding: f32,
+    /// before a hunk header or a note
+    pub hunk_padding_left: f32,
+    /// a commit tab's file header
+    pub header_gap: f32,
+    pub header_padding_x: f32,
+    pub header_weight: FontWeight,
+    /// after each line number
+    pub number_padding_right: f32,
 }
 
 impl Global for ViewStyle {}

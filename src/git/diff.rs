@@ -5,67 +5,13 @@ use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, Patch, Reposit
 
 use super::repo::{self, GitError};
 use super::status::Change;
-use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy};
+use super::types::{GitPath, Mark, Sha, failed, head_tree, lossy, mark_of_delta};
 
-pub const FILE_LINE_LIMIT: usize = 20_000;
-pub const VIEW_LINE_LIMIT: usize = 200_000;
-/// Larger files are not loaded: libgit2 marks them binary, IVE says "file too large".
-pub const MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+pub use codeview::diff::{Cut, DiffBody, DiffLine, FileDiff, Hunk, LineKind};
+pub use codeview::diff::{FILE_LINE_LIMIT, MAX_FILE_BYTES, VIEW_LINE_LIMIT};
+
 const CONTEXT_LINES: u32 = 3;
 const TAB: &str = "    ";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FileDiff {
-    pub path: GitPath,
-    pub old_path: Option<GitPath>,
-    pub mark: Mark,
-    pub body: DiffBody,
-}
-
-impl FileDiff {
-    pub fn line_count(&self) -> usize {
-        match &self.body {
-            DiffBody::Text { hunks, .. } => hunks.iter().map(|hunk| hunk.lines.len()).sum(),
-            DiffBody::Binary | DiffBody::TooLarge => 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DiffBody {
-    Text { hunks: Vec<Hunk>, cut: Option<Cut> },
-    Binary,
-    TooLarge,
-}
-
-/// Why a text diff stops early, with the limit that was reached.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cut {
-    FileLimit(usize),
-    ViewLimit(usize),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Hunk {
-    pub header: String,
-    pub lines: Vec<DiffLine>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiffLine {
-    pub kind: LineKind,
-    pub old: Option<u32>,
-    pub new: Option<u32>,
-    pub text: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LineKind {
-    Context,
-    Added,
-    Removed,
-    NoNewline,
-}
 
 /// Whether a diff from a tree reaches into the work tree (staged, unstaged and untracked changes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -231,7 +177,7 @@ fn changes_of(diff: &Diff<'_>) -> Vec<Change> {
     diff.deltas()
         .map(|delta| {
             let (path, old_path) = names(&delta);
-            Change { mark: Mark::of_delta(delta.status()), path, old_path }
+            Change { mark: mark_of_delta(delta.status()), path, old_path }
         })
         .collect()
 }
@@ -278,7 +224,7 @@ fn collect(diff: &Diff<'_>, limits: Limits) -> Result<Vec<FileDiff>, git2::Error
         };
         let body = body(diff, index, budget)?;
         let (path, old_path) = names(&delta);
-        let file = FileDiff { path, old_path, mark: Mark::of_delta(delta.status()), body };
+        let file = FileDiff { path, old_path, mark: mark_of_delta(delta.status()), body };
         left -= file.line_count();
         files.push(file);
     }

@@ -2,10 +2,12 @@
 
 use std::rc::Rc;
 
-use codeview::host::{Command, Host, KeyOutcome};
-use gpui::{App, KeyDownEvent};
+use codeview::host::{ClickListener, Command, Host, KeyOutcome};
+use gpui::{App, IntoElement, KeyDownEvent};
 
+use crate::click_targets::ClickTargets;
 use crate::clipboard;
+use crate::overview::git_ui::mark_label;
 use crate::script::keymap::{Action, Builtin, Place};
 use crate::script::state::{bound_action, invoke};
 
@@ -14,6 +16,12 @@ pub fn install(cx: &mut App) {
         keys: Rc::new(key_outcome),
         clipboard: Rc::new(|target, text, cx| clipboard::write(target, text, cx)),
         paste: Rc::new(|source, cx| clipboard::read(source, cx)),
+        diff_mark: Rc::new(|mark, cx| mark_label(mark, crate::theme::tabs(cx), cx).into_any_element()),
+        click_target: Rc::new(|name, listener: ClickListener, cx| {
+            if let Some(targets) = cx.try_global::<ClickTargets>() {
+                targets.register(name, listener);
+            }
+        }),
     });
 }
 

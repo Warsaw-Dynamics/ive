@@ -6,8 +6,7 @@ use gpui::{App, Context, Entity, IntoElement, Render, Task, Window, div, prelude
 
 use super::git_ui::{mark_label, muted, toggle_button};
 use crate::click_targets::target;
-use crate::diff_view::DiffView;
-use crate::diff_view::rows::Headers;
+use codeview::diff::{DiffView, Headers};
 use crate::git::base::{ForkPoint, fork_point};
 use crate::git::diff::{self, FileDiff, FilePaths, SinceRange, Uncommitted};
 use crate::git::repo::GitError;

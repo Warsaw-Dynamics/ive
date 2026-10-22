@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::git::diff::{Cut, DiffBody, FileDiff};
+use super::data::{Cut, DiffBody, FileDiff};
 
 /// Files with more diff lines start collapsed in a commit tab.
 pub const COLLAPSE_LINES: usize = 2_000;
@@ -96,8 +96,7 @@ fn grouped(number: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::git::diff::{DiffLine, Hunk, LineKind};
-    use crate::git::types::{GitPath, Mark};
+    use crate::diff::data::{DiffLine, GitPath, Hunk, LineKind, Mark};
 
     fn text_file(name: &str, lines: usize, cut: Option<Cut>) -> FileDiff {
         let lines = (0..lines).map(|n| DiffLine { kind: LineKind::Added, old: None, new: Some(n as u32 + 1), text: format!("{n}") }).collect();

@@ -24,13 +24,7 @@ impl From<bool> for Picked {
     }
 }
 
-/// `1 file`, `2 files`.
-pub fn counted(count: usize, one: &str, many: &str) -> String {
-    if count == 1 {
-        return format!("1 {one}");
-    }
-    format!("{count} {many}")
-}
+pub use codeview::diff::counted;
 
 /// A clickable list row; a picked one is filled.
 pub fn list_row(id: impl Into<ElementId>, picked: Picked, theme: Theme) -> Stateful<Div> {

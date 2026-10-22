@@ -7,8 +7,7 @@ use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, 
 use super::git_event::CommitLink;
 use super::git_ui::{error_with_retry, muted};
 use crate::age::date_time;
-use crate::diff_view::DiffView;
-use crate::diff_view::rows::Headers;
+use codeview::diff::{DiffView, Headers};
 use crate::git::log::{self, CommitDetail, CommitInfo};
 use crate::git::repo::GitError;
 use crate::git::types::Sha;

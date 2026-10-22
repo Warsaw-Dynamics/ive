@@ -1,6 +1,7 @@
 //! Draws diffs: one file in the worktree pane and diff tabs, several collapsible files in commit tabs.
 //! Only visible rows are built, so a 200,000-line view scrolls as cheaply as a short one.
 
+pub mod data;
 pub mod rows;
 pub mod selection;
 
@@ -12,22 +13,25 @@ use std::rc::Rc;
 use gpui::{
     App, Bounds, Context, CursorStyle, DispatchPhase, Div, FocusHandle, IntoElement, KeyDownEvent, ListHorizontalSizingBehavior,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render, SharedString, Stateful, Window, canvas, div,
-    prelude::*, px, rgb, rgba, uniform_list,
+    img, prelude::*, px, rgb, rgba, uniform_list,
 };
 
-use crate::click_targets::target;
-use crate::clipboard;
-use crate::git::diff::{DiffBody, DiffLine, FileDiff, Hunk, LineKind};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome};
 use crate::icons;
-use crate::overview::git_ui::{counted, mark_label};
-use crate::script::keymap::{Action, Builtin, ClipboardTarget, Place};
-use crate::script::state::bound_action;
 use crate::scrollbar::{Axis, ListScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar, widest_row};
-use crate::theme::{self, Theme};
-use crate::theme_config::DiffSizes;
-use crate::workspace::icon;
-use rows::{COLLAPSE_LINES, DiffRow, Headers, diff_rows};
+use crate::style::{DiffSizes, ViewStyle};
+pub use data::{Cut, DiffBody, DiffLine, FILE_LINE_LIMIT, FileDiff, GitPath, Hunk, LineKind, MAX_FILE_BYTES, Mark, VIEW_LINE_LIMIT};
+pub use rows::Headers;
+use rows::{COLLAPSE_LINES, DiffRow, diff_rows};
 use selection::{DiffPosition, DiffSelection, word_around};
+
+/// `1 file`, `2 files`.
+pub fn counted(count: usize, one: &str, many: &str) -> String {
+    if count == 1 {
+        return format!("1 {one}");
+    }
+    format!("{count} {many}")
+}
 
 /// Approximate character slots of a file header's icons, for the widest-row guess.
 const HEADER_SLOTS: usize = 6;
@@ -50,7 +54,7 @@ pub struct DiffView {
     dragging: bool,
     /// the monospace font's character width, as last measured
     char_width: Pixels,
-    /// the theme's diff sizes, as of the last frame
+    /// the style's diff sizes, as of the last frame
     sizes: DiffSizes,
     /// where the last frame put the view, for the mouse
     bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
@@ -72,7 +76,7 @@ impl DiffView {
             selection: None,
             dragging: false,
             char_width: px(8.),
-            sizes: cx.global::<Theme>().sizes.diff,
+            sizes: ViewStyle::get(cx).diff,
             bounds: Rc::default(),
         }
     }
@@ -122,7 +126,7 @@ impl DiffView {
 
     /// Where a code line's text starts, from the row's left edge.
     fn text_start(&self) -> Pixels {
-        self.sizes.line_padding.px() + self.number_column_width() * 2. + self.char_width * SIGN_CHARS
+        px(self.sizes.line_padding) + self.number_column_width() * 2. + self.char_width * SIGN_CHARS
     }
 
     /// The row under window point `point` (the first or last one above or below the rows) and the column boundary
@@ -131,7 +135,7 @@ impl DiffView {
         let bounds = self.bounds.get()?;
         let last = self.rows.len().checked_sub(1)?;
         let y = f64::from(f32::from(point.y - bounds.origin.y)) + self.list.extent(Axis::Vertical).scrolled;
-        let row = ((y / f64::from(self.sizes.row_height.0)).max(0.).floor() as usize).min(last);
+        let row = ((y / f64::from(self.sizes.row_height)).max(0.).floor() as usize).min(last);
         let x = f64::from(f32::from(point.x - bounds.origin.x - self.text_start())) + self.list.extent(Axis::Horizontal).scrolled;
         let column = (x / f64::from(f32::from(self.char_width))).max(0.).round() as usize;
         let chars = self.line_text(row).map_or(0, |text| text.chars().count());
@@ -188,23 +192,25 @@ impl DiffView {
         self.dragging = false;
     }
 
-    /// The editor scope's Copy and Select All; other keys go on to the window's bindings.
+    /// The host's Copy and Select All; other keys go on to the window's bindings.
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        match bound_action(event, Place::Editor, cx) {
-            Some(Action::Builtin(Builtin::CopyTo(target))) => self.copy(target, cx),
-            Some(Action::Builtin(Builtin::SelectAll)) => self.select_all(cx),
-            _ => return,
+        match Host::key_outcome(event, cx) {
+            KeyOutcome::Command(Command::Copy(target)) => self.copy(target, cx),
+            KeyOutcome::Command(Command::SelectAll) => self.select_all(cx),
+            KeyOutcome::Handled => {}
+            // the diff has no other commands; a window action is the workspace's to run
+            KeyOutcome::Command(_) | KeyOutcome::Foreign | KeyOutcome::Unbound => return,
         }
         cx.stop_propagation();
     }
 
-    fn copy(&self, target: ClipboardTarget, cx: &App) {
+    fn copy(&self, target: ClipboardTarget, cx: &mut App) {
         let Some(selection) = self.selection else {
             return;
         };
         let text = selection.text(|row| self.line_text(row));
         if !text.is_empty() {
-            clipboard::write(target, text, cx);
+            Host::write_clipboard(target, text, cx);
         }
     }
 
@@ -233,50 +239,49 @@ impl DiffView {
         }
     }
 
-    fn render_rows(&self, range: Range<usize>, theme: Theme, cx: &mut Context<Self>) -> Vec<Stateful<Div>> {
+    fn render_rows(&self, range: Range<usize>, theme: &ViewStyle, cx: &mut Context<Self>) -> Vec<Stateful<Div>> {
         range.map(|index| self.render_row(index, theme, cx)).collect()
     }
 
-    fn render_row(&self, index: usize, theme: Theme, cx: &mut Context<Self>) -> Stateful<Div> {
+    fn render_row(&self, index: usize, theme: &ViewStyle, cx: &mut Context<Self>) -> Stateful<Div> {
         // as wide as the view at least, so a line's tint reaches the right edge
-        let row = div().id(("diff-row", index)).flex().items_center().min_w_full().h(self.sizes.row_height.px()).whitespace_nowrap();
+        let row = div().id(("diff-row", index)).flex().items_center().min_w_full().h(px(self.sizes.row_height)).whitespace_nowrap();
         match &self.rows[index] {
-            DiffRow::File(file) => self.render_file_header(row, *file, cx),
-            DiffRow::Hunk { file, hunk } => row.pl(self.sizes.hunk_padding_left.px()).text_color(rgb(theme.muted)).child(self.hunk(*file, *hunk).header.clone()),
+            DiffRow::File(file) => self.render_file_header(row, *file, theme, cx),
+            DiffRow::Hunk { file, hunk } => row.pl(px(self.sizes.hunk_padding_left)).text_color(rgb(theme.muted)).child(self.hunk(*file, *hunk).header.clone()),
             DiffRow::Line { file, hunk, line } => self.render_line(row, index, &self.hunk(*file, *hunk).lines[*line], theme),
-            DiffRow::Note { note, .. } => row.pl(self.sizes.hunk_padding_left.px()).italic().text_color(rgb(theme.muted)).child(note.text()),
+            DiffRow::Note { note, .. } => row.pl(px(self.sizes.hunk_padding_left)).italic().text_color(rgb(theme.muted)).child(note.text()),
         }
     }
 
     /// A commit tab's file header; a click (target `diff-file:<path>`) collapses or expands the file.
-    fn render_file_header(&self, row: Stateful<Div>, file: usize, cx: &mut Context<Self>) -> Stateful<Div> {
-        let theme = crate::theme::tabs(cx);
+    fn render_file_header(&self, row: Stateful<Div>, file: usize, theme: &ViewStyle, cx: &mut Context<Self>) -> Stateful<Div> {
         let diff = &self.files[file];
         let chevron = if self.collapsed.contains(&file) { icons::CHEVRON_RIGHT } else { icons::CHEVRON_DOWN };
         let name = match &diff.old_path {
             Some(old) => format!("{} → {}", old.display(), diff.path.display()),
             None => diff.path.display(),
         };
-        let toggle = target(format!("diff-file:{}", diff.path.display()), cx.listener(move |view, _event, _window, cx| view.toggle(file, cx)), cx);
-        row.gap(self.sizes.header_gap.px())
-            .px(self.sizes.header_padding_x.px())
+        let toggle = Host::click_target(format!("diff-file:{}", diff.path.display()), cx.listener(move |view, _event, _window, cx| view.toggle(file, cx)), cx);
+        row.gap(px(self.sizes.header_gap))
+            .px(px(self.sizes.header_padding_x))
             .bg(rgb(theme.sidebar))
-            .font_weight(self.sizes.header_weight.font_weight())
+            .font_weight(self.sizes.header_weight)
             .cursor_pointer()
-            .child(icon(theme, chevron))
-            .child(mark_label(diff.mark, theme, cx))
+            .child(img(icons::embedded(theme.appearance, chevron)).flex_none().size(px(theme.icon_size)))
+            .children(Host::diff_mark(diff.mark, cx))
             .child(name)
             .child(div().text_color(rgb(theme.muted)).child(counted(diff.line_count(), "line", "lines")))
             .on_click(toggle)
     }
 
-    fn render_line(&self, row: Stateful<Div>, index: usize, line: &DiffLine, theme: Theme) -> Stateful<Div> {
+    fn render_line(&self, row: Stateful<Div>, index: usize, line: &DiffLine, theme: &ViewStyle) -> Stateful<Div> {
         let number = |value: Option<u32>| {
             let text = value.map_or_else(String::new, |value| value.to_string());
             div()
                 .flex_none()
                 .w(self.number_column_width())
-                .pr(self.sizes.number_padding_right.px())
+                .pr(px(self.sizes.number_padding_right))
                 .text_color(rgb(theme.muted))
                 .child(SharedString::from(format!("{text:>width$}", width = self.number_width)))
         };
@@ -299,7 +304,7 @@ impl DiffView {
             .items_center()
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
             .child(line.text.clone());
-        row.pl(self.sizes.line_padding.px())
+        row.pl(px(self.sizes.line_padding))
             .child(number(line.old))
             .child(number(line.new))
             .child(div().flex_none().w(self.char_width * SIGN_CHARS).child(sign))
@@ -307,7 +312,7 @@ impl DiffView {
     }
 
     /// The selection's background behind `columns` of a line; glyphs of the monospace font sit on the column grid.
-    fn selection_bar(&self, columns: Range<usize>, theme: Theme) -> Div {
+    fn selection_bar(&self, columns: Range<usize>, theme: &ViewStyle) -> Div {
         div()
             .absolute()
             .top_0()
@@ -320,8 +325,8 @@ impl DiffView {
 
 fn measure_char_width(window: &Window, cx: &App) -> Pixels {
     let text_system = window.text_system();
-    let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
-    let font_size = cx.global::<Theme>().sizes.diff.text_size.px();
+    let font_id = text_system.resolve_font(&gpui::font(ViewStyle::drawing(cx).mono_font.clone()));
+    let font_size = px(ViewStyle::get(cx).diff.text_size);
     text_system.ch_advance(font_id, font_size).unwrap_or(font_size * 0.6)
 }
 
@@ -352,14 +357,17 @@ fn largest_line_number(file: &FileDiff) -> u32 {
 
 impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = crate::theme::tabs(cx);
+        let theme = ViewStyle::drawing(cx).clone();
         self.char_width = measure_char_width(window, cx);
-        self.sizes = cx.global::<Theme>().sizes.diff;
+        self.sizes = ViewStyle::get(cx).diff;
         let widest = widest_row(self.list.visible_rows(self.rows.len()), |index| self.row_chars(index));
         let list = uniform_list(
             ("diff-rows", cx.entity_id().as_u64()),
             self.rows.len(),
-            cx.processor(move |view: &mut DiffView, range, _window, cx| view.render_rows(range, theme, cx)),
+            cx.processor({
+                let theme = theme.clone();
+                move |view: &mut DiffView, range, _window, cx| view.render_rows(range, &theme, cx)
+            }),
         )
         .with_horizontal_sizing_behavior(ListHorizontalSizingBehavior::Unconstrained)
         .with_width_from_item(widest)
@@ -370,8 +378,8 @@ impl Render for DiffView {
             .flex_1()
             .min_h_0()
             .min_w_0()
-            .font_family(theme::mono_font(cx))
-            .text_size(self.sizes.text_size.px())
+            .font_family(theme.mono_font.clone())
+            .text_size(px(self.sizes.text_size))
             .track_focus(&self.focus_handle)
             .cursor(CursorStyle::IBeam)
             .on_key_down(cx.listener(Self::on_key_down))
@@ -381,7 +389,7 @@ impl Render for DiffView {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .child(follow_drag(self.bounds.clone(), cx.entity()))
             .child(list)
-            .child(vertical_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
-            .child(horizontal_scrollbar(&self.scrollbars, &theme::view_style(&theme)))
+            .child(vertical_scrollbar(&self.scrollbars, &theme))
+            .child(horizontal_scrollbar(&self.scrollbars, &theme))
     }
 }

@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::colors::{ColorKey, RawEntry};
 
-pub use sizes::{DiffSizes, Sizes, TerminalSizes};
+pub use sizes::{Sizes, TerminalSizes};
 pub use values::{Factor, FontPx, Fraction, Height, Px, RootPx, Rgb, Rgba, RowStyle, Weight};
 
 /// IVE's default theme without its syntax colours, which come from the built-in schemes.

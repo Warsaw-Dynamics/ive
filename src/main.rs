@@ -7,7 +7,6 @@ mod click_targets;
 mod clipboard;
 mod codeview_host;
 mod colors;
-mod diff_view;
 mod dragged_files;
 mod editor;
 mod file_tree;
