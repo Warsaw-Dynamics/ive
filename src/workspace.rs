@@ -56,7 +56,7 @@ mod runs;
 mod scratches;
 mod scripts;
 mod settings_actions;
-mod tab_menu;
+mod menu;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -69,7 +69,7 @@ pub use drag_preview::TabDragArea;
 pub use quit::{add_app_menu, show_main_window};
 pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
-pub use tab_menu::{DEFAULT_MENU, MenuLine, label as tab_command_label, target as tab_command_target};
+pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -101,7 +101,10 @@ pub struct Workspace {
     /// the menu was open when the + button was pressed: that press closed it, so the click must not reopen it
     menu_open_at_press: bool,
     /// the menu a right click on a tab opened
-    tab_menu: Option<tab_menu::TabMenu>,
+    /// the open menu of a tab or tree row
+    menu: Option<menu::OpenMenu>,
+    /// predicates asked for menus so far, numbering the next request
+    menu_requests: u64,
     /// the row Select Opened File is expanding the tree towards, while folders above it are read
     locating: Option<TreeKey>,
     /// `--restart`: the start script the Restart button runs
@@ -254,7 +257,8 @@ impl Workspace {
             tree_git: tree_git::TreeGit::default(),
             menu_open: false,
             menu_open_at_press: false,
-            tab_menu: None,
+            menu: None,
+            menu_requests: 0,
             locating: None,
             restart_script: startup.restart_script.clone(),
             restart_terminal: None,
@@ -724,10 +728,14 @@ impl Workspace {
         }
     }
 
+    /// The open context menu's keys, else Escape closing the sidebar's menu.
     fn close_menu_on_escape(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if self.menu_key(event, window, cx) {
+            cx.stop_propagation();
+            return;
+        }
         if event.keystroke.key == "escape" {
             self.close_menu(window, cx);
-            self.close_tab_menu(window, cx);
         }
     }
 

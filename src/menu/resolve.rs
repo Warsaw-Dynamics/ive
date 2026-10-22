@@ -41,6 +41,7 @@ impl Line {
 }
 
 /// A line of a built-in's submenu.
+#[allow(dead_code)] // Send to Terminal and Run list them (plan tasks 9, 10)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Choice {
     Item { label: String, choice: String, enabled: bool },
@@ -53,6 +54,7 @@ pub enum Applies {
     Hidden,
     Shown { enabled: bool },
     /// a submenu of these
+    #[allow(dead_code)] // Send to Terminal and Run (plan tasks 9, 10)
     Choices(Vec<Choice>),
 }
 

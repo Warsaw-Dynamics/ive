@@ -50,7 +50,6 @@ pub enum ScriptEvent {
     /// a bound function failed; the log says why
     RunFailed,
     /// the menu condition asked as `request` answered
-    #[allow(dead_code)] // read by the menu view (plan task 7)
     Tested { request: u64, answer: bool },
 }
 
@@ -64,7 +63,6 @@ pub enum ScriptCommand {
     Invoke { generation: u64, function: usize, context: Option<serde_json::Value> },
     /// a menu opened on `context`: does the condition function `function` of load `generation` hold? Answered as
     /// [`ScriptEvent::Tested`], false when it errs or takes longer than `timeout`
-    #[allow(dead_code)] // sent by the menu view (plan task 7)
     Test { generation: u64, function: usize, context: serde_json::Value, request: u64, timeout: Duration },
 }
 

@@ -96,8 +96,13 @@ fn apply_fonts(fonts: Fonts, cx: &mut App) -> bool {
 
 impl Workspace {
     fn apply_script_event(&mut self, event: ScriptEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if let ScriptEvent::Tested { request, answer } = event {
+            return self.menu_answered(request, answer, cx);
+        }
         let fonts_missing = match &event {
             ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {
+                // its items may name functions of the load before
+                self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
                 let open_changed = cx.try_global::<OpenFolders>() != Some(open_folders);
                 cx.set_global(open_folders.clone());
@@ -171,6 +176,7 @@ impl Workspace {
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
             Action::Builtin(builtin) => self.run_window_builtin(builtin, window, cx),
             // the keymap allows it only in the tab scope
+            Action::ShowTreeMenu(name) if place == Place::Tree => self.open_tree_menu_on_selection(&name, window, cx),
             Action::ShowTabMenu(_) | Action::ShowTreeMenu(_) | Action::Disable => {}
         }
         cx.stop_propagation();
@@ -205,7 +211,7 @@ impl Workspace {
         Ok(())
     }
 
-    fn run_window_builtin(&mut self, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn run_window_builtin(&mut self, builtin: Builtin, window: &mut Window, cx: &mut Context<Self>) {
         match builtin {
             Builtin::OpenSettings => self.open_settings(window, cx),
             Builtin::OpenHub => {

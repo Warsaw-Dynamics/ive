@@ -1,9 +1,6 @@
 //! Menus for what was clicked: a tab's file or the tree's selection. Which declared items show, in what state, and
 //! how the keyboard and the pointer move through them. Plain data; drawing is `crate::menu_view`.
 
-// used once the menu view lands (plan task 7)
-#![allow(dead_code)]
-
 pub mod nav;
 pub mod resolve;
 pub mod when;
@@ -49,6 +46,7 @@ pub struct Subject {
 }
 
 impl Subject {
+    #[cfg(test)]
     pub fn empty() -> Self {
         Self { paths: Vec::new(), home: Home::Mixed }
     }

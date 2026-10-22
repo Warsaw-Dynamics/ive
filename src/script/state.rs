@@ -28,8 +28,6 @@ pub struct ScriptState {
 }
 
 /// How long a menu condition may take before its item counts as hidden.
-// used by the menu view (plan task 7)
-#[allow(dead_code)]
 pub const TEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 impl Global for ScriptState {}
@@ -61,7 +59,6 @@ impl ScriptState {
 
     /// Asks the script thread whether menu condition `function` holds on `context`; the answer comes back as
     /// `ScriptEvent::Tested` for `request`.
-    #[allow(dead_code)] // used by the menu view (plan task 7)
     pub fn test(&self, generation: u64, function: usize, context: serde_json::Value, request: u64) {
         let command = ScriptCommand::Test { generation, function, context, request, timeout: TEST_TIMEOUT };
         // the script thread is gone only when it could not start; the menu's item then stays pending until it closes

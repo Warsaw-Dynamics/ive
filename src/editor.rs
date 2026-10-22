@@ -1060,7 +1060,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .window_control_area(WindowControlArea::Drag)
         .child(strip)
         .child(tools)
-        .children(crate::tab_menu::render_tab_menu(workspace, theme, cx))
+        .children(crate::menu_view::render_menu(workspace, theme, window, cx))
 }
 
 /// A detached tab's window: a row with the tab, Move to main window and the window buttons, then the tab. `None`
