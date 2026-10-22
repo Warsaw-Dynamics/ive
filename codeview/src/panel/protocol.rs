@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -25,7 +26,8 @@ pub enum Cast {
     SetFiles(Vec<FileDiff>),
     /// the answer to [`Event::NeedTexts`]
     SetTexts { file: usize, old: Option<Source>, new: Option<Source> },
-    /// the answer to [`Event::NeedParse`]; one for an older revision than the panel's is dropped
+    /// the answer to [`Event::NeedParse`]; in View mode one for an older revision than the panel's is dropped, in
+    /// Edit mode it is shown moved by the edits made since
     Parsed { target: ParseTarget, revision: u64, syntax: Syntax },
     /// the answer to [`Event::SaveRequested`]; `source` is the rewritten file, when it was rewritten
     Saved { revision: u64, source: Option<Arc<dyn LineSource>> },
@@ -90,7 +92,8 @@ pub enum Event {
     /// the scroll, caret, layout or collapsed files changed: [`super::Panel::state`] has the new state
     StateChanged,
     LayoutToggled(DiffLayout),
-    /// the host runs the job on a background thread and answers [`Cast::Parsed`]
+    /// the host runs the job on a background thread and answers [`Cast::Parsed`], also when the text changed
+    /// meanwhile; only a set [`ParseJob::cancel`] makes the answer unwanted
     NeedParse(ParseJob),
     /// a diff file came on screen: the host answers [`Cast::SetTexts`]
     NeedTexts { file: usize },
@@ -138,6 +141,21 @@ pub struct ParseJob {
     pub(crate) target: ParseTarget,
     pub(crate) revision: u64,
     pub(crate) previous: Previous,
+    pub(crate) failed: Failed,
+}
+
+/// Set when a parse ended without a result, so a panel waiting for it asks again instead.
+#[derive(Clone, Default)]
+pub(crate) struct Failed(Arc<AtomicBool>);
+
+impl Failed {
+    pub(crate) fn is_set(&self) -> bool {
+        self.0.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn set(&self) {
+        self.0.store(true, Ordering::Relaxed);
+    }
 }
 
 /// What a parse may reuse.
@@ -157,16 +175,20 @@ impl ParseJob {
         self.revision
     }
 
-    /// Set once the panel no longer wants the result: it went away or its text changed.
+    /// Set once the panel no longer wants the result: it went away or its text was replaced.
     pub fn cancel(&self) -> Cancel {
         self.cancel.clone()
     }
 
     pub fn run(self) -> Result<Syntax, ParseError> {
         let source = self.source.as_bytes();
-        match &self.previous {
+        let result = match &self.previous {
             Previous::Nothing => syntax::parse(source, self.language, &self.cancel, PARSE_BUDGET),
             Previous::Edited { syntax, edits } => syntax::reparse(syntax, edits, source, &self.cancel, PARSE_BUDGET),
+        };
+        if result.is_err() {
+            self.failed.set();
         }
+        result
     }
 }

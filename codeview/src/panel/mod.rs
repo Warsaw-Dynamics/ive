@@ -14,7 +14,7 @@ use gpui::{
 pub use protocol::{
     Cast, Content, DiffInput, DiffLayout, Edit, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, SaveFailure,
 };
-pub(crate) use protocol::Previous;
+pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
 
 use crate::code_view::CodeView;
@@ -205,7 +205,7 @@ impl Panel {
         }
     }
 
-    /// Asks the host for the parse of the text as it is now; in Edit mode, it cancels the one asked for before.
+    /// Asks the host for the parse of the text as it is now; in Edit mode, only once the one running landed.
     fn request_parse(&self, cx: &mut Context<Self>) {
         let job = match &self.body {
             Body::View(view) => view.read(cx).parse_job(self.revision),
@@ -217,13 +217,18 @@ impl Panel {
         }
     }
 
-    /// A parse of an older text is dropped; diff parses come with Task 11.
+    /// In View mode a parse of an older text is dropped, in Edit mode the editor takes it; diff parses come with
+    /// Task 11.
     fn parsed(&self, target: ParseTarget, revision: u64, syntax: Syntax, cx: &mut Context<Self>) {
         match (&self.body, target) {
             (Body::View(view), ParseTarget::Text) if revision == self.revision => {
                 view.update(cx, |view, cx| view.set_syntax(syntax, cx));
             }
-            (Body::Edit(editor), ParseTarget::Text) => editor.update(cx, |editor, cx| editor.parsed(revision, syntax, cx)),
+            (Body::Edit(editor), ParseTarget::Text) => {
+                editor.update(cx, |editor, cx| editor.parsed(revision, syntax, cx));
+                // edits made while it ran are parsed next
+                self.request_parse(cx);
+            }
             _ => {}
         }
     }
@@ -344,5 +349,58 @@ impl Render for Panel {
             Body::Diff(diff) => diff.clone().into_any_element(),
         };
         body
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use std::time::Duration;
+
+    use gpui::TestAppContext;
+
+    use super::*;
+    use crate::document::TextSource;
+    use crate::syntax::lang;
+
+    /// The parse jobs `panel` asks for, in order.
+    fn jobs_of(panel: &Entity<Panel>, cx: &mut TestAppContext) -> Rc<RefCell<Vec<ParseJob>>> {
+        let jobs: Rc<RefCell<Vec<ParseJob>>> = Rc::default();
+        let seen = jobs.clone();
+        cx.update(|cx| {
+            cx.subscribe(panel, move |_, event: &Event, _| {
+                if let Event::NeedParse(job) = event {
+                    seen.borrow_mut().push(job.clone());
+                }
+            })
+            .detach();
+        });
+        jobs
+    }
+
+    #[gpui::test]
+    fn should_ask_for_the_newest_text_once_the_parse_in_flight_lands(cx: &mut TestAppContext) {
+        // given
+        let panel = cx.new(Panel::new);
+        let jobs = jobs_of(&panel, cx);
+        let policy = EditPolicy { save_delay: Duration::from_millis(500), limit: None };
+        let source = Arc::new(TextSource::new("fn main() {}\n"));
+        let content = Content::Lines { source, language: Some(lang("Rust")), edit: Some(policy) };
+        panel.update(cx, |panel, cx| panel.handle(Cast::Open(content), cx));
+        panel.update(cx, |panel, cx| {
+            panel.type_text("a", cx).unwrap();
+            panel.type_text("b", cx).unwrap();
+        });
+        let asked_while_parsing = jobs.borrow().len();
+
+        // when
+        let first = jobs.borrow()[0].clone();
+        let (target, revision, syntax) = (first.target(), first.revision(), first.run().unwrap());
+        panel.update(cx, |panel, cx| panel.handle(Cast::Parsed { target, revision, syntax }, cx));
+
+        // then
+        let revisions: Vec<u64> = jobs.borrow().iter().map(ParseJob::revision).collect();
+        assert_eq!((asked_while_parsing, revisions), (1, vec![0, 2]));
     }
 }

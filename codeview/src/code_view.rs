@@ -16,7 +16,7 @@ use crate::colors::{ColorKey, ResolvedScheme};
 use crate::document::DisplayLine;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::line_view::{self, LineScroll, Metrics};
-use crate::panel::{LineSource, ParseJob, ParseTarget, Previous};
+use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous};
 use crate::position::ScrollPosition;
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
@@ -291,6 +291,7 @@ impl State {
             target: ParseTarget::Text,
             revision,
             previous: Previous::Nothing,
+            failed: Failed::default(),
         })
     }
 
@@ -459,19 +460,19 @@ fn follow_drag(metrics: Metrics, into: Rc<Cell<Option<Placed>>>, view: Entity<Co
 /// Highlights of the lines drawn in the last frame, by the file offset each starts at; repaints and horizontal
 /// scrolling reuse them instead of querying the tree again.
 #[derive(Default)]
-struct HighlightCache {
+pub(crate) struct HighlightCache {
     current: RefCell<HashMap<usize, Rc<[Highlight]>>>,
     previous: RefCell<HashMap<usize, Rc<[Highlight]>>>,
 }
 
 impl HighlightCache {
     /// Lines not asked for until the next frame starts are forgotten then.
-    fn start_frame(&self) {
+    pub(crate) fn start_frame(&self) {
         let current = self.current.take();
         self.previous.replace(current);
     }
 
-    fn get_or_query(&self, line_start: usize, query: impl FnOnce() -> Vec<Highlight>) -> Rc<[Highlight]> {
+    pub(crate) fn get_or_query(&self, line_start: usize, query: impl FnOnce() -> Vec<Highlight>) -> Rc<[Highlight]> {
         let known = self.current.borrow().get(&line_start).cloned();
         let highlights = known
             .or_else(|| self.previous.borrow_mut().remove(&line_start))

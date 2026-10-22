@@ -110,7 +110,8 @@ fn parse_in_background(panel: WeakEntity<Panel>, job: ParseJob, name: &str, cx: 
     let parsing = cx.background_executor().spawn(async move { job.run() });
     cx.spawn(async move |cx| {
         let result = parsing.await;
-        // the text changed (or the panel went away) after the parse finished, before this update ran
+        // the text was replaced (or the panel went away) after the parse finished, before this update ran; edits
+        // made meanwhile are no reason to drop it, the panel shows it moved by them
         if stale.is_cancelled() {
             return;
         }

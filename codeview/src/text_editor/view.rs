@@ -23,7 +23,7 @@ use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
 use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
 use crate::style::ViewStyle;
-use crate::syntax::{Language, Syntax};
+use crate::syntax::{Highlight, Language, Syntax};
 
 /// Columns assumed visible before the first layout reports the viewport width.
 const FIRST_FRAME_COLUMNS: usize = 400;
@@ -123,7 +123,7 @@ impl TextEditor {
         self.colours.job(self.model.revision(), self.model.table())
     }
 
-    /// A parse of the text at `revision` landed; a stale one is dropped.
+    /// A parse of the text at `revision` landed; see [`Colours::parsed`].
     pub fn parsed(&mut self, revision: u64, syntax: Syntax, cx: &mut Context<Self>) {
         self.colours.parsed(revision, syntax);
         cx.notify();
@@ -137,7 +137,7 @@ impl TextEditor {
     fn edit(&mut self, edit: impl FnOnce(&mut EditorModel) -> Result<(), EditError>, cx: &mut Context<Self>) -> Result<(), EditError> {
         let before = self.model.revision();
         let result = edit(&mut self.model);
-        self.colours.edited(self.model.take_replacements());
+        self.colours.edited(self.model.revision(), self.model.take_replacements());
         match &result {
             Err(error) => cx.emit(TextEditorEvent::Refused(error.to_string())),
             Ok(()) if self.model.revision() != before => cx.emit(TextEditorEvent::Edited),
@@ -279,7 +279,7 @@ impl TextEditor {
         }
         let first_column = (self.scroll.left() / char_width).floor() as usize;
         let columns = first_column..first_column + visible_columns(self.scroll.viewport_width(), char_width) + 1;
-        let highlights = self.colours.highlights(self.bytes_of(rows.clone()));
+        let highlights = self.highlights_of(rows.clone());
         Frame {
             lines: visible_lines(&self.model, Area { rows, columns }, &highlights),
             caret: self.focus_handle.is_focused(window).then(|| self.model.caret()),
@@ -299,6 +299,16 @@ impl TextEditor {
         let table = self.model.table();
         let end = if rows.end < table.line_count() { table.line_start(rows.end) } else { table.byte_len() };
         table.line_start(rows.start)..end
+    }
+
+    /// Highlights of lines `rows`, queried per line once while the text and its colours stay.
+    fn highlights_of(&self, rows: Range<usize>) -> Vec<Highlight> {
+        self.colours.start_frame();
+        let mut highlights = Vec::new();
+        for line in rows {
+            highlights.extend_from_slice(&self.colours.line_highlights(self.bytes_of(line..line + 1)));
+        }
+        highlights
     }
 }
 
