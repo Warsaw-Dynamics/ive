@@ -295,7 +295,7 @@ of folders **every worktree** shows (Processes and Files in a new profile; the m
   folder (Processes, Uncommitted, Since base, Commits, Files); a click switches that folder in every worktree. Under
   them, one row "Changed files" with a Flat | Tree switch (the run configurations tab's), the layout Alt+Shift+G
   flips (see "Worktree folders"). Each row shows its shortcut on its right, muted, as `init.rn` binds it:
-  **Alt+Shift+P, U, B, C, F** (`act::ToggleFolderEverywhere`, window scope, as Alt+Shift+G), Alt+Shift+G after the
+  **Ctrl+Alt+1 to 5** (`act::ToggleFolderEverywhere`, window scope, as Alt+Shift+G), Alt+Shift+G after the
   switch. Not Alt+Shift+1…5: with Shift a digit key arrives as `!`, `@`, … depending on the keyboard layout.
 - **Badges**: a click still shows or hides the folder in this worktree only; **Alt+click** does it in every worktree.
 - A worktree follows the set except for the folders it switched itself. Those badges carry a dot (accent, top

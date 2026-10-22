@@ -75,11 +75,11 @@
   // A worktree's folders (DESIGN.md "Worktree folders"), in tree order; each shows while its badge on the worktree row
   // is on (shown: the default).
   var WORKTREE_FOLDERS = [
-    { key: 'processes', title: 'Processes', icon: 'terminal.svg', shown: true, letter: 'P' },
-    { key: 'uncommitted', title: 'Uncommitted', icon: 'changes.svg', shown: false, letter: 'U' },
-    { key: 'sinceBase', title: 'Since base', icon: 'history.svg', shown: false, letter: 'B' },
-    { key: 'commits', title: 'Commits', icon: 'commit.svg', shown: false, letter: 'C' },
-    { key: 'files', title: 'Files', icon: 'project-folder.svg', shown: true, letter: 'F' }
+    { key: 'processes', title: 'Processes', icon: 'terminal.svg', shown: true, digit: '1' },
+    { key: 'uncommitted', title: 'Uncommitted', icon: 'changes.svg', shown: false, digit: '2' },
+    { key: 'sinceBase', title: 'Since base', icon: 'history.svg', shown: false, digit: '3' },
+    { key: 'commits', title: 'Commits', icon: 'commit.svg', shown: false, digit: '4' },
+    { key: 'files', title: 'Files', icon: 'project-folder.svg', shown: true, digit: '5' }
   ];
   var LIB_RUN_TOML = '[run.test]\nname = "Test lib"\ncommand = "npm test"\nbefore = ["compile"]\n';
 
@@ -1177,11 +1177,11 @@
           }
         },
         toggleGitLayout: function () { this.gitLayout = this.gitLayout === 'flat' ? 'tree' : 'flat'; },
-        // Alt+Shift+P, U, B, C, F (ive.rn's act::ToggleFolderEverywhere keys): a worktree folder shown or hidden in
-        // every worktree, as the header menu's ticks. Digits cannot work: with Shift they arrive as !, @, … by layout.
+        // Ctrl+Alt+1 to 5 (ive.rn's act::ToggleFolderEverywhere keys): a worktree folder shown or hidden in every
+        // worktree, as the header menu's ticks; without Shift a digit is a digit on every layout.
         folderKey: function (event) {
-          var folder = WORKTREE_FOLDERS.find(function (f) { return 'Key' + f.letter === event.code; });
-          if (folder && event.altKey && event.shiftKey && event.ctrlKey === false && event.metaKey === false) {
+          var folder = WORKTREE_FOLDERS.find(function (f) { return 'Digit' + f.digit === event.code; });
+          if (folder && event.ctrlKey && event.altKey && event.shiftKey === false && event.metaKey === false) {
             event.preventDefault();
             this.showFolderEverywhere(folder.key, this.everyFolder[folder.key] === false);
           }

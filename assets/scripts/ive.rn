@@ -79,11 +79,11 @@ pub fn init(config) {
         // changed files flat or grouped by folder: the tree's git folders and the Git sections
         #{ key: "g", mods: "ALT|SHIFT", action: act::ToggleChangesLayout },
         // a worktree folder in every worktree, or in none (the tree header's folders menu shows these keys)
-        #{ key: "p", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("processes") },
-        #{ key: "u", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("uncommitted") },
-        #{ key: "b", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("since-base") },
-        #{ key: "c", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("commits") },
-        #{ key: "f", mods: "ALT|SHIFT", action: act::ToggleFolderEverywhere("files") },
+        #{ key: "1", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("processes") },
+        #{ key: "2", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("uncommitted") },
+        #{ key: "3", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("since-base") },
+        #{ key: "4", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("commits") },
+        #{ key: "5", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("files") },
         // keys while the sidebar has the keyboard (a click on it gives it)
         #{ key: copy_full_path.key, mods: copy_full_path.mods, action: act::CopyFullPath, scope: "tree" },
 
