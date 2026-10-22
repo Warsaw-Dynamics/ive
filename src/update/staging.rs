@@ -35,6 +35,20 @@ const BINARY_NAME: &str = "ive.exe";
 #[cfg(not(windows))]
 const BINARY_NAME: &str = "ive";
 
+/// The terminal-host protocol the IVE `binary` speaks, by asking it; `None` when it cannot tell.
+pub fn staged_protocol(binary: &Path) -> Option<u16> {
+    let output = std::process::Command::new(binary).args(["--pty-host", "protocol"]).output().ok()?;
+    output.status.success().then(|| String::from_utf8_lossy(&output.stdout).trim().parse().ok()).flatten()
+}
+
+/// The terminal-host protocol of this build; none on Windows, which has no terminal host.
+pub fn own_protocol() -> Option<u16> {
+    #[cfg(unix)]
+    return Some(ptyhost::protocol::PROTOCOL);
+    #[cfg(not(unix))]
+    None
+}
+
 /// A release ready to swap in: its tag, where it is, and the terminal-host protocol it speaks (Windows has none).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Staged {
@@ -219,6 +233,37 @@ mod tests {
 
         // then
         assert!(found.unwrap_err().contains(&dir.path().display().to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn should_read_the_protocol_a_binary_prints() {
+        // given
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let binary = dir.path().join("ive");
+        write(&binary, "#!/bin/sh\n[ \"$1 $2\" = \"--pty-host protocol\" ] && echo 7\n");
+        fs::set_permissions(&binary, fs::Permissions::from_mode(0o755)).unwrap();
+
+        // when
+        let protocol = staged_protocol(&binary);
+
+        // then
+        assert_eq!(protocol, Some(7));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn should_have_no_protocol_from_a_binary_that_cannot_tell() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let binary = dir.path().join("missing");
+
+        // when
+        let protocol = staged_protocol(&binary);
+
+        // then
+        assert_eq!(protocol, None);
     }
 
     #[test]
