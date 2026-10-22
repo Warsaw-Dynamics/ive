@@ -4,8 +4,8 @@ Final design of the `checkouts.html` mock, written as input for the implementati
 Serve with `cd internal-apps/ive && python3 -m http.server 8767`, open
 <http://localhost:8767/mock/checkouts.html>.
 
-Since 2026-10-18 the mock shows the app as the Rust code draws it (last synced 2026-10-20: run configurations,
-temporary tabs, the tab menu). Parts of this design the app does not have yet are marked *(not in the app yet)*; the
+Since 2026-10-18 the mock shows the app as the Rust code draws it (last synced 2026-10-22: run configurations,
+temporary tabs, the tree and tab menus, Send to Terminal, the hub's contents search). Parts of this design the app does not have yet are marked *(not in the app yet)*; the
 mock does not show them (they are in its git history). Run configurations: the README, "Run configurations".
 
 ## Model
@@ -101,6 +101,8 @@ Only projects, worktrees, processes and files:
     (a run's: SIGKILL 5 s later if it is still there), Kill SIGKILL at once. Greyed when nothing runs in the
     foreground (an idle shell, an exited run).
   - a separator, when any of the above shows.
+  - a file's tab (a file, a diff): Send to Terminal ▸, Find in Files…, Copy Path ▸, Open In ▸, Git ▸, as in the tree's
+    menu (see Menus), then a separator.
   - Close, Close Other Tabs, Close Tabs to the Left, Close Tabs to the Right; the last three greyed with nothing to
     close. When the shown tab closes, the right-pressed one shows.
   - Escape or a press outside closes it. Styled as the Open project menu, as wide as its items.
@@ -258,6 +260,33 @@ Explored and dropped (2026-10-20): the header title switching whole views (Files
 Alt+1…5); then a header menu of layer ticks; `@name` chips, uppercase section headers and badge-opened headers for
 the folders.
 
+## Menus
+
+A right press on a tree row, or on a tab, opens its menu at the pointer (`menus.js`; workspace/menu.rs). Both are
+declared in Rune, `ive.rn`'s `config.tree_menus.main` and `config.tab_menus.main`, which `init.rn` edits, replaces,
+or adds to: its own items run a Rune function, submenus nest, and `when` (kind, name and path globs, count, or an
+async predicate that fills the open menu in) leaves items out. Items that do not apply are left out, then the
+separators left dangling and the submenus left empty. A submenu opens beside its line (`▸`) on hover or click.
+
+A row's menu applies to its file or folder (the selection in the app; the mock has no multi-select), a worktree or
+project row to its root folder, a changed file to the file:
+
+- **Send to Terminal ▸**: the terminals and Claude Code sessions, most recently used first (shown, or Enter pressed
+  in them), each `title · worktree`, then New Terminal in the worktree. The path is pasted into the chosen one, which
+  is shown; nothing is pressed. Relative to the terminal's folder (`../` included) when it works in the path's
+  worktree, else absolute. A drag onto a terminal and the hub's Alt+Enter type paths the same way.
+- **Open in Terminal**: a terminal in the folder (a file's folder).
+- **Run**: a `.sh`, `.bash` or `.zsh` file runs as a shell scratch does; a folder with a `.run.toml` lists its
+  configurations.
+- **Find in Files…**: the hub searching the contents of the file or folder (see Hub, Contents).
+- **Copy Path ▸**: Copy Absolute Path, Copy Relative Path (to the worktree), Copy File Name.
+- **Open In ▸**: Reveal in Files (Finder), Open in Default App (files), Open in Browser (`.html`, `.htm`, `.svg`),
+  Open in New Window (files). The mock does nothing for them.
+- **Git ▸**: Show Diff (an uncommitted file), Compare with Base Branch (a file changed since the base), Show History
+  (a Git log tab, `History · <name>`, of the commits that changed the path, following a renamed file; the mock lists
+  the project's log), Add to .gitignore (tree only; anchored lines, `/path`, `/folder/`).
+- **Compare Files**: two selected files in a diff tab (not in the mock: no multi-select).
+
 ## Hub (Ctrl+E)
 
 IntelliJ's Ctrl+E (Recent Files), widened into one place for everything recent and for finding any file. Mocked
@@ -304,14 +333,22 @@ in `hub.js`, `hub.css` and `components/checkouts/hub.html`; it searches the mono
 - **Prefixes** switch what is listed: `>` actions (New terminal, New scratch, Git log, Close Other Tabs, theme…),
   `@` processes and run configurations (Enter asks the worktree, then shows its live run or starts one), `#` worktrees and branches (Enter
   on a branch without a worktree creates it).
-- **Preview** on the right, as `fzf --preview`: the file's text (line highlighted for `file:line`), a change's diff,
-  a process's last lines, a worktree's summary.
+- **Preview** on the right, as `fzf --preview`: the file's text (line highlighted for `file:line`, from a few lines
+  above it), a change's diff, a process's last lines, a worktree's summary.
+- **Contents** (Ctrl+Shift+F from anywhere, or in the hub; a menu's Find in Files… on its file or folder): the query
+  searches the files' lines instead of their names. Plain text from 2 characters, smart case; Alt+R (`.*`) a regex,
+  Alt+W (`W`) whole words; an invalid regex says why. One row per matching line, `path:line` and the line with its
+  matches highlighted (a long line cut around its first match); Enter opens the file at the line, the preview shows
+  the lines around it. It searches the scope's worktrees and, for All or a project, the scratches; or the files and
+  folders picked in a menu, named in the section (`Contents of src +1`), which Backspace on an empty query drops.
+  Gitignored and excluded files only with Alt+I, but a folder picked on purpose is searched even when ignored itself.
+  Counter `n matches in m files`; the list stops at 2,000 lines. The mock searches the text its files and scratches
+  have.
 
 Further ideas, not mocked:
 
 - Frecency instead of plain recency; pinned rows on top of Recent.
 - Recent locations (IntelliJ's Ctrl+Shift+E): the places edited, with a line of context each.
-- `/text`: content search (ripgrep) over the scope, results streamed into the same list.
 - Jira keys: `GEN-817` finds the branch, its worktree, its commits and the ticket.
 - Commits by subject (`~`), stashes; recently closed projects to reopen.
 - Search runs off the UI thread over an index kept by the OpenPaths watcher; the list streams like fzf does.

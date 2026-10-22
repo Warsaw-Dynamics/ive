@@ -20,16 +20,34 @@
   <div class="tabbar__tools" x-include="components/checkouts/tab-tools.html"></div>
   </div>
 
-  <!-- editor.rs tab menu: Keep Tab (temporary tab), Stop and Kill (process tab; greyed with nothing in the foreground),
-       a separator, then the Close items (greyed with nothing to close there). Escape or a press outside closes it. -->
-  <template x-for="tab in (menu === 'tab' && menuTab() ? [menuTab()] : [])" :key="tab.key">
-    <div class="menu menu--at" :style="{ left: tabMenu.x + 'px', top: tabMenu.y + 'px' }" role="menu"
-         x-init="$nextTick(() => keepTabMenuInWindow($el))" @mousedown.outside="menu = null" @contextmenu.prevent>
-      <template x-for="(item, i) in tabMenuItems(tab)" :key="i">
-        <div>
+  <!-- workspace/menu.rs: the menu of a tab or a tree row (menus.js). A tab's: Keep Tab (temporary tab), Stop and Kill
+       (process tab; greyed with nothing in the foreground), a file's items, then the Close items (greyed with nothing to
+       close there). A tree row's: Send to Terminal ▸, Open in Terminal, Run, Find in Files…, Copy Path ▸, Open In ▸, Git ▸.
+       A submenu opens beside its line on hover or click. Escape or a press outside closes it. -->
+  <template x-for="m in (contextMenu() ? [contextMenu()] : [])" :key="menu">
+    <div class="menu menu--at" :style="{ left: m.at.x + 'px', top: m.at.y + 'px' }" role="menu"
+         x-init="$nextTick(() => keepMenuInWindow($el, m.at))" @mousedown.outside="menu = null" @contextmenu.prevent>
+      <template x-for="(item, i) in m.items" :key="i">
+        <div class="menu__line">
           <template x-if="item === null"><div class="menu__separator" role="separator"></div></template>
           <template x-if="item !== null">
-            <button class="menu__item" type="button" role="menuitem" :disabled="item.enabled === false" @click="runTabMenuItem(item)" x-text="item.title"></button>
+            <button class="menu__item" type="button" role="menuitem" :disabled="item.enabled === false" @click="runMenuItem(item)"
+                    @mouseenter="menuSub = item.items ? item : null" :class="{ 'menu__item--open': menuSub !== null && menuSub.title === item.title }">
+              <span class="menu__grow" x-text="item.title"></span>
+              <template x-if="item.items"><span class="menu__arrow">▸</span></template>
+            </button>
+          </template>
+          <template x-if="item !== null && item.items && menuSub !== null && menuSub.title === item.title">
+            <div class="menu menu__sub" role="menu">
+              <template x-for="(sub, j) in item.items" :key="j">
+                <div>
+                  <template x-if="sub === null"><div class="menu__separator" role="separator"></div></template>
+                  <template x-if="sub !== null">
+                    <button class="menu__item" type="button" role="menuitem" :disabled="sub.enabled === false" @click="runMenuItem(sub)" x-text="sub.title"></button>
+                  </template>
+                </div>
+              </template>
+            </div>
           </template>
         </div>
       </template>

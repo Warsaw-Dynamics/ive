@@ -14,7 +14,7 @@ right; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Sett
 `include.js` and `vendor/alpine.min.js` are copied from `forge-installer/mock`.
 
 `checkouts.html` (design notes: [DESIGN.md](DESIGN.md)) mocks the app as it is now (synced with the Rust code on
-2026-10-20): projects and worktrees in one sidebar, each worktree with its folders: Processes (terminals, Claude
+2026-10-22): projects and worktrees in one sidebar, each worktree with its folders: Processes (terminals, Claude
 Code, every run), Uncommitted, Since base, Commits and Files; the badges on the worktree row show or hide them
 (DESIGN.md "Worktree folders"). Clicking a project opens its overview as a tab (Worktrees, Git, Scratches); a worktree
 row expands. Git is read-only; Open Git opens the Git log tab, a log commit a commit tab, a changed file in the tree
@@ -23,11 +23,18 @@ kept when a worktree is removed. A click opens a project overview, or Settings, 
 it goes when another tab is shown, and the next tab opens in its place; double-clicking the tab, middle-clicking the
 tree row or the tab menu's Keep Tab keeps it. Other tabs open permanent, right of the shown one. A right press on a tab
 opens its menu (the tab is not shown): Keep Tab (temporary tab), Stop and Kill (process tab: SIGTERM, SIGKILL; greyed with
-nothing in the foreground), then Close, Close Other Tabs, Close Tabs to the Left, to the Right. There is no title
+nothing in the foreground), a file's items (Send to Terminal ▸, Find in Files…, Copy Path ▸, Open In ▸, Git ▸), then
+Close, Close Other Tabs, Close Tabs to the Left, to the Right. A right press on a tree row opens its menu (`menus.js`,
+DESIGN.md "Menus"): Send to Terminal ▸ (terminals most recently used first, then a new one; the path is typed into it,
+relative in its own worktree), Open in Terminal, Run (shell files, `.run.toml` folders), Find in Files…, Copy Path ▸,
+Open In ▸ and Git ▸ (Show Diff, Compare with Base Branch, Show History, Add to .gitignore); submenus open on hover. There is no title
 bar: Settings and the window buttons sit at the right end of the tab row; the gear (or Ctrl+,) opens Settings,
 whose Appearance page switches the theme. Alt+F12 opens a terminal in the current tab's checkout.
 Ctrl+E opens the hub (a proposal, DESIGN.md "Hub"): recent items, changes in every worktree and running processes;
 typing searches the monorepo's real file paths fzf-style (`data/files.gz`; regenerate with `tools/hub-files.sh`; it also samples the ignored files). Alt+I searches excluded and gitignored files too.
+Ctrl+Shift+F (in the hub too) searches the files' contents instead: rows `path:line` with the matches marked, Alt+R
+regex, Alt+W whole words; Find in Files… in a menu limits it to that file or folder (Backspace on an empty query drops
+it). The mock searches the text its files and scratches have.
 Ctrl+Shift+T (in a browser also Alt+Shift+T; DESIGN.md "New terminal") asks where a new terminal goes: a project, a
 worktree, or a branch without one (local, or only on `origin` with a faded icon), which first gets its worktree in
 the folder `.ive.toml` names. A Processes row's + (on hover) starts a terminal there.
