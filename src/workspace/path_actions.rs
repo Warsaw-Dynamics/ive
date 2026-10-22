@@ -6,7 +6,7 @@ use std::path::Path;
 use gpui::{ClipboardItem, Context, Window};
 
 use super::Workspace;
-use crate::menu::resolve::Applies;
+use crate::menu::resolve::{Applies, Choice};
 use crate::menu::{PathKind, Subject, SubjectPath, Within};
 use crate::os_open;
 use crate::project::CheckoutRef;
@@ -28,6 +28,19 @@ pub fn path_applies(builtin: Builtin, subject: &Subject) -> Option<Applies> {
         _ => return None,
     };
     Some(if shown { Applies::Shown { enabled: true } } else { Applies::Hidden })
+}
+
+/// What Run does for `subject`: a shell file runs; a folder lists the configurations `configs` gives for it, as
+/// `(key, name)`; anything else hides it.
+pub fn run_applies(subject: &Subject, configs: impl Fn(&Path) -> Vec<(String, String)>) -> Applies {
+    match &subject.paths[..] {
+        [file] if file.kind == PathKind::File && crate::scratch::run::shell_for(&file.path.to_string_lossy()).is_some() => Applies::Shown { enabled: true },
+        [folder] if folder.kind == PathKind::Folder => {
+            let choices: Vec<Choice> = configs(&folder.path).into_iter().map(|(key, name)| Choice::Item { label: name, choice: key, enabled: true }).collect();
+            if choices.is_empty() { Applies::Hidden } else { Applies::Choices(choices) }
+        }
+        _ => Applies::Hidden,
+    }
 }
 
 /// Whether `builtin` is a path action, which runs on a subject.
@@ -85,6 +98,34 @@ impl Workspace {
         }
     }
 
+    /// What Run does for `subject`, with the configurations of the `.run.toml` files IVE has read.
+    pub(super) fn run_file_applies(&self, subject: &Subject) -> Applies {
+        run_applies(subject, |folder| {
+            let file = self.checkout_ref_of(folder).and_then(|checkout| self.run_file_of(&checkout, folder));
+            file.map(|file| file.configs.iter().map(|config| (config.key.clone(), config.name.clone())).collect()).unwrap_or_default()
+        })
+    }
+
+    /// Runs a shell file of `subject`, or starts configuration `key` of its folder's `.run.toml`.
+    pub(super) fn run_from_menu(&mut self, key: Option<&str>, subject: &Subject, window: &mut Window, cx: &mut Context<Self>) {
+        let [path] = &subject.paths[..] else {
+            return;
+        };
+        let checkout = self.checkout_ref_of(&path.path);
+        let started = match (key, checkout) {
+            (Some(key), Some(checkout)) => {
+                let request = crate::run::values_tab::RunRequest { checkout, folder: path.path.clone(), key: key.to_owned(), show: crate::run::values_tab::ShowRun::Tab };
+                self.request_run(request, window, cx);
+                Ok(())
+            }
+            (None, checkout) => self.run_shell_file(&path.path, checkout, window, cx).map(drop),
+            (Some(_), None) => Err(format!("{} is in no open project", path.path.display())),
+        };
+        if let Err(error) = started {
+            eprintln!("ive: cannot run {}: {error}", path.path.display());
+        }
+    }
+
     /// The innermost open checkout holding `path`.
     pub(super) fn checkout_ref_of(&self, path: &Path) -> Option<CheckoutRef> {
         let holding = self.projects.iter().filter_map(|open| open.project.checkout_containing(path).map(|checkout| open.project.checkout_ref(checkout)));
@@ -97,6 +138,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+    use crate::menu::resolve::Choice;
     use crate::menu::{Home, SubjectPath};
 
     fn path(path: &str, within: Within, kind: PathKind) -> SubjectPath {
@@ -197,6 +239,34 @@ mod tests {
 
         // then
         assert_eq!(offered, [Some(Applies::Hidden), Some(Applies::Hidden), Some(Applies::Hidden)]);
+    }
+
+    fn configs(folder: &std::path::Path) -> Vec<(String, String)> {
+        match folder.to_str() {
+            Some("/w/app") => vec![("dev".to_owned(), "Dev server".to_owned()), ("test".to_owned(), "Tests".to_owned())],
+            _ => Vec::new(),
+        }
+    }
+
+    #[test]
+    fn should_offer_run_only_for_shell_files_and_run_folders() {
+        // given
+        let app = path("/w/app", Within::Checkout("app".to_owned()), PathKind::Folder);
+        let docs = path("/w/docs", Within::Checkout("docs".to_owned()), PathKind::Folder);
+
+        // when
+        let offered = [
+            run_applies(&subject(vec![file("build.sh")]), configs),
+            run_applies(&subject(vec![file("deploy.ZSH")]), configs),
+            run_applies(&subject(vec![file("a.rs")]), configs),
+            run_applies(&subject(vec![file("a.sh"), file("b.sh")]), configs),
+            run_applies(&subject(vec![docs]), configs),
+        ];
+
+        // then
+        assert_eq!(offered, [Applies::Shown { enabled: true }, Applies::Shown { enabled: true }, Applies::Hidden, Applies::Hidden, Applies::Hidden]);
+        let Applies::Choices(choices) = run_applies(&subject(vec![app]), configs) else { panic!() };
+        assert_eq!(choices[1], Choice::Item { label: "Tests".to_owned(), choice: "test".to_owned(), enabled: true });
     }
 
     #[test]

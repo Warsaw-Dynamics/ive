@@ -212,7 +212,9 @@ impl Workspace {
         if cx.global::<ClickTargets>().get(name).is_some() {
             return false;
         }
-        let row = self.tree.rows.iter().position(|row| row.target_names().iter().any(|target| target == name));
+        // a row's menu is reached as the row is
+        let wanted = name.strip_prefix("tree-menu:").unwrap_or(name);
+        let row = self.tree.rows.iter().position(|row| row.target_names().iter().any(|target| target == wanted));
         let Some(index) = row else {
             return false;
         };

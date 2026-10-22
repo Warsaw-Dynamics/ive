@@ -329,6 +329,7 @@ impl Workspace {
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tab(tab)) if builtin.is_tab_command() => self.run_tab_command(builtin, *tab, window, cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), _) => self.run_menu_builtin(builtin, &menu.subject, window, cx),
             (LineAction::Choice { builtin: Builtin::SendPathsToTerminal, choice }, _) => self.send_paths_to(&choice, &menu.subject, window, cx),
+            (LineAction::Choice { builtin: Builtin::RunFile, choice }, _) => self.run_from_menu(Some(&choice), &menu.subject, window, cx),
             (LineAction::Choice { .. }, _) => {}
         }
     }
@@ -337,6 +338,7 @@ impl Workspace {
     fn run_menu_builtin(&mut self, builtin: Builtin, subject: &Subject, window: &mut Window, cx: &mut Context<Self>) {
         match super::path_actions::path_applies(builtin, subject) {
             Some(_) => self.run_path_action(builtin, subject, window, cx),
+            None if builtin == Builtin::RunFile => self.run_from_menu(None, subject, window, cx),
             None => self.run_window_builtin(builtin, window, cx),
         }
     }
@@ -351,6 +353,7 @@ impl Workspace {
             }
             (Builtin::OpenHub | Builtin::OpenSettings | Builtin::OpenTerminal | Builtin::OpenTerminalIn | Builtin::ToggleChangesLayout, _) => Applies::Shown { enabled: true },
             (Builtin::SendPathsToTerminal, _) => self.terminal_choices(subject),
+            (Builtin::RunFile, _) => self.run_file_applies(subject),
             (path_action, _) => super::path_actions::path_applies(path_action, subject).unwrap_or(Applies::Hidden),
         }
     }
