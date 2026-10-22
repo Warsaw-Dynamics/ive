@@ -11,6 +11,10 @@ impl Workspace {
     /// The crosshair button: finds the shown tab's file, worktree, process or project in the tree. Folders not read
     /// yet are read first, one level at a time, so the row may appear a moment later.
     pub(crate) fn select_opened(&mut self, cx: &mut Context<Self>) {
+        // a tab of a project the picker left out shows it again
+        if let Some(project) = self.tabs.active().and_then(|tab| tab.project(self)) {
+            self.hidden_projects.remove(&project);
+        }
         self.locating = self.tabs.active().and_then(|tab| self.tree_key_of(tab));
         self.continue_locating(cx);
         self.schedule_save(cx);

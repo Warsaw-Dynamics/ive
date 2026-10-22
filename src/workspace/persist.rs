@@ -107,7 +107,7 @@ impl Workspace {
         SavedState {
             version: VERSION,
             shown_folders: every,
-            only_project: None,
+            hidden_projects: self.hidden_projects.iter().map(|id| id.as_str().to_owned()).collect(),
             projects: self.projects.iter().map(|open| open.saved()).collect(),
             recent: self.recent.clone(),
             tabs: self.saved_tabs(cx),

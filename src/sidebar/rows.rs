@@ -235,7 +235,7 @@ pub fn target_name(verb: &str, row: &str) -> String {
 
 /// Every visible row, top to bottom. A project with one checkout (or no git) has no worktree level: its
 /// Processes row and files sit directly under it.
-pub fn build<V>(projects: &[OpenProject], processes: &Processes<V>, runs: &dyn RunsView, look: &TreeLook) -> Vec<TreeRow> {
+pub fn build<'a, V>(projects: impl IntoIterator<Item = &'a OpenProject>, processes: &Processes<V>, runs: &dyn RunsView, look: &TreeLook) -> Vec<TreeRow> {
     let mut rows = Vec::new();
     let tree = Sources { processes, runs, look };
     for project in projects {

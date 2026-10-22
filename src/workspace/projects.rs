@@ -77,6 +77,8 @@ impl Workspace {
                 self.projects.push(open);
             }
         }
+        let open: Vec<ProjectId> = self.projects.iter().map(|open| open.project.id.clone()).collect();
+        self.hidden_projects.retain(|id| open.contains(id));
         self.refresh_all(cx);
         self.tree_changed(cx);
     }
@@ -165,6 +167,15 @@ impl Workspace {
     /// Puts a scanned folder in the tree: the open project it belongs to takes the scan as it takes a refresh's
     /// (the later-started scan wins), a new one is added at the end.
     fn place_opened(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
+        let placed = self.place_scanned(new, folder, cx);
+        // a project opened shows, though the picker left it out
+        if let Ok(id) = &placed {
+            self.hidden_projects.remove(id);
+        }
+        placed
+    }
+
+    fn place_scanned(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
         match project_list::holding(&self.projects, folder, &new.scan).map(|open| open.project.id.clone()) {
             Some(id) => {
                 self.apply_scan(&id, Scanned { number: new.number, result: Ok(new.scan) }, cx);
@@ -396,6 +407,7 @@ impl Workspace {
         if project_list::close(&mut self.projects, &mut self.recent, id).is_none() {
             return;
         }
+        self.hidden_projects.remove(id);
         self.project_closed(id, cx);
         self.tree_changed(cx);
         self.schedule_save(cx);

@@ -4,10 +4,13 @@ use std::collections::BTreeSet;
 
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb};
 
-use super::{menu_item, menu_panel, menu_section};
+use super::{badge, header_button_press, menu_item, menu_panel, menu_section};
 use crate::click_targets::target;
 use crate::hub::key_label;
+use crate::icons;
 use crate::overview::file_list::FileLayout;
+use crate::project::ProjectId;
+use crate::sidebar::rows::initials;
 use crate::script::keymap::{Action, Builtin, Keymap, Scope};
 use crate::sidebar::folders::FolderKind;
 use crate::theme::Theme;
@@ -52,6 +55,92 @@ pub(super) fn folders_menu(menu: &FoldersMenu, theme: Theme, cx: &mut Context<Wo
         .child(separator(theme))
         .child(layout_row(menu, theme, cx))
         .children(reset)
+}
+
+/// What the title's picker shows and lists: the open projects, in tree order.
+pub struct ProjectsMenu {
+    pub projects: Vec<PickedProject>,
+}
+
+pub struct PickedProject {
+    pub id: ProjectId,
+    pub name: String,
+    /// in the tree and the hub
+    pub shown: bool,
+    /// live processes
+    pub running: usize,
+}
+
+impl ProjectsMenu {
+    fn all_shown(&self) -> bool {
+        self.projects.iter().all(|project| project.shown)
+    }
+
+    /// The header's title: `All projects`, the one shown, or `2 of 4 projects`.
+    fn title(&self) -> String {
+        let shown: Vec<&PickedProject> = self.projects.iter().filter(|project| project.shown).collect();
+        match shown.as_slice() {
+            _ if self.all_shown() => "All projects".to_owned(),
+            [one] => one.name.clone(),
+            many => format!("{} of {} projects", many.len(), self.projects.len()),
+        }
+    }
+}
+
+/// The header's title: `All projects ▾`, the one project shown with its badge, or `2 of 4 projects ▾`; a click opens
+/// the picker.
+pub(super) fn picker_button(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let sizes = &theme.sizes.tree;
+    let shown: Vec<&PickedProject> = menu.projects.iter().filter(|project| project.shown).collect();
+    let one = match shown.as_slice() {
+        [one] if !menu.all_shown() => Some(*one),
+        _ => None,
+    };
+    let open = target("project-picker".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(super::HeaderMenu::Projects, window, cx)), cx);
+    header_button_press(div().id("project-picker"), cx)
+        .flex()
+        .min_w_0()
+        .items_center()
+        .gap(sizes.menu_item_gap.px())
+        .px(sizes.header_button_padding.px())
+        .rounded(sizes.header_button_radius.px())
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)))
+        .text_size(sizes.header_title_size.px())
+        .font_weight(sizes.header_title_weight.font_weight())
+        .children(one.map(|project| badge(&initials(&project.name), theme.accent, theme.on_accent, theme)))
+        .child(div().overflow_hidden().text_ellipsis().whitespace_nowrap().child(menu.title()))
+        .child(icon(theme, icons::CHEVRON_DOWN))
+        .tooltip(tooltip::text_tooltip("Show all projects, or one"))
+        .on_click(open)
+}
+
+/// Under the whole header: All projects with how many are open, then each open project with a tick while it shows;
+/// a click shows it or leaves it out (the last one shown stays), and the menu stays open.
+pub(super) fn projects_menu(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let all = target("show-projects:all".to_owned(), cx.listener(|workspace, _event, _window, cx| workspace.show_all_projects(cx)), cx);
+    let all = menu_item("show-projects-all", theme)
+        .child(tick(menu.all_shown(), theme))
+        .child(div().flex_1().child("All projects"))
+        .child(key_hint(menu.projects.len().to_string(), theme))
+        .on_click(all);
+    let rows = menu.projects.iter().enumerate().map(|(index, project)| {
+        let id = project.id.clone();
+        let show = target(format!("show-projects:{}", id.as_str()), cx.listener(move |workspace, _event, _window, cx| workspace.toggle_project_shown(id.clone(), cx)), cx);
+        let running = (project.running > 0).then(|| key_hint(format!("● {} running", project.running), theme));
+        menu_item(("show-project", index), theme)
+            .child(tick(project.shown, theme))
+            .child(badge(&initials(&project.name), theme.hover, theme.text, theme))
+            .child(div().flex_1().overflow_hidden().text_ellipsis().child(project.name.clone()))
+            .children(running)
+            .on_click(show)
+    });
+    menu_panel("projects-menu", theme)
+        .left(theme.sizes.tree.menu_offset.px())
+        .right(theme.sizes.tree.menu_offset.px())
+        .child(all)
+        .child(separator(theme))
+        .children(rows)
 }
 
 /// `Changed files`, a Flat | Tree switch, the key that flips it.

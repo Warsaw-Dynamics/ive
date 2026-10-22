@@ -67,13 +67,14 @@ impl Tree {
     }
 }
 
-pub use header_menus::{FoldersMenu, menu_keys};
+pub use header_menus::{FoldersMenu, PickedProject, ProjectsMenu, menu_keys};
 
 /// The header's menus; one is open at a time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeaderMenu {
     OpenProject,
     Folders,
+    Projects,
 }
 
 /// What the sidebar draws besides the tree.
@@ -83,6 +84,8 @@ pub struct Sidebar<'a> {
     pub menu: Option<HeaderMenu>,
     /// while the folders menu is open
     pub folders: Option<FoldersMenu>,
+    /// the title's picker and its menu
+    pub projects: ProjectsMenu,
     pub drag: &'a WindowDrag,
     pub width: f32,
     pub resizing: bool,
@@ -158,7 +161,8 @@ fn row_width(row: &TreeRow) -> usize {
     (row.depth + slots) * 3 + text
 }
 
-/// "Projects", then Select Opened File and the Open project button at the right; empty space moves the window, as
+/// The project picker (All projects, or the one shown), then the folders menu, Select Opened File and the Open
+/// project button at the right; empty space moves the window, as
 /// the tab row's does.
 fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
@@ -166,18 +170,14 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         .tooltip(tooltip::text_tooltip("Select opened file"))
         .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
         .on_click(target("select-opened".to_owned(), cx.listener(|workspace, _event, _window, cx| workspace.select_opened(cx)), cx));
-    let open = header_button("open-project", icons::ADD, theme)
+    let open = header_button_press(header_button("open-project", icons::ADD, theme), cx)
         .tooltip(tooltip::text_tooltip("Open project"))
-        // the capture phase comes before the open menu's press-outside, which closes it
-        .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
-        .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
         .on_click(target("open-project".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(HeaderMenu::OpenProject, window, cx)), cx));
-    let folders = header_button("folders-menu", icons::PROJECT_FOLDER, theme)
+    let folders = header_button_press(header_button("folders-menu", icons::PROJECT_FOLDER, theme), cx)
         .tooltip(tooltip::text_tooltip("Folders in every worktree"))
-        .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
-        .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
         .on_click(target("folders-menu".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(HeaderMenu::Folders, window, cx)), cx));
     let folders_menu = sidebar.folders.as_ref().map(|menu| deferred(header_menus::folders_menu(menu, theme, cx)).with_priority(1));
+    let projects_menu = (sidebar.menu == Some(HeaderMenu::Projects)).then(|| deferred(header_menus::projects_menu(&sidebar.projects, theme, cx)).with_priority(1));
     sidebar
         .drag
         .apply(div().id("sidebar-header"))
@@ -192,7 +192,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         .border_b(sizes.border.px())
         .border_color(rgb(theme.border))
         .window_control_area(WindowControlArea::Drag)
-        .child(div().text_size(sizes.header_title_size.px()).font_weight(sizes.header_title_weight.font_weight()).child("Projects"))
+        .child(header_menus::picker_button(&sidebar.projects, theme, cx))
         .child(
             div()
                 .flex()
@@ -205,6 +205,15 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         )
         .when(sidebar.menu == Some(HeaderMenu::OpenProject), |header| header.child(deferred(render_menu(sidebar.recent, theme, cx)).with_priority(1)))
         .children(folders_menu)
+        .children(projects_menu)
+}
+
+/// A header button's press: noted before the open menu's press-outside closes it (the capture phase comes first),
+/// and kept from moving the window.
+fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    button
+        .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
+        .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
 }
 
 fn header_button(id: &'static str, name: &str, theme: Theme) -> Stateful<Div> {
