@@ -352,14 +352,14 @@
         var project = back && back.project && this.treeProjectNames().includes(back.project) ? back.project : null;
         var stops = ['all'];
         // with one project in the tree, all is that project
-        if (project && project !== this.onlyProject) stops.push('p:' + project);
+        if (project && project !== this.onlyShown()) stops.push('p:' + project);
         if (project) stops.push('w:' + (back.co || this.byRecency(this.checkoutIds(project))[0]));
         var scope = this.hubScope();
         if (stops.includes(scope) === false) stops.push(scope);
         return stops;
       },
       hubScopeLabel: function (scope) {
-        if (scope === 'all') return this.onlyProject === null ? 'All projects' : this.onlyProject;
+        if (scope === 'all') return this.allLabel();
         return scope.startsWith('p:') ? scope.slice(2) : this.label(scope.slice(2));
       },
       // Tab: the next stop; from a picked scope (the last stop) back to all.
@@ -473,12 +473,12 @@
       hub_scope: function (groups) {
         var self = this;
         var running = function (ids) { return self.consoles.filter(function (c) { return ids.includes(c.co) && self.isLive(c); }).length; };
-        var items = [this.hubItem({ id: 'sc:all', icon: 'project-folder.svg', title: this.hubScopeLabel('all'), detail: this.onlyProject === null ? 'every open project' : 'the project the tree shows', scope: 'all' })];
+        var items = [this.hubItem({ id: 'sc:all', icon: 'project-folder.svg', title: this.hubScopeLabel('all'), detail: this.allProjectsShown() ? 'every open project' : 'the projects the tree shows', scope: 'all' })];
         this.treeProjects().forEach(function (p) {
           var ids = self.checkoutIds(p.name);
           var n = running(ids);
           // with one project in the tree, the first row (all) is that project; its worktrees follow
-          if (p.name !== self.onlyProject) items.push(self.hubItem({ id: 'sc:p:' + p.name, icon: 'project-folder.svg', title: p.name, detail: ids.length > 1 ? ids.length + ' worktrees' : (p.git ? 'one checkout' : 'no git'),
+          if (p.name !== self.onlyShown()) items.push(self.hubItem({ id: 'sc:p:' + p.name, icon: 'project-folder.svg', title: p.name, detail: ids.length > 1 ? ids.length + ' worktrees' : (p.git ? 'one checkout' : 'no git'),
             state: n ? '● ' + n + ' running' : null, scope: 'p:' + p.name }));
           if (ids.length < 2) return;
           self.byRecency(ids).forEach(function (id) {

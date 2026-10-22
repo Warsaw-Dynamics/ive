@@ -8,7 +8,7 @@
 //   o, g    an overview's section (<tab key>~<section>), a worktree's git view (<checkout>~<view>), repeated
 //   rlayout the run configurations tab's layout
 //   every   the folders every worktree shows (a proposal), when not all of them
-//   only    the project the tree shows alone (a proposal)
+//   hidden  the projects the tree and the hub leave out
 //   theme, side, page, layout, sort, gap, radius, q, changed, excl, scope, nt: theme, tree width, Settings page, git
 //           layout and order, panel gap and radius, hub query, "changed only", "with excluded", scope and whether
 //           the hub asks where a new terminal goes (Ctrl+Shift+T)
@@ -58,7 +58,7 @@
         add('rlayout', this.runLayout === 'flat' ? null : this.runLayout);
         add('gap', this.panelGap);
         add('radius', this.panelRadius);
-        add('only', this.onlyProject);
+        add('hidden', this.hiddenProjects.join(','));
         var every = this.everyFolder;
         var folders = Object.keys(every).filter(function (k) { return every[k]; }).join(',');
         add('every', folders === Object.keys(every).join(',') ? null : folders);

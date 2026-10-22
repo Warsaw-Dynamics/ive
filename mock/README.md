@@ -60,5 +60,5 @@ settings, gitlog, commit, diff, runconfigs (the Processes row's tab over the `ru
 server, a running command and a finished build); hub (the hub; `q`: its query, `changed=1`: changed only); `section`: an overview section; `layout`: flat, tree (the mock starts with tree);
 `page`: a Settings page; `menu`: add, branches, tab (the tab menu on the shown tab); `gap`: pixels between the
 tree and the editor, 5 by default (as the app), 0 for the flat layout; `radius`: the panels' corner radius, 8 by default;
-`side`: the tree's width in pixels; `only`: the project the tree (and the hub) shows alone, see DESIGN.md "One
-project in the tree"; `every`: the folders every worktree shows (the mock starts with all), see DESIGN.md "Folders for every worktree").
+`side`: the tree's width in pixels; `hidden`: the projects the tree (and the hub) leave out, comma separated, see
+DESIGN.md "Projects in the tree"; `every`: the folders every worktree shows (the mock starts with all), see DESIGN.md "Folders for every worktree").

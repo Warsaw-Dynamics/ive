@@ -37,7 +37,7 @@ No generated run configurations: only what is in the files.
 
 - **No title bar.** The editor tab row is the top of the window; settings, minimize,
   maximize and close sit at its right end. Empty tab-row space is the drag area.
-- **Left: tree** (sidebar on the `tree` colour, header: the project picker (see "One project in the tree") + the
+- **Left: tree** (sidebar on the `tree` colour, header: the project picker (see "Projects in the tree") + the
   folders menu + Select opened file + "Open project" menu with recent projects and "Open Folder…"). **Right: editor tabs.** Both header rows are 36 px. Tree rows are 24 px,
   Inter 13 px.
 - Alt+F12 opens (or focuses) a terminal in the current tab's checkout. Escape closes menus.
@@ -250,14 +250,14 @@ no chip and no `@` (`@hidden` keeps its). In this order:
   rows; one you open or close stays so. **Alt+Shift+G** flips it from anywhere in the window.
 - **Counts**: a folder's count follows its label as `· 4`, 11 px in the secondary colour at 75% (no pill), so it
   reads as a note, not a button; the worktree row's badges keep their chips, being switches.
-- **Header**: the project picker (see "One project in the tree"); its folder button sets the folders every
+- **Header**: the project picker (see "Projects in the tree"); its folder button sets the folders every
   worktree shows (see "Folders for every worktree").
 
 Explored and dropped (2026-10-20): the header title switching whole views (Files / Changes / Commits / Processes,
 Alt+1…5); then a header menu of layer ticks; `@name` chips, uppercase section headers and badge-opened headers for
 the folders.
 
-## Folders for every worktree (proposal)
+## Folders for every worktree (in the app since 2026-10-22)
 
 Each worktree's badges are its own, so showing Commits everywhere took a click on each worktree. Now there is a set
 of folders **every worktree** shows (Processes and Files in a new profile; the mock starts with all five, changed files in Tree), which new worktrees get too:
@@ -265,34 +265,39 @@ of folders **every worktree** shows (Processes and Files in a new profile; the m
 - **Projects header**: a folder button left of Select opened file opens a menu, "In every worktree", with a tick per
   folder (Processes, Uncommitted, Since base, Commits, Files); a click switches that folder in every worktree. Under
   them, one row "Changed files" with a Flat | Tree switch (the run configurations tab's), the layout Alt+Shift+G
-  flips (see "Worktree folders"). Each row shows its shortcut on its right, muted: **Alt+Shift+1…5** for the folders,
-  in that order (window scope, as Alt+Shift+G; Alt+1…9 stays the hub's), Alt+Shift+G after the switch.
+  flips (see "Worktree folders"). Each row shows its shortcut on its right, muted, as `init.rn` binds it:
+  **Alt+Shift+P, U, B, C, F** (`act::ToggleFolderEverywhere`, window scope, as Alt+Shift+G), Alt+Shift+G after the
+  switch. Not Alt+Shift+1…5: with Shift a digit key arrives as `!`, `@`, … depending on the keyboard layout.
 - **Badges**: a click still shows or hides the folder in this worktree only; **Alt+click** does it in every worktree.
 - A worktree follows the set except for the folders it switched itself. Those badges carry a dot (accent, top
   right), and their tooltip says `· this worktree only`, then what a click and an Alt+click do.
 - Switching a folder for every worktree, from the menu or by Alt+click, also ends the worktrees set apart on that
   folder, so every worktree then shows what the click showed. When some are set apart, the menu ends with
   "Reset N worktrees set apart" (the worktrees in its tooltip), which ends them all.
-- In the app: the set goes in `state.toml` next to the per-worktree folders, which then keep only what differs
-  (`CheckoutFolders.shown` becoming overrides).
+- In the app: the set is `shown_folders` in `state.toml`; a checkout keeps its own full set as before, and one nobody
+  changed follows every worktree's.
 - Explored and dropped (2026-10-22): Alt+click without the menu (hard to find, no reset); one set for all with no
   worktree set apart (`global`); the set in `init.rn` as `config.shown_folders`.
 
-## One project in the tree (proposal)
+## Projects in the tree: all, one or a few (in the app since 2026-10-22)
 
 With several projects open, the tree is long and the hub mixes them all. The header's title, which said
-`Projects`, is a picker: **All projects ▾**, or the picked project's badge and name (`A atlassian ▾`).
+`Projects`, is a picker that works as the folders menu: **All projects ▾**, the one project shown with its badge
+(`A atlassian ▾`), or `2 of 4 projects ▾`.
 
-- A click opens a menu under the header, as wide as the tree: All projects (with how many are open), then each open
-  project with its badge and `● n running`; a tick on the one shown.
-- Picking a project shows it alone in the tree. The others stay open (their tabs, terminals and runs carry on);
-  they are only out of the view. All projects brings them back.
-- **The hub follows it**: its "all" scope is the picked project (the scope chip and the `:` list's first row name
-  it, "the project the tree shows"), Tab's stops skip the project, and Recent, Changed, Running, file search and New
-  terminal leave the other projects out. A worktree scope still narrows within the project.
-- Opening a project (Open project) while one is picked picks the new one; closing the picked project goes back to
-  All projects. Alt+F12 with no tab opens a terminal in the tree's first project.
-- Kept per profile (in the app: `state.toml`); the mock keeps it in the hash (`only=`).
+- A click opens a menu under the header, as wide as the tree: All projects (with how many are open, ticked while all
+  show), then each open project with a tick while it shows, its badge and `● n running`.
+- A project's row shows it or leaves it out; the menu stays open. The last project shown stays. All projects brings
+  every one back. Projects left out stay open (their tabs, terminals and runs carry on); they are only out of view.
+- **The hub follows it**: its "all" scope is the projects shown (the scope chip and the `:` list's first row read
+  `All projects`, the one project, or `2 of 4 projects`); with one shown, Tab's stops and the `:` list skip its
+  project row. Recent, Changed, Running, file search and New terminal leave the other projects out. A worktree scope
+  still narrows within its project.
+- Opening a project shows it; closing one forgets it; Select opened file on a tab of a project left out shows it.
+  Alt+F12 with no tab opens a terminal in the tree's first project.
+- Kept per profile as the projects left out (`hidden_projects` in `state.toml`), so a project opened later shows;
+  the mock keeps them in the hash (`hidden=`).
+- Explored and dropped (2026-10-22): one project at a time (picking it showed it alone).
 
 ## Hub (Ctrl+E)
 

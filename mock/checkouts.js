@@ -75,11 +75,11 @@
   // A worktree's folders (DESIGN.md "Worktree folders"), in tree order; each shows while its badge on the worktree row
   // is on (shown: the default).
   var WORKTREE_FOLDERS = [
-    { key: 'processes', title: 'Processes', icon: 'terminal.svg', shown: true },
-    { key: 'uncommitted', title: 'Uncommitted', icon: 'changes.svg', shown: false },
-    { key: 'sinceBase', title: 'Since base', icon: 'history.svg', shown: false },
-    { key: 'commits', title: 'Commits', icon: 'commit.svg', shown: false },
-    { key: 'files', title: 'Files', icon: 'project-folder.svg', shown: true }
+    { key: 'processes', title: 'Processes', icon: 'terminal.svg', shown: true, letter: 'P' },
+    { key: 'uncommitted', title: 'Uncommitted', icon: 'changes.svg', shown: false, letter: 'U' },
+    { key: 'sinceBase', title: 'Since base', icon: 'history.svg', shown: false, letter: 'B' },
+    { key: 'commits', title: 'Commits', icon: 'commit.svg', shown: false, letter: 'C' },
+    { key: 'files', title: 'Files', icon: 'project-folder.svg', shown: true, letter: 'F' }
   ];
   var LIB_RUN_TOML = '[run.test]\nname = "Test lib"\ncommand = "npm test"\nbefore = ["compile"]\n';
 
@@ -459,8 +459,8 @@
         runLayout: 'flat',
         collapsedFiles: [],
         WORKTREE_FOLDERS: WORKTREE_FOLDERS,
-        // A proposal (DESIGN.md "One project in the tree"): the open project the tree shows alone, or null for all.
-        onlyProject: null,
+        // DESIGN.md "Projects in the tree": the open projects the tree and the hub leave out; never all of them.
+        hiddenProjects: [],
         // A proposal (DESIGN.md "Folders for every worktree"): the folders every worktree shows unless its own badge says
         // otherwise; the Projects header's menu and Alt+click on a badge set it. The mock starts with them all on; a new
         // profile in the app with what WORKTREE_FOLDERS says (Processes and Files).
@@ -525,7 +525,7 @@
           if (p.has('radius')) { this.panelRadius = Number(p.get('radius')); document.documentElement.style.setProperty('--panel-radius', this.panelRadius + 'px'); }
           if (p.get('page')) this.settingsPage = p.get('page');
           if (p.get('layout')) this.gitLayout = p.get('layout');
-          if (p.get('only')) this.onlyProject = p.get('only');
+          if (p.get('hidden')) this.hiddenProjects = p.get('hidden').split(',');
           if (p.get('rlayout')) this.runLayout = p.get('rlayout');
           // route.js: the whole state, as the mock last wrote it
           if (this.isRouteHash(p)) { this.restoreRoute(p); return; }
@@ -640,14 +640,14 @@
         openProject: function (name) {
           if (this.open.includes(name) === false) this.open.push(name);
           this.recent = this.recent.filter(function (r) { return r !== name; });
-          // a project opened while the tree shows one is the one it shows
-          if (this.onlyProject !== null) this.onlyProject = name;
+          // a project opened shows, though the picker left it out
+          this.hiddenProjects = this.hiddenProjects.filter(function (h) { return h !== name; });
           this.menu = null;
         },
         closeProject: function (project) {
           this.open = this.open.filter(function (o) { return o !== project.name; });
           this.recent.unshift(project.name);
-          if (this.onlyProject === project.name) this.onlyProject = null;
+          this.hiddenProjects = this.hiddenProjects.filter(function (h) { return h !== project.name; });
           this.tabs = this.tabs.filter(function (t) { return t.project !== project.name; });
           if (this.tabs.some(function (t) { return t.key === this.temporary; }, this) === false) this.temporary = null;
           this.consoles = this.consoles.filter(function (c) { return c.co.split('@')[0] !== project.name; });
@@ -1016,17 +1016,33 @@
           })(this.treeProjects().map(function (p) { return self.projectNode(p); }), 0);
           return out;
         },
-        // The projects the tree shows: all open ones, or the one picked in the header. The hub and New terminal list
-        // these alone too.
+        // The projects the tree shows: the open ones the header's picker did not leave out, all when it would leave
+        // none. The hub and New terminal list these alone too.
         treeProjects: function () {
-          var only = this.onlyProject;
-          return this.openProjects().filter(function (p) { return only === null || p.name === only; });
+          var hidden = this.hiddenProjects;
+          var shown = this.openProjects().filter(function (p) { return hidden.includes(p.name) === false; });
+          return shown.length ? shown : this.openProjects();
         },
         treeProjectNames: function () { return this.treeProjects().map(function (p) { return p.name; }); },
-        showOnlyProject: function (name) {
-          this.onlyProject = name;
-          this.menu = null;
+        isProjectShown: function (name) { return this.treeProjectNames().includes(name); },
+        allProjectsShown: function () { return this.treeProjects().length === this.openProjects().length; },
+        // The one project shown while others are left out, else null.
+        onlyShown: function () { return this.allProjectsShown() ? null : (this.treeProjects().length === 1 ? this.treeProjects()[0].name : null); },
+        // The header's title, and the hub's All: All projects, the one shown, or 2 of 4 projects.
+        allLabel: function () {
+          if (this.allProjectsShown()) return 'All projects';
+          return this.onlyShown() || this.treeProjects().length + ' of ' + this.openProjects().length + ' projects';
         },
+        // A project's row in the picker: shows it or leaves it out; the last one shown stays. The menu stays open.
+        toggleProjectShown: function (name) {
+          if (this.hiddenProjects.includes(name)) {
+            this.hiddenProjects = this.hiddenProjects.filter(function (h) { return h !== name; });
+            return;
+          }
+          if (this.isProjectShown(name) && this.treeProjects().length === 1) return;
+          this.hiddenProjects = this.hiddenProjects.concat([name]);
+        },
+        showAllProjects: function () { this.hiddenProjects = []; },
         // The row the shown tab belongs to is selected.
         isRowSelected: function (node) {
           var tab = this.currentTab();
@@ -1155,13 +1171,13 @@
           }
         },
         toggleGitLayout: function () { this.gitLayout = this.gitLayout === 'flat' ? 'tree' : 'flat'; },
-        // Alt+Shift+1…5: a worktree folder (Processes … Files) shown or hidden in every worktree, as the header menu's ticks.
+        // Alt+Shift+P, U, B, C, F (ive.rn's act::ToggleFolderEverywhere keys): a worktree folder shown or hidden in
+        // every worktree, as the header menu's ticks. Digits cannot work: with Shift they arrive as !, @, … by layout.
         folderKey: function (event) {
-          var at = /^Digit([1-5])$/.exec(event.code);
-          if (at && event.altKey && event.shiftKey && event.ctrlKey === false && event.metaKey === false) {
+          var folder = WORKTREE_FOLDERS.find(function (f) { return 'Key' + f.letter === event.code; });
+          if (folder && event.altKey && event.shiftKey && event.ctrlKey === false && event.metaKey === false) {
             event.preventDefault();
-            var key = WORKTREE_FOLDERS[Number(at[1]) - 1].key;
-            this.showFolderEverywhere(key, this.everyFolder[key] === false);
+            this.showFolderEverywhere(folder.key, this.everyFolder[folder.key] === false);
           }
         },
         // Processes' + on hover: a terminal in the worktree.
