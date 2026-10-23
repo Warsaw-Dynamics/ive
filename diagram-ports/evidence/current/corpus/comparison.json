@@ -1,0 +1,6275 @@
+{
+  "summary": {
+    "head": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+    "total": 95,
+    "originalSummary": {
+      "total": 95,
+      "rendered": 94
+    },
+    "nativeSummary": {
+      "total": 95,
+      "rendered": 95,
+      "failed": 0
+    },
+    "originalByLanguage": {
+      "mermaid": {
+        "rendered": 36,
+        "error": 1
+      },
+      "plantuml": {
+        "rendered": 58
+      }
+    },
+    "originalIntegrity": {
+      "artifactsExcludingManifest": 284,
+      "bytesExcludingManifest": 948239,
+      "manifestSha256": "ef56cdb8e603404fb3465a7383c8072e28b7aca08414ad8bc65830574ece9742"
+    },
+    "repeatIntegrity": {
+      "artifactsExcludingManifest": 18,
+      "bytesExcludingManifest": 62273,
+      "manifestSha256": "43c943ea70a52f35c21d540d2c04d2ad19938039d3d35528365f03a2ba5f4f2b"
+    },
+    "nativeManifestSha256": "b8f66998f7728e803d8bc5560ae25b43d2ba59e759685c739f1e3d4180e67462",
+    "sourceMapping": "all95 exact; zero filename/extension collisions",
+    "sameStemDifferentExtensions": {
+      "class": [
+        "class.mmd",
+        "class.puml"
+      ],
+      "gantt": [
+        "gantt.mmd",
+        "gantt.puml"
+      ],
+      "git": [
+        "git.mmd",
+        "git.puml"
+      ],
+      "mindmap": [
+        "mindmap.mmd",
+        "mindmap.puml"
+      ],
+      "sequence": [
+        "sequence.mmd",
+        "sequence.puml"
+      ],
+      "state": [
+        "state.mmd",
+        "state.puml"
+      ],
+      "usecase": [
+        "usecase.mmd",
+        "usecase.puml"
+      ]
+    },
+    "paintedErrorCandidates": [],
+    "originalErrors": [
+      {
+        "file": "zenuml.mmd",
+        "nativeStatus": "rendered",
+        "error": "UnknownDiagramError: No diagram type detected matching given configuration for text: zenuml\n    title Demo\n    Alice->John: Hello John, how are you?\n    John->Alice: Great!\n\n"
+      }
+    ],
+    "originalForeignObjects": {
+      "eventmodeling.mmd": 3,
+      "journey.mmd": 4
+    },
+    "originalMissingViewBox": [
+      "info.mmd"
+    ],
+    "originalExternalHrefs": {},
+    "nativeForeignObjects": 0,
+    "nativeExternalHrefs": 0,
+    "historicalFilesUnchanged": 0,
+    "repeat": [
+      {
+        "file": "architecture.mmd",
+        "sourceSha256": "88eed9d27a77234403166e3529188781ea0683d39b3a6077950f7a15c9a673a0",
+        "svgEqual": false,
+        "metricsEqual": false,
+        "normalizedMetricsEqual": true,
+        "firstSvgSha256": "b18cb92d27addd0d4e02b5e709169a53619dfce2f2b3f40a13e730ecd4e1ebe7",
+        "repeatSvgSha256": "23f800eb487476038ffa0dd28481f3fd6156c0009d955d416d439fc9c88e2aac",
+        "firstBounds": {
+          "x": -142.84327697753906,
+          "y": -25.5,
+          "width": 365.6865539550781,
+          "height": 182
+        },
+        "repeatBounds": {
+          "x": -142.84327697753906,
+          "y": -25.5,
+          "width": 365.6865539550781,
+          "height": 182
+        }
+      },
+      {
+        "file": "gantt.mmd",
+        "sourceSha256": "e760b913be67fd20e9321c1e87c61159fe35e194b1e880bcc259f403b33f42b9",
+        "svgEqual": true,
+        "metricsEqual": true,
+        "normalizedMetricsEqual": true,
+        "firstSvgSha256": "5fe8e55f0575aea4bb3031755d8e705982edaa0aab769bf4f9afc454cac6a7f1",
+        "repeatSvgSha256": "5fe8e55f0575aea4bb3031755d8e705982edaa0aab769bf4f9afc454cac6a7f1",
+        "firstBounds": {
+          "x": 0,
+          "y": 9,
+          "width": 134262,
+          "height": 114
+        },
+        "repeatBounds": {
+          "x": 0,
+          "y": 9,
+          "width": 134262,
+          "height": 114
+        }
+      },
+      {
+        "file": "ganttbase.puml",
+        "sourceSha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+        "svgEqual": true,
+        "metricsEqual": true,
+        "normalizedMetricsEqual": true,
+        "firstSvgSha256": "ca30f9e0b6ac272515fa5fb5c8db88c689c23d18815a41c72f092352e9397fa2",
+        "repeatSvgSha256": "ca30f9e0b6ac272515fa5fb5c8db88c689c23d18815a41c72f092352e9397fa2",
+        "firstBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 248.7989959716797,
+          "height": 138.7740020751953
+        },
+        "repeatBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 248.7989959716797,
+          "height": 138.7740020751953
+        }
+      },
+      {
+        "file": "git.mmd",
+        "sourceSha256": "9ac41366906a840423b9b729738a88ed755cf032143c502edd92f49510a80951",
+        "svgEqual": false,
+        "metricsEqual": false,
+        "normalizedMetricsEqual": false,
+        "firstSvgSha256": "cb480b7c8deee1d0cff9c34f2b757be52a02120515fe0487dd762528d4d303fc",
+        "repeatSvgSha256": "873d1abdbcba42f40ad71d464de55611cdd19bc2acc7f96fb0eccc0ba08b31ca",
+        "firstBounds": {
+          "x": -109.1484375,
+          "y": -12.5,
+          "width": 259.1484375,
+          "height": 154.6064910888672
+        },
+        "repeatBounds": {
+          "x": -109.1484375,
+          "y": -12.5,
+          "width": 259.1484375,
+          "height": 158.4670867919922
+        }
+      },
+      {
+        "file": "git.puml",
+        "sourceSha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+        "svgEqual": true,
+        "metricsEqual": true,
+        "normalizedMetricsEqual": true,
+        "firstSvgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+        "repeatSvgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+        "firstBounds": {
+          "x": 10,
+          "y": 22,
+          "width": 124,
+          "height": 122
+        },
+        "repeatBounds": {
+          "x": 10,
+          "y": 22,
+          "width": 124,
+          "height": 122
+        }
+      },
+      {
+        "file": "sequence.puml",
+        "sourceSha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+        "svgEqual": true,
+        "metricsEqual": true,
+        "normalizedMetricsEqual": true,
+        "firstSvgSha256": "d3817d8c7ae5b6e36e28360f395eefd8083c9e3b792e7e7f042ed869e1c37bdf",
+        "repeatSvgSha256": "d3817d8c7ae5b6e36e28360f395eefd8083c9e3b792e7e7f042ed869e1c37bdf",
+        "firstBounds": {
+          "x": 10,
+          "y": 10,
+          "width": 274.71099853515625,
+          "height": 233.95999145507812
+        },
+        "repeatBounds": {
+          "x": 10,
+          "y": 10,
+          "width": 274.71099853515625,
+          "height": 233.95999145507812
+        }
+      }
+    ],
+    "computedFonts": {
+      "12px sans-serif": 69,
+      "11px sans-serif": 33,
+      "16px \"Liberation Sans\"": 172,
+      "700 14px \"Liberation Sans\"": 8,
+      "14px \"Liberation Sans\"": 48,
+      "13px \"Liberation Sans\"": 2,
+      "14px sans-serif": 149,
+      "13px sans-serif": 29,
+      "700 14px sans-serif": 36,
+      "700 14px \"Open Sans\", sans-serif": 2,
+      "10.5px \"Open Sans\", sans-serif": 2,
+      "11.48px \"Open Sans\", sans-serif": 2,
+      "12px \"Open Sans\", sans-serif": 1,
+      "700 10px sans-serif": 3,
+      "11px \"Liberation Sans\"": 9,
+      "700 16px \"Liberation Sans\"": 23,
+      "10px \"Liberation Sans\"": 27,
+      "700 26px \"Liberation Sans\"": 7,
+      "700 19px \"Liberation Sans\"": 2,
+      "19px \"Liberation Sans\"": 7,
+      "700 25px \"Liberation Sans\"": 2,
+      "700 18px \"Liberation Sans\"": 14,
+      "italic 18px \"Liberation Sans\"": 6,
+      "18px \"Liberation Sans\"": 35,
+      "700 14px serif": 1,
+      "14px serif": 13,
+      "italic 14px serif": 1,
+      "italic 11px \"Liberation Sans\"": 9,
+      "12px \"Liberation Sans\"": 18,
+      "10px sans-serif": 105,
+      "700 12px sans-serif": 15,
+      "700 15px monospace": 7,
+      "32px \"Liberation Sans\"": 2,
+      "600 14px \"Liberation Sans\"": 1,
+      "14px \"Open Sans\", sans-serif": 5,
+      "700 33.8125px \"trebuchet ms\", verdana, arial, sans-serif": 1,
+      "17px \"Liberation Sans\"": 6,
+      "25px \"Liberation Sans\"": 1,
+      "20px \"Liberation Sans\"": 2,
+      "700 13px sans-serif": 1,
+      "italic 700 26px \"Liberation Sans\"": 2,
+      "italic 700 18px \"Liberation Sans\"": 2,
+      "italic 10px \"Liberation Sans\"": 3,
+      "700 33.8125px \"Liberation Sans\"": 1,
+      "700 12px \"Liberation Sans\"": 5,
+      "italic 16px \"Liberation Sans\"": 1,
+      "38px \"Liberation Sans\"": 3,
+      "23px \"Liberation Sans\"": 3,
+      "24px \"Liberation Sans\"": 3,
+      "700 12.6px \"Times New Roman\"": 1,
+      "700 12px \"Times New Roman\"": 2,
+      "10px \"Times New Roman\"": 6,
+      "700 10px \"Times New Roman\"": 1
+    }
+  },
+  "cases": [
+    {
+      "file": "agentflow.mmd",
+      "language": "mermaid",
+      "sourceSha256": "ca4b1415bbfb6614defe8dbae3a629614dac08bf9bc1f343db62a261d81d0faa",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          709.0,
+          133.0
+        ],
+        "texts": [
+          "Review Agent",
+          "",
+          "",
+          "Gather changes",
+          "Analyse diff",
+          "run_linter"
+        ],
+        "shapes": {
+          "path": 11,
+          "polygon": 3,
+          "circle": 4,
+          "rect": 11
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          709.6,
+          133.6
+        ],
+        "texts": [
+          "Review Agent",
+          "",
+          "",
+          "Gather changes",
+          "Analyse diff",
+          "run_linter"
+        ],
+        "shapes": {
+          "path": 11,
+          "polygon": 3,
+          "circle": 4,
+          "rect": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "architecture.mmd",
+      "language": "mermaid",
+      "sourceSha256": "88eed9d27a77234403166e3529188781ea0683d39b3a6077950f7a15c9a673a0",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -182.84327697753906,
+          -65.5,
+          445.6865539550781,
+          262.0
+        ],
+        "texts": [
+          "Database",
+          "Server",
+          "API"
+        ],
+        "shapes": {
+          "path": 11,
+          "rect": 8,
+          "ellipse": 1,
+          "line": 4,
+          "circle": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -182.84328288059254,
+          -65.5,
+          445.6865657611851,
+          262.0
+        ],
+        "texts": [
+          "Database",
+          "Server",
+          "API"
+        ],
+        "shapes": {
+          "path": 11,
+          "rect": 5,
+          "ellipse": 1,
+          "line": 4,
+          "circle": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "block.mmd",
+      "language": "mermaid",
+      "sourceSha256": "e4138de709182a9962805f4295f9984f6c4a945916123cf2e1c18e936dbd14e5",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -5.0,
+          -79.99435424804688,
+          658.7109375,
+          166.49435424804688
+        ],
+        "texts": [
+          "DB",
+          "",
+          "A",
+          "A wide one in the middle",
+          "C",
+          "D"
+        ],
+        "shapes": {
+          "path": 8,
+          "polygon": 1,
+          "circle": 5,
+          "rect": 17
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -5.0,
+          -74.6,
+          622.3199999999998,
+          159.6
+        ],
+        "texts": [
+          "DB",
+          "A",
+          "A wide one in the middle",
+          "C",
+          "D"
+        ],
+        "shapes": {
+          "path": 8,
+          "polygon": 1,
+          "circle": 5,
+          "rect": 10
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "c4.mmd",
+      "language": "mermaid",
+      "sourceSha256": "30d385cb1d8d78c44d77b02687c17a842a5462d3beb7040670eaef56771fa97e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          -10.0,
+          832.0,
+          447.9464111328125
+        ],
+        "texts": [
+          "Banking Customer",
+          "[Person]",
+          "A customer of the bank",
+          "Internet Banking System",
+          "[Software System]",
+          "View accounts",
+          "Uses"
+        ],
+        "shapes": {
+          "path": 8,
+          "rect": 10,
+          "circle": 1,
+          "line": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          -10.0,
+          832.0,
+          447.5244
+        ],
+        "texts": [
+          "Banking Customer",
+          "[Person]",
+          "A customer of the bank",
+          "Internet Banking System",
+          "[Software System]",
+          "View accounts",
+          "Uses"
+        ],
+        "shapes": {
+          "path": 8,
+          "rect": 2,
+          "circle": 1,
+          "line": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "class.mmd",
+      "language": "mermaid",
+      "sourceSha256": "b42efb6fb3f46efb7d53e7e8617fd19a453c8d382bb9477df98ed14ca826d05e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          188.80078125,
+          312.0
+        ],
+        "texts": [
+          "",
+          "Animal",
+          "+int age",
+          "+isMammal()",
+          "Duck",
+          "+String beakColor",
+          "+swim()"
+        ],
+        "shapes": {
+          "path": 23,
+          "polygon": 2,
+          "circle": 4,
+          "rect": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          174.31437499999998,
+          315.6
+        ],
+        "texts": [
+          "",
+          "Animal",
+          "+int age",
+          "+isMammal()",
+          "Duck",
+          "+String beakColor",
+          "+swim()"
+        ],
+        "shapes": {
+          "path": 23,
+          "polygon": 2,
+          "circle": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "cynefin.mmd",
+      "language": "mermaid",
+      "sourceSha256": "d42ffc0de85e3403b38c22ae1dba17074fa41362c152a8d4b59e8f64ddf9515b",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          880.0,
+          680.0
+        ],
+        "texts": [
+          "Complex",
+          "Complicated",
+          "Chaotic",
+          "Clear",
+          "Confusion",
+          "Probe \u2192 Sense \u2192 Respond",
+          "Emergent Practices",
+          "Sense \u2192 Analyse \u2192 Respond",
+          "Good Practices",
+          "Act \u2192 Sense \u2192 Respond",
+          "Novel Practices",
+          "Sense \u2192 Categorise \u2192 Respond",
+          "Best Practices",
+          "Disorder",
+          "Investigate root cause",
+          "Analyze performance data",
+          "Page on-call immediately",
+          "Restart service",
+          "Unknown failure mode",
+          "Incident Response"
+        ],
+        "shapes": {
+          "rect": 9,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          880.0,
+          680.0
+        ],
+        "texts": [
+          "Complex",
+          "Complicated",
+          "Chaotic",
+          "Clear",
+          "Confusion",
+          "Probe \u2192 Sense \u2192 Respond",
+          "Emergent Practices",
+          "Sense \u2192 Analyse \u2192 Respond",
+          "Good Practices",
+          "Act \u2192 Sense \u2192 Respond",
+          "Novel Practices",
+          "Sense \u2192 Categorise \u2192 Respond",
+          "Best Practices",
+          "Disorder",
+          "Investigate root cause",
+          "Analyze performance data",
+          "Page on-call immediately",
+          "Restart service",
+          "Unknown failure mode",
+          "Incident Response"
+        ],
+        "shapes": {
+          "rect": 9,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "er.mmd",
+      "language": "mermaid",
+      "sourceSha256": "38e39c1f0f59c01cd668b3fafde78e6b32484a73db1337d4ca9666934543d9fc",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          6.25,
+          0.0,
+          204.421875,
+          479.25
+        ],
+        "texts": [
+          "places",
+          "contains",
+          "CUSTOMER",
+          "string",
+          "name",
+          "",
+          "",
+          "int",
+          "id",
+          "PK",
+          "",
+          "ORDER",
+          "LINE-ITEM"
+        ],
+        "shapes": {
+          "path": 24,
+          "circle": 4,
+          "rect": 17
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          182.203125,
+          471.05
+        ],
+        "texts": [
+          "places",
+          "contains",
+          "CUSTOMER",
+          "string",
+          "name",
+          "",
+          "",
+          "int",
+          "id",
+          "PK",
+          "",
+          "ORDER",
+          "LINE-ITEM"
+        ],
+        "shapes": {
+          "path": 24,
+          "circle": 4,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "eventmodeling.mmd",
+      "language": "mermaid",
+      "sourceSha256": "825d3c7706ed49fef40a76746b8324eada7e2f078d4a938e6600ce053eed8af4",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -30.0,
+          -30.0,
+          693.0,
+          470.0
+        ],
+        "texts": [
+          "UI/Automation",
+          "Command/Read Model",
+          "Events"
+        ],
+        "shapes": {
+          "rect": 6,
+          "path": 2,
+          "polygon": 1
+        },
+        "foreignObjects": 3,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -30.0,
+          -30.0,
+          655.0,
+          470.0
+        ],
+        "texts": [
+          "UI/Automation",
+          "Command/Read Model",
+          "Events",
+          "CartUI",
+          "AddItem",
+          "ItemAdded"
+        ],
+        "shapes": {
+          "rect": 9,
+          "path": 2,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "flowchart.mmd",
+      "language": "mermaid",
+      "sourceSha256": "107cb07d10313bfa59c1c6dd368cd435873ccd2bc37a5b5ed3bf6fa5ac0b15b3",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          743.8046875,
+          253.0
+        ],
+        "texts": [
+          "Review",
+          "",
+          "yes",
+          "no",
+          "Read changes",
+          "Tests pass?",
+          "Ship"
+        ],
+        "shapes": {
+          "path": 10,
+          "polygon": 2,
+          "circle": 4,
+          "rect": 13
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          737.92,
+          253.6
+        ],
+        "texts": [
+          "Review",
+          "",
+          "yes",
+          "no",
+          "Read changes",
+          "Tests pass?",
+          "Ship"
+        ],
+        "shapes": {
+          "path": 10,
+          "polygon": 2,
+          "circle": 4,
+          "rect": 5
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "gantt.mmd",
+      "language": "mermaid",
+      "sourceSha256": "e760b913be67fd20e9321c1e87c61159fe35e194b1e880bcc259f403b33f42b9",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1584.0,
+          148.0
+        ],
+        "texts": [
+          "2014-01-05",
+          "2014-01-12",
+          "2014-01-19",
+          "2014-01-26",
+          "2014-02-02",
+          "2014-02-09",
+          "2014-02-16",
+          "A task ",
+          "Another task ",
+          "Section",
+          "A Gantt Diagram"
+        ],
+        "shapes": {
+          "path": 1,
+          "line": 8,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          800.0,
+          148.0
+        ],
+        "texts": [
+          "2014-01-05",
+          "2014-01-12",
+          "2014-01-19",
+          "2014-01-26",
+          "2014-02-02",
+          "2014-02-09",
+          "2014-02-16",
+          "A task ",
+          "Another task ",
+          "Section",
+          "A Gantt Diagram"
+        ],
+        "shapes": {
+          "path": 1,
+          "line": 8,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "git.mmd",
+      "language": "mermaid",
+      "sourceSha256": "9ac41366906a840423b9b729738a88ed755cf032143c502edd92f49510a80951",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -117.1484375,
+          -20.5,
+          275.1484375,
+          170.6064910888672
+        ],
+        "texts": [
+          "main",
+          "develop",
+          "0-217ffbe",
+          "1-6fd0f48"
+        ],
+        "shapes": {
+          "line": 2,
+          "rect": 4,
+          "path": 3,
+          "circle": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -106.76,
+          -20.8,
+          264.76,
+          172.8523682863182
+        ],
+        "texts": [
+          "main",
+          "develop",
+          "0-93ba65d",
+          "1-f55760d"
+        ],
+        "shapes": {
+          "line": 2,
+          "rect": 4,
+          "path": 3,
+          "circle": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "info.mmd",
+      "language": "mermaid",
+      "sourceSha256": "96bac4de3ce48eccdafa38eb18e0581fe70d26b8d8d5a74ca8af79c77658dcde",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [],
+        "texts": [
+          "v12.2.0"
+        ],
+        "shapes": {},
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          400.0,
+          100.0
+        ],
+        "texts": [
+          "v12.1.0"
+        ],
+        "shapes": {},
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "ishikawa.mmd",
+      "language": "mermaid",
+      "sourceSha256": "bd8f7430e8740be1bc486026a64448ededa796be3adbdeb3f05e2831fefa4c23",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -350.32574462890625,
+          -39.13177490234375,
+          442.32574462890625,
+          578.149658203125
+        ],
+        "texts": [
+          "BlurryPhoto",
+          "Process",
+          "Shutter speedtoo slow",
+          "Out of focus",
+          "User",
+          "Shaky hands",
+          "Equipment",
+          "Damaged lens"
+        ],
+        "shapes": {
+          "path": 2,
+          "line": 8,
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -329.84823167002867,
+          -40.163025778088866,
+          421.84823167002867,
+          580.1340343707852
+        ],
+        "texts": [
+          "BlurryPhoto",
+          "Process",
+          "Shutter speedtoo slow",
+          "Out of focus",
+          "User",
+          "Shaky hands",
+          "Equipment",
+          "Damaged lens"
+        ],
+        "shapes": {
+          "path": 2,
+          "line": 8,
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "journey.mmd",
+      "language": "mermaid",
+      "sourceSha256": "2824bdfa87e5c08e60b1953970832a4ccab7e1a9fcedd258e2887b529fc9dbab",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          -25.0,
+          900.0,
+          540.0
+        ],
+        "texts": [
+          "Cat",
+          "Me",
+          "Go to work",
+          "Make tea",
+          "Go upstairs",
+          "Do work",
+          "My working day"
+        ],
+        "shapes": {
+          "path": 3,
+          "circle": 15,
+          "rect": 4,
+          "line": 5
+        },
+        "foreignObjects": 4,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          -25.0,
+          900.0,
+          540.0
+        ],
+        "texts": [
+          "Cat",
+          "Me",
+          "Go to work",
+          "      Make tea",
+          "      Go upstairs",
+          "      Do work",
+          "My working day"
+        ],
+        "shapes": {
+          "path": 3,
+          "circle": 15,
+          "rect": 4,
+          "line": 5
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "kanban.mmd",
+      "language": "mermaid",
+      "sourceSha256": "64d471958b3a3c6b8956c05f7f063ed9faaafec919683c3cbee90cd4a309ee5b",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          90.0,
+          -310.0,
+          220.0,
+          92.0
+        ],
+        "texts": [
+          "Column Title",
+          "Task Description",
+          "",
+          ""
+        ],
+        "shapes": {
+          "rect": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          90.0,
+          -310.0,
+          220.0,
+          99.0
+        ],
+        "texts": [
+          "Column Title",
+          "Task Description"
+        ],
+        "shapes": {
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "mindmap.mmd",
+      "language": "mermaid",
+      "sourceSha256": "ce02871f0994cf1fef8eb05fbbef71c884bdcac8468a124879e444a51d1124c9",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -2.0,
+          -2.0,
+          551.7109375,
+          262.0634460449219
+        ],
+        "texts": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "mindmap",
+          "Origins",
+          "Long history",
+          "Research",
+          "On effectiveness",
+          "Tools",
+          "Pen and paper"
+        ],
+        "shapes": {
+          "path": 15,
+          "polygon": 1,
+          "rect": 20,
+          "circle": 1,
+          "line": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -2.0,
+          -2.0,
+          520.953125,
+          264.953125
+        ],
+        "texts": [
+          "mindmap",
+          "Origins",
+          "Long history",
+          "Research",
+          "On effectiveness",
+          "Tools",
+          "Pen and paper"
+        ],
+        "shapes": {
+          "path": 15,
+          "polygon": 1,
+          "circle": 1,
+          "line": 6,
+          "rect": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "packet.mmd",
+      "language": "mermaid",
+      "sourceSha256": "8f1029c9c9d37dda695a9191cc14f929198c5851a36d8024ded9c669a28b65fb",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1026.0,
+          109.0
+        ],
+        "texts": [
+          "Source Port",
+          "0",
+          "15",
+          "Destination Port",
+          "16",
+          "31",
+          "Sequence Number",
+          "32",
+          "63",
+          ""
+        ],
+        "shapes": {
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1026.0,
+          109.0
+        ],
+        "texts": [
+          "Source Port",
+          "0",
+          "15",
+          "Destination Port",
+          "16",
+          "31",
+          "Sequence Number",
+          "32",
+          "63",
+          ""
+        ],
+        "shapes": {
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "pie.mmd",
+      "language": "mermaid",
+      "sourceSha256": "f41484cd94dd84837056db4c681ce6119f533b643bed745c58116553acdebf27",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          551.6875,
+          450.0
+        ],
+        "texts": [
+          "79%",
+          "17%",
+          "3%",
+          "Pets adopted by volunteers",
+          "Dogs",
+          "Cats",
+          "Rats"
+        ],
+        "shapes": {
+          "circle": 1,
+          "path": 3,
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          544.13,
+          450.0
+        ],
+        "texts": [
+          "79%",
+          "17%",
+          "3%",
+          "Pets adopted by volunteers",
+          "Dogs",
+          "Cats",
+          "Rats"
+        ],
+        "shapes": {
+          "circle": 1,
+          "path": 3,
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "quadrant.mmd",
+      "language": "mermaid",
+      "sourceSha256": "1caab57067af47d93e4cf6572a8458c2dc0e61fe1ad5569b97aa406b6ceac5ab",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          500.0,
+          500.0
+        ],
+        "texts": [
+          "We should expand",
+          "",
+          "",
+          "",
+          "Campaign B",
+          "Campaign A",
+          "Low Reach",
+          "High Reach",
+          "Low Engagement",
+          "High Engagement",
+          "Reach and engagement of campaigns"
+        ],
+        "shapes": {
+          "rect": 4,
+          "line": 6,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          500.0,
+          500.0
+        ],
+        "texts": [
+          "We should expand",
+          "",
+          "",
+          "",
+          "Campaign B",
+          "Campaign A",
+          "Low Reach",
+          "High Reach",
+          "Low Engagement",
+          "High Engagement",
+          "Reach and engagement of campaigns"
+        ],
+        "shapes": {
+          "rect": 4,
+          "line": 6,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "radar.mmd",
+      "language": "mermaid",
+      "sourceSha256": "4bec271a8ea8d40d8fcf57c131d441402ee620d80519e2a6273aa8f832e61797",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          700.0,
+          700.0
+        ],
+        "texts": [
+          "Math",
+          "Science",
+          "English",
+          "Alice",
+          "Bob",
+          ""
+        ],
+        "shapes": {
+          "circle": 5,
+          "line": 3,
+          "path": 2,
+          "rect": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          700.0,
+          700.0
+        ],
+        "texts": [
+          "Math",
+          "Science",
+          "English",
+          "Alice",
+          "Bob",
+          ""
+        ],
+        "shapes": {
+          "circle": 5,
+          "line": 3,
+          "path": 2,
+          "rect": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "railroad-abnf.mmd",
+      "language": "mermaid",
+      "sourceSha256": "bcf3d2a40b17d0c806159122ca19e0f4711925ddee858366e6688f48008ebdf0",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          187.140625,
+          175.0
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          186.04000000000002,
+          176.8
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "railroad-ebnf.mmd",
+      "language": "mermaid",
+      "sourceSha256": "5f3597978bffbd2de842427658e1dffed18f5ee6e15f619dceb94811c17909ed",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          187.140625,
+          175.0
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          186.04000000000002,
+          176.8
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "railroad-peg.mmd",
+      "language": "mermaid",
+      "sourceSha256": "363fd3d056ba49b4c65faaf7ef4024b8fbdded1e553c8cba71c5dd80a7a1be5f",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          189.796875,
+          175.0
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "Digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          188.76000000000002,
+          176.8
+        ],
+        "texts": [
+          "0",
+          "1",
+          "2",
+          "Digit ="
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 8,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "railroad.mmd",
+      "language": "mermaid",
+      "sourceSha256": "8981fbb4330edc5f65b35e710a43e632e7e35c9f4540eaee802f7c5c0c9161f4",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          187.140625,
+          130.0
+        ],
+        "texts": [
+          "0",
+          "1",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 2,
+          "path": 6,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          186.04000000000002,
+          131.2
+        ],
+        "texts": [
+          "0",
+          "1",
+          "digit ="
+        ],
+        "shapes": {
+          "rect": 2,
+          "path": 6,
+          "circle": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "requirement.mmd",
+      "language": "mermaid",
+      "sourceSha256": "7cd7add7318450201e2550e0cb341d087b32b74dbbb12a1d3568200509c9a7a6",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          164.984375,
+          362.0
+        ],
+        "texts": [
+          "<<satisfies>>",
+          "<<Requirement>>",
+          "test_req",
+          "ID: 1",
+          "Text: the test text.",
+          "Risk: High",
+          "Verification: Test",
+          "<<Element>>",
+          "test_entity",
+          "Type: simulation"
+        ],
+        "shapes": {
+          "circle": 1,
+          "line": 2,
+          "path": 8,
+          "rect": 10
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          166.71875,
+          380.0
+        ],
+        "texts": [
+          "<<satisfies>>",
+          "<<Requirement>>",
+          "test_req",
+          "ID: 1",
+          "Text: the test text.",
+          "Risk: High",
+          "Verification: Test",
+          "<<Element>>",
+          "test_entity",
+          "Type: simulation"
+        ],
+        "shapes": {
+          "circle": 1,
+          "line": 2,
+          "path": 8,
+          "rect": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "sankey.mmd",
+      "language": "mermaid",
+      "sourceSha256": "cd2321b6a7da79d361cdfbae13137d60d570f4c9af93361e60155ad854e96aff",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          600.0,
+          400.0
+        ],
+        "texts": [
+          "Biomass\n35",
+          "Solid\n35",
+          "Industry\n20",
+          "Heating\n15"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          600.0,
+          400.0
+        ],
+        "texts": [
+          "Biomass\n35",
+          "Solid\n35",
+          "Industry\n20",
+          "Heating\n15"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "sequence.mmd",
+      "language": "mermaid",
+      "sourceSha256": "18e4fc7a64d16d3736b6e3785a3ff30e3e73d0e7873ffef52884470bcf36342f",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -50.0,
+          -10.0,
+          501.0,
+          303.0
+        ],
+        "texts": [
+          "John",
+          "Alice",
+          "John",
+          "Alice",
+          "Hello John, how are you?",
+          "Great!",
+          "See you later!"
+        ],
+        "shapes": {
+          "rect": 4,
+          "line": 5,
+          "path": 10,
+          "circle": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -50.0,
+          -10.0,
+          487.0,
+          309.0
+        ],
+        "texts": [
+          "John",
+          "Alice",
+          "John",
+          "Alice",
+          "Hello John, how are you?",
+          "Great!",
+          "See you later!"
+        ],
+        "shapes": {
+          "rect": 4,
+          "line": 5,
+          "path": 10,
+          "circle": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "state.mmd",
+      "language": "mermaid",
+      "sourceSha256": "8a3b571f3913e9f8567197757dabe549b044944f5dd7d33721d390af9280a3b6",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          152.0,
+          343.0
+        ],
+        "texts": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Still",
+          "Moving",
+          "Crash"
+        ],
+        "shapes": {
+          "path": 10,
+          "rect": 14,
+          "circle": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          152.0,
+          344.8
+        ],
+        "texts": [
+          "Still",
+          "Moving",
+          "Crash"
+        ],
+        "shapes": {
+          "path": 10,
+          "circle": 1,
+          "rect": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "swimlane.mmd",
+      "language": "mermaid",
+      "sourceSha256": "792b41bef3ab45e50b65c0a27f975bd8f301983435fa8d42ed8f9b2775b4b5ff",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          986.0,
+          150.59999084472656
+        ],
+        "texts": [
+          "Warehouse",
+          "Customer",
+          "",
+          "",
+          "",
+          "Browsecatalogue",
+          "Pay",
+          "Pick items",
+          "Ship order"
+        ],
+        "shapes": {
+          "path": 10,
+          "polygon": 1,
+          "circle": 4,
+          "rect": 19
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          986.0,
+          133.6
+        ],
+        "texts": [
+          "Warehouse",
+          "Customer",
+          "",
+          "",
+          "",
+          "Browse catalogue",
+          "Pay",
+          "Pick items",
+          "Ship order"
+        ],
+        "shapes": {
+          "path": 10,
+          "polygon": 1,
+          "circle": 4,
+          "rect": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "timeline.mmd",
+      "language": "mermaid",
+      "sourceSha256": "f4eec44f3464c17692a9c41a0ac7ba336cdf74c8beb6def49fe2ab1cd09588a9",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          95.0,
+          -61.0,
+          995.0,
+          528.4468994140625
+        ],
+        "texts": [
+          "2002",
+          "LinkedIn",
+          "2004",
+          "Facebook",
+          "Google",
+          "2005",
+          "YouTube",
+          "History of Social Media Platform"
+        ],
+        "shapes": {
+          "path": 8,
+          "line": 11
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          95.0,
+          -61.0,
+          995.0,
+          534.4
+        ],
+        "texts": [
+          "2002",
+          "LinkedIn",
+          "2004",
+          "Facebook",
+          "Google",
+          "2005",
+          "YouTube",
+          "History of Social Media Platform"
+        ],
+        "shapes": {
+          "path": 8,
+          "line": 11
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "tree.mmd",
+      "language": "mermaid",
+      "sourceSha256": "a82f399a160c0c3508f7e9b59ad0451ec49b875e32a188a633aec253a0538230",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -0.5,
+          0.0,
+          134.296875,
+          135.078125
+        ],
+        "texts": [
+          "/",
+          "root",
+          "src",
+          "index.ts",
+          "package.json"
+        ],
+        "shapes": {
+          "line": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -0.5,
+          0.0,
+          122.08,
+          138.0
+        ],
+        "texts": [
+          "/",
+          "root",
+          "src",
+          "index.ts",
+          "package.json"
+        ],
+        "shapes": {
+          "line": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "treemap.mmd",
+      "language": "mermaid",
+      "sourceSha256": "e0bb602db9f35e77b9ea54cc962e047368411b6ee4fa87b79f70cb65b7fe21e0",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          2.0,
+          27.0,
+          996.0,
+          371.0
+        ],
+        "texts": [
+          "",
+          "45",
+          "Category A",
+          "30",
+          "Category B",
+          "15",
+          "Item A2",
+          "20",
+          "Item A1",
+          "10",
+          "Item B1",
+          "15"
+        ],
+        "shapes": {
+          "rect": 15
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          2.0,
+          27.0,
+          996.0,
+          371.0
+        ],
+        "texts": [
+          "",
+          "45",
+          "Category A",
+          "30",
+          "Category B",
+          "15",
+          "Item A2",
+          "20",
+          "Item A1",
+          "10",
+          "Item B1",
+          "15"
+        ],
+        "shapes": {
+          "rect": 15
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "usecase.mmd",
+      "language": "mermaid",
+      "sourceSha256": "00339c496aec5a45f8f5caf77b60b01088186cac9d7fdf4773d046e5d289bc46",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          -12.0,
+          -12.0,
+          392.5234375,
+          167.0
+        ],
+        "texts": [
+          "Order system",
+          "",
+          "Customer",
+          "Place order"
+        ],
+        "shapes": {
+          "path": 11,
+          "polygon": 3,
+          "circle": 4,
+          "rect": 8,
+          "ellipse": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -12.0,
+          -12.0,
+          376.0,
+          167.6
+        ],
+        "texts": [
+          "Order system",
+          "Customer",
+          "Place order"
+        ],
+        "shapes": {
+          "path": 11,
+          "polygon": 3,
+          "circle": 4,
+          "rect": 2,
+          "ellipse": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "venn.mmd",
+      "language": "mermaid",
+      "sourceSha256": "304325cdea9efd2a86a432c01e8822a23847b3ff9f8be47eaa82eb429856f49d",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          800.0,
+          450.0
+        ],
+        "texts": [
+          "Team overlap",
+          "Frontend",
+          "Backend",
+          "APIs"
+        ],
+        "shapes": {
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          800.0,
+          450.0
+        ],
+        "texts": [
+          "Team overlap",
+          "Frontend",
+          "Backend",
+          "APIs"
+        ],
+        "shapes": {
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "wardley.mmd",
+      "language": "mermaid",
+      "sourceSha256": "3b4e42bb6ec22a23ea1c821996737578b73fdf1766476d39079a562024c28891",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          900.0,
+          600.0
+        ],
+        "texts": [
+          "Tea Shop Value Chain",
+          "Evolution",
+          "Visibility",
+          "Genesis",
+          "Custom Built",
+          "Product",
+          "Commodity",
+          "Business",
+          "Cup of Tea",
+          "Kettle"
+        ],
+        "shapes": {
+          "rect": 1,
+          "line": 8,
+          "circle": 2,
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          900.0,
+          600.0
+        ],
+        "texts": [
+          "Tea Shop Value Chain",
+          "Evolution",
+          "Visibility",
+          "Genesis",
+          "Custom Built",
+          "Product",
+          "Commodity",
+          "Business",
+          "Cup of Tea",
+          "Kettle"
+        ],
+        "shapes": {
+          "rect": 1,
+          "line": 8,
+          "circle": 2,
+          "path": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "xychart.mmd",
+      "language": "mermaid",
+      "sourceSha256": "b02d92c087575868ad36823a152f9adcc69150943771770436fbd7d2041834af",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          700.0,
+          500.0
+        ],
+        "texts": [
+          "Sales Revenue",
+          "jan",
+          "feb",
+          "mar",
+          "11000",
+          "10500",
+          "10000",
+          "9500",
+          "9000",
+          "8500",
+          "8000",
+          "7500",
+          "7000",
+          "6500",
+          "6000",
+          "5500",
+          "5000",
+          "4500",
+          "4000",
+          "Revenue"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 21
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          700.0,
+          500.0
+        ],
+        "texts": [
+          "Sales Revenue",
+          "jan",
+          "feb",
+          "mar",
+          "11000",
+          "10500",
+          "10000",
+          "9500",
+          "9000",
+          "8500",
+          "8000",
+          "7500",
+          "7000",
+          "6500",
+          "6000",
+          "5500",
+          "5000",
+          "4500",
+          "4000",
+          "Revenue"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 21
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "zenuml.mmd",
+      "language": "mermaid",
+      "sourceSha256": "522d630c28439ad0f1ec257eb987d8fab8159d2dbebb03ee7ad74551a9ecb036",
+      "originalStatus": "error",
+      "nativeStatus": "rendered",
+      "originalError": "UnknownDiagramError: No diagram type detected matching given configuration for text: zenuml\n    title Demo\n    Alice->John: Hello John, how are you?\n    John->Alice: Great!\n\n",
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          314.2,
+          211.0
+        ],
+        "texts": [
+          "Demo",
+          "Alice",
+          "John",
+          "Hello John, how are you?",
+          "1",
+          "Great!",
+          "2"
+        ],
+        "shapes": {
+          "rect": 4,
+          "line": 5,
+          "path": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "activity.puml",
+      "language": "plantuml",
+      "sourceSha256": "5f2ccae11dc644b2227663247a92936b17fe6d0b8f280e4a7d9aa813579d2979",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          168.0,
+          330.0
+        ],
+        "texts": [
+          "Read request",
+          "Valid?",
+          "yes",
+          "no",
+          "Persist",
+          "Reject",
+          "Reply"
+        ],
+        "shapes": {
+          "ellipse": 3,
+          "rect": 4,
+          "polygon": 10,
+          "line": 12
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "ACTIVITY",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          374.84000000000003,
+          648.4
+        ],
+        "texts": [
+          "Read request",
+          "yes",
+          "no",
+          "Valid?",
+          "Persist",
+          "Reject",
+          "Reply"
+        ],
+        "shapes": {
+          "rect": 5,
+          "ellipse": 3,
+          "polyline": 8,
+          "polygon": 10
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "archimate.puml",
+      "language": "plantuml",
+      "sourceSha256": "73041e5113179ecb130544fdbc6e23719e227cb14d6e831b2b31b670f8a15d75",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          310.0,
+          206.0
+        ],
+        "texts": [
+          "Icon-free ArchiMate description rectangles",
+          "Order service",
+          "Customer record",
+          "Audit trail",
+          "reads",
+          "records"
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 2,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "DESCRIPTION",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          388.08000000000004,
+          347.79999999999995
+        ],
+        "texts": [
+          "Order service",
+          "Customer record",
+          "Audit trail",
+          "reads",
+          "records",
+          "Icon-free ArchiMate description rectangles"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 2,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "archimatebase.puml",
+      "language": "plantuml",
+      "sourceSha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          152.0,
+          178.0
+        ],
+        "texts": [
+          "Order service",
+          "Customer record",
+          "reads"
+        ],
+        "shapes": {
+          "rect": 2,
+          "path": 1,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "DESCRIPTION",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          216.17999999999998,
+          316.4
+        ],
+        "texts": [
+          "Order service",
+          "Customer record",
+          "reads"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 1,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "board.puml",
+      "language": "plantuml",
+      "sourceSha256": "24eb78be7c019d19afb7e4b589880f69f64dffb02d4f2bf12fdd512daaeec62c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          542.0,
+          413.0
+        ],
+        "texts": [
+          "Native board \u2014 activities, branches and stage gaps",
+          "Checkout",
+          "Checkout",
+          "Draft",
+          "Validate",
+          "Submit",
+          "Ship",
+          "Audit",
+          "Audit",
+          "Record"
+        ],
+        "shapes": {
+          "rect": 9,
+          "line": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "BOARD",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          538.0,
+          419.4
+        ],
+        "texts": [
+          "Checkout",
+          "Draft",
+          "Validate",
+          "Submit",
+          "Ship",
+          "Audit",
+          "Record",
+          "Native board \u2014 activities, branches and stage gaps"
+        ],
+        "shapes": {
+          "rect": 8,
+          "polyline": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "boardbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "3479cbd3c10b0e2df33f6fa27c3e9fd1629d48acb40370b0a579f5ba3df8080c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          372.0,
+          193.0
+        ],
+        "texts": [
+          "Backlog",
+          "Backlog",
+          "Add search",
+          "Done",
+          "Done",
+          "Fix login"
+        ],
+        "shapes": {
+          "rect": 6,
+          "line": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "BOARD",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          368.0,
+          208.0
+        ],
+        "texts": [
+          "Backlog",
+          "Add search",
+          "Done",
+          "Fix login"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "bpm.puml",
+      "language": "plantuml",
+      "sourceSha256": "d75839e3c0b6f86055f781fb5cf38f8c7dad3b27f40ec3e1ecb9b7ff5ae8c79e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          527.0,
+          153.0
+        ],
+        "texts": [
+          "Receive",
+          "Check",
+          "Archive",
+          "Retry"
+        ],
+        "shapes": {
+          "line": 31,
+          "ellipse": 1,
+          "rect": 4,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "BPM",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          554.0,
+          172.8
+        ],
+        "texts": [
+          "Receive",
+          "Check",
+          "Retry",
+          "Archive"
+        ],
+        "shapes": {
+          "rect": 5,
+          "ellipse": 1,
+          "polygon": 9,
+          "polyline": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "chart.puml",
+      "language": "plantuml",
+      "sourceSha256": "5304d4e71659f101b9452b3d25333d2c31c4bad87e7dd4dabd6ae4061bf65630",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          593.0,
+          451.0
+        ],
+        "texts": [
+          "0",
+          "20",
+          "40",
+          "60",
+          "80",
+          "100",
+          "Mon",
+          "Tue",
+          "Wed",
+          "Week",
+          "3",
+          "5",
+          "4",
+          "Orders"
+        ],
+        "shapes": {
+          "line": 11,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CHART",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          572.02,
+          503.29999999999995
+        ],
+        "texts": [
+          "0",
+          "20",
+          "40",
+          "60",
+          "80",
+          "100",
+          "Mon",
+          "Tue",
+          "Wed",
+          "Week",
+          "",
+          "3",
+          "5",
+          "4",
+          "Orders"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "chen.puml",
+      "language": "plantuml",
+      "sourceSha256": "5666cbec5b209f9fa8ce034d3ef5f89a802fc4da0a5e09b295c6bfc56f098986",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          351.0,
+          659.0
+        ],
+        "texts": [
+          "Chen: separate attributes and lexical ownership",
+          "Customer",
+          "name",
+          "address",
+          "city",
+          "postcode",
+          "Places",
+          "since",
+          "Order",
+          "name",
+          "1",
+          "N"
+        ],
+        "shapes": {
+          "rect": 2,
+          "ellipse": 6,
+          "polygon": 1,
+          "path": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CHEN_EER",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          627.0822921441766,
+          634.926320216015
+        ],
+        "texts": [
+          "1",
+          "N",
+          "Customer",
+          "name",
+          "address",
+          "city",
+          "postcode",
+          "Places",
+          "since",
+          "Order",
+          "name",
+          "Chen: separate attributes and lexical ownership"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 8,
+          "ellipse": 6,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "chenbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "d689aebba3196e628ed7c84bc805b89cfb806985f3f9df1e07d7fb4f3f27f163",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          237.0,
+          540.0
+        ],
+        "texts": [
+          "CUSTOMER",
+          "name",
+          "ORDER",
+          "number",
+          "PLACES",
+          "1",
+          "N"
+        ],
+        "shapes": {
+          "rect": 2,
+          "ellipse": 2,
+          "polygon": 1,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CHEN_EER",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          320.12503453452655,
+          605.4631601080075
+        ],
+        "texts": [
+          "1",
+          "N",
+          "CUSTOMER",
+          "name",
+          "ORDER",
+          "number",
+          "PLACES"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 4,
+          "ellipse": 2,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "class.puml",
+      "language": "plantuml",
+      "sourceSha256": "529aa5fdcb31e465f26acb150b8b726d19847a3108e5acd54331194ca66e3b70",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          246.0,
+          254.0
+        ],
+        "texts": [
+          "Account",
+          "owner : String",
+          "debit(amount)",
+          "Premium",
+          "discount : int",
+          "Ledger",
+          "records",
+          "1",
+          "many"
+        ],
+        "shapes": {
+          "rect": 3,
+          "ellipse": 6,
+          "path": 5,
+          "line": 6,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CLASS",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          347.39,
+          428.2000000000001
+        ],
+        "texts": [
+          "Account",
+          "+owner : String",
+          "+debit(amount)",
+          "Premium",
+          "+discount : int",
+          "Ledger",
+          "records",
+          "1",
+          "many"
+        ],
+        "shapes": {
+          "rect": 7,
+          "polyline": 4,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "constantgraph.puml",
+      "language": "plantuml",
+      "sourceSha256": "f796db25708f84943ca5d7c01f19acc2d41f67f8a2c4eb94468f1b0c3b4f5215",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          288.0,
+          453.0
+        ],
+        "texts": [
+          "Immutable values across document and class labels",
+          "Ready",
+          "domain model",
+          "Commerce",
+          "Account",
+          "__balance__ : Number",
+          "count : Number",
+          "Ledger",
+          "entries : Number",
+          "confirmed Ready",
+          "1",
+          "many",
+          "Ready values use measured layout",
+          "Native subset; no external resources"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 4,
+          "line": 5,
+          "ellipse": 2,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CLASS",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          640.59,
+          810.8000000000001
+        ],
+        "texts": [
+          "Commerce",
+          "Account",
+          "balance",
+          " : Number",
+          "count : Number",
+          "Ledger",
+          "entries : Number",
+          "confirmed Ready",
+          "1",
+          "many",
+          "Immutable values across document and class labels",
+          "Ready domain model",
+          "Ready values use measured layout",
+          "Native subset; no external resources"
+        ],
+        "shapes": {
+          "rect": 8,
+          "polyline": 3,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "constantsequence.puml",
+      "language": "plantuml",
+      "sourceSha256": "9971b56f9b1073641dfdb5776bdb53e0dbc51f30d985d00ae5b35aaaff9dddff",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          348.0,
+          438.0
+        ],
+        "texts": [
+          "Frozen values; inserted text is never rescanned",
+          "Eager",
+          "literal constants",
+          "Browser",
+          "Service",
+          "Browser",
+          "Service",
+          "Ready now",
+          "SECOND | Ready",
+          "Ready now",
+          "\u00a0",
+          "preserve   spaces",
+          "Ready",
+          "SECOND | Ready | Ready now",
+          "Native in-memory subset"
+        ],
+        "shapes": {
+          "rect": 11,
+          "line": 4,
+          "path": 3,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SEQUENCE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          734.18,
+          697.5
+        ],
+        "texts": [
+          "Browser",
+          "Service",
+          "SECOND | Ready",
+          "  Ready now",
+          "",
+          "  preserve   spaces",
+          "Ready",
+          "group",
+          "Ready now",
+          "Frozen values; inserted text is never rescanned",
+          "Eager literal constants",
+          "SECOND | Ready | Ready now",
+          "Native in-memory subset"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 4,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "creoledoc.puml",
+      "language": "plantuml",
+      "sourceSha256": "4aed0a199bb069ca12f1f6f4e6d33a5a1008c43c5fcee19c8f8db61af1e6f92e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          108.0,
+          77.0
+        ],
+        "texts": [
+          "Invoice",
+          "\u00a0",
+          "ready",
+          "Paid",
+          "\u00a0",
+          "old",
+          "\u00a0",
+          "Plain \u03a9 <literal>"
+        ],
+        "shapes": {},
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          170.56,
+          125.60000000000001
+        ],
+        "texts": [
+          "Invoice",
+          " ",
+          "ready",
+          "Paid",
+          " ",
+          "old",
+          "",
+          "Plain \u03a9 <literal>"
+        ],
+        "shapes": {
+          "rect": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "deployment.puml",
+      "language": "plantuml",
+      "sourceSha256": "643640442792223f4a39b1bc817dd47411683c602c853d812b57394a0cd58c76",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          209.0,
+          420.0
+        ],
+        "texts": [
+          "Cluster",
+          "Worker pool",
+          "Gateway",
+          "Store",
+          "Worker",
+          "dispatch",
+          "save"
+        ],
+        "shapes": {
+          "polygon": 3,
+          "line": 4,
+          "path": 5,
+          "rect": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "DESCRIPTION",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          567.5600000000001,
+          865.7999999999998
+        ],
+        "texts": [
+          "Cluster",
+          "Gateway",
+          "Worker pool",
+          "Worker",
+          "Store",
+          "dispatch",
+          "save"
+        ],
+        "shapes": {
+          "rect": 12,
+          "polygon": 3,
+          "polyline": 4,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "ebnf.puml",
+      "language": "plantuml",
+      "sourceSha256": "63126d525ce71732630bd0840e94e970eed8c5be946db0c8fbc2c1571f0a197b",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          402.0,
+          130.0
+        ],
+        "texts": [
+          "invoice",
+          "INV",
+          "digit",
+          "digit",
+          "-X"
+        ],
+        "shapes": {
+          "line": 13,
+          "rect": 4,
+          "path": 12,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "EBNF",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          411.82,
+          176.8
+        ],
+        "texts": [
+          "invoice",
+          "INV",
+          "digit",
+          "digit",
+          "-X"
+        ],
+        "shapes": {
+          "rect": 5,
+          "ellipse": 2,
+          "polyline": 12,
+          "polygon": 11
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "files.puml",
+      "language": "plantuml",
+      "sourceSha256": "00fc27baa7dcb8bff29f94457eec4b194c635e6dcd7864ee5a996105b1c5c51c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          251.0,
+          320.0
+        ],
+        "texts": [
+          "app",
+          "src",
+          "main.rs",
+          "Entry point",
+          "Notes share the file's folder",
+          "lib.rs",
+          "main.rs",
+          "README.md",
+          "tests",
+          "unit.rs",
+          "empty",
+          "Root note after an empty folder"
+        ],
+        "shapes": {
+          "path": 27
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "FILES",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          307.2799999999999,
+          377.6
+        ],
+        "texts": [
+          "app",
+          "src",
+          "main.rs",
+          "Entry point",
+          "Notes share the file's folder",
+          "lib.rs",
+          "main.rs",
+          "README.md",
+          "tests",
+          "unit.rs",
+          "empty",
+          "Root note after an empty folder",
+          "Native files \u2014 ordered paths and sibling notes"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polygon": 6,
+          "polyline": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "filesbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "49292373d102be17bc4b8cdca87e8145810714c12520b2f49a3dcea21a260a0c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          144.0,
+          120.0
+        ],
+        "texts": [
+          "app",
+          "src",
+          "main.rs",
+          "README.md"
+        ],
+        "shapes": {
+          "path": 10
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "FILES",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          164.26,
+          133.7
+        ],
+        "texts": [
+          "app",
+          "src",
+          "main.rs",
+          "README.md"
+        ],
+        "shapes": {
+          "rect": 3,
+          "polygon": 2,
+          "polyline": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "flow.puml",
+      "language": "plantuml",
+      "sourceSha256": "a50ecc4dd253fca2a44b862d94ffdb2c1e11c63ca374e92127ff4f236904a8e8",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          401.0,
+          141.0
+        ],
+        "texts": [
+          "Read",
+          "Check",
+          "Store"
+        ],
+        "shapes": {
+          "rect": 3,
+          "line": 2,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "FLOW",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          317.32,
+          182.8
+        ],
+        "texts": [
+          "Read",
+          "Check",
+          "Store"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 2,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "flowcursor.puml",
+      "language": "plantuml",
+      "sourceSha256": "5ed35d8bff255d30e93259faf76729c6a69239e58984160269dfdaaf05fa1955",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          401.0,
+          141.0
+        ],
+        "texts": [
+          "A",
+          "B",
+          "C"
+        ],
+        "shapes": {
+          "rect": 3,
+          "line": 3,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "FLOW",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          292.4,
+          182.8
+        ],
+        "texts": [
+          "A",
+          "B",
+          "C"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 3,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "gantt.puml",
+      "language": "plantuml",
+      "sourceSha256": "cd5df287b33ecdc5e551156292fa16067f18bdc440a8a023d73739845013332c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          480.0,
+          251.0
+        ],
+        "texts": [
+          "Release schedule",
+          "Start",
+          "End",
+          "Duration",
+          "Nov 2",
+          "Nov 3",
+          "2 days",
+          "Nov 4",
+          "Nov 6",
+          "3 days",
+          "Nov 6",
+          "Nov 6",
+          "1 day",
+          "Nov 7",
+          "Nov 7",
+          "1 day",
+          "November 2026",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "Fr",
+          "Sa",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "Draft brief",
+          "Build package",
+          "Review checkpoint",
+          "Publish checkpoint",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "Fr",
+          "Sa",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "November 2026",
+          "Explicit civil dates \u00b7 seven open days \u00b7 native subset"
+        ],
+        "shapes": {
+          "line": 16,
+          "path": 1,
+          "polygon": 3,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GANTT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          771.92,
+          509.59999999999997
+        ],
+        "texts": [
+          "Nov 2026",
+          "Mon 02",
+          "Nov 2026",
+          "Tue 03",
+          "Nov 2026",
+          "Wed 04",
+          "Nov 2026",
+          "Thu 05",
+          "Nov 2026",
+          "Fri 06",
+          "Nov 2026",
+          "Sat 07",
+          "Draft brief",
+          "Build package",
+          "Review checkpoint",
+          "Publish checkpoint",
+          "Release schedule",
+          "Explicit civil dates \u00b7 seven open days \u00b7 native subset"
+        ],
+        "shapes": {
+          "rect": 3,
+          "polyline": 8,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "ganttalias.puml",
+      "language": "plantuml",
+      "sourceSha256": "652c8648afbf5814d01c6fde36e24c19924d51c2ab1422ea67800ec42ae6a0fe",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          340.0,
+          155.0
+        ],
+        "texts": [
+          "Start",
+          "End",
+          "Duration",
+          "Nov 2",
+          "Nov 3",
+          "2 days",
+          "Nov 4",
+          "Nov 6",
+          "3 days",
+          "Nov 6",
+          "Nov 6",
+          "1 day",
+          "Nov 7",
+          "Nov 7",
+          "1 day",
+          "November 2026",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "Fr",
+          "Sa",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "Draft brief",
+          "Build package",
+          "Review checkpoint",
+          "Publish checkpoint",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "Fr",
+          "Sa",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "November 2026"
+        ],
+        "shapes": {
+          "line": 16,
+          "path": 1,
+          "polygon": 3,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GANTT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          704.43,
+          422.8
+        ],
+        "texts": [
+          "Nov 2026",
+          "Mon 02",
+          "Nov 2026",
+          "Tue 03",
+          "Nov 2026",
+          "Wed 04",
+          "Nov 2026",
+          "Thu 05",
+          "Nov 2026",
+          "Fri 06",
+          "Nov 2026",
+          "Sat 07",
+          "Draft brief",
+          "Build package",
+          "Review checkpoint",
+          "Publish checkpoint"
+        ],
+        "shapes": {
+          "rect": 3,
+          "polyline": 8,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "ganttbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          269.0,
+          136.0
+        ],
+        "texts": [
+          "Start",
+          "End",
+          "Duration",
+          "Oct 1",
+          "Oct 2",
+          "2 days",
+          "Oct 3",
+          "Oct 5",
+          "3 days",
+          "Oct 6",
+          "Oct 6",
+          "1 day",
+          "October 2026",
+          "Th",
+          "Fr",
+          "Sa",
+          "Su",
+          "Mo",
+          "Tu",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "Plan",
+          "Build",
+          "Verify",
+          "Th",
+          "Fr",
+          "Sa",
+          "Su",
+          "Mo",
+          "Tu",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "October 2026"
+        ],
+        "shapes": {
+          "line": 16,
+          "path": 2,
+          "polygon": 2,
+          "rect": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GANTT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          636.81,
+          342.8
+        ],
+        "texts": [
+          "Oct 2026",
+          "Thu 01",
+          "Oct 2026",
+          "Fri 02",
+          "Oct 2026",
+          "Sat 03",
+          "Oct 2026",
+          "Sun 04",
+          "Oct 2026",
+          "Mon 05",
+          "Oct 2026",
+          "Tue 06",
+          "Plan",
+          "Build",
+          "Verify"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 9,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "ganttleap.puml",
+      "language": "plantuml",
+      "sourceSha256": "c2438204d02f7a3a3a9653bc973ad749170f0b667ebc0a804fa5b8568d6b0128",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          286.0,
+          136.0
+        ],
+        "texts": [
+          "Start",
+          "End",
+          "Duration",
+          "Feb 28",
+          "Mar 1",
+          "3 days",
+          "Mar 2",
+          "Mar 2",
+          "1 day",
+          "Mar 2",
+          "Mar 2",
+          "1 day",
+          "Feb",
+          "Mar",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "28",
+          "29",
+          "1",
+          "2",
+          "Leap span",
+          "Ship",
+          "Dated marker",
+          "Mo",
+          "Tu",
+          "We",
+          "Th",
+          "28",
+          "29",
+          "1",
+          "2",
+          "Feb",
+          "Mar"
+        ],
+        "shapes": {
+          "line": 14,
+          "path": 1,
+          "polygon": 2,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GANTT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          517.69,
+          342.8
+        ],
+        "texts": [
+          "Feb 2028",
+          "Mon 28",
+          "Feb 2028",
+          "Tue 29",
+          "Mar 2028",
+          "Wed 01",
+          "Mar 2028",
+          "Thu 02",
+          "Leap span",
+          "Ship",
+          "Dated marker"
+        ],
+        "shapes": {
+          "rect": 3,
+          "polyline": 6,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "git.puml",
+      "language": "plantuml",
+      "sourceSha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          145.0,
+          155.0
+        ],
+        "texts": [
+          "merge4",
+          "side3",
+          "main2",
+          "base1"
+        ],
+        "shapes": {
+          "rect": 4,
+          "path": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GIT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -8.0,
+          -9.700000000000001,
+          283.5,
+          284.40000000000003
+        ],
+        "texts": [
+          "merge4",
+          "side3",
+          "main2",
+          "base1"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 4,
+          "ellipse": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "gitlinear.puml",
+      "language": "plantuml",
+      "sourceSha256": "03dbabe21fea378aed7f4e54e765a1ebdc9fb1079cc1b787abfacceaac722e3e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          47.0,
+          155.0
+        ],
+        "texts": [
+          "c3",
+          "b2",
+          "a1"
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "GIT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -8.0,
+          -9.700000000000001,
+          85.86,
+          241.00000000000003
+        ],
+        "texts": [
+          "c3",
+          "b2",
+          "a1"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 2,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "hcl.puml",
+      "language": "plantuml",
+      "sourceSha256": "5a3cef66fb7dc6d3e01df54c331985f8f2d26681d97201a5ece1d4745745e4c1",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          524.0,
+          227.0
+        ],
+        "texts": [
+          "name",
+          "ledger",
+          "replicas",
+          "3",
+          "active",
+          "true",
+          "zones",
+          "\u00a0\u00a0\u00a0",
+          "tags",
+          "\u00a0\u00a0\u00a0",
+          "endpoints",
+          "\u00a0\u00a0\u00a0",
+          "north",
+          "south",
+          "tier",
+          "core",
+          "owner",
+          "Payments",
+          "\u00a0\u00a0\u00a0",
+          "\u00a0\u00a0\u00a0",
+          "path",
+          "/v1/payments",
+          "enabled",
+          "true",
+          "path",
+          "/health"
+        ],
+        "shapes": {
+          "rect": 12,
+          "line": 20,
+          "path": 10,
+          "ellipse": 5
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "HCL",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          539.98,
+          367.80000000000007
+        ],
+        "texts": [
+          "name",
+          "ledger",
+          "replicas",
+          "3",
+          "active",
+          "true",
+          "zones",
+          "",
+          "tags",
+          "",
+          "endpoints",
+          "",
+          "0",
+          "north",
+          "1",
+          "south",
+          "tier",
+          "core",
+          "owner",
+          "Payments",
+          "0",
+          "",
+          "1",
+          "",
+          "path",
+          "/v1/payments",
+          "enabled",
+          "true",
+          "path",
+          "/health"
+        ],
+        "shapes": {
+          "rect": 7,
+          "polyline": 20
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "hclbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "40fb9ae3934394d2712f93624b8957bfd240d7af2098ae6c5223fa8299ecce39",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          234.0,
+          109.0
+        ],
+        "texts": [
+          "name",
+          "ledger",
+          "zones",
+          "\u00a0\u00a0\u00a0",
+          "tags",
+          "\u00a0\u00a0\u00a0",
+          "north",
+          "south",
+          "tier",
+          "core"
+        ],
+        "shapes": {
+          "rect": 6,
+          "line": 7,
+          "path": 4,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "HCL",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          302.22,
+          178.20000000000002
+        ],
+        "texts": [
+          "name",
+          "ledger",
+          "zones",
+          "",
+          "tags",
+          "",
+          "0",
+          "north",
+          "1",
+          "south",
+          "tier",
+          "core"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "json.puml",
+      "language": "plantuml",
+      "sourceSha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          358.0,
+          80.0
+        ],
+        "texts": [
+          "service",
+          "\u00a0\u00a0\u00a0",
+          "enabled",
+          "\u2611 true",
+          "name",
+          "Billing",
+          "ports",
+          "\u00a0\u00a0\u00a0",
+          "8080",
+          "8443"
+        ],
+        "shapes": {
+          "rect": 6,
+          "line": 7,
+          "path": 4,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "JSON",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          494.72,
+          118.80000000000001
+        ],
+        "texts": [
+          "service",
+          "",
+          "enabled",
+          "\u2611 true",
+          "name",
+          "Billing",
+          "ports",
+          "",
+          "0",
+          "8080",
+          "1",
+          "8443"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "mindmap.puml",
+      "language": "plantuml",
+      "sourceSha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          349.0,
+          139.0
+        ],
+        "texts": [
+          "Release",
+          "Tests",
+          "Unit",
+          "Delivery",
+          "Package"
+        ],
+        "shapes": {
+          "rect": 5,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "MINDMAP",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          -57.21,
+          0.0,
+          384.64,
+          138.8
+        ],
+        "texts": [
+          "Release",
+          "Tests",
+          "Unit",
+          "Delivery",
+          "Package"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "nwdiag.puml",
+      "language": "plantuml",
+      "sourceSha256": "b3245713091fdb2296c7280e0de275694484c65a32e96fb8a3052eb676d8b6cc",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          447.0,
+          536.0
+        ],
+        "texts": [
+          "Shared servers across network buses",
+          "edge",
+          "198.51.100.0/24",
+          "office",
+          "172.20.0.0/24",
+          "storage",
+          "10.23.0.0/24",
+          "Storage zone",
+          "198.51.100.1",
+          "10.23.0.1",
+          "198.51.100.20",
+          "172.20.0.20",
+          "172.20.0.50",
+          "10.23.0.40",
+          "10.23.0.41",
+          "Edge router",
+          "Web service",
+          "Office client",
+          "Data store",
+          "Backup",
+          "Native nwdiag: interface addresses, crossing gaps and a storage group"
+        ],
+        "shapes": {
+          "rect": 9,
+          "path": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "NWDIAG",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1141.28,
+          530.0
+        ],
+        "texts": [
+          "Storage zone",
+          "edge",
+          "198.51.100.0/24",
+          "office",
+          "172.20.0.0/24",
+          "storage",
+          "10.23.0.0/24",
+          "198.51.100.1",
+          "198.51.100.20",
+          "172.20.0.20",
+          "172.20.0.50",
+          "10.23.0.1",
+          "10.23.0.40",
+          "10.23.0.41",
+          "Edge router",
+          "Web service",
+          "Office client",
+          "Data store",
+          "Backup",
+          "Shared servers across network buses",
+          "Native nwdiag: interface addresses, crossing gaps and a storage group"
+        ],
+        "shapes": {
+          "rect": 16,
+          "polyline": 7,
+          "ellipse": 7
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "nwdiagbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "7bff741790360b248374d315934527d8169e7181427efd4af341892a810951f3",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          260.0,
+          147.0
+        ],
+        "texts": [
+          "edge",
+          "10.4.0.0/24",
+          "10.4.0.1",
+          "10.4.0.8",
+          "gateway",
+          "portal"
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "NWDIAG",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          411.26,
+          213.8
+        ],
+        "texts": [
+          "edge",
+          "10.4.0.0/24",
+          "10.4.0.1",
+          "10.4.0.8",
+          "gateway",
+          "portal"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 2,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "nwdiagrepeated.puml",
+      "language": "plantuml",
+      "sourceSha256": "fa3d9eef9458fda3701b8f6196922baefbb878e42a7ee35643b0b9aac6359bbe",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          130.0,
+          203.0
+        ],
+        "texts": [
+          "edge",
+          "core",
+          "198.51.100.2",
+          "10.23.0.1",
+          "router"
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "NWDIAG",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          224.07999999999998,
+          298.20000000000005
+        ],
+        "texts": [
+          "edge",
+          "",
+          "core",
+          "",
+          "198.51.100.2",
+          "10.23.0.1",
+          "router"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 2,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "nwdiagshared.puml",
+      "language": "plantuml",
+      "sourceSha256": "4938d58ff6cb66f0750a492cf46c21c907bcb5d5ac19c8b95c2cf27136749a2e",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          315.0,
+          316.0
+        ],
+        "texts": [
+          "edge",
+          "198.51.100.0/24",
+          "core",
+          "10.23.0.0/24",
+          "Storage zone",
+          "198.51.100.1",
+          "10.23.0.1",
+          "198.51.100.20",
+          "10.23.0.40",
+          "Edge router",
+          "web",
+          "store"
+        ],
+        "shapes": {
+          "rect": 6,
+          "path": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "NWDIAG",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          672.3200000000002,
+          331.0
+        ],
+        "texts": [
+          "Storage zone",
+          "edge",
+          "198.51.100.0/24",
+          "core",
+          "10.23.0.0/24",
+          "198.51.100.1",
+          "198.51.100.20",
+          "10.23.0.1",
+          "10.23.0.40",
+          "Edge router",
+          "web",
+          "store"
+        ],
+        "shapes": {
+          "rect": 8,
+          "polyline": 4,
+          "ellipse": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "object.puml",
+      "language": "plantuml",
+      "sourceSha256": "b096f774dfdcaf21f8ae0cdbe278f8912e411bffd9cc511fae68e6eff9b1640b",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          123.0,
+          201.0
+        ],
+        "texts": [
+          "basket : Cart",
+          "total = 42",
+          "line : Item",
+          "sku = \"A7\"",
+          "contains"
+        ],
+        "shapes": {
+          "rect": 2,
+          "line": 2,
+          "path": 1,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CLASS",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          197.42,
+          364.00000000000006
+        ],
+        "texts": [
+          "basket : Cart",
+          "total = 42",
+          "line : Item",
+          "sku = \"A7\"",
+          "contains"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 3,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "packetbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "ed4d574921091eaf20c41f79fb22f97ff647e24388a8472d2c50f13b51c45669",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          735.0,
+          150.0
+        ],
+        "texts": [
+          "0",
+          "8",
+          "16",
+          "Version",
+          "Flags",
+          "Length",
+          "Payload"
+        ],
+        "shapes": {
+          "path": 17,
+          "rect": 4
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "PACKET",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          447.68,
+          178.20000000000002
+        ],
+        "texts": [
+          "Version",
+          "Flags",
+          "Length",
+          "Payload",
+          "0",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "8",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "16"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 17
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "packetdiag.puml",
+      "language": "plantuml",
+      "sourceSha256": "ecc46aa7cb370c90b48c8fca104315569bf97f1811a820c7d2c22b78b3dd8dd2",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          399.0,
+          250.0
+        ],
+        "texts": [
+          "Native packet \u2014 conserved inclusive fragments",
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "Type",
+          "Payload",
+          "Payload",
+          "Payload",
+          "Flags"
+        ],
+        "shapes": {
+          "path": 9,
+          "rect": 5
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "PACKET",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          458.87999999999994,
+          284.8
+        ],
+        "texts": [
+          "Type",
+          "Payload",
+          "Payload",
+          "Payload",
+          "Flags",
+          "0",
+          "",
+          "2",
+          "",
+          "4",
+          "",
+          "6",
+          "",
+          "8",
+          "Native packet \u2014 conserved inclusive fragments"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "regex.puml",
+      "language": "plantuml",
+      "sourceSha256": "68b258c9db493a896f5f248717cfe1bc21e233cfffffcbbb3d4c52a6e77a9370",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          236.0,
+          106.0
+        ],
+        "texts": [
+          "INV-",
+          "A",
+          "B",
+          "0-9"
+        ],
+        "shapes": {
+          "line": 13,
+          "rect": 4,
+          "path": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "REGEX",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          514.64,
+          182.5
+        ],
+        "texts": [
+          "I",
+          "N",
+          "V",
+          "-",
+          "capture",
+          "A",
+          "B",
+          "one of:",
+          "0-9"
+        ],
+        "shapes": {
+          "rect": 8,
+          "ellipse": 2,
+          "polyline": 17,
+          "polygon": 14
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "salt.puml",
+      "language": "plantuml",
+      "sourceSha256": "6d4ad1eb7f1814f46a447246a3491b5ee4e7d9211758b2af4b78df01b48f52b5",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          335.0,
+          156.0
+        ],
+        "texts": [
+          "Account preferences",
+          "Account",
+          "alice",
+          "Remember account",
+          "Receive newsletter",
+          "Standard delivery",
+          "Express delivery",
+          "Cancel",
+          "Continue",
+          "Wide status across both columns",
+          "Native Salt: measured nested tables and real controls"
+        ],
+        "shapes": {
+          "line": 25,
+          "rect": 4,
+          "polygon": 1,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SALT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          498.67999999999984,
+          327.4
+        ],
+        "texts": [
+          "Account",
+          "alice",
+          "Remember account",
+          "Receive newsletter",
+          "Standard delivery",
+          "Express delivery",
+          "Cancel",
+          "Continue",
+          "Wide status across both columns",
+          "Account preferences",
+          "Native Salt: measured nested tables and real controls"
+        ],
+        "shapes": {
+          "rect": 7,
+          "polyline": 7,
+          "polygon": 1,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "saltbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "0fba629e3bf1d9ee00505dc3ed39a9d6cdc6b585b62c5301aabb44dae1a91e41",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          137.0,
+          77.0
+        ],
+        "texts": [
+          "Login",
+          "User",
+          "sam",
+          "Cancel",
+          "Sign in"
+        ],
+        "shapes": {
+          "line": 13,
+          "rect": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SALT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          200.0,
+          158.20000000000002
+        ],
+        "texts": [
+          "Login",
+          "User",
+          "sam",
+          "Cancel",
+          "Sign in"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "saltliteral.puml",
+      "language": "plantuml",
+      "sourceSha256": "fa5e09a31c612c743b0986c1e87188195d370ff3781b2341314330fb2b7d4c47",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          140.0,
+          58.0
+        ],
+        "texts": [
+          "Label | pipe",
+          "value",
+          "Brace {literal}",
+          "Apply"
+        ],
+        "shapes": {
+          "line": 11,
+          "rect": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SALT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          206.18,
+          126.80000000000001
+        ],
+        "texts": [
+          "Label | pipe",
+          "value",
+          "Brace {literal}",
+          "Apply"
+        ],
+        "shapes": {
+          "rect": 3,
+          "polyline": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "saltwidgets.puml",
+      "language": "plantuml",
+      "sourceSha256": "515f278740900fe267eaae4ea2531c8b625f752972e872c60afc8d5c4f01343b",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          233.0,
+          106.0
+        ],
+        "texts": [
+          "Account",
+          "alice",
+          "Remember",
+          "Newsletter",
+          "Standard",
+          "Express",
+          "Cancel",
+          "Continue",
+          "Wide status"
+        ],
+        "shapes": {
+          "line": 25,
+          "rect": 4,
+          "polygon": 1,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SALT",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          329.38,
+          223.00000000000003
+        ],
+        "texts": [
+          "Account",
+          "alice",
+          "Remember",
+          "Newsletter",
+          "Standard",
+          "Express",
+          "Cancel",
+          "Continue",
+          "Wide status"
+        ],
+        "shapes": {
+          "rect": 7,
+          "polyline": 7,
+          "polygon": 1,
+          "ellipse": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "sequence.puml",
+      "language": "plantuml",
+      "sourceSha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          304.0,
+          255.0
+        ],
+        "texts": [
+          "Browser",
+          "Service",
+          "Browser",
+          "Service",
+          "Checkout",
+          "Submit basket",
+          "Check stock",
+          "Accepted"
+        ],
+        "shapes": {
+          "rect": 9,
+          "line": 4,
+          "path": 3,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SEQUENCE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          571.16,
+          472.4
+        ],
+        "texts": [
+          "Browser",
+          "Service",
+          "Submit basket",
+          "Check stock",
+          "Accepted",
+          "group",
+          "Checkout"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 4,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "state.puml",
+      "language": "plantuml",
+      "sourceSha256": "081bdcec241cbc1b3cb035cfe0d7e42dcee2efa45813e0de058c0df8533b24bf",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          177.0,
+          639.0
+        ],
+        "texts": [
+          "Fulfilment",
+          "Packed",
+          "Sealed",
+          "Checked",
+          "inspect",
+          "Queued",
+          "pack"
+        ],
+        "shapes": {
+          "path": 8,
+          "rect": 5,
+          "line": 5,
+          "ellipse": 5,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "STATE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          296.0,
+          1083.8000000000002
+        ],
+        "texts": [
+          "Fulfilment",
+          "Packed",
+          "Sealed",
+          "Checked",
+          "inspect",
+          "Queued",
+          "pack"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 8,
+          "ellipse": 5,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "stateadvanced.puml",
+      "language": "plantuml",
+      "sourceSha256": "5c1c2029939305cdb360955e2537e9edeaa5cd50f4cc6d2d843a2079cf3e8864",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          202.0,
+          814.0
+        ],
+        "texts": [
+          "Concurrent state regions",
+          "Machine",
+          "Idle",
+          "H",
+          "pause",
+          "Working",
+          "ready",
+          "enter",
+          "leave"
+        ],
+        "shapes": {
+          "rect": 5,
+          "path": 9,
+          "line": 4,
+          "ellipse": 7,
+          "polygon": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "STATE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          224.0,
+          1305.2
+        ],
+        "texts": [
+          "Machine",
+          "Idle",
+          "H",
+          "Working",
+          "pause",
+          "ready",
+          "enter",
+          "leave",
+          "Concurrent state regions"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 10,
+          "ellipse": 7,
+          "polygon": 9
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "statehistory.puml",
+      "language": "plantuml",
+      "sourceSha256": "273afa175561eee22ce7ff11434542c89fcde9c50ea7b255faaa4d578288c47c",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          125.0,
+          155.0
+        ],
+        "texts": [
+          "S",
+          "H",
+          "H*",
+          "H",
+          "H*"
+        ],
+        "shapes": {
+          "path": 3,
+          "rect": 1,
+          "line": 1,
+          "ellipse": 4,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "STATE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          272.0,
+          331.4
+        ],
+        "texts": [
+          "S",
+          "H",
+          "H*",
+          "H",
+          "H*"
+        ],
+        "shapes": {
+          "rect": 2,
+          "polyline": 3,
+          "ellipse": 4,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "statepseudos.puml",
+      "language": "plantuml",
+      "sourceSha256": "9b68f372b1dbb1f8bc4e9268b0607c046bcdb8fa158b722fb9f7148af8e5c1ff",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          157.0,
+          566.0
+        ],
+        "texts": [
+          "A",
+          "B",
+          "left",
+          "right",
+          "yes"
+        ],
+        "shapes": {
+          "polygon": 9,
+          "ellipse": 4,
+          "rect": 4,
+          "line": 2,
+          "path": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "STATE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          292.0,
+          818.1999999999999
+        ],
+        "texts": [
+          "A",
+          "B",
+          "left",
+          "right",
+          "yes"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polygon": 9,
+          "ellipse": 4,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "stateregions.puml",
+      "language": "plantuml",
+      "sourceSha256": "9b98e7fa6a8e5e6fc9c029e685cc6f13ba6766ba034437cdbfa76f8438ecf927",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          123.0,
+          708.0
+        ],
+        "texts": [
+          "S",
+          "A",
+          "init1",
+          "done1",
+          "B",
+          "init2",
+          "done2",
+          "C",
+          "init3",
+          "done3"
+        ],
+        "shapes": {
+          "path": 7,
+          "rect": 4,
+          "line": 6,
+          "ellipse": 9,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "STATE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          224.0,
+          1142.0000000000002
+        ],
+        "texts": [
+          "S",
+          "A",
+          "B",
+          "C",
+          "init1",
+          "done1",
+          "init2",
+          "done2",
+          "init3",
+          "done3"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 9,
+          "ellipse": 9,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "styledgraph.puml",
+      "language": "plantuml",
+      "sourceSha256": "577722087f3e47b9964d8ccb420f9fd2b64e67c3dce55ec193e94eff31819ca7",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          291.0,
+          643.0
+        ],
+        "texts": [
+          "Shared font measurement and explicit owned geometry",
+          "Domain",
+          "\u00a0",
+          "model",
+          "Commerce",
+          "Accounts",
+          "Ledger",
+          "entries : Number",
+          "Account",
+          "instances",
+          "owner : String",
+          "debit()",
+          "Premium",
+          "__level__ : Number",
+          "old records",
+          "1",
+          "many",
+          "Static",
+          "members and",
+          "retired",
+          "relationships",
+          "Native subset; no external resources"
+        ],
+        "shapes": {
+          "rect": 5,
+          "path": 7,
+          "line": 10,
+          "ellipse": 3,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "CLASS",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          637.24,
+          1208.1999999999998
+        ],
+        "texts": [
+          "Commerce",
+          "Accounts",
+          "Account",
+          "instances",
+          "debit()",
+          "owner : String",
+          "Premium",
+          "level",
+          " : Number",
+          "Ledger",
+          "entries : Number",
+          "old records",
+          "1",
+          "many",
+          "Shared font measurement and explicit owned geometry",
+          "Domain ",
+          "model",
+          "Static",
+          " members and ",
+          "retired",
+          " relationships",
+          "Native subset; no external resources"
+        ],
+        "shapes": {
+          "rect": 11,
+          "polyline": 5,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "styledsequence.puml",
+      "language": "plantuml",
+      "sourceSha256": "040c0952cc2b8a6fdb8400adc6594e2dee838205efeb3505e444a05943f7fbde",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          405.0,
+          469.0
+        ],
+        "texts": [
+          "Native measured text and document regions",
+          "Checkout",
+          "\u00a0",
+          "conversation",
+          "Measured styled runs",
+          "Browser",
+          "Service",
+          "Browser",
+          "Service",
+          "Checkout",
+          "Submit",
+          "basket",
+          "securely",
+          "Check",
+          "stock",
+          "\u00a0",
+          "preserve   spaces",
+          "Accepted",
+          "Confirmed",
+          "and",
+          "superseded",
+          "messages",
+          "Safe in-memory native rendering"
+        ],
+        "shapes": {
+          "rect": 11,
+          "line": 4,
+          "path": 3,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "SEQUENCE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          844.8800000000001,
+          731.2
+        ],
+        "texts": [
+          "Browser",
+          "Service",
+          "Submit ",
+          "basket ",
+          "securely",
+          "Check ",
+          "stock",
+          "",
+          "  preserve   spaces",
+          "Accepted",
+          "group",
+          "Checkout",
+          "Native measured text and document regions",
+          "Checkout ",
+          "conversation",
+          "Measured styled runs",
+          "Confirmed",
+          " and ",
+          "superseded",
+          " messages",
+          "Safe in-memory native rendering"
+        ],
+        "shapes": {
+          "rect": 5,
+          "polyline": 4,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "timing.puml",
+      "language": "plantuml",
+      "sourceSha256": "c25f1e332dac7555692fb0942f36d63a02cc5316111511915b0c5ffe97e474ec",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1138.0,
+          233.0
+        ],
+        "texts": [
+          "Native timing: valve and controller",
+          "Valve track",
+          "Closed",
+          "Open",
+          "open interval",
+          "Controller track",
+          "Waiting",
+          "Running",
+          "Done",
+          "0",
+          "6",
+          "15",
+          "20",
+          "confirm",
+          "Integer times; native waveform and ribbon layout"
+        ],
+        "shapes": {
+          "line": 60,
+          "polygon": 6,
+          "path": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "TIMING",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          909.1600000000001,
+          493.6
+        ],
+        "texts": [
+          "0",
+          "5",
+          "10",
+          "15",
+          "20",
+          "Valve track",
+          "Closed",
+          "Open",
+          "Controller track",
+          "Waiting",
+          "Running",
+          "Done",
+          "open interval",
+          "confirm",
+          "Native timing: valve and controller",
+          "Integer times; native waveform and ribbon layout"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 15,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "timingbase.puml",
+      "language": "plantuml",
+      "sourceSha256": "b63360b1f508f465a335bece9b632db5353caf2a4614243e7eb94e4c9d326caf",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          398.0,
+          124.0
+        ],
+        "texts": [
+          "Pump",
+          "Idle",
+          "Running",
+          "0",
+          "10",
+          "25"
+        ],
+        "shapes": {
+          "line": 25
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "TIMING",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          838.34,
+          213.60000000000002
+        ],
+        "texts": [
+          "0",
+          "5",
+          "10",
+          "15",
+          "20",
+          "25",
+          "Pump",
+          "Idle",
+          "Running"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 12
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "timingdual.puml",
+      "language": "plantuml",
+      "sourceSha256": "9fe1b95191e7741ab35c4c5cb3246c4acc00a3afc4b65dfc559dceb1442b0f54",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          1138.0,
+          194.0
+        ],
+        "texts": [
+          "Valve track",
+          "Closed",
+          "Open",
+          "open interval",
+          "Controller track",
+          "Waiting",
+          "Running",
+          "Done",
+          "0",
+          "6",
+          "15",
+          "20",
+          "confirm"
+        ],
+        "shapes": {
+          "line": 60,
+          "polygon": 6,
+          "path": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "TIMING",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          909.1600000000001,
+          411.20000000000005
+        ],
+        "texts": [
+          "0",
+          "5",
+          "10",
+          "15",
+          "20",
+          "Valve track",
+          "Closed",
+          "Open",
+          "Controller track",
+          "Waiting",
+          "Running",
+          "Done",
+          "open interval",
+          "confirm"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 15,
+          "polygon": 6
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "timinglane.puml",
+      "language": "plantuml",
+      "sourceSha256": "f8f6daea3aa5830de880da7a96bf82bc3fb080e3077d93545ae5194444bff097",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          288.0,
+          183.0
+        ],
+        "texts": [
+          "Valve",
+          "Closed",
+          "Open",
+          "Control",
+          "Waiting",
+          "Running",
+          "Done",
+          "0",
+          "5",
+          "15"
+        ],
+        "shapes": {
+          "line": 24,
+          "polygon": 3,
+          "path": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "TIMING",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          856.8000000000001,
+          324.4
+        ],
+        "texts": [
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "10",
+          "12",
+          "14",
+          "15",
+          "Valve",
+          "Closed",
+          "Open",
+          "Control",
+          "Waiting",
+          "Running",
+          "Done"
+        ],
+        "shapes": {
+          "rect": 1,
+          "polyline": 15,
+          "polygon": 3
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "usecase.puml",
+      "language": "plantuml",
+      "sourceSha256": "342ad82873e6d41e18bbc20de8e4e46a506a9135bb5c2fc77c9d3d36fc9c1b8f",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          165.0,
+          344.0
+        ],
+        "texts": [
+          "Store",
+          "Place order",
+          "Pay invoice",
+          "Shopper",
+          "includes"
+        ],
+        "shapes": {
+          "rect": 1,
+          "ellipse": 3,
+          "path": 3,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "DESCRIPTION",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          510.97,
+          761.5999999999999
+        ],
+        "texts": [
+          "Shopper",
+          "Store",
+          "Place order",
+          "Pay invoice",
+          "includes"
+        ],
+        "shapes": {
+          "rect": 3,
+          "ellipse": 3,
+          "polyline": 5,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "wbs.puml",
+      "language": "plantuml",
+      "sourceSha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          270.0,
+          205.0
+        ],
+        "texts": [
+          "Design",
+          "Schema",
+          "Rollout",
+          "Monitor",
+          "Migration"
+        ],
+        "shapes": {
+          "line": 8,
+          "rect": 5
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "WBS",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          332.18,
+          242.20000000000002
+        ],
+        "texts": [
+          "Migration",
+          "Design",
+          "Schema",
+          "Rollout",
+          "Monitor"
+        ],
+        "shapes": {
+          "rect": 6,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "wire.puml",
+      "language": "plantuml",
+      "sourceSha256": "8d229fb9d4b737c00568db2fdce9405850f81a6225e5353e8b38a81992fde795",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          321.0,
+          261.0
+        ],
+        "texts": [
+          "Nested signal paths",
+          "Input",
+          "Storage",
+          "Output",
+          "System",
+          "\u00a0",
+          "signal"
+        ],
+        "shapes": {
+          "rect": 5,
+          "path": 2,
+          "line": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "WIRE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          383.92,
+          322.2
+        ],
+        "texts": [
+          "System",
+          "Input",
+          "Storage",
+          "Output",
+          "signal",
+          "save",
+          "Nested signal paths"
+        ],
+        "shapes": {
+          "rect": 7,
+          "polyline": 2,
+          "polygon": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "wirebase.puml",
+      "language": "plantuml",
+      "sourceSha256": "d2da7ba763012f397c23facf849424dfcac3b507c108547ad548f23f67bd0bb2",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          261.0,
+          101.0
+        ],
+        "texts": [
+          "Input",
+          "Output",
+          "\u00a0",
+          "signal"
+        ],
+        "shapes": {
+          "rect": 3,
+          "path": 1,
+          "line": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "WIRE",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          323.92,
+          128.0
+        ],
+        "texts": [
+          "Input",
+          "Output",
+          "signal"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 1,
+          "polygon": 1
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    },
+    {
+      "file": "yaml.puml",
+      "language": "plantuml",
+      "sourceSha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb",
+      "originalStatus": "rendered",
+      "nativeStatus": "rendered",
+      "originalSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          338.0,
+          102.0
+        ],
+        "texts": [
+          "service",
+          "\u00a0\u00a0\u00a0",
+          "name",
+          "Billing",
+          "replicas",
+          "2",
+          "zones",
+          "\u00a0\u00a0\u00a0",
+          "north",
+          "south"
+        ],
+        "shapes": {
+          "rect": 6,
+          "line": 7,
+          "path": 4,
+          "ellipse": 2
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "YAML",
+        "errorTextCandidates": []
+      },
+      "nativeSvg": {
+        "viewBox": [
+          0.0,
+          0.0,
+          486.22,
+          154.20000000000002
+        ],
+        "texts": [
+          "service",
+          "",
+          "name",
+          "Billing",
+          "replicas",
+          "2",
+          "zones",
+          "",
+          "0",
+          "north",
+          "1",
+          "south"
+        ],
+        "shapes": {
+          "rect": 4,
+          "polyline": 8
+        },
+        "foreignObjects": 0,
+        "externalHrefs": [],
+        "diagramType": "",
+        "errorTextCandidates": []
+      }
+    }
+  ]
+}

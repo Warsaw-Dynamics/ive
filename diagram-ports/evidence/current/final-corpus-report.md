@@ -1,0 +1,47 @@
+# Task4B final post-state corpus execution
+
+Snapshot **`3478bbdf5d11865414817e5f6a01eb81cd2336da`**, dynamically read from clean central at execution start;95 committed fixtures (**37 Mermaid,58 PlantUML**,16,592 bytes). Four additions since the non-final rehearsal: stateadvanced,statehistory,statepseudos,stateregions; previous91 unchanged. Controller released execution after its fresh full core/build gates. This worker performed corpus evidence checks, not an independent broad review or final whole-port acceptance.
+
+Fresh coherent successful root **`/tmp/ive-diagram-final-poststate.MH3MN8`**. Native release binary **68,019,920 bytes**, SHA **`0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d`**, matched controller-provided fresh-build SHA before execution, during driver's pre/post identity checks and after all runs. No Cargo/build/runtime/product/provenance/vendor/progress edits. All new writes stayed in fresh /tmp execution/report/helper locations; historical artifacts were not overwritten.
+
+**Native95/95 rendered,0 failed. Original94/95 rendered**:36/37 Mermaid,58/58 PlantUML. Only original failure is zenuml.mmd `UnknownDiagramError: No diagram type detected ... zenuml`, the original core-plugin boundary; native ZenUML is positive. Every native result records the matched original status using filename+exact source SHA. Seven shared stems retain distinct .mmd/.puml extensions; zero filename/source mapping collisions. All95 copied sources independently rechecked against exact snapshot Git blobs and both result sets before claims.
+
+## Commands and first-attempt correction
+
+Executed `bash /tmp/ive-task4b-final-corpus-commands.sh /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports /mnt/data/Projects/ive/target/release/diagram-viewer /tmp/ive-diagram-oracles.JwN5H5`. Successful template contains dynamic Git-root snapshot, original corpus, native export with `--original`, native closure check, fresh six-case original repeat and independent cross-source/hash verification. Actual successful template is retained at `MH3MN8/executed-template.sh`, SHA **`aa09b5e282ec82af092148d1da0f3b916d45b094832e9760b2f94745e4551355`**.
+
+First attempt `/tmp/ive-diagram-final-poststate.MvrRA7` found a preparation-script bug: `git ls-tree` ran from nested standalone cwd while using repository-root paths, enumerating zero files. It printed cases0 and stopped at oracle input validation BEFORE browser/Java/native renderer launch. Preserved snapshot/logs and original template `MvrRA7/template-before-fix.sh` (old template SHA11eb1bb166668bc9f4ee459bcebaf1790e0691d073d2a9dff09417f11ac135e2). Corrected only /tmp template to resolve `git rev-parse --show-toplevel` before ls-tree/show, plus explicit empty-enumeration rejection. Read-only probe then verified95; actual successful run used a different fresh root. No report treats the empty attempt as corpus evidence and no central branch/index/staging operation was performed by setup.
+
+Underlying commands (all exit0 in successful root): `node .../tools/oracles.mjs --corpus MH3MN8/input MH3MN8/output --oracle-root /tmp/ive-diagram-oracles.JwN5H5`; `node .../tools/native-corpus.mjs export --fixtures MH3MN8/input-native --output MH3MN8/native --viewer /mnt/data/Projects/ive/target/release/diagram-viewer --original MH3MN8/output/admission.json`; `node .../tools/native-corpus.mjs check MH3MN8/native`; second oracle invocation uses repeat-input/repeat-output. Here MH3MN8 abbreviates the absolute fresh root above; all executed args were absolute. Exact tool/binary hashes are `executables-sha256.txt`.
+
+## Closure and semantic admission evidence
+
+Original **284 artifacts excluding manifest /948,239 bytes**, every source/SVG/metrics/error hash+length and metrics→SVG hash link verified; exact inventory/no extras. Native **476 artifacts /799,413 bytes**, including copied original-admission status provenance; own admission manifest is additional. Native exact artifact/log/status/summary/source closure passes, all positive expectations met. Repeat **18 artifacts excluding manifest /62,273 bytes**, full closure verified. Copied original status provenance is distinct from independent original SVG/metrics closure (both checked here).
+
+All94 successful original SVGs parse as XML with positive finite bounded measured content; no painted syntax-error/root-ERROR candidates. Original info.mmd has no viewBox but positive content, intentionally text-only. All95 native SVGs parse with positive finite viewBoxes. Original eventmodeling3/journey4 foreignObjects persist despite htmlLabels=false; native has zero. Both sets have zero external hrefs in this scan; this is not a full CSS/resource-policy proof. SVG-text-only metrics do not include original foreignObject HTML labels. No pixel comparison or full all-authored-label/topology/geometry proof is inferred.
+
+Additional actual native export checks:37 fixed Mermaid label controls from the committed public fixture tests pass with SVG text-run whitespace normalization. All four new state fixtures are admitted by original and native; exact native kind controls cover fork/join, choice/junction, shallow/deep history and three regions. All **24** state transitions resolve existing endpoint IDs. Pseudo fixture exact pairs match initial→Split, Split→A/B, A/B→Join, Join→Choose→Junction→final. Region fixture has three disjoint endpoint-owner groups with two transitions each; first group uses existing composite ownership while later groups use explicit region IDs. No new uniform ownership encoding is invented. These are selected semantic controls, not a broad independent review.
+
+`semantic-preservation-verification.json` also independently rechecks all95 Git/source/status identities and **860 historical files unchanged** (old Mermaid corpus, non-final original/repeat/native rehearsal artifacts). This is the supplied historical witness; generic `verification.json` has0 in its optional historical-witness field because the template did not supply that separate file. No historical mutation occurred. Existing raw artifacts/manifests remain unmodified.
+
+## Actual reference configuration and repeatability
+
+Original manifest recorded2026-10-23T17:21:56.104Z; native17:21:56.319Z–17:21:58.398Z; repeat recorded17:22:00.596Z. Nodev22.14.0, Chrome153.0.8010.12, Mermaid12.2.0, Puppeteer25.16.0, Linuxx64; exact config in original manifest/final-run-summary.json. PlantUML1.2026.9/18d0aae MIT source distribution, observed runtime JAR SHA **`e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd`**; local observed identity, not external authentication. Graphviz2.43.0(0), TZ unset/hostEurope/Warsaw; browser date/timezone not explicitly overridden. Java/dot/environment logs retained. No injected PlantUML `-SdefaultFontName`.
+
+Oracle strict/default theme, deterministicIds/seedive-diagram-oracle-v1, classic look/handDrawnSeed42, Liberation Sans, configured dagre/flowchartdagre-wrapper, htmlLabels=false and recorded per-family overrides. Browser viewport1600×1200/scale1/offline. Configured Dagre is not proof of upstream default-ELK parity, and computed CSS font is not actual shaping-face/ink/baseline evidence. Native CLI is deterministic export; no per-family/host-measurement telemetry or real GUI capture is inferred.
+
+Fresh exact-source repeat: architecture.mmd raw SVG differs solely in generated Iconify IDs (bijective ID-only normalization makes bytes equal); normalized metrics match. Mermaid git.mmd random labels first0-217ffbe/1-6fd0f48, repeat0-9476480/1-7290726; content height154.6064911→158.4670868, so geometry also varies. Gantt.mmd,ganttbase.puml,git.puml,sequence.puml repeat raw SVG+metrics byte-identically on this date. No byte-repeatability claim for un-repeated originals. Original Mermaid Gantt viewBox1584×148 versus native800×148; today-markerx134262 versus−208848 dominates raw content bbox. Date/time/container policies differ; no isolated font/layout-defect conclusion. Both raw runs retained without normalization.
+
+## Exact retained hashes
+
+| Artifact relative to fresh root | SHA-256 |
+| --- | --- |
+| output/admission.json | `ef56cdb8e603404fb3465a7383c8072e28b7aca08414ad8bc65830574ece9742` |
+| native/admission.json | `b8f66998f7728e803d8bc5560ae25b43d2ba59e759685c739f1e3d4180e67462` |
+| repeat-output/admission.json | `43c943ea70a52f35c21d540d2c04d2ad19938039d3d35528365f03a2ba5f4f2b` |
+| comparison.json | `879353bb5a1113de11ae9e61082d2c0e1467a6e683776245c58b761aad3d8c94` |
+| verification.json | `56885ff36574b9c13ae7d7d94ef8722a2505d8ffb95339ee492d109bcfe1a735` |
+| semantic-preservation-verification.json | `af6c91bf8c234c437db733400bad79b6843d5069299cda52477f6f1548bd36b4` |
+| state-endpoint-topology-verification.json | `9c2aeb521dbf0dfe0b89a82bd3409ff49b7f680468290478cc103beda64d1076` |
+
+`manifests-sha256.txt` retains primary hashes. General checker `/tmp/ive-task4b-original-rehearsal-verify.py` SHA52c1edfc76e8dc90568ffa23a6498f86e894c6491a05940f240a8082b7c91881; selected semantic checker `/tmp/ive-task4b-final-semantic-verify.py` SHAa46a6b0d7ff3932d884c8747b30aa708c0614e3c88b3b5e5619774c74a230531. Source snapshot/head/tool/binary/config/log metadata remain alongside results. Controller owns durable integration, full negative/model/geometry/native-capture evidence, COVERAGE conclusions and final independent review. No full upstream compatibility, native pixel parity or whole-branch approval follows from this completed corpus run.

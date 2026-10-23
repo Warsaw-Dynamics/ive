@@ -1,8 +1,18 @@
-# Historical diagram-port evidence archive
+# Diagram-port evidence archive
 
-This archive preserves completed implementation reports, the available historical independent review documents, and the preparatory research required by Task4B. Its branch starts at `1b0c1edadadefe76676206340dedf477b6067cf0`. It does **not** provide final advanced-state, corpus, coverage, native capture or whole-branch review acceptance.
+This archive separates historical implementation/review/research evidence from the CURRENT structured addendum at product `3478bbdf5d11865414817e5f6a01eb81cd2336da`. Historical payloads remain exact snapshots from archive base `1b0c1edadadefe76676206340dedf477b6067cf0`. Current corpus execution, advanced-state reports and controller gate/capture facts are retained without creating an independent whole-branch approval. Final chronological Rulings consolidation and whole-branch review remain pending.
 
 Start with the [catalog](catalog.md), [recorded review verdict index](verdict-index.md), and [machine-readable manifest](manifest.json). The manifest maps every old source path to its durable copy, records source and archived SHA-256/byte counts, and preserves exact reported base/head lines and verdict excerpts. The report text itself remains the authority for those historical claims; extracted identifiers are not a newly approved product-head list.
+
+## CURRENT evidence at 3478bbd
+
+- [Final post-state corpus execution report](current/final-corpus-report.md):95 native positive fixtures;94 original renders with the expected ZenUML core-plugin error. [Source identities](current/corpus/snapshot.json), [original](current/corpus/original-admission.json), [native](current/corpus/native-admission.json) and [repeat](current/corpus/repeat-admission.json) manifests remain exact copies.
+- [Structured comparison](current/corpus/comparison.json), [closure verification](current/corpus/verification.json), [selected semantic/preservation checks](current/corpus/semantic-preservation-verification.json), [state endpoint/topology checks](current/corpus/state-endpoint-topology-verification.json) and [environment/run summary](current/corpus/final-run-summary.json). These do not prove all-authored-label, full layout, font/ink or pixel parity.
+- [Controller gates and captures](current/controller-gates-and-captures.md) distinguishes controller-reported tests, visual/pixel checks and negative behavior from this archival worker's preservation/hash/count checks. [Final gallery metadata](current/gallery/captures.json) records72 PNGs and actual per-case native/fallback counts; raw images are external.
+- [Advanced-state checkpoint](current/state/task-3b2-report.md) and [integration/history-stereotype supplement](current/state/task-3b2-integration-followup-report.md) are verbatim implementation reports. Their pending-at-the-time statements are historical; controller-reported final integration is3478bbd.
+- [Executed developer template](current/corpus/executed-template.sh), [executable hashes](current/corpus/executables-sha256.txt) and [original-location manifest hashes](current/corpus/manifests-sha256.txt) support reproduction/provenance. The last file retains original absolute /tmp paths; use this archive's global checksum inventory for retained files.
+
+Raw SVGs, PNGs, logs, JARs and vendor source are deliberately not duplicated. Structured manifests preserve their historical paths/hashes, and raw closure was checked while those files were available. The archived template is developer evidence, not a runtime component or a promise that its machine-specific defaults exist elsewhere.
 
 ## Evidence kinds
 
@@ -15,8 +25,9 @@ Start with the [catalog](catalog.md), [recorded review verdict index](verdict-in
 | Required preparatory research and accompanying source ledgers | 12 | Original/source semantics, architectural preparation and historical oracle work; not current native support. |
 | Historical controller ledgers | 2 | Exact old events/rulings, including stale checkboxes and superseded orchestration notes. |
 | Generator/provenance snapshots | 5 | Exact dependency/notice/admission/residual/generated-hash metadata at this archive's product base. |
+| CURRENT corpus/gallery/state/controller addendum | 17 | Final structured artifacts and distinctly attributed implementation/controller evidence at3478bbd; final review remains pending. |
 
-The **114 payloads contain 1,844,096 bytes**. New indexes, manifest and checksum file are separate archive metadata. All copied payloads are byte-identical to the sources captured for this archive. That independent preservation check does not mean this job reran the historical tests, source audits, model proofs or review gates.
+The **114 historical payloads contain 1,844,096 bytes** and remain unchanged. The **17 current payloads contain 411,317 bytes**, for **131 payloads /2,255,413 bytes** total. Indexes, manifest and checksum file are separate archive metadata. All copied payloads are byte-identical to their captured sources; the controller summary is newly authored and explicitly attributed. Preservation checks do not mean this job reran runtime tests or visual/review gates.
 
 An implementation report is **reported evidence** even when it describes independent controller checks. A review document is **historical independent review evidence**, limited to its stated range and scope. A later family with a tested checkpoint and deferred broad review is not upgraded to independent approval. Read the final scoped rereview together with its earlier findings and implementation fixes; do not interpret an old needs-fixes review as a new finding against the current branch.
 
@@ -24,7 +35,7 @@ An implementation report is **reported evidence** even when it describes indepen
 
 Payloads retain their original bytes, including `/tmp`, machine-specific worktree paths, earlier source locations, commands, line references and pending-at-the-time wording. Those paths are **historical references**, may be unavailable on another machine, and are never runtime inputs. The durable links in this directory and `manifest.json` are the recovery map. Ignored SDD sources have not been removed or changed.
 
-The archive base identifies this archive checkout and the copied product-provenance snapshot. Ignored reports and temporary research were captured as files, not falsely claimed to be tracked blobs in that base. Their exact captured identity is their recorded source SHA-256. Existing byte-identical durable or temporary copies are listed as origin aliases where available.
+The historical archive base identifies its copied product-provenance snapshot; `currentEvidence` identifies the3478bbd addendum separately. Ignored reports and temporary research were captured as files, not falsely claimed to be tracked blobs in either base. Their exact captured identity is their recorded source SHA-256. Existing byte-identical durable or temporary copies are listed as origin aliases where available.
 
 The required [builder-check artifact](research/preparation/ive-plantuml-lalrpop-builder-check.md) is exactly **23 bytes**, `nothing important left` followed by a newline. It is preserved as a **placeholder**, with no substantive builder verification inferred. The [migration design preparation](research/preparation/ive-plantuml-lalrpop-migration-design-prep.md) is separate research, not a replacement verdict.
 
@@ -40,6 +51,7 @@ These remain outside the historical archive and may evolve after this snapshot. 
 - [Current parser registration/provenance](../provenance/plantuml-parser.json), [admission evidence](../provenance/plantuml-parser-admission.md) and [residual inventory](../provenance/plantuml-parser-residuals.md).
 - [Generator dependency grants](../provenance/LICENSE-PlantUML-Generator-Dependencies.md) and [supplement](../provenance/LICENSE-PlantUML-Generator-Supplement.md). The archive preserves dependency/notice mappings without copying these legal texts again.
 - [Parent implementation plan](../../docs/superpowers/plans/2026-10-22-diagram-ports-plan.md) and [LALRPOP migration plan](../../docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md).
+- [Current coverage and residuals](../COVERAGE.md), read alongside the precise evidence scope and pending final review. Historical `liveReferences` hashes retain their original base; current reference hashes are recorded separately.
 
 Historical [native](history/native-controller-ledger.md) and [migration](history/migration-controller-ledger.md) ledgers preserve the controller's old rulings/events, not the owner's current checklist. The controller owns the canonical `progress.md`, final chronological Rulings handoff and any link updates before SDD cleanup. This archive job does not edit them.
 
@@ -47,9 +59,6 @@ Historical [native](history/native-controller-ledger.md) and [migration](history
 
 | Entry | Status |
 | --- | --- |
-| Advanced-state implementation/integration/report and review | Pending controller update after the released work completes. |
-| Final post-state coherent original/native corpus and actual native family captures | Pending; older checkpoints and non-final rehearsals do not substitute. |
-| Final `COVERAGE.md`, documentation and independently verified full gates | Pending; no final coverage-preparation report is imported here. |
 | Final chronological Rulings handoff | Pending controller-owned consolidation from the exact historical records. |
 | Whole-branch final independent review and dispositions | Pending; the 44 historical documents are scoped earlier reviews. |
 
@@ -65,6 +74,6 @@ sha256sum -c SHA256SUMS
 
 `SHA256SUMS` covers all payloads plus `README.md`, `catalog.md`, `verdict-index.md` and `manifest.json`; it excludes itself. The controller handoff reports the checksum file's own SHA-256. The manifest's original locations allow byte comparisons when those sources remain available. A missing historical `/tmp` source does not invalidate the durable archived copy.
 
-Four required source-semantic research documents retain their original blank EOF lines: inventory-remaining, inventory-small, next-semantics and specialized-semantics. A whole-archive `git diff --check` reports those preserved bytes. The newly authored indexes and manifest pass their scoped whitespace check; copied research is not normalized to change its source identity.
+Four required source-semantic research documents retain their original blank EOF lines: inventory-remaining, inventory-small, next-semantics and specialized-semantics. The initial historical-import diff reported those bytes. Historical payloads are unchanged in the current addendum; copied research is not normalized to change its source identity.
 
 This archive makes no new runtime, syntax, layout, font, native-measurement, pixel-parity, source-authentication or full-compatibility claim.

@@ -6,11 +6,8 @@
   "preservationPolicy": "source/archived SHA and bytes verified; absolute and /tmp origins remain historical machine references, not runtime inputs",
   "evidencePolicy": "preservation verified only; implementation reports, historical independent reviews, original research, ledgers and provenance snapshots are distinct; no new behavioral review or final approval",
   "pending": [
-    "advanced-state implementation/integration/report/review",
-    "final post-state original/native corpus and GUI captures",
-    "final COVERAGE/documentation and independently verified full gates",
     "controller final chronological Rulings handoff",
-    "whole-branch final independent review"
+    "whole-branch final independent review and dispositions"
   ],
   "files": [
     {
@@ -2727,6 +2724,260 @@
           "text": "Private parent `119bedce091f9bd780c0c1c3835b190126a50b13`; clean tested head **`f5338486163233f841de532b1cd5e1582658f3d8`**, branch `diagram-final-corpus-driver`, worktree `/mnt/data/Projects/ive/.worktree/diagram-corpus-driver`. Two scoped developer JS files only;21 insertions/four deletions. Central/main/progress and runtime remain untouched. Controller has integrated original driver as0e8d847; cherry-pick ONLY this follow-up commit. No broad review."
         }
       ]
+    },
+    {
+      "path": "current/final-corpus-report.md",
+      "bytes": 9482,
+      "sourceSha256": "1ce205537b28efb480038324e68734cbe315ec41339608345ae3aaa3fe0906f8",
+      "archivedSha256": "1ce205537b28efb480038324e68734cbe315ec41339608345ae3aaa3fe0906f8",
+      "originPaths": [
+        "/tmp/ive-task4b-final-corpus-report.md"
+      ],
+      "title": "Task4B final post-state corpus execution",
+      "category": "current-corpus-report",
+      "evidenceStatus": "current corpus execution/verification report; selected semantic controls only, no broad review/full geometry or pixel claim",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "reportedBaseHeadEvidence": [
+        {
+          "line": 3,
+          "text": "Snapshot **`3478bbdf5d11865414817e5f6a01eb81cd2336da`**, dynamically read from clean central at execution start;95 committed fixtures (**37 Mermaid,58 PlantUML**,16,592 bytes). Four additions since the non-final rehearsal: stateadvanced,statehistory,statepseudos,stateregions; previous91 unchanged. Controller released execution after its fresh full core/build gates. This worker performed corpus evidence checks, not an independent broad review or final whole-port acceptance."
+        },
+        {
+          "line": 33,
+          "text": "Fresh exact-source repeat: architecture.mmd raw SVG differs solely in generated Iconify IDs (bijective ID-only normalization makes bytes equal); normalized metrics match. Mermaid git.mmd random labels first0-217ffbe/1-6fd0f48, repeat0-9476480/1-7290726; content height154.6064911→158.4670868, so geometry also varies. Gantt.mmd,ganttbase.puml,git.puml,sequence.puml repeat raw SVG+metrics byte-identically on this date. No byte-repeatability claim for un-repeated originals. Original Mermaid Gantt viewBox1584×148 versus native800×148; today-markerx134262 versus−208848 dominates raw content bbox. Date/time/container policies differ; no isolated font/layout-defect conclusion. Both raw runs retained without normalization."
+        }
+      ]
+    },
+    {
+      "path": "current/corpus/snapshot.json",
+      "bytes": 19830,
+      "sourceSha256": "fbe8729f5722dc7b358a59cd5b483a9def4bf5d16251b47892c640eaabb43e3b",
+      "archivedSha256": "fbe8729f5722dc7b358a59cd5b483a9def4bf5d16251b47892c640eaabb43e3b",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/snapshot.json"
+      ],
+      "title": "snapshot.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/original-admission.json",
+      "bytes": 56323,
+      "sourceSha256": "ef56cdb8e603404fb3465a7383c8072e28b7aca08414ad8bc65830574ece9742",
+      "archivedSha256": "ef56cdb8e603404fb3465a7383c8072e28b7aca08414ad8bc65830574ece9742",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/output/admission.json"
+      ],
+      "title": "admission.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/native-admission.json",
+      "bytes": 115326,
+      "sourceSha256": "b8f66998f7728e803d8bc5560ae25b43d2ba59e759685c739f1e3d4180e67462",
+      "archivedSha256": "b8f66998f7728e803d8bc5560ae25b43d2ba59e759685c739f1e3d4180e67462",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/native/admission.json"
+      ],
+      "title": "admission.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/repeat-admission.json",
+      "bytes": 5028,
+      "sourceSha256": "43c943ea70a52f35c21d540d2c04d2ad19938039d3d35528365f03a2ba5f4f2b",
+      "archivedSha256": "43c943ea70a52f35c21d540d2c04d2ad19938039d3d35528365f03a2ba5f4f2b",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/repeat-output/admission.json"
+      ],
+      "title": "admission.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/comparison.json",
+      "bytes": 140393,
+      "sourceSha256": "879353bb5a1113de11ae9e61082d2c0e1467a6e683776245c58b761aad3d8c94",
+      "archivedSha256": "879353bb5a1113de11ae9e61082d2c0e1467a6e683776245c58b761aad3d8c94",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/comparison.json"
+      ],
+      "title": "comparison.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/verification.json",
+      "bytes": 7977,
+      "sourceSha256": "56885ff36574b9c13ae7d7d94ef8722a2505d8ffb95339ee492d109bcfe1a735",
+      "archivedSha256": "56885ff36574b9c13ae7d7d94ef8722a2505d8ffb95339ee492d109bcfe1a735",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/verification.json"
+      ],
+      "title": "verification.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/manifests-sha256.txt",
+      "bytes": 637,
+      "sourceSha256": "60801fef8b8edbfd94a8a95ce68043b1799cacb1f8dba93b5ca3ef1374672504",
+      "archivedSha256": "60801fef8b8edbfd94a8a95ce68043b1799cacb1f8dba93b5ca3ef1374672504",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/manifests-sha256.txt"
+      ],
+      "title": "manifests-sha256.txt",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/semantic-preservation-verification.json",
+      "bytes": 1816,
+      "sourceSha256": "af6c91bf8c234c437db733400bad79b6843d5069299cda52477f6f1548bd36b4",
+      "archivedSha256": "af6c91bf8c234c437db733400bad79b6843d5069299cda52477f6f1548bd36b4",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/semantic-preservation-verification.json"
+      ],
+      "title": "semantic-preservation-verification.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/state-endpoint-topology-verification.json",
+      "bytes": 2050,
+      "sourceSha256": "9c2aeb521dbf0dfe0b89a82bd3409ff49b7f680468290478cc103beda64d1076",
+      "archivedSha256": "9c2aeb521dbf0dfe0b89a82bd3409ff49b7f680468290478cc103beda64d1076",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/state-endpoint-topology-verification.json"
+      ],
+      "title": "state-endpoint-topology-verification.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/final-run-summary.json",
+      "bytes": 2070,
+      "sourceSha256": "10cf3ac76a108a61fa7334e9ea35d5b088daccbb02d7b9a8093204211c78a701",
+      "archivedSha256": "10cf3ac76a108a61fa7334e9ea35d5b088daccbb02d7b9a8093204211c78a701",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/final-run-summary.json"
+      ],
+      "title": "final-run-summary.json",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/executables-sha256.txt",
+      "bytes": 415,
+      "sourceSha256": "fb4310bfc7043c1c23effade2e889855b045844e872622e81b20d91474bf935e",
+      "archivedSha256": "fb4310bfc7043c1c23effade2e889855b045844e872622e81b20d91474bf935e",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/executables-sha256.txt"
+      ],
+      "title": "executables-sha256.txt",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/corpus/executed-template.sh",
+      "bytes": 3841,
+      "sourceSha256": "aa09b5e282ec82af092148d1da0f3b916d45b094832e9760b2f94745e4551355",
+      "archivedSha256": "aa09b5e282ec82af092148d1da0f3b916d45b094832e9760b2f94745e4551355",
+      "originPaths": [
+        "/tmp/ive-diagram-final-poststate.MH3MN8/executed-template.sh"
+      ],
+      "title": "executed-template.sh",
+      "category": "current-corpus-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/gallery/captures.json",
+      "bytes": 23460,
+      "sourceSha256": "5e371805d21b29fe088cec130171c4fe2773ff7ee537e1dc894b5af3309a306a",
+      "archivedSha256": "5e371805d21b29fe088cec130171c4fe2773ff7ee537e1dc894b5af3309a306a",
+      "originPaths": [
+        "/tmp/ive-gallery-final-20261023a/captures.json"
+      ],
+      "title": "captures.json",
+      "category": "current-gallery-structured-artifact",
+      "evidenceStatus": "generated current structured evidence; exact preservation independently checked; raw artifacts remain external",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/state/task-3b2-report.md",
+      "bytes": 11172,
+      "sourceSha256": "c167807f400ff619d512ac372a2c11bb056fff43fdb64bb0dcc5194c9c45c4ab",
+      "archivedSha256": "c167807f400ff619d512ac372a2c11bb056fff43fdb64bb0dcc5194c9c45c4ab",
+      "originPaths": [
+        "/mnt/data/Projects/ive/.worktree/diagram-ports/.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3b2-report.md"
+      ],
+      "title": "Task3B2 advanced-state tested checkpoint",
+      "category": "current-state-implementation-report",
+      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "reportedBaseHeadEvidence": [
+        {
+          "line": 3,
+          "text": "2026-10-23. Released isolated base `465b9c82371e63e8fb6c54ec34f3afb1d559d47f`; clean private head `d42f15aedcefa21ef7710fea984aab54196b7b61`, branch diagram-state-extension, W=`/mnt/data/Projects/ive/.worktree/diagram-state-extension-parallel`.23 product paths only. No central/main/progress edit; temporary erroneous private-root formatting was restored completely (below). Broad review remains deferred by owner instruction. Root explicitly released subsequent serialized integration over1b0c1ed; no integration was included in this private checkpoint."
+        }
+      ]
+    },
+    {
+      "path": "current/state/task-3b2-integration-followup-report.md",
+      "bytes": 6249,
+      "sourceSha256": "31d9db6648a87370415e61ecf406ac7fe62a889a0d726b920b7876152cabc706",
+      "archivedSha256": "31d9db6648a87370415e61ecf406ac7fe62a889a0d726b920b7876152cabc706",
+      "originPaths": [
+        "/tmp/ive-task3b2-integration-followup-report.md"
+      ],
+      "title": "Task3B2 integration and finite-name follow-up",
+      "category": "current-state-implementation-report",
+      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "reportedBaseHeadEvidence": [
+        {
+          "line": 3,
+          "text": "2026-10-23. This supplements central task-3b2-report.md. Per controller instruction, central writes stopped after clean `95908d1c552ee9faad536bb3bcb66c1ca14a7ba8`; this supplement and the admission repair were written only in /tmp/private worktree while documentation integration proceeds. Controller owns append/archive/tracker and repair integration."
+        },
+        {
+          "line": 7,
+          "text": "Private `d42f15aedcefa21ef7710fea984aab54196b7b61` integrated over `1b0c1edadadefe76676206340dedf477b6067cf0` as `95908d1c552ee9faad536bb3bcb66c1ca14a7ba8`. Zero content conflicts; README merged automatically. Exact protected current tooling, Creole spacing/text sources, scene/SVG, dependencies and immutable43 selector/manifest were byte-compared to1b0c1ed in `/tmp/ive-task3b2-integration-preservation.log`. All28 non-state grammar/output pairs remain unchanged, including current document/header. No progress.md/root IVE/main-checkout edits. Central regeneration29 wrote no byte differences; clean checkpoint was verified after all gates."
+        },
+        {
+          "line": 24,
+          "text": "Controller authorized an isolated repair. Private branch diagram-state-extension now clean at **`cdd1c58e804e8b2553991efa727bf136114c4c4c`**, base d42f15a, worktree `/mnt/data/Projects/ive/.worktree/diagram-state-extension-parallel`. Exactly three files: state.rs guard/work charge/bounded owned diagnostic; parser/state.rs negative/positive/diagnostic regression; function responsibility test symbol. No central writes or merge/rebase."
+        },
+        {
+          "line": 28,
+          "text": "Meaningful RED `/tmp/ive-task3b2-finite-name-red.log`: new test failed on accepted unquoted declaration. GREEN final `/tmp/ive-task3b2-finite-name-final2.log`: `cargo test --locked --offline -p diagram-engine --lib --test plantuml --test plantuml_control --test plantuml_state_extension -- --test-threads=1` passed453 (376 units+43 general+25 control+9 extension). `/tmp/ive-task3b2-finite-name-diagnostic.log` separately pins the strengthened category/location/offending-value assertions plus quoted/stereotype positives (1pass). Strict engine all-target Clippy PASS in `...-clippy-final.log`; formatter ran successfully in `...-final-format.log` (earlier read-only fmt PASS `...-fmt.log`), source audit PASS293/58/58 `...-source-final.log`. Read-only private generator `...-generator.log` PASS29; frozen43 `...-baseline.log` PASS. Exact grammar/generated/manifest bytes are unchanged from d42f15a, so stack/admission proof and native geometry/capture remain unchanged. Staged diff check PASS. No new dependency/vendor/notice/runtime or valid-source geometry change."
+        }
+      ]
+    },
+    {
+      "path": "current/controller-gates-and-captures.md",
+      "bytes": 5248,
+      "sourceSha256": "d6697718ccb9adcb664e581320b36149b5d60a98449eeb1344f5b26b04d283cd",
+      "archivedSha256": "d6697718ccb9adcb664e581320b36149b5d60a98449eeb1344f5b26b04d283cd",
+      "originPaths": [],
+      "factSource": "controller task instruction and follow-up negative/gallery metadata, 2026-10-23; structured count/hash checks by archive worker",
+      "title": "Controller gate and capture evidence at3478bbd",
+      "category": "current-controller-gate-capture-report",
+      "evidenceStatus": "authored controller-reported gate/capture summary; archive worker did not rerun gates or visually review captures",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
     }
   ],
   "liveReferences": [
@@ -2786,8 +3037,12 @@
     }
   ],
   "summary": {
-    "payloadFiles": 114,
-    "payloadBytes": 1844096,
+    "payloadFiles": 131,
+    "payloadBytes": 2255413,
+    "historicalPayloadFiles": 114,
+    "historicalPayloadBytes": 1844096,
+    "currentPayloadFiles": 17,
+    "currentPayloadBytes": 411317,
     "categories": {
       "native-implementation-report": 25,
       "tooling-implementation-report": 3,
@@ -2798,7 +3053,94 @@
       "architecture-preparation": 3,
       "historical-oracle-research-report": 2,
       "historical-controller-ledger": 2,
-      "generator-provenance-snapshot": 5
+      "generator-provenance-snapshot": 5,
+      "current-corpus-report": 1,
+      "current-corpus-structured-artifact": 12,
+      "current-gallery-structured-artifact": 1,
+      "current-state-implementation-report": 2,
+      "current-controller-gate-capture-report": 1
     }
-  }
+  },
+  "currentEvidence": {
+    "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+    "archiveWorktree": "/mnt/data/Projects/ive/.worktree/diagram-current-evidence",
+    "capturedAt": "2026-10-23T17:34:09.243343+00:00",
+    "releaseViewerSha256": "0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d",
+    "status": "current corpus/capture/controller gates; distinct from historical snapshots; final review and Rulings pending",
+    "controllerSummary": "current/controller-gates-and-captures.md",
+    "rawArtifactPolicy": "no raw SVG/PNG/JAR/vendor duplication; retained manifests preserve historical /tmp paths and hashes",
+    "archiveWorkerChecks": {
+      "galleryPngHashes": 72,
+      "galleryLogHashes": 72,
+      "negativePngHashes": 2,
+      "mermaidPriorFrameHashMatches": 37
+    },
+    "reportedGateFacts": {
+      "coreOrdinary": 858,
+      "allTargetsOrdinary": 859,
+      "workerFaultsEach": 7,
+      "plantumlAudit": [
+        293,
+        58,
+        58
+      ],
+      "mermanAudit": [
+        656,
+        4
+      ],
+      "generatedParsers": 29,
+      "generatorClosure": 67,
+      "immutableBaseline": 43,
+      "nodeTests": 75,
+      "galleryPngs": 72,
+      "plantumlGallery": [
+        35,
+        35,
+        35
+      ],
+      "mermaidGallery": [
+        37,
+        20,
+        9
+      ]
+    }
+  },
+  "currentLiveReferences": [
+    {
+      "path": "diagram-ports/COVERAGE.md",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "d21db93fa135ecad3a59ff621215745b266f7ef8b31c9e44816c36031b88e7ac",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    },
+    {
+      "path": "diagram-ports/README.md",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "348dd619e2523ba2a92d4e5c19e4f74ec8ee0712dbf29bfbb3f55189f606830a",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    },
+    {
+      "path": "diagram-ports/provenance/plantuml-mit-1.2026.9.json",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "6059d5a8af825314c1f425d90d9fcae513295f44c2a2db8027ed46779097832a",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    },
+    {
+      "path": "diagram-ports/provenance/plantuml-parser-admission.md",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "0486bc0c73ecafe44ad6bf667cf9c3266199baa334633b6a412b6c3b8849bf03",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    },
+    {
+      "path": "diagram-ports/provenance/plantuml-parser-residuals.md",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "b2dd89ce7d9b05509c1f694e553509b3bb3c0a961af0be508f59da284bac2952",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    },
+    {
+      "path": "diagram-ports/engine/src/plantuml/generated/manifest.json",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+      "sha256": "9161b09750ce1b52bccf3babc2891a78cefa974b6fba47b91c0c84faa03f8596",
+      "status": "existing live document/provenance at current product snapshot; not duplicated"
+    }
+  ]
 }

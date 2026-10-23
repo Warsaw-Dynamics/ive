@@ -1,6 +1,6 @@
-# Archived evidence catalog
+# Evidence catalog
 
-Snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0`. Every linked payload is byte-for-byte preserved; source locations, full SHA-256 and exact reported base/head/verdict excerpts are in [manifest.json](manifest.json). This catalog records the kind of evidence; it does not create a new approval.
+Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT product evidence `3478bbdf5d11865414817e5f6a01eb81cd2336da` are distinct. Exact file/source hashes, origins, reported base/head lines and review excerpts are in [manifest.json](manifest.json). Preservation does not create independent runtime/visual approval. Final whole-branch review and Rulings remain pending.
 
 ## architecture-preparation
 
@@ -9,6 +9,48 @@ Snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0`. Every linked payload i
 | [research/preparation/ive-diagram-native-bounds-prep.md](research/preparation/ive-diagram-native-bounds-prep.md) | historical preparation; not implementation/review approval; builder placeholder explicitly marked |
 | [research/preparation/ive-plantuml-lalrpop-migration-design-prep.md](research/preparation/ive-plantuml-lalrpop-migration-design-prep.md) | historical preparation; not implementation/review approval; builder placeholder explicitly marked |
 | [research/preparation/ive-plantuml-lalrpop-builder-check.md](research/preparation/ive-plantuml-lalrpop-builder-check.md) | **PLACEHOLDER:** 23-byte placeholder; no substantive builder verification is present |
+
+## current-controller-gate-capture-report
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/controller-gates-and-captures.md](current/controller-gates-and-captures.md) | authored controller-reported gate/capture summary; archive worker did not rerun gates or visually review captures |
+
+## current-corpus-report
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/final-corpus-report.md](current/final-corpus-report.md) | current corpus execution/verification report; selected semantic controls only, no broad review/full geometry or pixel claim |
+
+## current-corpus-structured-artifact
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/corpus/snapshot.json](current/corpus/snapshot.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/original-admission.json](current/corpus/original-admission.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/native-admission.json](current/corpus/native-admission.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/repeat-admission.json](current/corpus/repeat-admission.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/comparison.json](current/corpus/comparison.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/verification.json](current/corpus/verification.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/manifests-sha256.txt](current/corpus/manifests-sha256.txt) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/semantic-preservation-verification.json](current/corpus/semantic-preservation-verification.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/state-endpoint-topology-verification.json](current/corpus/state-endpoint-topology-verification.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/final-run-summary.json](current/corpus/final-run-summary.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/executables-sha256.txt](current/corpus/executables-sha256.txt) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+| [current/corpus/executed-template.sh](current/corpus/executed-template.sh) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+
+## current-gallery-structured-artifact
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/gallery/captures.json](current/gallery/captures.json) | generated current structured evidence; exact preservation independently checked; raw artifacts remain external |
+
+## current-state-implementation-report
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/state/task-3b2-report.md](current/state/task-3b2-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending |
+| [current/state/task-3b2-integration-followup-report.md](current/state/task-3b2-integration-followup-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending |
 
 ## generator-provenance-snapshot
 

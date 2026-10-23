@@ -1,0 +1,266 @@
+{
+  "head": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+  "total": 95,
+  "originalSummary": {
+    "total": 95,
+    "rendered": 94
+  },
+  "nativeSummary": {
+    "total": 95,
+    "rendered": 95,
+    "failed": 0
+  },
+  "originalByLanguage": {
+    "mermaid": {
+      "rendered": 36,
+      "error": 1
+    },
+    "plantuml": {
+      "rendered": 58
+    }
+  },
+  "originalIntegrity": {
+    "artifactsExcludingManifest": 284,
+    "bytesExcludingManifest": 948239,
+    "manifestSha256": "ef56cdb8e603404fb3465a7383c8072e28b7aca08414ad8bc65830574ece9742"
+  },
+  "repeatIntegrity": {
+    "artifactsExcludingManifest": 18,
+    "bytesExcludingManifest": 62273,
+    "manifestSha256": "43c943ea70a52f35c21d540d2c04d2ad19938039d3d35528365f03a2ba5f4f2b"
+  },
+  "nativeManifestSha256": "b8f66998f7728e803d8bc5560ae25b43d2ba59e759685c739f1e3d4180e67462",
+  "sourceMapping": "all95 exact; zero filename/extension collisions",
+  "sameStemDifferentExtensions": {
+    "class": [
+      "class.mmd",
+      "class.puml"
+    ],
+    "gantt": [
+      "gantt.mmd",
+      "gantt.puml"
+    ],
+    "git": [
+      "git.mmd",
+      "git.puml"
+    ],
+    "mindmap": [
+      "mindmap.mmd",
+      "mindmap.puml"
+    ],
+    "sequence": [
+      "sequence.mmd",
+      "sequence.puml"
+    ],
+    "state": [
+      "state.mmd",
+      "state.puml"
+    ],
+    "usecase": [
+      "usecase.mmd",
+      "usecase.puml"
+    ]
+  },
+  "paintedErrorCandidates": [],
+  "originalErrors": [
+    {
+      "file": "zenuml.mmd",
+      "nativeStatus": "rendered",
+      "error": "UnknownDiagramError: No diagram type detected matching given configuration for text: zenuml\n    title Demo\n    Alice->John: Hello John, how are you?\n    John->Alice: Great!\n\n"
+    }
+  ],
+  "originalForeignObjects": {
+    "eventmodeling.mmd": 3,
+    "journey.mmd": 4
+  },
+  "originalMissingViewBox": [
+    "info.mmd"
+  ],
+  "originalExternalHrefs": {},
+  "nativeForeignObjects": 0,
+  "nativeExternalHrefs": 0,
+  "historicalFilesUnchanged": 0,
+  "repeat": [
+    {
+      "file": "architecture.mmd",
+      "sourceSha256": "88eed9d27a77234403166e3529188781ea0683d39b3a6077950f7a15c9a673a0",
+      "svgEqual": false,
+      "metricsEqual": false,
+      "normalizedMetricsEqual": true,
+      "firstSvgSha256": "b18cb92d27addd0d4e02b5e709169a53619dfce2f2b3f40a13e730ecd4e1ebe7",
+      "repeatSvgSha256": "23f800eb487476038ffa0dd28481f3fd6156c0009d955d416d439fc9c88e2aac",
+      "firstBounds": {
+        "x": -142.84327697753906,
+        "y": -25.5,
+        "width": 365.6865539550781,
+        "height": 182
+      },
+      "repeatBounds": {
+        "x": -142.84327697753906,
+        "y": -25.5,
+        "width": 365.6865539550781,
+        "height": 182
+      }
+    },
+    {
+      "file": "gantt.mmd",
+      "sourceSha256": "e760b913be67fd20e9321c1e87c61159fe35e194b1e880bcc259f403b33f42b9",
+      "svgEqual": true,
+      "metricsEqual": true,
+      "normalizedMetricsEqual": true,
+      "firstSvgSha256": "5fe8e55f0575aea4bb3031755d8e705982edaa0aab769bf4f9afc454cac6a7f1",
+      "repeatSvgSha256": "5fe8e55f0575aea4bb3031755d8e705982edaa0aab769bf4f9afc454cac6a7f1",
+      "firstBounds": {
+        "x": 0,
+        "y": 9,
+        "width": 134262,
+        "height": 114
+      },
+      "repeatBounds": {
+        "x": 0,
+        "y": 9,
+        "width": 134262,
+        "height": 114
+      }
+    },
+    {
+      "file": "ganttbase.puml",
+      "sourceSha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+      "svgEqual": true,
+      "metricsEqual": true,
+      "normalizedMetricsEqual": true,
+      "firstSvgSha256": "ca30f9e0b6ac272515fa5fb5c8db88c689c23d18815a41c72f092352e9397fa2",
+      "repeatSvgSha256": "ca30f9e0b6ac272515fa5fb5c8db88c689c23d18815a41c72f092352e9397fa2",
+      "firstBounds": {
+        "x": 0,
+        "y": 0,
+        "width": 248.7989959716797,
+        "height": 138.7740020751953
+      },
+      "repeatBounds": {
+        "x": 0,
+        "y": 0,
+        "width": 248.7989959716797,
+        "height": 138.7740020751953
+      }
+    },
+    {
+      "file": "git.mmd",
+      "sourceSha256": "9ac41366906a840423b9b729738a88ed755cf032143c502edd92f49510a80951",
+      "svgEqual": false,
+      "metricsEqual": false,
+      "normalizedMetricsEqual": false,
+      "firstSvgSha256": "cb480b7c8deee1d0cff9c34f2b757be52a02120515fe0487dd762528d4d303fc",
+      "repeatSvgSha256": "873d1abdbcba42f40ad71d464de55611cdd19bc2acc7f96fb0eccc0ba08b31ca",
+      "firstBounds": {
+        "x": -109.1484375,
+        "y": -12.5,
+        "width": 259.1484375,
+        "height": 154.6064910888672
+      },
+      "repeatBounds": {
+        "x": -109.1484375,
+        "y": -12.5,
+        "width": 259.1484375,
+        "height": 158.4670867919922
+      }
+    },
+    {
+      "file": "git.puml",
+      "sourceSha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+      "svgEqual": true,
+      "metricsEqual": true,
+      "normalizedMetricsEqual": true,
+      "firstSvgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+      "repeatSvgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+      "firstBounds": {
+        "x": 10,
+        "y": 22,
+        "width": 124,
+        "height": 122
+      },
+      "repeatBounds": {
+        "x": 10,
+        "y": 22,
+        "width": 124,
+        "height": 122
+      }
+    },
+    {
+      "file": "sequence.puml",
+      "sourceSha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+      "svgEqual": true,
+      "metricsEqual": true,
+      "normalizedMetricsEqual": true,
+      "firstSvgSha256": "d3817d8c7ae5b6e36e28360f395eefd8083c9e3b792e7e7f042ed869e1c37bdf",
+      "repeatSvgSha256": "d3817d8c7ae5b6e36e28360f395eefd8083c9e3b792e7e7f042ed869e1c37bdf",
+      "firstBounds": {
+        "x": 10,
+        "y": 10,
+        "width": 274.71099853515625,
+        "height": 233.95999145507812
+      },
+      "repeatBounds": {
+        "x": 10,
+        "y": 10,
+        "width": 274.71099853515625,
+        "height": 233.95999145507812
+      }
+    }
+  ],
+  "computedFonts": {
+    "12px sans-serif": 69,
+    "11px sans-serif": 33,
+    "16px \"Liberation Sans\"": 172,
+    "700 14px \"Liberation Sans\"": 8,
+    "14px \"Liberation Sans\"": 48,
+    "13px \"Liberation Sans\"": 2,
+    "14px sans-serif": 149,
+    "13px sans-serif": 29,
+    "700 14px sans-serif": 36,
+    "700 14px \"Open Sans\", sans-serif": 2,
+    "10.5px \"Open Sans\", sans-serif": 2,
+    "11.48px \"Open Sans\", sans-serif": 2,
+    "12px \"Open Sans\", sans-serif": 1,
+    "700 10px sans-serif": 3,
+    "11px \"Liberation Sans\"": 9,
+    "700 16px \"Liberation Sans\"": 23,
+    "10px \"Liberation Sans\"": 27,
+    "700 26px \"Liberation Sans\"": 7,
+    "700 19px \"Liberation Sans\"": 2,
+    "19px \"Liberation Sans\"": 7,
+    "700 25px \"Liberation Sans\"": 2,
+    "700 18px \"Liberation Sans\"": 14,
+    "italic 18px \"Liberation Sans\"": 6,
+    "18px \"Liberation Sans\"": 35,
+    "700 14px serif": 1,
+    "14px serif": 13,
+    "italic 14px serif": 1,
+    "italic 11px \"Liberation Sans\"": 9,
+    "12px \"Liberation Sans\"": 18,
+    "10px sans-serif": 105,
+    "700 12px sans-serif": 15,
+    "700 15px monospace": 7,
+    "32px \"Liberation Sans\"": 2,
+    "600 14px \"Liberation Sans\"": 1,
+    "14px \"Open Sans\", sans-serif": 5,
+    "700 33.8125px \"trebuchet ms\", verdana, arial, sans-serif": 1,
+    "17px \"Liberation Sans\"": 6,
+    "25px \"Liberation Sans\"": 1,
+    "20px \"Liberation Sans\"": 2,
+    "700 13px sans-serif": 1,
+    "italic 700 26px \"Liberation Sans\"": 2,
+    "italic 700 18px \"Liberation Sans\"": 2,
+    "italic 10px \"Liberation Sans\"": 3,
+    "700 33.8125px \"Liberation Sans\"": 1,
+    "700 12px \"Liberation Sans\"": 5,
+    "italic 16px \"Liberation Sans\"": 1,
+    "38px \"Liberation Sans\"": 3,
+    "23px \"Liberation Sans\"": 3,
+    "24px \"Liberation Sans\"": 3,
+    "700 12.6px \"Times New Roman\"": 1,
+    "700 12px \"Times New Roman\"": 2,
+    "10px \"Times New Roman\"": 6,
+    "700 10px \"Times New Roman\"": 1
+  }
+}

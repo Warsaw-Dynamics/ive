@@ -1,0 +1,66 @@
+{
+  "sourceGitBlobIdentitiesVerified": 95,
+  "sourceStatusMappingsVerified": 95,
+  "nativeMermaidFixedLabelControlsVerified": 37,
+  "advancedStateControls": [
+    {
+      "file": "stateadvanced.puml",
+      "nativeKinds": {
+        "state-fork-join": 2,
+        "state-composite": 1,
+        "state-initial": 2,
+        "state": 2,
+        "state-history": 1,
+        "state-choice": 1,
+        "state-final": 2,
+        "state-region": 2,
+        "state-transition": 8,
+        "title": 1
+      },
+      "ownedTransitionCount": 8,
+      "originalStatus": "rendered"
+    },
+    {
+      "file": "statehistory.puml",
+      "nativeKinds": {
+        "state-composite": 1,
+        "state-history": 2,
+        "state-deep-history": 2,
+        "state-transition": 2
+      },
+      "ownedTransitionCount": 2,
+      "originalStatus": "rendered"
+    },
+    {
+      "file": "statepseudos.puml",
+      "nativeKinds": {
+        "state-choice": 1,
+        "state-junction": 1,
+        "state-fork-join": 2,
+        "state-initial": 1,
+        "state": 2,
+        "state-final": 1,
+        "state-transition": 8
+      },
+      "ownedTransitionCount": 8,
+      "originalStatus": "rendered"
+    },
+    {
+      "file": "stateregions.puml",
+      "nativeKinds": {
+        "state-composite": 1,
+        "state-initial": 3,
+        "state": 3,
+        "state-final": 3,
+        "state-region": 3,
+        "state-transition": 6
+      },
+      "ownedTransitionCount": 6,
+      "originalStatus": "rendered"
+    }
+  ],
+  "historicalArtifactFilesVerifiedUnchanged": 860,
+  "historicalMutations": [],
+  "binarySha256Verified": "0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d",
+  "qualification": "Selected semantic labels/kinds/owned endpoints only; no full per-family topology/geometry/pixel or native host-metric claim."
+}
