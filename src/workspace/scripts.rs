@@ -84,7 +84,13 @@ fn apply_excluded(excluded: Excluded, cx: &mut App) -> bool {
     changed
 }
 
-/// Of the built-in actions, selected read-only text takes Copy and Select All; the editing ones do nothing.
+/// Whether selected read-only text takes `builtin`: the editor's own actions; window-wide ones (Alt+F12, the hub)
+/// still act on the window.
+fn takes_in_text(builtin: Builtin) -> bool {
+    builtin.supports(Scope::Editor) && !builtin.supports(Scope::Window)
+}
+
+/// Of the editor's actions, selected read-only text runs Copy and Select All; the editing ones do nothing.
 fn run_text_builtin(builtin: Builtin, cx: &mut App) {
     match builtin {
         Builtin::CopyTo(_) => {
@@ -193,7 +199,7 @@ impl Workspace {
             return;
         };
         match action {
-            Action::Builtin(builtin) if place == Place::Text => run_text_builtin(builtin, cx),
+            Action::Builtin(builtin) if place == Place::Text && takes_in_text(builtin) => run_text_builtin(builtin, cx),
             // a shown tab that is not a terminal takes no text
             Action::Send(text) => drop(self.send_to_active(&text)),
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
@@ -285,6 +291,18 @@ mod tests {
 
     fn excluded(names: serde_json::Value) -> Excluded {
         crate::script::excluded::parse(&serde_json::from_value(names).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn should_leave_window_actions_to_the_window_while_text_has_the_keys() {
+        // given
+        let builtins = [Builtin::CopyTo(crate::script::keymap::ClipboardTarget::Clipboard), Builtin::SelectAll, Builtin::Undo, Builtin::OpenTerminal, Builtin::OpenHub, Builtin::OpenSettings];
+
+        // when
+        let taken = builtins.map(takes_in_text);
+
+        // then
+        assert_eq!(taken, [true, true, true, false, false, false]);
     }
 
     #[test]

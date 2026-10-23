@@ -98,14 +98,36 @@ pub struct TextSelection {
     /// where the drag began, as the span's other end
     anchor: usize,
     pub focus: FocusHandle,
+    /// what had the keyboard before the selection took it, to give it back: keys only reach views on the focused
+    /// element's path, so a focus nothing draws would leave every key unheard
+    previous: Option<FocusHandle>,
 }
 
 impl Global for TextSelection {}
 
 impl TextSelection {
     pub fn new(cx: &mut App) -> Self {
-        Self { selection: Selection::default(), anchor: 0, focus: cx.focus_handle() }
+        Self { selection: Selection::default(), anchor: 0, focus: cx.focus_handle(), previous: None }
     }
+}
+
+/// Clears the selection and gives the keyboard back to what had it before, when the selection still has it; for
+/// when its text is about to go (another tab shown).
+pub fn let_go(window: &mut Window, cx: &mut App) {
+    let Some(state) = cx.try_global::<TextSelection>() else {
+        return;
+    };
+    let had_keys = state.focus.is_focused(window);
+    let state = cx.global_mut::<TextSelection>();
+    state.selection.clear();
+    let previous = state.previous.take();
+    if had_keys {
+        match previous {
+            Some(previous) => window.focus(&previous, cx),
+            None => window.blur(cx),
+        }
+    }
+    window.refresh();
 }
 
 /// Text in `id`'s block that the mouse selects; style it like any div (colour, size, font).
@@ -119,8 +141,11 @@ pub fn selectable(id: impl Into<SharedString>, text: impl Into<SharedString>, cx
     let (down_id, down_text, down_layout) = (id.clone(), text.clone(), layout.clone());
     let move_id = id.clone();
     let out_id = id.clone();
+    // the block holding the selection holds the focus too, so keys pass through the views around it (the user's Copy)
+    let focus = cx.try_global::<TextSelection>().filter(|state| state.selection.holds(&id)).map(|state| state.focus.clone());
     div()
         .id(id)
+        .when_some(focus, |block, focus| block.track_focus(&focus))
         .cursor(CursorStyle::IBeam)
         .child(styled)
         .on_mouse_down(MouseButton::Left, move |event: &MouseDownEvent, window: &mut Window, cx: &mut App| {
@@ -137,8 +162,7 @@ pub fn selectable(id: impl Into<SharedString>, text: impl Into<SharedString>, cx
         .on_mouse_down_out(move |_event, window: &mut Window, cx: &mut App| {
             let holds = cx.try_global::<TextSelection>().is_some_and(|state| state.selection.holds(&out_id));
             if holds {
-                cx.global_mut::<TextSelection>().selection.clear();
-                window.refresh();
+                let_go(window, cx);
             }
         })
 }
@@ -153,7 +177,11 @@ struct Press<'a> {
 
 fn press(press: Press, window: &mut Window, cx: &mut App) {
     let Press { id, text, index, event } = press;
+    let focused = window.focused(cx);
     let state = cx.global_mut::<TextSelection>();
+    if focused.as_ref() != Some(&state.focus) {
+        state.previous = focused;
+    }
     let extends = event.modifiers.shift && state.selection.holds(id);
     let (anchor, span) = match event.click_count {
         2 => (index, word_at(text, index)),
@@ -188,25 +216,87 @@ mod tests {
 
     const SHOWN: &str = "hello world, read /a/b.rs";
 
-    /// `SHOWN` as selectable block `t` above an empty area.
-    struct Shown;
+    /// `SHOWN` as selectable block `t` above an empty area, inside a panel that counts the keys reaching it, as the
+    /// workspace's key handler sits inside the window's frame.
+    struct Shown {
+        keys: std::rc::Rc<std::cell::Cell<usize>>,
+    }
 
     impl Render for Shown {
         fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-            div().size_full().child(selectable("t", SHOWN, cx)).child(div().id("below").h(px(100.)))
+            let keys = self.keys.clone();
+            let panel = div().size_full().on_key_down(move |_event, _window, _cx| keys.set(keys.get() + 1)).child(selectable("t", SHOWN, cx)).child(div().id("below").h(px(100.)));
+            div().size_full().child(panel)
         }
     }
 
-    /// A window showing [`Shown`], with the theme and selection set up.
-    fn window(cx: &mut TestAppContext) -> &mut VisualTestContext {
+    /// A window showing [`Shown`], with the theme and selection set up, and the count of keys its panel saw.
+    fn window(cx: &mut TestAppContext) -> (&mut VisualTestContext, std::rc::Rc<std::cell::Cell<usize>>) {
         cx.update(|cx| {
             cx.set_global(Theme::of(Appearance::Dark));
             let selection = TextSelection::new(cx);
             cx.set_global(selection);
         });
-        let (_, cx) = cx.add_window_view(|_window, _cx| Shown);
+        let keys = std::rc::Rc::new(std::cell::Cell::new(0));
+        let seen = keys.clone();
+        let (_, cx) = cx.add_window_view(|_window, _cx| Shown { keys: seen });
         redraw(cx);
-        cx
+        (cx, keys)
+    }
+
+    #[gpui::test]
+    fn should_give_focus_back_when_selection_clears(cx: &mut TestAppContext) {
+        // given
+        let (cx, keys) = window(cx);
+        let before = cx.update(|window, cx| {
+            let handle = cx.focus_handle();
+            window.focus(&handle, cx);
+            handle
+        });
+        press(point(px(5.), px(5.)), 2, cx);
+        redraw(cx);
+
+        // when
+        press(point(px(5.), px(150.)), 1, cx);
+        redraw(cx);
+
+        // then
+        assert!(cx.update(|window, _cx| before.is_focused(window)));
+        assert_eq!(keys.get(), 0);
+    }
+
+    #[gpui::test]
+    fn should_give_focus_back_on_release(cx: &mut TestAppContext) {
+        // given
+        let (cx, _) = window(cx);
+        let before = cx.update(|window, cx| {
+            let handle = cx.focus_handle();
+            window.focus(&handle, cx);
+            handle
+        });
+        press(point(px(5.), px(5.)), 2, cx);
+        redraw(cx);
+
+        // when
+        cx.update(let_go);
+
+        // then
+        assert!(cx.update(|window, _cx| before.is_focused(window)));
+        assert_eq!(copied(cx), None);
+    }
+
+    #[gpui::test]
+    fn should_pass_keys_to_the_panel_around_selected_text(cx: &mut TestAppContext) {
+        // given
+        let (cx, keys) = window(cx);
+        press(point(px(5.), px(5.)), 2, cx);
+        redraw(cx);
+
+        // when
+        cx.simulate_keystrokes("ctrl-c");
+
+        // then
+        assert_eq!(keys.get(), 1);
     }
 
     fn redraw(cx: &mut VisualTestContext) {
@@ -229,7 +319,7 @@ mod tests {
     #[gpui::test]
     fn should_select_text_dragged_over(cx: &mut TestAppContext) {
         // given
-        let cx = window(cx);
+        let (cx, _) = window(cx);
 
         // when
         press(point(px(1.), px(5.)), 1, cx);
@@ -244,7 +334,7 @@ mod tests {
     #[gpui::test]
     fn should_select_word_on_double_click(cx: &mut TestAppContext) {
         // given
-        let cx = window(cx);
+        let (cx, _) = window(cx);
 
         // when
         press(point(px(5.), px(5.)), 2, cx);
@@ -256,7 +346,7 @@ mod tests {
     #[gpui::test]
     fn should_clear_selection_on_press_elsewhere(cx: &mut TestAppContext) {
         // given
-        let cx = window(cx);
+        let (cx, _) = window(cx);
         press(point(px(5.), px(5.)), 3, cx);
         redraw(cx);
 

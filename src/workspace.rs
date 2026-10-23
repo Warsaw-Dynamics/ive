@@ -563,6 +563,8 @@ impl Workspace {
     fn tab_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // the tab left behind saves now; a closed one saved as it went
         self.flush_edits(cx);
+        // its selected text went with it
+        crate::selectable::let_go(window, cx);
         self.close_stale_tab_windows(cx);
         if window.window_handle() == self.main_window {
             self.focus_active_tab(window, cx);
