@@ -76,10 +76,11 @@ pub fn render(page: Page, theme: Theme, cx: &mut Context<Workspace>) -> Div {
     let view = page.view;
     let saved_to = cx.global::<SettingsStore>().path().map(|path| format!("Saved to {}", path.display()));
     let content = match view.page {
-        SettingsPage::Appearance => appearance::render(theme, cx),
-        SettingsPage::Scripts => scripts::render(theme, cx),
-        SettingsPage::Updates => updates::render(page.update_status, theme, cx),
-        SettingsPage::ThirdParty => third_party::render(&view.third_party, theme, cx),
+        SettingsPage::Appearance => appearance::render(theme, cx).into_any_element(),
+        // longer than a small window: it scrolls on its own, above the line saying where settings are saved
+        SettingsPage::Scripts => div().id("scripts-page").flex_1().min_h_0().overflow_y_scroll().child(scripts::render(theme, cx)).into_any_element(),
+        SettingsPage::Updates => updates::render(page.update_status, theme, cx).into_any_element(),
+        SettingsPage::ThirdParty => third_party::render(&view.third_party, theme, cx).into_any_element(),
     };
     let body = div()
         .flex()

@@ -19,7 +19,7 @@ pub mod temporary_tabs;
 mod thread;
 mod toml_module;
 
-pub use thread::{ScriptCommand, ScriptEvent, Scripts, start};
+pub use thread::{ScriptCommand, ScriptEvent, Scripts, Setup, start};
 
 use std::path::PathBuf;
 

@@ -77,14 +77,14 @@ impl Engine {
         Ok(Self { context, runtime, output })
     }
 
-    /// Loads `ive.rn`, then `dir/init.rn` when there is one, as load number `generation`. The error names the file,
-    /// and line and column for each compile error.
-    pub fn load(&self, dir: Option<&Path>, generation: u64) -> Result<Loaded, String> {
+    /// Loads `ive.rn`, then `dir/init.rn` when there is one, as load number `generation`, with `config.theme`
+    /// starting as `theme`. The error names the file, and line and column for each compile error.
+    pub fn load(&self, dir: Option<&Path>, theme: rune::Value, generation: u64) -> Result<Loaded, String> {
         let mut bound = Vec::new();
         let mut functions = Functions { bound: &mut bound, generation };
         let ive_rn = Script { name: IVE_RN_NAME, text: IVE_RN.to_owned(), path: None };
         let start = Carried {
-            theme: theme_config::default_value(),
+            theme,
             excluded: rune::Value::from(()),
             temporary_tabs: rune::Value::from(()),
             tab_menus: rune::Value::from(()),
@@ -282,12 +282,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("init.rn"), init).unwrap();
         let engine = Engine::new(futures::channel::mpsc::unbounded().0).unwrap();
-        let loaded = engine.load(Some(dir.path()), 1);
+        let loaded = engine.load(Some(dir.path()), theme_config::default_value(), 1);
         (engine, loaded)
     }
 
     fn defaults() -> Loaded {
-        Engine::new(futures::channel::mpsc::unbounded().0).unwrap().load(None, 1).unwrap()
+        Engine::new(futures::channel::mpsc::unbounded().0).unwrap().load(None, theme_config::default_value(), 1).unwrap()
     }
 
     fn pressed(key: &str) -> Keystroke {
@@ -1374,7 +1374,7 @@ mod tests {
         let engine = Engine::new(futures::channel::mpsc::unbounded().0).unwrap();
 
         // when
-        let loaded = engine.load(Some(dir.path()), 1);
+        let loaded = engine.load(Some(dir.path()), theme_config::default_value(), 1);
 
         // then
         let action = loaded.unwrap().keymap.find_key(&pressed("f5"), Place::Elsewhere).cloned();

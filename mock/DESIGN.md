@@ -440,24 +440,23 @@ checkout cannot be hidden. Hide is on the worktree's tree row (on hover) and on 
 main checkout are hidden the project drops its worktree level, as with a single checkout. Kept per profile (in the app:
 saved state); the mock starts with GEN-811 hidden and does not keep changes on refresh.
 
-## Settings › Scripts (proposal)
+## Settings › Appearance and Scripts
 
-Settings has Appearance, Scripts and Third-Party Software; the Editor › Color Scheme pages are gone (colours are set
-in `init.rn`, the defaults are in `theme.toml`). Scripts is a reference to hand to a coding agent, which then
-customises IVE by editing `init.rn`:
+Synced with the Rust code on 2026-10-23 (`docs/superpowers/specs/2026-10-23-user-themes-design.md`). Settings has
+Appearance, Scripts, Updates and Third-Party Software; colours are set in themes and `init.rn`, the defaults are in
+`theme.toml`.
 
-- **Prompt for a coding agent**: one block, the profile's real paths filled in: what IVE's script files are and
-  which one to edit, the override rules, and how to check a load (MCP `script_status`, or `scripts.log`). Its last
-  line is `Task: …`; starter chips (Bind a key, Mouse binding, Colours, Bigger UI, Function, Terminal keys) fill it
-  with an example. Copy takes the block as shown.
-- **Files**: `init.rn`, `ive.rn`, `theme.toml`, `scripting.md`, `scripts.log`, `settings.toml`: name (opens it),
-  absolute path, role, Copy path.
-- **Quick reference**: folding blocks (Keys and mouse open, Actions, Functions, Theme, Fonts/excluded/tabs), each
-  Rune or a plain table, each with Copy.
-- All text on the page is selectable (drag, double click a word) and Ctrl+C copies the selection.
-- New: IVE writes `scripting.md` next to `ive.rn` at each start, read-only, as it does `ive.rn` and `theme.toml`:
-  the README's Scripting, Excluded folders and Theme sections, so an agent has the reference of the running version
-  without the repo.
+- **Appearance**: Mode (Same as OS, Dark, Light) picks the look; Theme picks where it comes from: Default (IVE's own),
+  then one button per `themes/<name>.toml` next to `init.rn`, sorted, wrapping. A theme holds both looks and only
+  what it changes. A picked theme whose file is gone stays, muted, after the others; the default applies meanwhile.
+- **Scripts**: the version line, then "Customising IVE" with Copy instructions at its right, and general instructions
+  for a person or an agent, the profile's real paths filled in: where changes go and the two read-only references
+  (`ive.rn`, `theme.toml`), keys/mouse/menus/excluded folders in `init.rn`, themes in `themes/<name>.toml`, adjusting
+  any theme with `config.theme.<path>` in `init.rn`, and checking a load (`scripts.log`, MCP `script_status`). Copy
+  takes the same text, plain, with the README's URL. Then the README link and the links to `ive.rn`, `theme.toml`
+  and `settings.toml`. The page scrolls above "Saved to …".
+- Dropped from the earlier proposal: the `Task:` line and starter chips, the Files table with Copy path, the Quick
+  reference blocks, and `scripting.md`.
 
 ## Removed during the design (do not implement)
 
