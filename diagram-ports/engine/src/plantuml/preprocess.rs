@@ -288,8 +288,17 @@ impl Processor<'_> {
         while cursor < raw.len() {
             self.budget.charge(1)?;
             let ch = raw[cursor..].chars().next().unwrap();
-            let active =
-                target.is_some() || self.literal_input || capability.allows(&raw[cursor..]);
+            let step = if target.is_some() || self.literal_input {
+                ScanStep::Active
+            } else {
+                capability.consume(&raw[cursor..])
+            };
+            if let ScanStep::Delimiter(bytes) = step {
+                self.budget.charge(bytes)?;
+                cursor += bytes;
+                continue;
+            }
+            let active = matches!(step, ScanStep::Active);
             if active {
                 reject_capability(&raw[cursor..], span.line)?;
             }
@@ -433,30 +442,38 @@ struct CapabilityScan {
     escaped: bool,
 }
 
+#[derive(Clone, Copy)]
+enum ScanStep {
+    Active,
+    Comment,
+    Delimiter(usize),
+}
+
 impl CapabilityScan {
-    fn allows(&mut self, rest: &str) -> bool {
+    fn consume(&mut self, rest: &str) -> ScanStep {
         if self.comment {
             if rest.starts_with("'/") {
                 self.comment = false;
+                return ScanStep::Delimiter(2);
             }
-            return false;
+            return ScanStep::Comment;
         }
         if self.quoted && self.escaped {
             self.escaped = false;
-            return true;
+            return ScanStep::Active;
         }
         if self.quoted && rest.starts_with('\\') {
             self.escaped = true;
-            return true;
+            return ScanStep::Active;
         }
         if rest.starts_with('"') {
             self.quoted = !self.quoted;
         }
         if !self.quoted && rest.starts_with("/'") {
             self.comment = true;
-            return false;
+            return ScanStep::Delimiter(2);
         }
-        true
+        ScanStep::Active
     }
 }
 
@@ -518,6 +535,41 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn should_keep_consumed_comment_bytes_direct_and_expand_only_the_active_original_span() {
+        // given
+        let source =
+            "@startchen\n!define X Ready\ntitle start /' X '/' X\nentity A {\n}\n@endchen\n";
+        let mut budget = Budget::new(&RenderOptions::default());
+        // when
+        let document = prepare(source, &mut budget).unwrap();
+        // then
+        assert_eq!(
+            document.text,
+            "@startchen\n\ntitle start /' X '/' Ready\nentity A {\n}\n@endchen\n"
+        );
+        let mut expansions = 0;
+        for segment in &document.segments {
+            match segment.origin {
+                Origin::Direct(span) => assert_eq!(
+                    &document.text[segment.output.clone()],
+                    &source[span.start_byte..span.end_byte]
+                ),
+                Origin::Expansion {
+                    use_span,
+                    definition_id,
+                } => {
+                    expansions += 1;
+                    assert_eq!(&source[use_span.start_byte..use_span.end_byte], "X");
+                    assert_eq!(use_span.start_byte, source.rfind("X\n").unwrap());
+                    assert_eq!((use_span.line, definition_id), (3, 0));
+                    assert_eq!(&document.text[segment.output.clone()], "Ready");
+                }
+            }
+        }
+        assert_eq!(expansions, 1);
     }
 
     fn processor(budget: &mut Budget) -> Processor<'_> {

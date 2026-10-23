@@ -364,6 +364,69 @@ fn should_avoid_constant_expansion_inside_chen_inline_block_comments() {
 }
 
 #[test]
+fn should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_chen_title() {
+    // given
+    let source =
+        "@startchen\n!define X Ready\ntitle start /' ignored '/' X\nentity A {\n}\n@endchen";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"start ' Ready".into()), "{text:?}");
+    assert!(text.contains(&"A".into()));
+}
+
+#[test]
+fn should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_message() {
+    // given
+    let source = "@startuml\n!define X Ready\nA -> B : start /' ignored '/' X\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"start ' Ready".into()), "{text:?}");
+}
+
+#[test]
+fn should_preserve_separated_comment_delimiter_and_apostrophe_spacing() {
+    // given
+    let source = "@startuml\n!define X Ready\nA -> B : start /' ignored '/ ' X\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"start  ' Ready".into()), "{text:?}");
+}
+
+#[test]
+fn should_consume_comment_opener_before_recognizing_any_closing_delimiter() {
+    // given
+    let source =
+        "@startchen\n!define END '/\ntitle start /'/ END '/ Ready\nentity A {\n}\n@endchen";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"start  Ready".into()), "{text:?}");
+    assert!(text.contains(&"A".into()));
+}
+
+#[test]
+fn should_keep_comment_looking_bytes_active_in_explicit_literal_ownership() {
+    // given
+    for body in [
+        "participant \"start /' ignored '/' X\" as A",
+        "participant A\nnote over A\nstart /' ignored '/' X\nend note",
+        "!define Y start /' ignored '/' X\nparticipant \"Y\" as A",
+    ] {
+        let source = format!("@startuml\n!define X Ready\n{body}\n@enduml");
+        // when
+        let text = labels(&source);
+        // then
+        assert!(
+            text.contains(&"start /' ignored '/' Ready".into()),
+            "{text:?}"
+        );
+    }
+}
+
+#[test]
 fn should_deny_active_chen_resources_after_comment_ownership_ends() {
     // given
     for command in ["!include active.puml", "%getenv(\"HOME\")", "$function()"] {
