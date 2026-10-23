@@ -2,11 +2,12 @@
 //! Every button and row is a click target (README, "MCP"), so agents can drive it.
 
 use std::collections::{HashMap, HashSet};
+use std::ops::Range;
 use std::time::Duration;
 
 use gpui::{
     AnyElement, ClickEvent, Context, Div, Entity, Focusable, KeyDownEvent, PromptLevel, SharedString,
-    Stateful, Subscription, Task, WeakEntity, Window, div, img, prelude::*, rgb,
+    ScrollStrategy, Stateful, Subscription, Task, WeakEntity, Window, div, img, prelude::*, rgb, uniform_list,
 };
 
 use crate::age::{Clock, unix_seconds};
@@ -20,6 +21,7 @@ use crate::scratch::icon::scratch_icon;
 use crate::scratch::search::{self, Answer, Found, Generations, Ticket};
 use crate::scratch::store::{self, ScratchError, ScratchInfo, ScratchStore};
 use crate::scratch::{ScratchRef, log_error};
+use crate::scrollbar::{ListScroll, ScrollState, vertical_scrollbar};
 use crate::text_input::{TextInput, TextInputEvent};
 use crate::theme::Theme;
 use crate::workspace::Workspace;
@@ -62,6 +64,30 @@ impl Inline {
     }
 }
 
+/// A line of the listing.
+enum Line<'a> {
+    /// a group and how many scratches it has
+    Header(Group, usize),
+    Row(&'a ScratchInfo),
+    /// Show 10 more, Show all: some of the group's `total` are not shown
+    More { group: Group, total: usize, shown: usize },
+}
+
+/// Why the listing has no lines: it is read, found nothing, or failed.
+enum NoLines {
+    Muted(String),
+    Failed(String),
+}
+
+impl NoLines {
+    fn into_any_element(self, theme: Theme) -> AnyElement {
+        match self {
+            Self::Muted(message) => muted(message, theme),
+            Self::Failed(reason) => div().text_color(rgb(theme.error)).child(reason).into_any_element(),
+        }
+    }
+}
+
 /// What every row of one frame shares.
 #[derive(Clone, Copy)]
 struct Frame {
@@ -82,6 +108,9 @@ pub struct ScratchesSection {
     /// collapsed while searching; a new search opens every group, so no match is hidden
     collapsed_in_search: HashSet<Group>,
     paging: HashMap<Group, Paging>,
+    /// the listing draws only the lines in view
+    list: ListScroll,
+    scrollbar: ScrollState,
     error: Option<String>,
     list_task: Option<Task<()>>,
     search_task: Option<Task<()>>,
@@ -111,6 +140,8 @@ impl ScratchesSection {
                 section.search_for(query.clone(), cx);
             }
         });
+        let list = ListScroll::new();
+        let scrollbar = ScrollState::for_list(&list);
         let mut section = Self {
             target,
             listing: Listing::Loading,
@@ -122,6 +153,8 @@ impl ScratchesSection {
             collapsed: HashSet::from([Group::Older]),
             collapsed_in_search: HashSet::new(),
             paging: HashMap::new(),
+            list,
+            scrollbar,
             error: None,
             list_task: None,
             search_task: None,
@@ -354,29 +387,82 @@ impl ScratchesSection {
             .child(div().flex().items_center().gap(sizes.scratches_toolbar_gap.px()).child(search).child(link_button("new-scratch", "+ New scratch", theme).on_click(target("new-scratch".to_owned(), new, cx))))
     }
 
-    fn render_listing(&self, frame: Frame, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    /// The groups and their rows, or why there are none; a long listing scrolls itself and draws only the lines in
+    /// view, as "Show all" may show thousands.
+    fn render_listing(&self, frame: Frame, cx: &mut Context<Self>) -> AnyElement {
+        let count = match self.lines(frame.clock) {
+            Ok(lines) => lines.len(),
+            Err(message) => return message.into_any_element(frame.theme),
+        };
+        let rows = uniform_list("scratch-lines", count, cx.processor(|section: &mut Self, range, _window, cx| section.render_lines(range, cx)))
+            .track_scroll(&self.list.list_handle())
+            .size_full();
+        div().relative().flex_1().min_h_0().child(rows).child(vertical_scrollbar(&self.scrollbar, &crate::theme::view_style(&frame.theme))).into_any_element()
+    }
+
+    /// Scrolls the listing to the row of click target `name` (`scratch:`, `rename-scratch:` or `delete-scratch:`
+    /// and a scratch's name), which only rows in view register; says whether it has that row.
+    pub fn scroll_to_target(&self, name: &str) -> bool {
+        let scratch = ["scratch:", "rename-scratch:", "delete-scratch:"].iter().find_map(|prefix| name.strip_prefix(prefix));
+        let (Some(scratch), Ok(lines)) = (scratch, self.lines(Clock::system())) else {
+            return false;
+        };
+        let Some(line) = lines.iter().position(|line| matches!(line, Line::Row(row) if row.name == scratch)) else {
+            return false;
+        };
+        self.list.list_handle().scroll_to_item(line, ScrollStrategy::Center);
+        true
+    }
+
+    /// The listing's lines: each group's header, then its shown rows and paging unless it is collapsed.
+    fn lines(&self, clock: Clock) -> Result<Vec<Line<'_>>, NoLines> {
         let scratches = match &self.listing {
-            Listing::Loading => return vec![muted("Reading scratches…", frame.theme)],
-            Listing::Failed(reason) => return vec![div().text_color(rgb(frame.theme.error)).child(reason.clone()).into_any_element()],
+            Listing::Loading => return Err(NoLines::Muted("Reading scratches…".to_owned())),
+            Listing::Failed(reason) => return Err(NoLines::Failed(reason.clone())),
             Listing::Loaded(scratches) => scratches,
         };
         let names = self.is_searching().then(|| self.found.names(scratches, &self.query));
         let visible = groups::visible(scratches, &self.query, names.as_deref());
         if visible.is_empty() {
             let message = if self.is_searching() { format!("No scratch matches “{}”", self.query) } else { "No scratches yet".to_owned() };
-            return vec![muted(message, frame.theme)];
+            return Err(NoLines::Muted(message));
         }
-        groups::grouped(visible, frame.clock).into_iter().map(|(group, members)| self.render_group(group, &members, frame, cx)).collect()
+        let mut lines = Vec::new();
+        for (group, members) in groups::grouped(visible, clock) {
+            lines.push(Line::Header(group, members.len()));
+            if self.is_collapsed(group) {
+                continue;
+            }
+            let shown = self.paging.get(&group).copied().unwrap_or_default().visible(members.len());
+            lines.extend(members[..shown].iter().map(|scratch| Line::Row(scratch)));
+            if shown < members.len() {
+                lines.push(Line::More { group, total: members.len(), shown });
+            }
+        }
+        Ok(lines)
     }
 
-    fn render_group(&self, group: Group, members: &[&ScratchInfo], frame: Frame, cx: &mut Context<Self>) -> AnyElement {
-        let column = div().flex().flex_col().child(self.render_group_header(group, members.len(), cx));
-        if self.is_collapsed(group) {
-            return column.into_any_element();
-        }
-        let shown = self.paging.get(&group).copied().unwrap_or_default().visible(members.len());
-        let rows: Vec<AnyElement> = members[..shown].iter().map(|scratch| self.render_row(scratch, frame, cx)).collect();
-        column.children(rows).children(self.render_more(group, members.len(), shown, cx)).into_any_element()
+    /// The lines in `range`, each a row high (Rename's input a little more).
+    fn render_lines(&self, range: Range<usize>, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let frame = Frame { clock: Clock::system(), theme: *cx.global::<Theme>() };
+        let Ok(lines) = self.lines(frame.clock) else {
+            return Vec::new();
+        };
+        let height = frame.theme.sizes.overview.scratches_row_height.px();
+        let lines = &lines[range.start.min(lines.len())..range.end.min(lines.len())];
+        lines
+            .iter()
+            .enumerate()
+            .map(|(offset, line)| {
+                let at = range.start + offset;
+                let drawn = match line {
+                    Line::Header(group, count) => self.render_group_header(*group, *count, cx),
+                    Line::Row(scratch) => self.render_row(scratch, frame, cx),
+                    Line::More { group, total, shown } => self.render_more(*group, *total, *shown, cx).unwrap_or_else(|| div().id(("scratch-more-none", at))),
+                };
+                drawn.flex_none().w_full().h(height).into_any_element()
+            })
+            .collect()
     }
 
     /// "Show 10 more · N of M" and "Show all" (targets `scratch-more:<group>`, `scratch-all:<group>`) while rows
@@ -412,9 +498,9 @@ impl ScratchesSection {
     }
 
     /// Target `scratch:<name>`: opens it.
-    fn render_row(&self, scratch: &ScratchInfo, frame: Frame, cx: &mut Context<Self>) -> AnyElement {
+    fn render_row(&self, scratch: &ScratchInfo, frame: Frame, cx: &mut Context<Self>) -> Stateful<Div> {
         if let Some(inline) = self.inline.as_ref().filter(|inline| inline.renames(&scratch.name)) {
-            return render_name_input(inline, frame.theme, cx).into_any_element();
+            return render_name_input(inline, frame.theme, cx);
         }
         let hover_group = SharedString::from(format!("scratch-row:{}", scratch.name));
         let name = scratch.name.clone();
@@ -438,7 +524,6 @@ impl ScratchesSection {
             .child(div().flex_none().text_color(muted_color).child(frame.clock.age(unix_seconds(scratch.modified))))
             .child(self.render_row_actions(&scratch.name, hover_group, frame.theme, cx))
             .on_click(target(format!("scratch:{}", scratch.name), open, cx))
-            .into_any_element()
     }
 
     /// Targets `rename-scratch:<name>` and `delete-scratch:<name>`; drawn (and registered) while hidden.
@@ -471,12 +556,14 @@ impl Render for ScratchesSection {
         div()
             .flex()
             .flex_col()
+            .flex_1()
+            .min_h_0()
             .gap(sizes.scratches_gap.px())
             .text_size(sizes.scratches_text_size.px())
             .child(self.render_toolbar(frame.theme, cx))
             .children(new_row)
             .children(self.error.clone().map(|error| div().text_color(rgb(frame.theme.error)).child(error)))
-            .children(self.render_listing(frame, cx))
+            .child(self.render_listing(frame, cx))
     }
 }
 

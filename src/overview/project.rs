@@ -36,8 +36,8 @@ pub fn render_project_overview(id: TabId, overview: &ProjectOverview, workspace:
     let body = match (overview.section, &overview.git) {
         (ProjectSection::Git, Some(git)) => body.child(git.section.clone()),
         // made by `section_shown` before the first frame shows it
-        (ProjectSection::Scratches, _) => body.children(overview.scratches.clone()),
-        // the list fills the page and scrolls itself: it draws only the rows in view
+        // the lists fill the page and scroll themselves: they draw only the rows in view
+        (ProjectSection::Scratches, _) => body.flex().flex_col().flex_1().min_h_0().children(overview.scratches.clone()),
         (ProjectSection::Worktrees | ProjectSection::Git, _) => {
             body.flex().flex_col().flex_1().min_h_0().child(workspace.render_worktree_list(&overview.project, overview.git.as_ref().map(|git| &git.list), theme, cx))
         }

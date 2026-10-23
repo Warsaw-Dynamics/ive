@@ -529,13 +529,13 @@ delete-scratch:<name>, scratch-group:<group>, scratch-more:<group>, scratch-all:
 run-scratch, scratch-reload, scratch-overwrite, scratch-save-again, scratch-close. File and scratch tabs whose save found the \
 file changed on disk: save-reload, save-overwrite. Prompts: prompt:<button>. \
 <sha> is the 7-character short sha. Every tree row is listed, also those scrolled out of view; the rest only \
-while on screen.")]
+while on screen (a Worktrees or Scratches row out of view can still be clicked by name).")]
     async fn list_targets(&self) -> Result<CallToolResult, ErrorData> {
         Ok(self.ask(Request::ListTargets).await)
     }
 
-    #[tool(description = "Click a target named by list_targets, as a mouse click on it would; a tree row out of view \
-is scrolled to first. Answers once the window has drawn the result.")]
+    #[tool(description = "Click a target named by list_targets, as a mouse click on it would; a tree, Worktrees or \
+Scratches row out of view is scrolled to first. Answers once the window has drawn the result.")]
     async fn click(&self, Parameters(args): Parameters<ClickArgs>) -> Result<CallToolResult, ErrorData> {
         if let Some(refused) = too_long("target", &args.target, MAX_TARGET_BYTES) {
             return Ok(refused);

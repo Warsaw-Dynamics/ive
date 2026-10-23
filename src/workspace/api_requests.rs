@@ -20,6 +20,7 @@ use crate::api::{Call, Reply, Request, WindowInput};
 use crate::window_capture;
 use crate::script::state::{ScriptState, script_status_json};
 use crate::open_project::OpenProject;
+use crate::overview::ProjectSection;
 use crate::process::{Process, ProcessId, RunId};
 use crate::run::file::{ConfigKind, RunFile};
 use crate::run::values_tab::{RunRequest, ShowRun};
@@ -63,7 +64,7 @@ async fn answer(workspace: &WeakEntity<Workspace>, request: Request, cx: &mut As
 
 /// Input for the whole window, dispatched outside the workspace's update (the handlers it reaches update the
 /// workspace themselves) and answered once the window has drawn its result, so the next call sees the targets
-/// that result drew. A click on a tree row out of view scrolls the row into view first.
+/// that result drew. A click on a tree, Worktrees or Scratches row out of view scrolls the row into view first.
 async fn window_input(workspace: &WeakEntity<Workspace>, input: WindowInput, cx: &mut AsyncWindowContext) -> Reply {
     if let WindowInput::Click(name) = &input
         && workspace.update_in(cx, |workspace, _window, cx| workspace.scroll_to_target(name, cx)).unwrap_or(false)
@@ -208,8 +209,8 @@ impl Workspace {
         json!(names)
     }
 
-    /// Scrolls the tree to the row with click target `name` when the row is out of view (not drawn, so its
-    /// targets are not registered); says whether it scrolled.
+    /// Scrolls the tree, or the shown Worktrees or Scratches list, to the row with click target `name` when the row
+    /// is out of view (not drawn, so its targets are not registered); says whether it scrolled.
     fn scroll_to_target(&self, name: &str, cx: &App) -> bool {
         if cx.global::<ClickTargets>().get(name).is_some() {
             return false;
@@ -218,10 +219,19 @@ impl Workspace {
         let wanted = name.strip_prefix("tree-menu:").unwrap_or(name);
         let row = self.tree.rows.iter().position(|row| row.target_names().iter().any(|target| target == wanted));
         let Some(index) = row else {
-            return false;
+            return self.scroll_worktree_list_to(name, cx) || self.scroll_scratches_to(name, cx);
         };
         self.tree.list.list_handle().scroll_to_item(index, ScrollStrategy::Center);
         true
+    }
+
+    /// Scrolls the shown Scratches section to the row of click target `name`; says whether it has that row.
+    fn scroll_scratches_to(&self, name: &str, cx: &App) -> bool {
+        let Some(Tab::ProjectOverview(overview)) = self.tabs.active_id().and_then(|id| self.tabs.get(id)) else {
+            return false;
+        };
+        let section = overview.scratches.as_ref().filter(|_| overview.section == ProjectSection::Scratches);
+        section.is_some_and(|section| section.read(cx).scroll_to_target(name))
     }
 
     fn tab_list(&self) -> serde_json::Value {

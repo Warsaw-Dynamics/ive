@@ -1,5 +1,7 @@
 //! Date groups of scratches and the name filter; "now" and the time zone come from part 1's `age::Clock`.
 
+use std::collections::HashSet;
+
 use super::store::ScratchInfo;
 use crate::age::{Clock, unix_seconds};
 
@@ -43,15 +45,15 @@ impl Group {
 pub fn grouped<'a>(scratches: impl IntoIterator<Item = &'a ScratchInfo>, clock: Clock) -> Vec<(Group, Vec<&'a ScratchInfo>)> {
     let mut sorted: Vec<&ScratchInfo> = scratches.into_iter().collect();
     sorted.sort_by_key(|scratch| std::cmp::Reverse(scratch.modified));
-    Group::ALL
-        .into_iter()
-        .map(|group| {
-            let members: Vec<&ScratchInfo> =
-                sorted.iter().copied().filter(|scratch| Group::of(unix_seconds(scratch.modified), clock) == group).collect();
-            (group, members)
-        })
-        .filter(|(_, members)| !members.is_empty())
-        .collect()
+    let mut groups: Vec<(Group, Vec<&ScratchInfo>)> = Group::ALL.into_iter().map(|group| (group, Vec::new())).collect();
+    for scratch in sorted {
+        let group = Group::of(unix_seconds(scratch.modified), clock);
+        if let Some((_, members)) = groups.iter_mut().find(|(each, _)| *each == group) {
+            members.push(scratch);
+        }
+    }
+    groups.retain(|(_, members)| !members.is_empty());
+    groups
 }
 
 /// What the section lists: everything without a query; name matches while the content search runs; then its
@@ -59,8 +61,14 @@ pub fn grouped<'a>(scratches: impl IntoIterator<Item = &'a ScratchInfo>, clock: 
 pub fn visible<'a>(scratches: &'a [ScratchInfo], query: &str, found: Option<&[String]>) -> Vec<&'a ScratchInfo> {
     match (query.is_empty(), found) {
         (true, _) => scratches.iter().collect(),
-        (false, Some(found)) => scratches.iter().filter(|scratch| found.contains(&scratch.name)).collect(),
-        (false, None) => scratches.iter().filter(|scratch| name_matches(&scratch.name, query)).collect(),
+        (false, Some(found)) => {
+            let found: HashSet<&str> = found.iter().map(String::as_str).collect();
+            scratches.iter().filter(|scratch| found.contains(scratch.name.as_str())).collect()
+        }
+        (false, None) => {
+            let query = query.to_lowercase();
+            scratches.iter().filter(|scratch| scratch.name.to_lowercase().contains(&query)).collect()
+        }
     }
 }
 

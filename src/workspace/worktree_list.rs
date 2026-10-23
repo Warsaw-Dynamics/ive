@@ -7,8 +7,8 @@ use super::Workspace;
 use crate::editor::Tab;
 use crate::open_project::OpenProject;
 use crate::overview::worktree_list::WorktreeList;
-use crate::overview::worktree_list_view::{Drawn, DrawnGroup, DrawnRow, render_worktree_list};
-use crate::overview::worktree_rows::{Candidate, Group, GroupKind, KeyEffect, ListInput, ListKey, RowId, groups, key_effect, kept_place, line_of, lines};
+use crate::overview::worktree_list_view::{Drawn, DrawnGroup, DrawnRow, render_worktree_list, row_targets};
+use crate::overview::worktree_rows::{Candidate, Group, GroupKind, KeyEffect, Line, ListInput, ListKey, RowId, groups, key_effect, kept_place, line_of, lines};
 use crate::overview::{ProjectSection, project_card_tags};
 use crate::age::Clock;
 use crate::colors::checkout_colour;
@@ -125,6 +125,23 @@ impl Workspace {
                 })
             }
         }
+    }
+
+    /// Scrolls the shown Worktrees list to the row with click target `name`, which only rows in view register; says
+    /// whether it has that row.
+    pub(super) fn scroll_worktree_list_to(&self, name: &str, cx: &App) -> bool {
+        let Some((project, list)) = self.shown_list() else {
+            return false;
+        };
+        let list = list.read(cx);
+        let groups = self.list_groups(&project, Some(list), cx);
+        let lines = lines(&groups, list.hidden_open());
+        let named = |line: &Line| matches!(line, Line::Row { group, at } if row_targets(&groups[*group].rows[*at]).iter().any(|target| target == name));
+        let Some(line) = lines.iter().position(named) else {
+            return false;
+        };
+        list.scroll_to_line(line);
+        true
     }
 
     /// The shown tab's Worktrees list, when it has the keyboard's tab.

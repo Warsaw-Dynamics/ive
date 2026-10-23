@@ -160,16 +160,22 @@ fn group_header(group: &DrawnGroup, hidden_open: bool, list: Option<&Entity<Work
     }
 }
 
-fn row_line(row: &DrawnRow, selected: bool, project: &ProjectId, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let name = match &row.id {
+/// A row's click targets: the row, and its Hide, Show or + Worktree.
+pub fn row_targets(row: &RowId) -> [String; 2] {
+    let open = match row {
         RowId::Checkout(path) => format!("worktree-row:{}", path.display()),
         RowId::Branch(branch) => format!("branch-row:{branch}"),
     };
+    [open, format!("worktree-toggle:{}", row_name(row))]
+}
+
+fn row_line(row: &DrawnRow, selected: bool, project: &ProjectId, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let [name, toggle_name] = row_targets(&row.id);
     let group = SharedString::from(name.clone());
     let (opened, toggled) = ((project.clone(), row.id.clone()), (project.clone(), row.id.clone()));
-    let open = target(name.clone(), cx.listener(move |workspace, _event, window, cx| workspace.worktree_row_clicked(&opened.0, &opened.1, window, cx)), cx);
+    let open = target(name, cx.listener(move |workspace, _event, window, cx| workspace.worktree_row_clicked(&opened.0, &opened.1, window, cx)), cx);
     let action = row.action.map(|label| {
-        let toggle = target(format!("worktree-toggle:{}", row_name(&row.id)), cx.listener(move |workspace, _event, _window, cx| {
+        let toggle = target(toggle_name, cx.listener(move |workspace, _event, _window, cx| {
             workspace.worktree_row_toggled(&toggled.0, &toggled.1, cx);
         }), cx);
         let button = div().id("worktree-action").px_1().rounded(px(4.)).text_color(rgb(theme.accent)).hover(|style| style.bg(rgb(theme.hover))).child(label);
