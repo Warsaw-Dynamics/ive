@@ -22,10 +22,10 @@ This is the visible master checklist for further work. The controller updates it
 | Standalone Rust workspace | `diagram-ports/` |
 | Latest integrated product checkpoint | `3071513` — native BPM joined charts/railroad; 777 ordinary Rust tests+seven worker faults, source/generator checks and BPM native capture pass; baseline selector repair pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | ASCII Git and wire in isolated worktrees; BPM integrated, directional flow next |
+| Current implementers | Wire and directional flow in isolated worktrees; tested ASCII Git checkpoint awaits integration |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Complete ASCII Git and wire, start directional flow, then standalone Creole/advanced state; broad review stays at the end |
+| Next implementation | Integrate tested ASCII Git and baseline selector, complete wire and directional flow, then standalone Creole/advanced state; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -242,7 +242,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
 | 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; baseline selector repair pending |
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
-| 4 | 3M ASCII Git — ACTIVE | Generated raw-grid parser/native topology passes327 engine units+six public controls and sparse/negative/bounds/cancel cases; natural original merge input found disconnected after correcting SVG path count, so two-parent oracle admission remains under investigation. Frozen43 baseline selector RED→GREEN5; source/strict/final commit pending |
+| 4 | 3M ASCII Git — TESTEDb3cecd9 | 500 focused Rust+viewer example+28 Node, strict engine/generator Clippy/fmt, private generator22, source223MIT/45fixtures/45modules/closure67 pass. Exact padded original merge verifies four endpoint-mapped edges; native unpadded robustness documented, `*-.` rejected. Frozen43 baseline selector repair included; central integration pending |
 | 5 | 3N wire — ACTIVE | Generated offside grammar/typed block placement passes first original nested/horizontal/vertical controls; table/depth bounds measured, wider geometry/source/strict checks pending |
 | 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; root native4/zero-fallback capture/headless export passes; baseline selector repair pending |
 | 7 | 3P directional flow — ACTIVE | Isolated implementation from BPM head; cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
