@@ -7,9 +7,11 @@ use super::content::{ContentFound, ContentHit, MAX_MATCHES, MIN_QUERY_CHARS};
 use super::corpus::{Corpus, Origin};
 use super::matcher::{Query, lowered, split_line};
 use super::model::{HubState, Mode, mode};
+use super::output::OutputHit;
 use super::search::{Found, RENDERED};
 use super::sources::{FreeBranch, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use crate::icons;
+use crate::process::ProcessId;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::scratch::ScratchRef;
 
@@ -116,9 +118,15 @@ pub struct Located {
     pub path: String,
 }
 
-/// The rows of a contents search: one per matching line, `path:line` and the line with its matches; `locate` places
-/// each file in its checkout.
-pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn Fn(&Path) -> Located) -> List {
+/// Where the rows of a contents search are: each file in its checkout, each process in the checkout it works in.
+pub struct Places<'a> {
+    pub file: &'a dyn Fn(&Path) -> Located,
+    pub process: &'a dyn Fn(ProcessId) -> Option<CheckoutRef>,
+}
+
+/// The rows of a contents search: one per matching line, `path:line` and the line with its matches, then the lines of
+/// processes' output as `title:line`.
+pub fn content_list(state: &HubState, found: Option<&ContentFound>, places: &Places) -> List {
     let mut list = Builder::new(&state.scope);
     let title = match &state.paths[..] {
         [] => "Contents".to_owned(),
@@ -133,11 +141,13 @@ pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn
         list.message = Some(if state.query.chars().count() < MIN_QUERY_CHARS { CONTENT_NEEDS_TEXT } else { SEARCHING_CONTENTS }.to_owned());
         return list.finish();
     };
-    let rows: Vec<Row> = found.hits.iter().map(|hit| hit_row(hit, locate(&hit.path))).collect();
-    if rows.is_empty() && found.done {
+    let rows: Vec<Row> = found.hits.iter().map(|hit| hit_row(hit, (places.file)(&hit.path))).collect();
+    let output: Vec<Row> = found.output.iter().map(|hit| output_row(hit, (places.process)(hit.process))).collect();
+    if rows.is_empty() && output.is_empty() && found.done {
         list.message = Some(NO_CONTENT_MATCHES.to_owned());
     }
     list.section(&title, rows);
+    list.section("Output", output);
     if found.limited
         && let Some(section) = list.sections.last_mut()
     {
@@ -146,7 +156,14 @@ pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn
     let searching = if found.done { "" } else { " …" };
     let mut list = list.finish();
     let counted = |count: usize, one: &str, many: &str| format!("{count} {}", if count == 1 { one } else { many });
-    list.counter = Some(format!("{} in {} · {} ms{searching}", counted(found.hits.len(), "match", "matches"), counted(found.files, "file", "files"), found.millis));
+    let mut processes: Vec<ProcessId> = found.output.iter().map(|hit| hit.process).collect();
+    processes.dedup();
+    let matches = counted(found.hits.len() + found.output.len(), "match", "matches");
+    let places = match processes.len() {
+        0 => counted(found.files, "file", "files"),
+        count => format!("{} and {}", counted(found.files, "file", "files"), counted(count, "process", "processes")),
+    };
+    list.counter = Some(format!("{matches} in {places} · {} ms{searching}", found.millis));
     list
 }
 
@@ -157,6 +174,15 @@ fn hit_row(hit: &ContentHit, located: Located) -> Row {
     item.project = located.project;
     item.path = Some(located.path);
     // the matches' bytes as char positions, as rows mark them
+    let detail_hits = hit.text.char_indices().enumerate().filter(|(_, (at, _))| hit.ranges.iter().any(|range| range.contains(at))).map(|(index, _)| index).collect();
+    Row { item, title_hits: Vec::new(), detail_hits, number: None, tag: Tag::None, depth: 0 }
+}
+
+fn output_row(hit: &OutputHit, checkout: Option<CheckoutRef>) -> Row {
+    let mut item = Item::new(Target::Output(Box::new(hit.clone())), format!("{}:{}", hit.title, hit.line), icons::TERMINAL);
+    item.detail = hit.text.clone();
+    item.project = checkout.as_ref().map(|checkout| checkout.project.clone());
+    item.place = checkout.map_or(Place::Nowhere, Place::One);
     let detail_hits = hit.text.char_indices().enumerate().filter(|(_, (at, _))| hit.ranges.iter().any(|range| range.contains(at))).map(|(index, _)| index).collect();
     Row { item, title_hits: Vec::new(), detail_hits, number: None, tag: Tag::None, depth: 0 }
 }
@@ -487,10 +513,56 @@ mod tests {
         let old = ContentFound { hits: vec![ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect(), bytes: 0..3 }], files: 1, done: true, ..ContentFound::default() };
 
         // when
-        let list = content_list(&state, Some(&old), &nowhere);
+        let list = content_list(&state, Some(&old), &Places { file: &nowhere, process: &no_process });
 
         // then
         assert!(list.rows.is_empty(), "{:?}", list.rows);
         assert!(list.message.as_deref().is_some_and(|message| message.contains("foo(")), "{:?}", list.message);
+    }
+
+    fn no_process(_process: crate::process::ProcessId) -> Option<crate::project::CheckoutRef> {
+        None
+    }
+
+    fn found_in_both() -> ContentFound {
+        let hit = ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect(), bytes: 0..3 };
+        let output = OutputHit {
+            process: crate::process::ProcessId::for_tests(1),
+            title: "cargo".to_owned(),
+            line: 3,
+            from_bottom: 0,
+            whole: "a foo".to_owned(),
+            text: "a foo".to_owned(),
+            ranges: std::iter::once(2..5).collect(),
+            bytes: 2..5,
+        };
+        ContentFound { hits: vec![hit], output: vec![output], files: 1, done: true, ..ContentFound::default() }
+    }
+
+    #[test]
+    fn should_list_output_hits_after_contents() {
+        // given
+        let state = HubState { content: true, query: "foo".to_owned(), ..HubState::default() };
+
+        // when
+        let list = content_list(&state, Some(&found_in_both()), &Places { file: &nowhere, process: &no_process });
+
+        // then
+        let sections: Vec<&str> = list.sections.iter().map(|section| section.title.as_str()).collect();
+        let titles: Vec<&str> = list.rows.iter().map(|row| row.item.title.as_str()).collect();
+        assert_eq!((sections, titles), (vec!["Contents", "Output"], vec!["/a:1", "cargo:3"]));
+    }
+
+    #[test]
+    fn should_count_output_and_file_matches_together() {
+        // given
+        let state = HubState { content: true, query: "foo".to_owned(), ..HubState::default() };
+
+        // when
+        let list = content_list(&state, Some(&found_in_both()), &Places { file: &nowhere, process: &no_process });
+
+        // then
+        let counter = list.counter.unwrap_or_default();
+        assert!(counter.starts_with("2 matches in 1 file and 1 process"), "{counter}");
     }
 }

@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use ignore::{WalkBuilder, WalkState};
 use regex::Regex;
 
+use super::output::OutputHit;
 use crate::scratch::search::Ticket;
 use crate::script::excluded::Excluded;
 
@@ -122,6 +123,8 @@ pub enum Ignored {
 /// One search: what, where, and what is left out.
 pub struct Search<'a> {
     pub roots: &'a [Root],
+    /// matching lines kept at most
+    pub limit: usize,
     pub query: &'a ContentQuery,
     pub ignored: Ignored,
     pub excluded: &'a Excluded,
@@ -145,10 +148,12 @@ pub struct ContentHit {
 pub struct ContentFound {
     /// by path, then line
     pub hits: Vec<ContentHit>,
+    /// lines of processes' output, by process then line; found before the files
+    pub output: Vec<OutputHit>,
     /// files with a match
     pub files: usize,
     pub millis: u32,
-    /// [`MAX_MATCHES`] cut the list
+    /// the limit cut the list
     pub limited: bool,
     /// every file was searched
     pub done: bool,
@@ -159,7 +164,7 @@ pub struct ContentFound {
 pub fn search(search: &Search, ticket: &Ticket, partial: impl Fn(&ContentFound) + Sync) -> Option<ContentFound> {
     let regex = search.query.compile().ok()?;
     let started = Instant::now();
-    let shared = Shared { hits: Mutex::new(Vec::new()), count: AtomicUsize::new(0), limited: AtomicBool::new(false), last_partial: Mutex::new(started) };
+    let shared = Shared { hits: Mutex::new(Vec::new()), count: AtomicUsize::new(0), limit: search.limit, limited: AtomicBool::new(false), last_partial: Mutex::new(started) };
     for root in search.roots {
         if ticket.is_stale() || shared.limited.load(Ordering::Relaxed) {
             break;
@@ -189,17 +194,18 @@ pub fn search(search: &Search, ticket: &Ticket, partial: impl Fn(&ContentFound) 
 struct Shared {
     hits: Mutex<Vec<ContentHit>>,
     count: AtomicUsize,
+    limit: usize,
     limited: AtomicBool,
     last_partial: Mutex<Instant>,
 }
 
 impl Shared {
-    /// Takes one file's hits, up to [`MAX_MATCHES`] in all, and hands out the hits so far when it is time.
+    /// Takes one file's hits, up to the search's limit in all, and hands out the hits so far when it is time.
     fn add(&self, file_hits: Vec<ContentHit>, started: Instant, partial: &(impl Fn(&ContentFound) + Sync)) {
         if file_hits.is_empty() {
             return;
         }
-        let taken = file_hits.len().min(MAX_MATCHES.saturating_sub(self.count.fetch_add(file_hits.len(), Ordering::Relaxed)));
+        let taken = file_hits.len().min(self.limit.saturating_sub(self.count.fetch_add(file_hits.len(), Ordering::Relaxed)));
         if taken < file_hits.len() {
             self.limited.store(true, Ordering::Relaxed);
         }
@@ -218,7 +224,7 @@ impl Shared {
         let mut files: Vec<&PathBuf> = hits.iter().map(|hit| &hit.path).collect();
         files.dedup();
         let millis = u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX);
-        ContentFound { files: files.len(), millis, limited: self.limited.load(Ordering::Relaxed), done, hits }
+        ContentFound { files: files.len(), millis, limited: self.limited.load(Ordering::Relaxed), done, hits, output: Vec::new() }
     }
 }
 
@@ -308,7 +314,7 @@ mod tests {
 
     fn found(roots: &[Root], query: &ContentQuery, ignored: Ignored) -> ContentFound {
         let ticket = Generations::default().next();
-        search(&Search { roots, query, ignored, excluded: &excluded(&["node_modules"]) }, &ticket, |_| {}).expect("not cancelled")
+        search(&Search { roots, limit: MAX_MATCHES, query, ignored, excluded: &excluded(&["node_modules"]) }, &ticket, |_| {}).expect("not cancelled")
     }
 
     fn lines(found: &ContentFound) -> Vec<String> {
@@ -522,7 +528,7 @@ mod tests {
         generations.next();
 
         // when
-        let found = search(&Search { roots: &[root(dir.path())], query: &query("menu"), ignored: Ignored::Skipped, excluded: &excluded(&[]) }, &ticket, |_| {});
+        let found = search(&Search { roots: &[root(dir.path())], limit: MAX_MATCHES, query: &query("menu"), ignored: Ignored::Skipped, excluded: &excluded(&[]) }, &ticket, |_| {});
 
         // then
         assert!(found.is_none());

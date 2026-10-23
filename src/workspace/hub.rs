@@ -13,7 +13,8 @@ use crate::hub::history::{History, Shown, TabIdentity};
 use crate::hub::matcher::Query;
 use crate::hub::model::{Effect, HubState, Mode, mode};
 use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Root, Search};
-use crate::hub::rows::{List, Located, content_list, list, thousands};
+use crate::hub::output::{OutputLines, in_scope, search_output};
+use crate::hub::rows::{List, Located, Places, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use codeview::diff::Headers;
@@ -392,6 +393,7 @@ impl Workspace {
             },
             Target::Change { checkout, path } => Wanted::Diff { title: format!("{path} · uncommitted"), dir: checkout.path.clone(), path: path.clone() },
             Target::Process(process) => self.process_preview(*process),
+            Target::Output(hit) => self.process_preview(hit.process),
             Target::RunConfig { folder, key, .. } => self.config_preview(item, folder, key, sources),
             Target::Worktree(checkout) => self.worktree_preview(checkout, sources),
             Target::Line(number) => match sources.back.as_ref().and_then(|back| self.tabs.get(back.tab)) {
@@ -621,8 +623,10 @@ impl Workspace {
         };
         let ticket = hub.generations.next();
         if let Some(query) = hub.state.content_query() {
-            let roots = self.content_roots(id);
-            return self.start_content_search(id, ContentSearch { roots, query, ticket }, cx);
+            let state = hub.state.clone();
+            let roots = if state.files_searched() { self.content_roots(id) } else { Vec::new() };
+            let outputs = if state.output_searched() { self.output_lines(&state.scope) } else { Vec::new() };
+            return self.start_content_search(id, ContentSearch { roots, outputs, query, ticket }, cx);
         }
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
             return;
@@ -664,15 +668,18 @@ impl Workspace {
         // the last query's lines are not this one's: "Searching…" until the first of these arrive
         hub.content = None;
         let ignored = if hub.state.excluded { Ignored::Searched } else { Ignored::Skipped };
-        let ContentSearch { roots, query, ticket } = search;
+        let ContentSearch { roots, outputs, query, ticket } = search;
         let (sender, mut found) = futures::channel::mpsc::unbounded::<ContentFound>();
         let scanned = ticket.clone();
         let scan = cx.background_executor().spawn(async move {
-            let search = Search { roots: &roots, query: &query, ignored, excluded: &excluded };
+            // output is in memory: its lines come first, the files fill the rest of the limit
+            let (output, limited) = query.compile().map_or((Vec::new(), false), |regex| search_output(&outputs, &regex, content::MAX_MATCHES));
+            let search = Search { roots: &roots, limit: content::MAX_MATCHES - output.len(), query: &query, ignored, excluded: &excluded };
+            let with_output = |found: &ContentFound| ContentFound { output: output.clone(), limited: found.limited || limited, ..found.clone() };
             let sending = std::sync::Mutex::new(sender.clone());
-            let done = content::search(&search, &scanned, |partial| drop(sending.lock().map(|sender| sender.unbounded_send(partial.clone()))));
+            let done = content::search(&search, &scanned, |partial| drop(sending.lock().map(|sender| sender.unbounded_send(with_output(partial)))));
             if let Some(done) = done {
-                drop(sender.unbounded_send(done));
+                drop(sender.unbounded_send(with_output(&done)));
             }
         });
         hub.search = Some(cx.spawn(async move |this, cx| {
@@ -720,6 +727,14 @@ impl Workspace {
         roots
     }
 
+    /// The output of the processes in `scope`, of the projects shown, for a contents search off the UI thread.
+    fn output_lines(&self, scope: &HubScope) -> Vec<OutputLines> {
+        let shown = self.shown_projects();
+        let searched = |checkout: Option<&CheckoutRef>| in_scope(scope, checkout) && checkout.is_none_or(|checkout| shown.contains(&checkout.project));
+        let processes = self.processes.iter().filter(|process| searched(process.checkout.as_ref()));
+        processes.map(|process| OutputLines { process: process.id, title: process.title(), lines: process.view.output_text(None) }).collect()
+    }
+
     /// A contents search's file in its checkout, for its row.
     fn locate_hit(&self, path: &Path) -> Located {
         match self.checkout_ref_of(path) {
@@ -741,7 +756,10 @@ impl Workspace {
 
     pub(super) fn hub_list(&self, hub: &HubTab, sources: &Sources) -> List {
         let mut list = match mode(&hub.state) {
-            Mode::Content => content_list(&hub.state, hub.content.as_ref(), &|path| self.locate_hit(path)),
+            Mode::Content => {
+                let places = Places { file: &|path| self.locate_hit(path), process: &|process| self.processes.get(process).and_then(|process| process.checkout.clone()) };
+                content_list(&hub.state, hub.content.as_ref(), &places)
+            }
             _ => list(&hub.state, sources, hub.found.as_ref().map(|found| (&*hub.searched, found)), &WorkspaceStates(self)),
         };
         if hub.notice.is_some() {
@@ -1021,6 +1039,7 @@ impl Workspace {
             Target::Tab(id) => self.activate_tab(id, window, cx),
             Target::Reopen(saved) => self.reopen(&saved, line, window, cx),
             Target::Process(id) => self.show_process(id, window, cx),
+            Target::Output(hit) => self.show_process(hit.process, window, cx),
             Target::File { path, .. } | Target::Change { path, .. } => {
                 if let Some(checkout) = checkout {
                     self.open_document_at(&checkout.path.join(path), Reveal::of_line(line), window, cx);
@@ -1176,6 +1195,7 @@ impl Workspace {
 /// A contents search to start: where, what, and its ticket.
 struct ContentSearch {
     roots: Vec<Root>,
+    outputs: Vec<OutputLines>,
     query: ContentQuery,
     ticket: Ticket,
 }

@@ -6,7 +6,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::content::shown;
+use super::sources::HubScope;
 use crate::process::ProcessId;
+use crate::project::CheckoutRef;
 
 /// One process's output, taken on the UI thread for a search off it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +58,16 @@ pub fn search_output(outputs: &[OutputLines], regex: &Regex, limit: usize) -> (V
     (hits, false)
 }
 
+/// Whether a process working in `checkout` is in the hub's `scope`; one in no checkout only in all projects.
+pub fn in_scope(scope: &HubScope, checkout: Option<&CheckoutRef>) -> bool {
+    match (scope, checkout) {
+        (HubScope::All, _) => true,
+        (HubScope::Project(project), Some(checkout)) => checkout.project == *project,
+        (HubScope::Worktree(only), Some(checkout)) => only.path == checkout.path,
+        (_, None) => false,
+    }
+}
+
 /// Where `hit`'s line is in `lines`, the output now: the line with its text nearest to where it was, counted from
 /// the bottom; `None` once no line has its text.
 pub fn locate(lines: &[String], hit: &OutputHit) -> Option<usize> {
@@ -66,6 +78,7 @@ pub fn locate(lines: &[String], hit: &OutputHit) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::project::ProjectId;
 
     fn output(id: u64, lines: &[&str]) -> OutputLines {
         OutputLines { process: ProcessId::for_tests(id), title: format!("p{id}"), lines: lines.iter().map(|line| (*line).to_owned()).collect() }
@@ -156,5 +169,45 @@ mod tests {
 
         // then
         assert_eq!(index, None);
+    }
+
+    fn checkout(project: &str, path: &str) -> CheckoutRef {
+        CheckoutRef { project: ProjectId::parse(project).unwrap(), path: std::path::PathBuf::from(path) }
+    }
+
+    #[test]
+    fn should_search_a_process_of_the_scope_worktree() {
+        // given
+        let scope = HubScope::Worktree(checkout("ive", "/w/ive"));
+
+        // when
+        let searched = [in_scope(&scope, Some(&checkout("ive", "/w/ive"))), in_scope(&scope, Some(&checkout("ive", "/w/ive-other")))];
+
+        // then
+        assert_eq!(searched, [true, false]);
+    }
+
+    #[test]
+    fn should_skip_a_process_of_another_project() {
+        // given
+        let scope = HubScope::Project(ProjectId::parse("ive").unwrap());
+
+        // when
+        let searched = [in_scope(&scope, Some(&checkout("ive", "/w/ive-x"))), in_scope(&scope, Some(&checkout("notes", "/w/notes")))];
+
+        // then
+        assert_eq!(searched, [true, false]);
+    }
+
+    #[test]
+    fn should_search_a_process_without_checkout_only_in_all() {
+        // given
+        let scopes = [HubScope::All, HubScope::Project(ProjectId::parse("ive").unwrap())];
+
+        // when
+        let searched = scopes.map(|scope| in_scope(&scope, None));
+
+        // then
+        assert_eq!(searched, [true, false]);
     }
 }
