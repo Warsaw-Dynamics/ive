@@ -3,20 +3,116 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = path.join(root, 'vendor/IMPORTS.json');
 const patchesPath = path.join(root, 'vendor/PATCHES.json');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const read = relative => fs.readFileSync(path.join(root, 'vendor', relative));
+const MAX_BYTES = 64 * 1024 * 1024;
+const MAX_FILES = 4096;
 
-function files(directory, prefix = '') {
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const relative = path.posix.join(prefix, entry.name);
-    if (entry.isDirectory()) return files(path.join(directory, entry.name), relative);
-    if (entry.isFile()) return [relative];
-    throw new Error(`unexpected source entry: ${relative}`);
-  }).sort();
+function boundedRead(file) {
+  const descriptor = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    const stat = fs.fstatSync(descriptor);
+    if (!stat.isFile() || stat.size > MAX_BYTES) throw new Error(`unsafe or oversized source file: ${file}`);
+    const bytes = Buffer.alloc(stat.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const count = fs.readSync(descriptor, bytes, offset, bytes.length - offset, offset);
+      if (count === 0) throw new Error(`source file shrank while reading: ${file}`);
+      offset += count;
+    }
+    if (fs.readSync(descriptor, Buffer.alloc(1), 0, 1, offset)) throw new Error(`source file grew while reading: ${file}`);
+    return bytes;
+  } finally { fs.closeSync(descriptor); }
+}
+
+function safeMember(name, directory) {
+  const parts = name.split('/');
+  if (Buffer.byteLength(name) > 512 || parts.length > 32 || parts[0] !== directory
+    || parts.some(part => ['', '.', '..'].includes(part)) || /[\\:\x00-\x1f\x7f]/.test(name)) throw new Error(`unsafe archive member: ${name}`);
+  return name;
+}
+
+function tarNumber(header, start, length) {
+  const raw = header.subarray(start, start + length).toString('ascii').replace(/\0.*$/s, '').trim();
+  if (!/^[0-7]+$/.test(raw)) throw new Error(`invalid archive numeric field at ${start}`);
+  return Number.parseInt(raw, 8);
+}
+
+function tarName(bytes) {
+  const end = bytes.indexOf(0);
+  return new TextDecoder('utf-8', { fatal: true }).decode(end < 0 ? bytes : bytes.subarray(0, end));
+}
+
+function archiveMembers(archive, directory) {
+  const bytes = gunzipSync(archive, { maxOutputLength: MAX_BYTES });
+  const members = new Map();
+  let offset = 0;
+  let headers = 0;
+  let longName = '';
+  while (offset + 512 <= bytes.length) {
+    const header = bytes.subarray(offset, offset + 512);
+    if (header.every(byte => byte === 0)) {
+      if (longName || bytes.length - offset < 1024 || bytes.subarray(offset).some(byte => byte !== 0)) throw new Error('invalid archive terminator');
+      return members;
+    }
+    if (++headers > MAX_FILES) throw new Error('archive entry count exceeds limit4096');
+    const checksum = header.reduce((sum, byte, index) => sum + (index >= 148 && index < 156 ? 32 : byte), 0);
+    if (checksum !== tarNumber(header, 148, 8)) throw new Error('archive header checksum mismatch');
+    const size = tarNumber(header, 124, 12);
+    const end = offset + 512 + size;
+    if (size > 16 * 1024 * 1024 || end > bytes.length) throw new Error('archive member size exceeds bounds');
+    const content = bytes.subarray(offset + 512, end);
+    offset += 512 + Math.ceil(size / 512) * 512;
+    const kind = header[156];
+    if (kind === 76) {
+      if (longName || size > 513) throw new Error('invalid archive long name');
+      longName = tarName(content);
+      continue;
+    }
+    const prefix = header.subarray(257, 263).toString('ascii') === 'ustar\0' ? tarName(header.subarray(345, 500)) : '';
+    const name = safeMember((longName || [prefix, tarName(header.subarray(0, 100))].filter(Boolean).join('/')).replace(/\/$/, ''), directory);
+    longName = '';
+    if (kind === 53 && size === 0) continue;
+    if (![0, 48].includes(kind)) throw new Error(`unsupported archive member type: ${name}`);
+    if (members.has(name)) throw new Error(`duplicate archive member: ${name}`);
+    members.set(name, content);
+  }
+  throw new Error('truncated archive');
+}
+
+function importedFiles(directory, members) {
+  const location = path.join(root, 'vendor', directory);
+  if (!fs.lstatSync(location).isDirectory()) throw new Error(`unsafe extraction directory: ${directory}`);
+  const expected = [...members.keys()].filter(name => name !== `${directory}/Cargo.lock` && !name.startsWith(`${directory}/examples/`)).sort();
+  const actual = files(location).map(file => safeMember(`${directory}/${file}`, directory));
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`archive extraction inventory mismatch: ${directory}`);
+  return actual.map(relative => {
+    const extracted = boundedRead(path.join(root, 'vendor', relative));
+    const original = members.get(relative);
+    if (!original.equals(extracted)) throw new Error(`archive member mismatch: ${relative}`);
+    return { path: relative, upstreamSha256: hash(original) };
+  });
+}
+
+function files(directory, prefix = '', budget = { entries: 0 }) {
+  if (prefix.split('/').length > 32) throw new Error(`source inventory depth exceeds limit32: ${prefix}`);
+  const handle = fs.opendirSync(directory);
+  const result = [];
+  try {
+    for (let entry; (entry = handle.readSync()) !== null;) {
+      if (++budget.entries > MAX_FILES) throw new Error(`source inventory exceeds limit4096: ${prefix}`);
+      const relative = path.posix.join(prefix, entry.name);
+      if (entry.isDirectory()) result.push(...files(path.join(directory, entry.name), relative, budget));
+      else if (entry.isFile()) result.push(relative);
+      else throw new Error(`unexpected source entry: ${relative}`);
+    }
+  } finally { handle.closeSync(); }
+  return result.sort();
 }
 
 const imports = [
@@ -30,14 +126,11 @@ if (process.argv[2] === '--record-import') {
   if (fs.existsSync(manifestPath)) throw new Error('refusing to overwrite original import manifest');
   const crates = imports.map(crate => {
     const directory = `${crate.name}-${crate.version}`;
-    const archive = fs.readFileSync(path.join(archiveDirectory, `${directory}.crate`));
+    const archive = boundedRead(path.join(archiveDirectory, `${directory}.crate`));
     if (hash(archive) !== crate.archiveSha256) throw new Error(`archive checksum mismatch: ${directory}`);
-    return { ...crate, directory, omitted: ['Cargo.lock', 'examples/**'], files: files(path.join(root, 'vendor', directory)).map(file => {
-      const relative = `${directory}/${file}`;
-      return { path: relative, upstreamSha256: hash(read(relative)) };
-    }) };
+    return { ...crate, directory, omitted: ['Cargo.lock', 'examples/**'], files: importedFiles(directory, archiveMembers(archive, directory)) };
   });
-  fs.writeFileSync(manifestPath, `${JSON.stringify({ format: 1, registry: 'https://crates.io', crates }, null, 2)}\n`);
+  fs.writeFileSync(manifestPath, `${JSON.stringify({ format: 1, registry: 'https://crates.io', crates }, null, 2)}\n`, { flag: 'wx' });
   console.log('Recorded original imported-source hashes; do not regenerate after patching.');
 } else if (process.argv[2] === '--record-patches') {
   if (fs.existsSync(patchesPath)) throw new Error('refusing to overwrite patch ledger');
