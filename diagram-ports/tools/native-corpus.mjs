@@ -105,7 +105,7 @@ async function runExport(context, paths) {
   const child = spawn(context.viewer, args, { detached: process.platform !== 'win32', env: childEnvironment(), stdio: ['ignore', 'pipe', 'pipe'] });
   const streams = { stdout: [], stderr: [] };
   const state = { size: 0, failure: '', checking: false };
-  const remaining = Math.min(context.bound.caseMilliseconds, Math.max(1, context.deadline - performance.now()));
+  const remaining = Math.min(context.bound.caseMilliseconds, Math.max(1, context.deadline - context.clock.now()));
   const fail = reason => { if (state.failure === '') state.failure = reason; kill(child); };
   const timer = setTimeout(() => fail('timeout'), remaining);
   const watcher = setInterval(() => checkOutput(paths.svg, context, state, fail), 20);
@@ -168,7 +168,7 @@ async function takeSvg(context, name, status) {
 }
 
 async function recordCase(context, input) {
-  if (performance.now() >= context.deadline) throw new Error('native corpus aggregate deadline exceeded');
+  if (context.clock.now() >= context.deadline) throw new Error('native corpus aggregate deadline exceeded');
   const prefix = `${input.language}--${input.name}`;
   const source = await artifact(context, prefix, input.source);
   const paths = { language: input.language, source: path.join(context.output, source), svg: path.join(context.output, `${prefix}.svg`) };
@@ -196,7 +196,7 @@ async function loadOriginal(context, file) {
   return parsed;
 }
 
-export async function runCorpus(options) {
+export async function runCorpus(options, clock = performance) {
   const bound = limits(options.limits);
   const fixtures = absolute(options.fixtures, 'fixtures');
   const output = absolute(options.output, 'output');
@@ -205,7 +205,7 @@ export async function runCorpus(options) {
   const sources = await inputs({ fixtures }, bound);
   await fs.mkdir(output); // Exclusive even when a preexisting directory is empty.
   const binary = await identify(viewer, bound.binaryBytes);
-  const context = { output, viewer, bound, artifacts: [], total: 0, deadline: performance.now() + bound.corpusMilliseconds };
+  const context = { output, viewer, bound, clock, artifacts: [], total: 0, deadline: clock.now() + bound.corpusMilliseconds };
   context.original = await loadOriginal(context, options.original);
   const results = [];
   const startedAt = new Date().toISOString();
@@ -221,6 +221,7 @@ export async function runCorpus(options) {
   verifyRows(manifest, artifacts);
   const bytes = Buffer.from(json(manifest));
   if (bytes.length > bound.manifestBytes || context.total + bytes.length > bound.artifactBytes) throw new Error('native corpus manifest exceeds aggregate bound');
+  if (clock.now() >= context.deadline) throw new Error('native corpus aggregate deadline exceeded before manifest publication');
   await fs.writeFile(path.join(output, 'admission.json'), bytes, { flag: 'wx' });
   return manifest;
 }

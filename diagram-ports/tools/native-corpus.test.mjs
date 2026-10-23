@@ -293,6 +293,22 @@ test('should_bound_aggregate_render_deadline_without_publishing_incomplete_manif
   await assert.rejects(fs.stat(path.join(options.output, 'admission.json')), /ENOENT/);
 });
 
+test('should_reject_expired_final_phase_after_successful_child_and_artifact_verification', async context => {
+  // given
+  const options = await fixture(context);
+  await source(options);
+  const ticks = [0, 0, 0];
+  const clock = { now: () => ticks.shift() ?? 300001 };
+  // when
+  const run = runCorpus(options, clock);
+  // then
+  await assert.rejects(run, /aggregate deadline/);
+  const status = JSON.parse(await fs.readFile(path.join(options.output, 'mermaid--one.mmd.status.json')));
+  assert.equal(status.outcome, 'rendered');
+  assert.equal(await fs.readFile(path.join(options.output, 'mermaid--one.mmd.svg'), 'utf8'), svg);
+  await assert.rejects(fs.stat(path.join(options.output, 'admission.json')), /ENOENT/);
+});
+
 test('should_exit_nonzero_for_complete_failed_native_run_in_export_and_check_modes', async context => {
   // given
   const options = await fixture(context, 'console.error("bad source");process.exit(3);');
