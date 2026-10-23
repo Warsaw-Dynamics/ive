@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "da590bc plus final Task17 cleanup; all 21 generated grammars and no pending syntax or Line adapters",
+  "basis": "da590bc plus final Task17 cleanup; all 21 generated grammars and no pending syntax or Line adapters; Task3L adds generated chart facade, lexical primitives, typed semantics and measured layout.",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -41,6 +41,19 @@
       "path": "engine/src/plantuml/budget.rs",
       "groups": [
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["new#1", "checkpoint#1", "charge#1", "item#1", "depth#1", "text#1", "bound#1", "exceeded#1", "invalid#1", "unsupported#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/chart.rs",
+      "groups": [
+        {"role": "semantic", "reason": "Typed chart axis/range/series construction, exact sample-count/feature policy and deterministic palette/number formatting after generated syntax.", "symbols": ["bounds#1", "new#1", "push#1", "command#1", "finish#1", "color#1", "format_number#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/chartscene.rs",
+      "groups": [
+        {"role": "layout", "reason": "Bounded measured chart geometry, native shape projection and legend/axis reservation; no source syntax recognition.", "symbols": ["layout#1", "store#1", "measure#1", "reserve#1", "legend_size#1", "put_text#1", "draw_axes#1", "project#1", "draw_series#1", "draw_legend#1"]},
+        {"role": "test-adapter", "reason": "Chart contract assertions and test-only generated facade setup.", "symbols": ["inspect#1", "should_project_signed_bars_zero_and_every_line_point_from_one_numeric_scale#1", "should_reserve_measured_legend_title_categories_ticks_and_signed_value_gutters#1", "should_bound_tick_allocation_and_measurement_before_chart_projection#1"]}
       ]
     },
     {
@@ -191,6 +204,14 @@
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["row_tokens#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_generate_nearest_lower_stage_parents_and_gaps#1", "should_reject_direct_generated_incomplete_stage_rows#1", "should_cancel_generated_board_delivery_and_stage_actions#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/chart.rs",
+      "groups": [
+        {"role": "generated-facade", "reason": "Checked generated chart entry, concrete parser retention/work admission and once-origin failure mapping.", "symbols": ["parse#1", "parse_body#1", "admit#1"]},
+        {"role": "lexical", "reason": "Bounded primitive quote/number/color tokenization and physical-row spans; list/axis/series/legend/EOF syntax remains generated.", "symbols": ["tokenize#1", "atom#1"]},
+        {"role": "test-adapter", "reason": "Chart contract assertions and test-only generated facade setup.", "symbols": ["model#1", "should_keep_order_duplicate_display_identities_default_range_and_expand_only#1", "should_apply_fixed_range_and_title_in_authored_order_and_reject_missing_samples#1", "should_reject_direct_generated_list_suffix_eof_and_cancel_delivery_and_actions#1", "should_cancel_mid_quote_and_refuse_generated_retention_before_entry#1"]}
       ]
     },
     {

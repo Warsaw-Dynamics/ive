@@ -83,7 +83,11 @@ impl Lexer {
         let marker = has_marker(text);
         let family = if self.sheet {
             false
-        } else if wrapper == Wrapper::Hcl || keyed || !marker {
+        } else if wrapper == Wrapper::Hcl
+            || keyed
+            || !marker
+            || (wrapper == Wrapper::Chart && text.split_whitespace().next() == Some("legend"))
+        {
             true
         } else if wrapper == Wrapper::Uml {
             header.identifier_arrow

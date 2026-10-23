@@ -2,6 +2,7 @@
 grammar(budget: &mut crate::plantuml::budget::Budget);
 use crate::plantuml::{parser::{document::{Token, Bounds, finish}, error::ParseFailure}, source::Wrapper};
 pub Document: Bounds = {
+    "startchart" <start:@R> <contents:Contents> <end:@L> "endchart" =>? finish(Wrapper::Chart, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     <_before:Comments> "startuml" <start:@R> <contents:Contents> <end:@L> "enduml" <_after:Comments> =>? finish(Wrapper::Uml, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "startmindmap" <start:@R> <contents:Contents> <end:@L> "endmindmap" =>? finish(Wrapper::Mindmap, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "startwbs" <start:@R> <contents:Contents> <end:@L> "endwbs" =>? finish(Wrapper::Wbs, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
@@ -27,6 +28,8 @@ extern {
     type Location = usize;
     type Error = ParseFailure;
     enum Token {
+        "startchart" => Token::StartChart,
+        "endchart" => Token::EndChart,
         "startuml" => Token::StartUml,
         "enduml" => Token::EndUml,
         "startmindmap" => Token::StartMindmap,

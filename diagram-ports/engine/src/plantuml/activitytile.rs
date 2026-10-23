@@ -678,7 +678,9 @@ fn shift(tile: &mut Tile, offset: Point, budget: &mut Budget) -> Result<(), Rend
                     rect.y += offset.y;
                 }
                 Shape::Text(point, _, _) => move_point(point, offset),
-                Shape::Line(points, _) | Shape::Polygon(points, _) => {
+                Shape::Line(points, _)
+                | Shape::ColoredLine(points, _, _)
+                | Shape::Polygon(points, _) => {
                     for point in points {
                         move_point(point, offset);
                     }
@@ -987,7 +989,9 @@ mod tests {
                 Point::new(r.x + r.width, r.y + r.height),
             ],
             Shape::Text(p, label, _) => vec![*p, Point::new(p.x + label.width, p.y + label.height)],
-            Shape::Line(points, _) | Shape::Polygon(points, _) => points.clone(),
+            Shape::Line(points, _)
+            | Shape::ColoredLine(points, _, _)
+            | Shape::Polygon(points, _) => points.clone(),
         };
         for p in points {
             assert!(

@@ -88,6 +88,11 @@ impl Writer {
                 r.height / 2.,
                 fill.value()
             )),
+            Shape::ColoredLine(points, dash, color) => {
+                self.add(&format!("<polyline stroke=\"{}\" stroke-width=\"{}\" fill=\"none\" stroke-dasharray=\"{}\" points=\"",color.svg(),if matches!(dash,super::scene::Dash::Bold){2.}else{1.5},if matches!(dash,super::scene::Dash::Dashed){"6 4"}else{"none"}))?;
+                self.points(points)?;
+                self.add("\"/>")
+            }
             Shape::Line(points, dash) => {
                 if matches!(dash, super::scene::Dash::Bold) {
                     self.add("<polyline stroke-width=\"2\" fill=\"none\" points=\"")?;

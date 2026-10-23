@@ -1,6 +1,7 @@
 //! Original bounded parser infrastructure; semantic source traces remain in provenance.
 pub(super) mod activity;
 pub(super) mod board;
+pub(super) mod chart;
 pub(super) mod chen;
 pub(super) mod context;
 pub(super) mod creole;
@@ -61,6 +62,11 @@ mod generated_files;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/board.rs"]
 mod generated_board;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/chart.rs"]
+mod generated_chart;
 
 #[derive(Clone, Copy)]
 pub(super) struct SourceView<'s> {

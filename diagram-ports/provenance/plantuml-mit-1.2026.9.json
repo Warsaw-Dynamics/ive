@@ -2503,7 +2503,7 @@
         "engine/src/plantuml/parser/grammar/document.lalrpop",
         "engine/src/plantuml/parser/ownership.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family. Task 2 moves wrapper classification/pairing into shared lexical ownership and generated document productions, retaining UML-only case insensitivity and rejecting output filenames.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family. Task 2 moves wrapper classification/pairing into shared lexical ownership and generated document productions, retaining UML-only case insensitivity and rejecting output filenames. Task3L: exact chart wrapper maps to generated document and dedicated native Chart model, no filenames or wrapper aliases.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -3457,6 +3457,186 @@
       ],
       "behavior": "Only LightBlue=ADD8E6 and LightGreen=90EE90 constants; no other table, trie algorithm or assets.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/ChartDiagramFactory.java",
+      "sha256": "4a933c75ea54507d58bf188f09bb87324b7aeb015e9f78a0b715a5845e01d713",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines138-152: chart command priority before common commands, particularly chart legend before any axis/series. Native exact @startchart wrapper dispatch and actual generated grammar; no external renderer.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/ChartDiagram.java",
+      "sha256": "350a0c82096eec2b930aa7e87a2db047e02debc89c8302b1ce138a50242d8aad",
+      "rust": [
+        "engine/src/plantuml/chart.rs"
+      ],
+      "behavior": "Task3L: From lines128-158,196-328: preserve category/series declaration order, final categorical axis labels/title, explicit-range updates and insertion-time auto expansion. Native requires exact nonempty category/sample count and fixed-range containment instead of silent truncation/clipping; one bar series only.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/ChartAxis.java",
+      "sha256": "201a78a557be46d111c59b9afe3feb8974e56a5448e1ddb03fbd96cee9fc8bfe",
+      "rust": [
+        "engine/src/plantuml/chart.rs"
+      ],
+      "behavior": "Task3L: From lines129-136,186-203: auto Y range starts0..100 and only expands to include samples; explicit range disables expansion; affine value mapping. Native requires finite |value|<=1e12, min<max and finite denominator.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/ChartSeries.java",
+      "sha256": "ad982eb5eb3a11579d1e4f5f4da41d6f93baa9c8865a2ce26bf1f8db3bdc3da6",
+      "rust": [
+        "engine/src/plantuml/chart.rs"
+      ],
+      "behavior": "Task3L: From lines119-153: typed BAR/LINE indexed samples, optional names with all-series-index defaults, per-series labels and explicit colors. Native no optional-wrapper fields; coordinate pairs/secondary axis/area/scatter/line labels unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/ChartRenderer.java",
+      "sha256": "6e21f772064be5d8691951a9536364fbfe637a7920f62634c2455da5be5786bd",
+      "rust": [
+        "engine/src/plantuml/chartscene.rs"
+      ],
+      "behavior": "Task3L: From lines210-314,316-480,530-650,1000-1023,1153-1330: measure legend first, categorical centers, six bounded automatic Y ticks, default palette and matching series-kind legend symbols. Native margins/plot width are measured, Y title horizontal; other original style/annotation/grid/rendering rules not translated.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/BarRenderer.java",
+      "sha256": "e29486f130f0550fbc5127e852dbf82627042568699c00ac6b6930e151b18a5a",
+      "rust": [
+        "engine/src/plantuml/chartscene.rs"
+      ],
+      "behavior": "Task3L: From lines179-247: width0.6 category slot, clamped zero baseline, signed actual bar heights and value labels. Native reserves measured positive/negative label gutters; zero sample retained with zero height; grouped/stacked/horizontal not admitted.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/LineRenderer.java",
+      "sha256": "4437d2eae71b60f582eb4f50b68227b0031c4c35e21fa8c120c836cb0a391dfd",
+      "rust": [
+        "engine/src/plantuml/chartscene.rs"
+      ],
+      "behavior": "Task3L: From lines139-188: connect actual categorical centers using the same affine Y projection. Native visible sample markers include one-point series; no coordinate pairs or secondary axis.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/command/CommandChartHAxis.java",
+      "sha256": "6b0ecc3899fdf9020949e7eb34cbe55bfccc3df4bfeac46cf123e922cb038543",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines137-157,202-233: x-axis/h-axis optional title and ordered quoted categorical labels. Generated grammar owns lists/punctuation/order/EOF; native explicitly rejects embedded category commas, numeric X axes, spacing, label-right and grid.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/command/CommandChartVAxis.java",
+      "sha256": "f43158d9c76bcdf8019993a7fe1ff5c6855dc77e3bba1c9056943df6ff4a7873",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines139-164,187-278: y-axis/v-axis optional title and primary numeric range updates; generated range arrow/order/EOF. Native horizontal measured Y title; secondary/category axes/custom ticks/spacing/label-top/grid rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/command/CommandChartBar.java",
+      "sha256": "fd21bec8a3893014a9319b787f1288c8fdda94d26b3965df757558206b82b265",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines140-157,169-214: optional name, ordered numeric sample list, optional color before labels flag. Generated syntax, #RRGGBB-only colors and finite bounded numeric primitives; stereotypes and second bar series unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/command/CommandChartLine.java",
+      "sha256": "c823a70e90771ec35ad497c7b66444e8b0b10bf8ae36dc5508c24a25c18c3cac",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines140-161,179-260: optional name and ordered index-based numeric samples with per-series color. Generated syntax; coordinate-pair/secondary-axis/line labels/stereotype branches are explicitly rejected, not translated.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/chart/command/CommandChartLegend.java",
+      "sha256": "db002c2ba1ff39a8cecac9005b560e88e34507a42b5f8d93e62271000446452c",
+      "rust": [
+        "engine/src/plantuml/chart.rs",
+        "engine/src/plantuml/parser/chart.rs",
+        "engine/src/plantuml/parser/grammar/chart.lalrpop"
+      ],
+      "behavior": "Task3L: From lines133-173: chart legend left/right/top/bottom enum and replacement semantics. Native measured swatches/names preserve series order; default no legend.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  David Fyfe"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -3896,6 +4076,21 @@
       "path": "fixtures/plantuml/archimatebase.puml",
       "sha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
       "origin": "/tmp/ive-plantuml-native-oracles/archimate-authentic-uml.puml (exact bytes; original unchanged)"
+    },
+    {
+      "path": "fixtures/plantuml/chart.puml",
+      "sha256": "5304d4e71659f101b9452b3d25333d2c31c4bad87e7dd4dabd6ae4061bf65630",
+      "origin": "/tmp/ive-plantuml-native-oracles/chart-bars.puml",
+      "originalFamily": "chart",
+      "expectedLabels": [
+        "Week",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Orders",
+        "0",
+        "100"
+      ]
     }
   ],
   "oracle": {
@@ -3960,7 +4155,9 @@
     "engine/src/plantuml/creole.rs",
     "engine/src/plantuml/chrome.rs",
     "engine/src/plantuml/chen.rs",
-    "engine/src/plantuml/chenscene.rs"
+    "engine/src/plantuml/chenscene.rs",
+    "engine/src/plantuml/chart.rs",
+    "engine/src/plantuml/chartscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",

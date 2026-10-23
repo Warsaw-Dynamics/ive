@@ -15,6 +15,8 @@ use std::ops::Range;
 
 #[derive(Clone, Copy, Debug)]
 pub(in crate::plantuml) enum Token {
+    StartChart,
+    EndChart,
     StartUml,
     EndUml,
     StartMindmap,
@@ -84,6 +86,8 @@ pub(in crate::plantuml) fn emit(
     budget: &mut Budget,
 ) -> Result<(), ParseFailure> {
     let token = match kind {
+        Kind::Start(Wrapper::Chart) => Token::StartChart,
+        Kind::End(Wrapper::Chart) => Token::EndChart,
         Kind::Start(Wrapper::Uml) => Token::StartUml,
         Kind::End(Wrapper::Uml) => Token::EndUml,
         Kind::Start(Wrapper::Mindmap) => Token::StartMindmap,

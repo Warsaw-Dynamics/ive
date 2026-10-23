@@ -233,6 +233,7 @@ fn classify(command: &str) -> Kind {
         return Kind::End(Wrapper::Uml);
     }
     for (name, wrapper) in [
+        ("chart", Wrapper::Chart),
         ("mindmap", Wrapper::Mindmap),
         ("wbs", Wrapper::Wbs),
         ("json", Wrapper::Json),

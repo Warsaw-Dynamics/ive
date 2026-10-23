@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-chart",
+        source: include_str!("../../fixtures/plantuml/chart.puml"),
+    },
+    Example {
         name: "plantuml-chen",
         source: include_str!("../../fixtures/plantuml/chen.puml"),
     },
@@ -215,6 +219,26 @@ mod tests {
             assert!(output.svg.contains(&format!("data-kind=\"{kind}\"")));
         }
     }
+    #[test]
+    fn should_find_native_chart_example_with_actual_default_range_bars_and_legend() {
+        // given
+        let source = super::source("plantuml-chart").unwrap();
+        // when
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "chart");
+        assert_eq!(output.svg.matches("data-kind=\"chart-bar\"").count(), 3);
+        assert_eq!(output.svg.matches("data-kind=\"chart-legend\"").count(), 1);
+        assert_eq!(output.svg.matches("data-kind=\"chart-tick\"").count(), 6);
+    }
+
     #[test]
     fn should_find_native_nwdiag_example_with_shared_router_and_three_buses() {
         // given

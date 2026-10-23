@@ -76,6 +76,20 @@ test('should accept the exact authorized source and module inventory', () => {
   assert.doesNotThrow(() => validateManifest(source));
 });
 
+test('should admit selected categorical chart sources and reject unported chart siblings', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const name of ['ChartAxis', 'ChartSeries', 'ChartRenderer', 'BarRenderer', 'LineRenderer', 'command/CommandChartBar', 'command/CommandChartLine']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/chart/${name}.java`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const name of ['AreaRenderer', 'ScatterRenderer', 'command/CommandChartAnnotation', 'command/CommandChartOrientation', 'command/CommandChartStackMode']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/chart/${name}.java`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should reject source escape and restricted implementation paths before reads', () => {
   // given
   for (const path of ['../plantuml/Other.java', 'net/sourceforge/plantuml/../../Other.java', 'net/sourceforge/plantuml/smetana/Layout.java', 'net/sourceforge/plantuml/statediagram/smetana/Layout.java', 'net/sourceforge/plantuml/activitydiagram3/elk/Layout.java', 'net/sourceforge/plantuml/style/StyleLoader.java', 'net/sourceforge/plantuml/style/parser/OtherParser.java']) {

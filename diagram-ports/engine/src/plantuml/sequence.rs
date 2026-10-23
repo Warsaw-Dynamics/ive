@@ -814,7 +814,9 @@ mod tests {
                     Shape::Rect(rect, _, _) | Shape::Ellipse(rect, _) => {
                         (rect.y, rect.y + rect.height)
                     }
-                    Shape::Line(points, _) | Shape::Polygon(points, _) => (
+                    Shape::Line(points, _)
+                    | Shape::ColoredLine(points, _, _)
+                    | Shape::Polygon(points, _) => (
                         points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min),
                         points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max),
                     ),

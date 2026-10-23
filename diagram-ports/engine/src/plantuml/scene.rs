@@ -50,6 +50,7 @@ pub(super) enum Shape {
     Rect(Rect, f64, Paint),
     Ellipse(Rect, Paint),
     Line(Vec<Point>, Dash),
+    ColoredLine(Vec<Point>, Dash, super::style::Color),
     Polygon(Vec<Point>, Paint),
     Text(Point, Label, Decoration),
 }
@@ -115,6 +116,14 @@ impl Scene {
             budget.limits.model_items.saturating_mul(32),
         )?;
         for shape in &element.shapes {
+            if let Shape::ColoredLine(points, _, _) = shape {
+                bound(
+                    "colored line vertices",
+                    points.len(),
+                    budget.limits.model_items,
+                )?;
+                budget.charge(points.len())?;
+            }
             match shape {
                 Shape::Rect(rect, radius, _)
                     if rect.width < 0.
@@ -154,7 +163,9 @@ fn shape_bounds(shape: &Shape) -> Vec<Point> {
             Point::new(r.x, r.y),
             Point::new(r.x + r.width, r.y + r.height),
         ],
-        Shape::Line(points, _) | Shape::Polygon(points, _) => points.clone(),
+        Shape::Line(points, _) | Shape::ColoredLine(points, _, _) | Shape::Polygon(points, _) => {
+            points.clone()
+        }
         Shape::Text(p, label, _) => vec![*p, Point::new(p.x + label.width, p.y + label.height)],
     }
 }
@@ -198,5 +209,19 @@ mod tests {
             assert!(result.is_err(), "accepted width={width}, x={x}");
             assert!(scene.elements.is_empty());
         }
+        // given
+        let mut budget = Budget::new(&RenderOptions::default());
+        let mut scene = Scene::new();
+        let mut element = Element::new("bad-line", "test");
+        element.shapes.push(Shape::ColoredLine(
+            vec![Point::new(f64::NAN, 1.)],
+            Dash::Bold,
+            super::super::style::Color(0x112233),
+        ));
+        // when
+        let result = scene.push(element, &mut budget);
+        // then
+        assert!(result.is_err());
+        assert!(scene.elements.is_empty());
     }
 }

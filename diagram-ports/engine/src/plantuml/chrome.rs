@@ -95,7 +95,7 @@ fn translate(
             point.x += offset.x;
             point.y += offset.y;
         }
-        Shape::Line(points, _) | Shape::Polygon(points, _) => {
+        Shape::Line(points, _) | Shape::ColoredLine(points, _, _) | Shape::Polygon(points, _) => {
             for point in points {
                 context.budget.charge(1)?;
                 point.x += offset.x;
