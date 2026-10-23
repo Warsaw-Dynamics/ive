@@ -25,33 +25,62 @@ pub fn directory_of(pid: libc::pid_t) -> Option<PathBuf> {
     (!path.is_empty()).then(|| PathBuf::from(OsStr::from_bytes(&path)))
 }
 
+/// The working directory of process `pid`, read from its memory; `None` once it is gone, or when Windows refuses
+/// (a process of another user, or elevated).
+#[cfg(windows)]
+pub fn directory_of(pid: i32) -> Option<PathBuf> {
+    let kind = sysinfo::ProcessRefreshKind::new().with_cwd(sysinfo::UpdateKind::Always);
+    crate::windows_processes::read(u32::try_from(pid).ok()?, kind, |process| process.cwd().map(PathBuf::from)).flatten()
+}
+
 /// Elsewhere IVE does not read other processes' directories; only `OSC 7` reports count.
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 pub fn directory_of(_pid: libc::pid_t) -> Option<PathBuf> {
     None
 }
 
 #[cfg(test)]
 mod tests {
-    use std::process::{Child, Command};
+    use std::process::{Child, Command, Stdio};
 
     use super::*;
 
-    fn pid(child: &Child) -> libc::pid_t {
-        libc::pid_t::try_from(child.id()).unwrap()
+    fn pid(child: &Child) -> i32 {
+        i32::try_from(child.id()).unwrap()
+    }
+
+    /// A program that runs half a minute.
+    fn lasting() -> Command {
+        if cfg!(windows) {
+            let mut ping = Command::new("ping");
+            ping.args(["-n", "30", "127.0.0.1"]).stdout(Stdio::null());
+            return ping;
+        }
+        let mut sleep = Command::new("sleep");
+        sleep.arg("30");
+        sleep
+    }
+
+    fn brief() -> Command {
+        if cfg!(windows) {
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/D", "/C", "exit"]);
+            return cmd;
+        }
+        Command::new("true")
     }
 
     #[test]
     fn should_read_directory_of_a_running_process() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let mut child = Command::new("sleep").arg("30").current_dir(dir.path()).spawn().unwrap();
+        let mut child = lasting().current_dir(dir.path()).spawn().unwrap();
 
         // when
         let directory = directory_of(pid(&child));
 
         // then
-        assert_eq!(directory, Some(dir.path().canonicalize().unwrap()));
+        assert_eq!(directory, Some(dunce::canonicalize(dir.path()).unwrap()));
         child.kill().unwrap();
         child.wait().unwrap();
     }
@@ -59,7 +88,7 @@ mod tests {
     #[test]
     fn should_have_no_directory_once_the_process_is_gone() {
         // given
-        let mut child = Command::new("true").spawn().unwrap();
+        let mut child = brief().spawn().unwrap();
         child.wait().unwrap();
 
         // when

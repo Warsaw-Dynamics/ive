@@ -207,6 +207,7 @@ impl Workspace {
             preview: Preview::None,
             preview_key: None,
             preview_task: None,
+            preview_scroll: gpui::UniformListScrollHandle::new(),
             notice: None,
             _input_events: events,
         }
@@ -245,6 +246,7 @@ impl Workspace {
     }
 
     pub fn hub_typed(&mut self, id: TabId, text: String, window: &mut Window, cx: &mut Context<Self>) {
+        let _span = tracing::debug_span!("hub_typed").entered();
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
             return;
         };
@@ -319,6 +321,7 @@ impl Workspace {
     /// After a change: the field shows the state's text, the selection fits the rows and is in view, and the
     /// scope is remembered for the next Ctrl+Shift+E.
     fn settle_hub(&mut self, id: TabId, cx: &mut Context<Self>) {
+        let _span = tracing::debug_span!("settle_hub").entered();
         let Some(Tab::Hub(hub)) = self.tabs.get(id) else {
             return;
         };
@@ -587,6 +590,10 @@ impl Workspace {
         if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id)
             && hub.preview_key == key
         {
+            if let Preview::Text { first, line, .. } = &preview {
+                let row = line.map_or(0, |line| line.saturating_sub(*first));
+                hub.preview_scroll.scroll_to_item(row, gpui::ScrollStrategy::Center);
+            }
             hub.preview = preview;
             cx.notify();
         }
@@ -608,6 +615,7 @@ impl Workspace {
     /// Runs the files search for the hub's query, its best rows arriving as each chunk is matched; a newer query
     /// stops it.
     pub(super) fn start_hub_search(&mut self, id: TabId, cx: &mut Context<Self>) {
+        let _span = tracing::debug_span!("start_hub_search").entered();
         let Some(Tab::Hub(hub)) = self.tabs.get(id) else {
             return;
         };
@@ -748,6 +756,7 @@ impl Workspace {
     }
 
     pub(crate) fn render_hub_tab(&self, id: TabId, hub: &HubTab, cx: &mut Context<Self>) -> AnyElement {
+        let _span = tracing::debug_span!("render_hub_tab").entered();
         let sources = self.hub_sources(hub.back, cx);
         let list = self.hub_list(hub, &sources);
         let drawn = Drawn { list, strip: self.key_strip(&hub.state, cx), chips: self.scope_chips(&hub.state, &sources), excluded_note: self.excluded_note(&hub.state) };
@@ -1221,7 +1230,7 @@ pub(super) fn recent_items(history: &History, presence: impl Fn(&Shown) -> Prese
             Presence::Gone => continue,
         };
         let relative = match (&shown.identity, &checkout) {
-            (TabIdentity::File(path), Some(checkout)) => path.strip_prefix(&checkout.path).ok().map(|relative| relative.to_string_lossy().into_owned()),
+            (TabIdentity::File(path), Some(checkout)) => path.strip_prefix(&checkout.path).ok().map(crate::paths::slashed),
             _ => None,
         };
         let place = checkout.map_or(Place::Nowhere, Place::One);

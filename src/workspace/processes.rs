@@ -1,6 +1,5 @@
 //! Starting, showing and ending processes, and telling terminals running Claude Code from plain ones.
 
-#[cfg(unix)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -11,18 +10,15 @@ use gpui::{App, Context, SharedString, Task, Window};
 use super::Workspace;
 use crate::editor::Tab;
 use crate::process::{ProcessId, ProcessKind, RunLife, RunOrigin};
-#[cfg(unix)]
 use crate::process_directory::directory_of;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
 use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView};
 use crate::theme::Theme;
-#[cfg(unix)]
 use crate::terminal::{DirectoryReport, DirectoryTracker, Sample};
 
 /// Which adopted terminals get a tab.
-#[cfg(unix)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AdoptedTabs {
     /// every one: no tabs were saved yet
@@ -44,13 +40,10 @@ pub enum ProgramEnding {
 }
 
 /// How long a stopped process has to go after its hang-up and SIGTERM before SIGKILL.
-#[cfg(unix)]
 const STOP_GRACE: Duration = Duration::from_secs(5);
 /// How long a process may take to go after SIGKILL before IVE gives up on it.
-#[cfg(unix)]
 const KILL_GRACE: Duration = Duration::from_secs(2);
 /// How often a stopping process is checked for being gone.
-#[cfg(unix)]
 const STOP_POLL: Duration = Duration::from_millis(100);
 /// Session labels naming the checkout a hosted terminal belongs to.
 const PROJECT_LABEL: &str = "ive.project";
@@ -91,15 +84,9 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> TabId {
         // hosted when this IVE owns the hosted terminals, so the shell outlives IVE
-        #[cfg(unix)]
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch: Launch::shell(), labels: [session_labels(checkout.as_ref()), labels].concat() },
             None => Source::InProcess(Launch::shell()),
-        };
-        #[cfg(not(unix))]
-        let source = {
-            drop(labels);
-            Source::InProcess(Launch::shell())
         };
         let started = self.processes.start(checkout, |id| TerminalView::open(id, directory, source, window, cx));
         let tab = match started {
@@ -108,7 +95,7 @@ impl Workspace {
                 Tab::Process(id)
             }
             Err(error) => Tab::Failed {
-                title: "Terminal".to_owned(),
+                title: crate::process::DEFAULT_TITLE.to_owned(),
                 error: format!("Cannot start a shell in {}: {error}", directory.display()).into(),
             },
         };
@@ -118,7 +105,6 @@ impl Workspace {
     /// Reattaches every hosted terminal still running, oldest first, under its checkout when its project is open
     /// (its main checkout when the checkout's folder is gone), else as a home terminal. Each gets a tab when no tabs were saved (a first start);
     /// otherwise the saved tabs say which do. Returns the processes by session id.
-    #[cfg(unix)]
     pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
         let mut adopted = HashMap::new();
         let mut orphans = Vec::new();
@@ -231,8 +217,8 @@ impl Workspace {
         process.view.hang_up();
         #[cfg(unix)]
         let targets = crate::process_stop::Targets::new(process.view.program_pid(), process.view.foreground().and_then(|probe| probe.program_group()));
-        #[cfg(not(unix))]
-        let targets: Option<()> = None;
+        #[cfg(windows)]
+        let targets = crate::process_stop::Targets::new(process.view.program_pid(), process.view.job());
         let Some(targets) = targets else {
             // nothing to wait for: the hang-up is all there is
             return self.remove_process(id, None, window, cx);
@@ -241,7 +227,6 @@ impl Workspace {
         if let Some(tab) = self.tabs.find(|tab| tab.shows_process(id)) {
             self.tabs.close(tab);
         }
-        #[cfg(unix)]
         self.supervise_stop(id, targets, ending, window, cx);
         self.tree_changed(cx);
         self.tab_shown(window, cx);
@@ -249,12 +234,11 @@ impl Workspace {
 
     /// Signals `targets` as `ending` says and waits for them to go: SIGKILL after [`STOP_GRACE`], then
     /// [`stop_finished`](Self::stop_finished).
-    #[cfg(unix)]
     fn supervise_stop(&mut self, id: ProcessId, targets: crate::process_stop::Targets, ending: ProgramEnding, window: &mut Window, cx: &mut Context<Self>) {
         let title = self.processes.get(id).map(|process| process.title()).unwrap_or_default();
         let grace = match ending {
             ProgramEnding::Stop => {
-                targets.signal(libc::SIGTERM);
+                targets.terminate();
                 STOP_GRACE
             }
             ProgramEnding::Kill => Duration::ZERO,
@@ -262,7 +246,7 @@ impl Workspace {
         cx.spawn_in(window, async move |workspace, cx| {
             let mut gone = wait_gone(&targets, grace, cx).await;
             if !gone {
-                targets.signal(libc::SIGKILL);
+                targets.kill();
                 gone = wait_gone(&targets, KILL_GRACE, cx).await;
             }
             let _ = workspace.update_in(cx, |workspace, window, cx| workspace.stop_finished(id, title, targets.pid(), gone, window, cx));
@@ -272,8 +256,7 @@ impl Workspace {
 
     /// The end of a Stop: the process is removed, as its exit would; one that outlived SIGKILL is forgotten, and a
     /// tab says so.
-    #[cfg(unix)]
-    fn stop_finished(&mut self, id: ProcessId, title: String, pid: libc::pid_t, gone: bool, window: &mut Window, cx: &mut Context<Self>) {
+    fn stop_finished(&mut self, id: ProcessId, title: String, pid: impl std::fmt::Display, gone: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.processes.get(id).is_some() {
             self.remove_process(id, None, window, cx);
         }
@@ -384,7 +367,6 @@ impl Workspace {
 
 /// Once a second, reads each terminal's foreground program on the background executor: updates the kind of the
 /// processes that started or ended Claude Code, and hands on the working directories that changed.
-#[cfg(unix)]
 pub(super) fn poll_foreground(cx: &mut Context<Workspace>) -> Option<Task<()>> {
     Some(cx.spawn(async move |this, cx| {
         let mut trackers: HashMap<ProcessId, DirectoryTracker> = HashMap::new();
@@ -422,7 +404,6 @@ pub(super) fn poll_foreground(cx: &mut Context<Workspace>) -> Option<Task<()>> {
 
 /// The processes whose working directory changed since the last poll, and where they work now; trackers of ended
 /// processes are dropped. A directory that cannot be resolved (removed meanwhile) counts as no change.
-#[cfg(unix)]
 fn observe_directories(
     trackers: &mut HashMap<ProcessId, DirectoryTracker>,
     probes: Vec<(ProcessId, crate::terminal::ForegroundProbe, Option<DirectoryReport>)>,
@@ -434,15 +415,9 @@ fn observe_directories(
             let leader = probe.leader();
             let sample = Sample { leader, report, process_cwd: directory_of(leader) };
             let directory = trackers.entry(id).or_default().observe(sample)?;
-            Some((id, directory.canonicalize().ok()?))
+            Some((id, dunce::canonicalize(directory).ok()?))
         })
         .collect()
-}
-
-/// Without Unix process groups IVE cannot tell what runs in a terminal: every process stays a terminal.
-#[cfg(not(unix))]
-pub(super) fn poll_foreground(_cx: &mut Context<Workspace>) -> Option<Task<()>> {
-    None
 }
 
 /// Labels recording `checkout` in a hosted session, so the next IVE puts it back there.
@@ -497,7 +472,6 @@ fn checkout_from_labels(labels: &[(String, String)], main_of: impl Fn(&ProjectId
 }
 
 /// Waits up to `limit` for `targets` to be gone; whether they are.
-#[cfg(unix)]
 async fn wait_gone(targets: &crate::process_stop::Targets, limit: Duration, cx: &mut gpui::AsyncWindowContext) -> bool {
     let checks = limit.as_millis().div_ceil(STOP_POLL.as_millis()).max(1);
     for _ in 0..checks {

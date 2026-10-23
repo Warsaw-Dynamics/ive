@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, FontWeight, HighlightStyle, MouseButton, ScrollHandle, SharedString,
-    Stateful, StyledText, Subscription, Task, div, img, prelude::*, px, relative, rgb,
+    Stateful, StyledText, Subscription, Task, UniformListScrollHandle, div, img, prelude::*, px, relative, rgb, uniform_list,
 };
 
 use super::content::ContentFound;
@@ -55,6 +55,7 @@ pub struct HubTab {
     pub preview_key: Option<String>,
     /// the preview being read; a new selection replaces it
     pub preview_task: Option<Task<()>>,
+    pub preview_scroll: UniformListScrollHandle,
     /// said above the list: a worktree being created for a new terminal, or why it could not be
     pub notice: Option<String>,
     pub _input_events: Subscription,
@@ -122,7 +123,7 @@ pub fn render_hub(id: TabId, hub: &HubTab, drawn: Drawn, workspace: &Workspace, 
                 .flex_1()
                 .min_h_0()
                 .child(list_pane(id, hub, &drawn.list, workspace, theme, cx))
-                .child(preview_pane(&hub.preview, theme, cx)),
+                .child(preview_pane(&hub.preview, &hub.preview_scroll, theme, cx)),
         )
         .child(key_strip(&drawn, theme))
         .into_any_element()
@@ -209,7 +210,7 @@ fn list_pane(id: TabId, hub: &HubTab, list: &List, workspace: &Workspace, theme:
     pane
 }
 
-fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
+fn preview_pane(preview: &Preview, scroll: &UniformListScrollHandle, theme: Theme, cx: &App) -> Div {
     let pane = div().flex().flex_col().flex_none().w(relative(PREVIEW_WIDTH)).h_full().min_h_0().overflow_hidden().border_l_1().border_color(rgb(theme.border));
     let title = |title: &str| div().flex_none().px_3().py_1().text_xs().text_color(rgb(theme.muted)).overflow_hidden().whitespace_nowrap().child(title.to_owned());
     let mono = crate::theme::mono_font(cx);
@@ -227,18 +228,26 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
             pane.child(title(name)).child(body.children(lines.iter().map(|line| div().whitespace_nowrap().child(line.clone()))))
         }
         Preview::Text { title: name, first, lines, line } => {
+            // only the rows on screen are laid out: shaping all 200 lines each frame made every keystroke wait
+            let (first, line, lines) = (*first, *line, Arc::new(lines.clone()));
             let width = (first + lines.len()).to_string().len();
-            let rows = lines.iter().enumerate().map(|(offset, text)| {
-                let number = first + offset;
-                let row = div()
-                    .flex()
-                    .gap_2()
-                    .whitespace_nowrap()
-                    .child(div().flex_none().text_color(rgb(theme.muted)).child(format!("{number:>width$}")))
-                    .child(text.clone());
-                if Some(number) == *line { row.bg(rgb(theme.hover)) } else { row }
-            });
-            pane.child(title(name)).child(div().flex().flex_col().px_3().font_family(mono).text_xs().overflow_hidden().children(rows))
+            let rows = uniform_list("hub-preview", lines.len(), move |range, _window, _cx| {
+                range
+                    .map(|offset| {
+                        let number = first + offset;
+                        let row = div()
+                            .flex()
+                            .gap_2()
+                            .whitespace_nowrap()
+                            .child(div().flex_none().text_color(rgb(theme.muted)).child(format!("{number:>width$}")))
+                            .child(lines[offset].clone());
+                        if Some(number) == line { row.bg(rgb(theme.hover)) } else { row }
+                    })
+                    .collect()
+            })
+            .track_scroll(scroll)
+            .size_full();
+            pane.child(title(name)).child(div().flex().flex_col().flex_1().min_h_0().px_3().font_family(mono).text_xs().overflow_hidden().child(rows))
         }
     }
 }

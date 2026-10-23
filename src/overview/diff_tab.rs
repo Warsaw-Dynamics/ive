@@ -937,6 +937,8 @@ mod editing_tests {
         assert_eq!(new_lines(&panel, cx), ["one", "TWO", "three"]);
     }
 
+    // creating a symbolic link takes an administrator or developer mode on Windows
+    #[cfg(unix)]
     #[gpui::test]
     fn should_read_the_rows_again_on_reload_when_the_file_still_cannot_be_read_to_edit(cx: &mut TestAppContext) {
         // given

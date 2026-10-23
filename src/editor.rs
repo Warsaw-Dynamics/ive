@@ -37,7 +37,7 @@ use crate::tabs::TabId;
 use crate::theme::Theme;
 use crate::tooltip;
 use crate::watch::Watched;
-use crate::window_controls::{TRAFFIC_LIGHTS_WIDTH, window_controls};
+use crate::window_controls::{TRAFFIC_LIGHTS_WIDTH, above_title_bar, window_controls};
 use crate::window_drag::WindowDrag;
 use crate::workspace::{TabDragArea, Workspace};
 
@@ -702,6 +702,7 @@ pub fn render_detached(workspace: &Workspace, id: TabId, drag: &WindowDrag, wind
 fn attach_button(id: TabId, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
     div()
         .id("attach-tab")
+        .map(above_title_bar)
         .p(theme.sizes.tabs.toolbar_button_padding.px())
         .rounded(theme.sizes.tabs.toolbar_button_radius.px())
         .cursor_pointer()
@@ -826,7 +827,7 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
     drop(target(format!("tab-menu:{}", id.value()), cx.listener(move |workspace, _event, window, cx| workspace.open_tab_menu(id, crate::workspace::DEFAULT_MENU, window, cx)), cx));
     // a press on a tab must not start a window drag: the bindings stop it there
     let handle = cx.entity().downgrade();
-    let chip = mouse_binding::on_mouse_triggers(chip, format!("tab:{}", id.value()), move |trigger, window, cx| {
+    let chip = mouse_binding::on_mouse_triggers(above_title_bar(chip), format!("tab:{}", id.value()), move |trigger, window, cx| {
         // the workspace is gone only while the window closes
         let _ = handle.update(cx, |workspace, cx| workspace.run_tab_mouse(id, trigger, window, cx));
     });
@@ -869,6 +870,7 @@ fn drop_marker(side: Side, theme: Theme) -> Div {
 fn restart_button(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
     div()
         .id("restart")
+        .map(above_title_bar)
         .p(theme.sizes.tabs.toolbar_button_padding.px())
         .rounded(theme.sizes.tabs.toolbar_button_radius.px())
         .cursor_pointer()
@@ -902,6 +904,7 @@ fn update_button(tag: String, theme: Theme, cx: &mut Context<Workspace>) -> Stat
 fn settings_button(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
     div()
         .id("open-settings")
+        .map(above_title_bar)
         .p(theme.sizes.tabs.toolbar_button_padding.px())
         .rounded(theme.sizes.tabs.toolbar_button_radius.px())
         .cursor_pointer()

@@ -257,11 +257,13 @@ mod tests {
         // given
         let app = path("/w/app", Within::Checkout("app".to_owned()), PathKind::Folder);
         let docs = path("/w/docs", Within::Checkout("docs".to_owned()), PathKind::Folder);
+        // Windows runs `.sh` only when Git Bash is installed, and never `.zsh`
+        let scripts = if cfg!(windows) { ["build.ps1", "deploy.CMD"] } else { ["build.sh", "deploy.ZSH"] };
 
         // when
         let offered = [
-            run_applies(&subject(vec![file("build.sh")]), configs),
-            run_applies(&subject(vec![file("deploy.ZSH")]), configs),
+            run_applies(&subject(vec![file(scripts[0])]), configs),
+            run_applies(&subject(vec![file(scripts[1])]), configs),
             run_applies(&subject(vec![file("a.rs")]), configs),
             run_applies(&subject(vec![file("a.sh"), file("b.sh")]), configs),
             run_applies(&subject(vec![docs]), configs),

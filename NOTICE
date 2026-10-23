@@ -21,6 +21,11 @@ vendor/grammars/rune is IVE's Rune grammar: its grammar.js extends tree-sitter-r
 (https://github.com/tree-sitter/tree-sitter-rust, MIT License), copied unchanged as rust.js with that grammar's
 LICENSE; src/scanner.c is tree-sitter-rust's scanner with its functions renamed, src/parser.c is generated.
 
+vendor/conpty/ holds conpty.dll and OpenConsole.exe (x64) from Microsoft's NuGet package
+Microsoft.Windows.Console.ConPTY, built from https://github.com/microsoft/terminal (MIT License), unchanged; the
+Windows build copies them next to ive.exe. The folder has the upstream LICENSE and a SOURCE file naming the version;
+Windows releases carry that LICENSE as licenses/conpty-LICENSE.
+
 The icons in assets/icons/ are from the IntelliJ Platform New UI icon set, Copyright 2000-2022 JetBrains s.r.o. and
 contributors, licensed under the Apache License, Version 2.0; assets/icons/NOTICE says which are modified or drawn
 for IVE, and assets/icons/LICENSE holds the licence.

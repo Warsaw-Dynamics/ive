@@ -22,6 +22,7 @@ pub fn shell_words(paths: &[PathBuf]) -> String {
 /// `path` as is when the shell reads it as one plain word, else in single quotes; a path holding control characters
 /// or bytes that are not UTF-8 in `$'…'` with those as `\xNN`, so that typed into a terminal they cannot act as keys
 /// (Ctrl+U, Enter) and name the file as it is.
+#[cfg(unix)]
 pub fn shell_word(path: &Path) -> String {
     use std::os::unix::ffi::OsStrExt as _;
     let bytes = path.as_os_str().as_bytes();
@@ -29,16 +30,40 @@ pub fn shell_word(path: &Path) -> String {
         return ansi_c_quoted(bytes);
     }
     let text = path.to_string_lossy();
-    // no `~`: at the start of a word the shell would expand it
-    let plain = |c: char| c.is_ascii_alphanumeric() || "/._-+,:@%=".contains(c);
-    if !text.is_empty() && text.chars().all(plain) {
+    if !text.is_empty() && text.chars().all(|c| c.is_ascii_alphanumeric() || PLAIN.contains(c)) {
         return text.into_owned();
     }
+    single_quoted(&text)
+}
+
+/// `path` as is when PowerShell reads it as one plain word, else in single quotes; Windows file names hold no
+/// control characters that could act as keys.
+#[cfg(windows)]
+pub fn shell_word(path: &Path) -> String {
+    let text = path.to_string_lossy();
+    if !text.is_empty() && text.chars().all(|c| c.is_ascii_alphanumeric() || PLAIN.contains(c)) {
+        return text.into_owned();
+    }
+    single_quoted(&text)
+}
+
+/// Besides letters and digits, what the shell reads as part of a plain word. No `~`: at the start of a word the
+/// shell would expand it.
+#[cfg(unix)]
+const PLAIN: &str = "/._-+,:@%=";
+/// PowerShell, the terminals' shell on Windows, splits words at `,` and splats an `@` at the start.
+#[cfg(windows)]
+const PLAIN: &str = r"\/._-:";
+
+/// `text` in single quotes for a POSIX shell: a quote in it becomes `'\''`.
+#[cfg(unix)]
+pub fn single_quoted(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
 }
 
 /// `bytes` in bash/zsh/dash's `$'…'`: printable ASCII as is (`'` and `\` escaped), everything else as `\xNN`, UTF-8
 /// text bytes included only when it is not text.
+#[cfg(unix)]
 fn ansi_c_quoted(bytes: &[u8]) -> String {
     let text = std::str::from_utf8(bytes).ok();
     let mut quoted = String::from("$'");
@@ -67,6 +92,12 @@ fn ansi_c_quoted(bytes: &[u8]) -> String {
     }
     quoted.push('\'');
     quoted
+}
+
+/// `text` in single quotes for PowerShell, the terminals' shell on Windows: a quote in it becomes `''`.
+#[cfg(windows)]
+pub fn single_quoted(text: &str) -> String {
+    format!("'{}'", text.replace('\'', "''"))
 }
 
 /// The text a paste of `kind` types, with `save` turning the image into a file; `None` when `contents` has
@@ -104,9 +135,33 @@ pub fn delete_old_images() -> io::Result<()> {
 fn save_image_in(dir: &Path, image: &Image, now: SystemTime) -> io::Result<PathBuf> {
     private_dir(dir)?;
     let millis = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
-    let path = dir.join(format!("paste-{millis}-{:x}.{}", image.id, image.format.extension()));
-    private_file(&path)?.write_all(&image.bytes)?;
+    let (bytes, extension) = saved_form(image);
+    let path = dir.join(format!("paste-{millis}-{:x}.{extension}", image.id));
+    private_file(&path)?.write_all(&bytes)?;
     Ok(path)
+}
+
+#[cfg(unix)]
+fn saved_form(image: &Image) -> (std::borrow::Cow<'_, [u8]>, &'static str) {
+    (std::borrow::Cow::Borrowed(&image.bytes), image.format.extension())
+}
+
+/// A bitmap, what Print Screen puts on the Windows clipboard, is saved as PNG, which Claude Code reads.
+#[cfg(windows)]
+fn saved_form(image: &Image) -> (std::borrow::Cow<'_, [u8]>, &'static str) {
+    let png = matches!(image.format, gpui::ImageFormat::Bmp).then(|| png_of_bmp(&image.bytes)).flatten();
+    match png {
+        Some(png) => (std::borrow::Cow::Owned(png), "png"),
+        None => (std::borrow::Cow::Borrowed(&image.bytes), image.format.extension()),
+    }
+}
+
+#[cfg(windows)]
+fn png_of_bmp(bmp: &[u8]) -> Option<Vec<u8>> {
+    let decoded = image::load_from_memory_with_format(bmp, image::ImageFormat::Bmp).ok()?;
+    let mut png = io::Cursor::new(Vec::new());
+    decoded.write_to(&mut png, image::ImageFormat::Png).ok()?;
+    Some(png.into_inner())
 }
 
 #[cfg(unix)]
@@ -154,6 +209,7 @@ mod tests {
         Image::from_bytes(ImageFormat::Png, bytes.to_vec())
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_leave_plain_paths_unquoted() {
         // given
@@ -166,6 +222,7 @@ mod tests {
         assert_eq!(words, "/mnt/data/Projects/wezterm /tmp/a_b-c.1+2,x:y@z%=.png");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_quote_paths_the_shell_would_split_or_expand() {
         // given
@@ -178,6 +235,21 @@ mod tests {
         assert_eq!(words, r"'/tmp/my notes.md' '/tmp/it'\''s' '~/x' '/tmp/$HOME'");
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn should_quote_paths_for_powershell() {
+        // given
+        let paths = [PathBuf::from(r"C:\Users\kb\a_b-c.1.png"), PathBuf::from(r"C:\my notes\it's"), PathBuf::from(r"C:\a,b"), PathBuf::from(r"C:\$HOME")];
+
+        // when
+        let words = shell_words(&paths);
+
+        // then
+        assert_eq!(words, r"C:\Users\kb\a_b-c.1.png 'C:\my notes\it''s' 'C:\a,b' 'C:\$HOME'");
+    }
+
+    // Windows file names cannot hold control characters.
+    #[cfg(unix)]
     #[test]
     fn should_write_a_newline_as_an_escape_not_a_key() {
         // given
@@ -190,6 +262,8 @@ mod tests {
         assert_eq!(words, r"$'/tmp/a\x0ab'");
     }
 
+    // Windows file names cannot hold control characters.
+    #[cfg(unix)]
     #[test]
     fn should_write_control_characters_as_escapes_so_they_cannot_act_as_keys() {
         // given
@@ -203,6 +277,7 @@ mod tests {
         assert!(!words.chars().any(|c| c.is_control()), "{words:?}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_write_bytes_that_are_not_utf8_as_escapes() {
         // given
@@ -305,6 +380,23 @@ mod tests {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         assert!(name.starts_with("paste-1234-") && name.ends_with(".png"), "{name}");
         assert_eq!(std::fs::read(&path).unwrap(), b"not really a png");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn should_save_a_bitmap_as_png() {
+        // given
+        let mut bmp = io::Cursor::new(Vec::new());
+        image::RgbImage::new(2, 1).write_to(&mut bmp, image::ImageFormat::Bmp).unwrap();
+        let image = Image::from_bytes(ImageFormat::Bmp, bmp.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let path = save_image_in(&dir.path().join("pastes"), &image, UNIX_EPOCH).unwrap();
+
+        // then
+        let saved = image::open(&path).unwrap();
+        assert_eq!((path.extension().unwrap().to_str(), saved.width(), saved.height()), (Some("png"), 2, 1));
     }
 
     #[cfg(unix)]

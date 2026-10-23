@@ -1,6 +1,7 @@
 //! The Restart button: types `<script> --replace <pid>` into a terminal of its own, which later presses reuse. The
 //! script builds IVE; after a good build it sends this IVE SIGUSR1, which quits leaving the terminals running, and
-//! starts the new IVE. A failed build stays on screen in that terminal.
+//! starts the new IVE. A failed build stays on screen in that terminal. On Windows the script runs in PowerShell and
+//! sets the event `Local\ive-replace-<pid>` in place of SIGUSR1.
 
 use std::path::{Path, PathBuf};
 
@@ -34,15 +35,8 @@ impl Workspace {
         .detach();
     }
 
-    #[cfg(unix)]
     pub(super) fn keeps_terminals(&self) -> bool {
         self.hosted.is_some()
-    }
-
-    /// Without Unix, terminals run inside IVE, so a restart ends them.
-    #[cfg(not(unix))]
-    pub(super) fn keeps_terminals(&self) -> bool {
-        false
     }
 
     /// Types the start script into the restart terminal, starting one when there is none. While a program runs
@@ -81,16 +75,9 @@ impl Workspace {
         self.restart_terminal
     }
 
-    #[cfg(unix)]
     fn runs_program(&self, id: ProcessId) -> bool {
         let probe = self.processes.get(id).and_then(|process| process.view.foreground());
         probe.is_some_and(|probe| probe.program_group().is_some())
-    }
-
-    /// Without Unix process groups IVE cannot tell; `--restart` is Unix only anyway.
-    #[cfg(not(unix))]
-    fn runs_program(&self, _id: ProcessId) -> bool {
-        false
     }
 }
 
@@ -101,15 +88,24 @@ pub(super) fn is_restart_terminal(labels: &[(String, String)]) -> bool {
 
 /// The line typed into the restart terminal, Enter included. Single quotes keep any path one word in sh, bash, zsh
 /// and fish alike.
+#[cfg(unix)]
 fn replace_command(script: &Path, pid: u32) -> String {
     let quoted = script.display().to_string().replace('\'', r"'\''");
     format!("'{quoted}' --replace {pid}\r")
+}
+
+/// The line typed into the restart terminal, which runs PowerShell: `&` runs a quoted path.
+#[cfg(windows)]
+fn replace_command(script: &Path, pid: u32) -> String {
+    let quoted = script.display().to_string().replace('\'', "''");
+    format!("& '{quoted}' --replace {pid}\r")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn should_type_the_script_with_this_ive_to_replace() {
         // given
@@ -122,6 +118,7 @@ mod tests {
         assert_eq!(command, "'/home/me/ive/restart.sh' --replace 4242\r");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_quote_a_script_path_with_spaces_and_quotes() {
         // given
@@ -132,6 +129,19 @@ mod tests {
 
         // then
         assert_eq!(command, "'/home/me/it'\\''s mine/restart.sh' --replace 7\r");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn should_type_the_script_for_powershell_with_this_ive_to_replace() {
+        // given
+        let script = Path::new(r"C:\Users\me\it's mine\restart.ps1");
+
+        // when
+        let command = replace_command(script, 4242);
+
+        // then
+        assert_eq!(command, "& 'C:\\Users\\me\\it''s mine\\restart.ps1' --replace 4242\r");
     }
 
     #[test]

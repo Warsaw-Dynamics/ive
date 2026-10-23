@@ -9,6 +9,8 @@ version = "0.1.0"
 publish = false
 license = "LicenseRef-WarsawDynamics-Proprietary"
 edition = "2024"
+# ive-cli is Windows' console twin of ive
+default-run = "ive"
 
 [dependencies]
 alacritty_terminal = "0.26.0"
@@ -16,6 +18,8 @@ anyhow = "1"
 base64 = "0.23.1"
 # 6, as gpui's font-kit, so one copy builds
 dirs = "6.0.0"
+# canonical paths without the `\\?\` that std puts before them on Windows; std's own elsewhere
+dunce = "1.0.5"
 futures = "0.3.34"
 # the MCP server's HTTP/1.1 (rmcp brings the service, not a server)
 hyper = { version = "1.12.0", features = ["server", "http1"] }
@@ -40,6 +44,8 @@ globset = "0.4.20"
 memmap2 = "0.9.11"
 # OS file notifications (inotify, FSEvents, ReadDirectoryChangesW) for what IVE shows
 notify = "8.2.0"
+# terminals that outlive IVE
+ptyhost = { path = "ptyhost" }
 # the static server's rewrites
 regex = "1.13.1"
 rmcp = { version = "3.5.1", features = ["server", "macros", "transport-streamable-http-server", "schemars"] }
@@ -61,13 +67,15 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "env-filter", "std", "tracing-log", "ansi"] }
 unicode-segmentation = "1.13.3"
 
+[build-dependencies]
+# the icon in ive.exe and ive-cli.exe; the version gpui already builds for its manifest
+embed-resource = "3.0.12"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 # run configurations' secrets in the Secret Service (KWallet, GNOME Keyring); gpui already builds it with these features
 oo7 = { version = "0.6.0", default-features = false, features = ["async-std", "native_crypto"] }
 
 [target.'cfg(unix)'.dependencies]
-# terminals that outlive IVE
-ptyhost = { path = "ptyhost" }
 # SIGTERM, SIGINT and SIGUSR1 through the quit flow
 signal-hook = "0.4"
 
@@ -77,6 +85,16 @@ keyring = { version = "3.6.3", features = ["apple-native"] }
 # Metal shaders compiled at startup: building them ahead needs the `metal` tool of a full Xcode, not just the Command
 # Line Tools
 gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["runtime_shaders"] }
+
+[target.'cfg(windows)'.dependencies]
+# Print Screen puts a bitmap on the clipboard, saved as PNG when pasted
+image = { version = "0.25.10", default-features = false, features = ["bmp", "png"] }
+# run configurations' secrets in the Credential Manager
+keyring = { version = "3.6.3", features = ["windows-native"] }
+# other processes' children, command lines and working directories; the version gpui already locks
+sysinfo = { version = "0.31.4", default-features = false, features = ["system"] }
+# the version tokio and gpui already build
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Time", "Win32_UI_Shell"] }
 
 [dev-dependencies]
 codeview = { path = "codeview", features = ["test-support"] }
@@ -91,3 +109,8 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
+
+# until the Windows move_to commit is pushed to the fork and the rev above bumped: the local clone with it
+[patch."https://github.com/Warsaw-Dynamics/pgui.git"]
+gpui = { path = "D:/Programy/Rust/gpui/crates/gpui" }
+gpui_platform = { path = "D:/Programy/Rust/gpui/crates/gpui_platform" }

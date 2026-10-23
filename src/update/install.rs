@@ -9,8 +9,15 @@ pub const STAGING_NAME: &str = ".ive-update";
 /// Where the old `.app` waits, inside the staging folder, between the two renames of a swap.
 const OLD_APP: &str = "old.app";
 
-/// Files of a Linux release beside the binary; a swap refreshes those the install already has.
+/// Files of a Linux or Windows release beside the binary; a swap refreshes those the install already has.
 const BESIDE_BINARY: [&str; 4] = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "licenses"];
+
+/// Programs of a Windows release beside `ive.exe`, which terminal hosts run and load while IVE is gone; a swap moves
+/// each in as it moves `ive.exe` in.
+#[cfg(windows)]
+const PROGRAMS_BESIDE: [&str; 3] = ["ive-cli.exe", "conpty.dll", "OpenConsole.exe"];
+#[cfg(not(windows))]
+const PROGRAMS_BESIDE: [&str; 0] = [];
 
 /// What a release replaces: the executable, or on macOS the app bundle around it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,36 +67,59 @@ pub fn swap(install: &Install, staged: &Path) -> Result<(), String> {
 }
 
 fn swap_binary(current: &Path, staged: &Path) -> Result<(), String> {
-    set_aside_running_exe(current)?;
-    rename(staged, current)?;
+    replace_program(staged, current)?;
     let (Some(from), Some(to)) = (staged.parent(), current.parent()) else {
         return Ok(());
     };
+    for name in PROGRAMS_BESIDE.iter().filter(|name| from.join(name).exists()) {
+        replace_program(&from.join(name), &to.join(name))?;
+    }
     for name in BESIDE_BINARY.iter().filter(|name| to.join(name).exists() && from.join(name).exists()) {
         replace_beside(&from.join(name), &to.join(name))?;
     }
     Ok(())
 }
 
-/// Windows cannot replace a running executable, only rename it; the next start deletes it.
-#[cfg(windows)]
-fn set_aside_running_exe(current: &Path) -> Result<(), String> {
-    let old = current.with_extension("exe.old");
-    let _ = fs::remove_file(&old);
-    rename(current, &old)
+fn replace_program(staged: &Path, current: &Path) -> Result<(), String> {
+    if current.exists() {
+        set_aside_running(current)?;
+    }
+    rename(staged, current)
 }
 
-/// Deletes the executable a swap set aside, which its IVE ran from until it quit.
+/// Windows cannot replace a running program, only rename it: to a name of this swap's own, as terminal hosts may
+/// still run one an earlier swap set aside. The next start deletes those no process runs any more.
 #[cfg(windows)]
-pub fn delete_set_aside_exe() {
-    if let Ok(exe) = std::env::current_exe() {
-        let _ = fs::remove_file(exe.with_extension("exe.old"));
+fn set_aside_running(current: &Path) -> Result<(), String> {
+    let name = current.file_name().map(|name| name.to_string_lossy()).unwrap_or_default();
+    rename(current, &current.with_file_name(format!("{name}.{}.old", std::process::id())))
+}
+
+/// Deletes the programs swaps set aside beside this executable, except those still running.
+#[cfg(windows)]
+pub fn delete_set_aside_programs() {
+    let Some(dir) = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf)) else {
+        return;
+    };
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return;
+    };
+    for path in entries.filter_map(Result::ok).map(|entry| entry.path()).filter(|path| is_set_aside(path)) {
+        // a running one is locked; a later start deletes it
+        let _ = fs::remove_file(path);
     }
+}
+
+#[cfg(windows)]
+fn is_set_aside(path: &Path) -> bool {
+    let name = path.file_name().map(|name| name.to_string_lossy()).unwrap_or_default();
+    let program = |program: &&str| name.strip_prefix(program).is_some_and(|rest| rest.starts_with('.'));
+    name.ends_with(".old") && ["ive.exe"].iter().chain(PROGRAMS_BESIDE.iter()).any(program)
 }
 
 /// Unix renames over a running executable; the running process keeps the old file.
 #[cfg(not(windows))]
-fn set_aside_running_exe(_current: &Path) -> Result<(), String> {
+fn set_aside_running(_current: &Path) -> Result<(), String> {
     Ok(())
 }
 
@@ -190,6 +220,33 @@ mod tests {
         assert_eq!(fs::read_to_string(&current).unwrap(), "new");
         assert_eq!(fs::read_to_string(dir.path().join("LICENSE")).unwrap(), "new licence");
         assert!(!dir.path().join("NOTICE").exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn should_swap_the_programs_of_a_windows_release_and_delete_those_set_aside() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let current = dir.path().join("ive.exe");
+        write(&current, "old");
+        write(&dir.path().join("ive-cli.exe"), "old cli");
+        let staged = dir.path().join(".ive-update/extracted/ive-windows-x86_64-abc/ive.exe");
+        for name in ["ive.exe", "ive-cli.exe", "conpty.dll", "OpenConsole.exe"] {
+            write(&staged.with_file_name(name), &format!("new {name}"));
+        }
+
+        // when
+        let swapped = swap(&Install::Binary(current.clone()), &staged);
+
+        // then
+        assert_eq!(swapped, Ok(()));
+        for name in ["ive.exe", "ive-cli.exe", "conpty.dll", "OpenConsole.exe"] {
+            assert_eq!(fs::read_to_string(dir.path().join(name)).unwrap(), format!("new {name}"));
+        }
+        let set_aside = dir.path().join(format!("ive-cli.exe.{}.old", std::process::id()));
+        assert_eq!(fs::read_to_string(&set_aside).unwrap(), "old cli");
+        assert!(is_set_aside(&set_aside));
+        assert!(!is_set_aside(&dir.path().join("ive-cli.exe")));
     }
 
     #[test]

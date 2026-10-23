@@ -215,7 +215,7 @@ fn replace(staging: &Path, path: &Path, bytes: &[u8]) -> io::Result<()> {
     }
     file.write_all(bytes)?;
     file.sync_all()?;
-    fs::rename(staging, path)?;
+    crate::retry::replace_file(staging, path)?;
     // the new content is in place; a folder that cannot be synced only leaves the rename less durable
     if let Some(dir) = path.parent() {
         let _ = File::open(dir).and_then(|dir| dir.sync_all());
@@ -256,12 +256,21 @@ fn rename_new(source: &Path, target: &Path) -> io::Result<()> {
     }
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+/// `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` fails when `target` exists.
+#[cfg(windows)]
 fn rename_new(source: &Path, target: &Path) -> io::Result<()> {
-    checked_rename(source, target)
+    use std::os::windows::ffi::OsStrExt;
+    let wide = |path: &Path| path.as_os_str().encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+    let (from, to) = (wide(source), wide(target));
+    // SAFETY: both pointers are NUL-terminated paths that outlive the call
+    if unsafe { windows_sys::Win32::Storage::FileSystem::MoveFileExW(from.as_ptr(), to.as_ptr(), 0) } != 0 {
+        return Ok(());
+    }
+    Err(io::Error::last_os_error())
 }
 
 /// Checks, then renames: another program can still create `target` in between.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn checked_rename(source: &Path, target: &Path) -> io::Result<()> {
     if fs::symlink_metadata(target).is_ok() {
         return Err(io::ErrorKind::AlreadyExists.into());

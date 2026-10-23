@@ -1,19 +1,32 @@
-//! Which program has a terminal: the PTY's foreground process group and the command of its leader.
+//! Which program has a terminal: the PTY's foreground process group and the command of its leader. Windows has no
+//! foreground group; there the shell's youngest child has the terminal.
 
+#[cfg(unix)]
 use std::fs::File;
+#[cfg(unix)]
 use std::os::fd::AsRawFd;
 use std::path::Path;
+#[cfg(unix)]
 use std::sync::Arc;
 
+#[cfg(unix)]
 use alacritty_terminal::tty::Pty;
+
+/// A process id: `pid_t`, which Windows' ids fit too.
+#[cfg(unix)]
+type Pid = libc::pid_t;
+#[cfg(windows)]
+type Pid = i32;
 
 /// Reads the foreground process group of one PTY; cheap to clone and usable on any thread.
 #[derive(Debug, Clone)]
 pub struct ForegroundProbe {
-    shell: libc::pid_t,
+    shell: Pid,
+    #[cfg(unix)]
     source: Source,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Clone)]
 enum Source {
     /// a duplicate of the PTY master, so the probe works whatever the PTY thread does with its own
@@ -31,18 +44,33 @@ pub struct ProgramCommand {
 
 impl ForegroundProbe {
     /// A probe for the shell `pty` runs; `None` when the master cannot be duplicated (out of descriptors).
+    #[cfg(unix)]
     pub fn of(pty: &Pty) -> Option<Self> {
         let master = pty.file().try_clone().ok()?;
-        let shell = libc::pid_t::try_from(pty.child().id()).ok()?;
+        let shell = Pid::try_from(pty.child().id()).ok()?;
         Some(Self { shell, source: Source::Master(Arc::new(master)) })
     }
 
     /// A probe for the shell `shell`, read from its process status: the terminal belongs to another process.
+    #[cfg(unix)]
     pub fn of_program(shell: u32) -> Self {
-        Self { shell: shell as libc::pid_t, source: Source::Proc }
+        Self { shell: shell as Pid, source: Source::Proc }
     }
 
-    fn foreground_group(&self) -> libc::pid_t {
+    /// A probe for the shell `shell` a pseudoconsole runs; `None` for an id beyond `pid_t`.
+    #[cfg(windows)]
+    pub fn of_shell(shell: u32) -> Option<Self> {
+        Some(Self { shell: Pid::try_from(shell).ok()? })
+    }
+
+    /// A probe for the shell `shell` a host runs, found as an in-process one is: by its youngest child.
+    #[cfg(windows)]
+    pub fn of_program(shell: u32) -> Self {
+        Self { shell: shell as Pid }
+    }
+
+    #[cfg(unix)]
+    fn foreground_group(&self) -> Pid {
         match &self.source {
             // SAFETY: reads terminal state of a descriptor `master` keeps open
             Source::Master(master) => unsafe { libc::tcgetpgrp(master.as_raw_fd()) },
@@ -50,13 +78,25 @@ impl ForegroundProbe {
         }
     }
 
+    #[cfg(windows)]
+    fn foreground_group(&self) -> Pid {
+        let child = crate::windows_processes::youngest_child(self.shell as u32);
+        child.and_then(|pid| Pid::try_from(pid).ok()).unwrap_or(self.shell)
+    }
+
     /// macOS starts an in-process shell through `login`; a host starts the shell itself.
-    fn is_shell(&self, group: libc::pid_t) -> bool {
+    #[cfg(unix)]
+    fn is_shell(&self, group: Pid) -> bool {
         group == self.shell || matches!(self.source, Source::Master(_)) && is_shell_under_login(group, self.shell)
     }
 
+    #[cfg(windows)]
+    fn is_shell(&self, group: Pid) -> bool {
+        group == self.shell
+    }
+
     /// The foreground process group while a program other than the shell has the terminal.
-    pub fn program_group(&self) -> Option<libc::pid_t> {
+    pub fn program_group(&self) -> Option<Pid> {
         let group = self.foreground_group();
         match group {
             ..=0 => None,
@@ -71,7 +111,7 @@ impl ForegroundProbe {
     }
 
     /// Who leads the foreground: the program's group, or the shell itself.
-    pub fn leader(&self) -> libc::pid_t {
+    pub fn leader(&self) -> Pid {
         self.program_group().unwrap_or(self.shell)
     }
 
@@ -81,12 +121,12 @@ impl ForegroundProbe {
 }
 
 #[cfg(target_os = "linux")]
-fn terminal_group_of(pid: libc::pid_t) -> Option<libc::pid_t> {
+fn terminal_group_of(pid: Pid) -> Option<Pid> {
     std::fs::read_to_string(format!("/proc/{pid}/stat")).ok().as_deref().and_then(tpgid_of)
 }
 
 #[cfg(target_os = "macos")]
-fn terminal_group_of(pid: libc::pid_t) -> Option<libc::pid_t> {
+fn terminal_group_of(pid: Pid) -> Option<Pid> {
     let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
     let size = std::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int;
     // SAFETY: proc_pidinfo writes at most `size` bytes into `info`, which is that large
@@ -96,44 +136,46 @@ fn terminal_group_of(pid: libc::pid_t) -> Option<libc::pid_t> {
     }
     // SAFETY: zeroed is a valid proc_bsdinfo, and a full read filled it
     let group = unsafe { info.assume_init() }.e_tpgid;
-    libc::pid_t::try_from(group).ok().filter(|group| *group > 0)
+    Pid::try_from(group).ok().filter(|group| *group > 0)
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-fn terminal_group_of(_pid: libc::pid_t) -> Option<libc::pid_t> {
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
+fn terminal_group_of(_pid: Pid) -> Option<Pid> {
     None
 }
 
 /// The terminal's foreground group (`tpgid`, field 8) from a `/proc/<pid>/stat` line; the command name before it
 /// may hold spaces and parentheses, so fields count from the last `)`.
 #[cfg(target_os = "linux")]
-fn tpgid_of(stat: &str) -> Option<libc::pid_t> {
+fn tpgid_of(stat: &str) -> Option<Pid> {
     let fields = &stat[stat.rfind(')')? + 1..];
     fields.split_whitespace().nth(5)?.parse().ok().filter(|group| *group > 0)
 }
 
-/// Claude Code: `comm` is `claude`, or `argv[0]` is a `claude` file, or a version the native installer keeps
-/// under `~/.local/share/claude/versions/<version>`.
+/// Claude Code: `comm` is `claude`, or `argv[0]` is a `claude` (`claude.exe`) file, or a version the native installer
+/// keeps under `~/.local/share/claude/versions/<version>`.
 pub fn is_claude_code(command: &ProgramCommand) -> bool {
     let file_name = Path::new(&command.argv0).file_name().and_then(|name| name.to_str());
-    command.comm == "claude" || file_name == Some("claude") || command.argv0.contains("/claude/versions/")
+    let file_name = file_name.map(|name| name.strip_suffix(".exe").unwrap_or(name));
+    let versions = ["/claude/versions/", "\\claude\\versions\\"].iter().any(|folder| command.argv0.contains(folder));
+    command.comm == "claude" || file_name == Some("claude") || versions
 }
 
 /// macOS: alacritty starts the shell through `login -flp`, so the PTY's child is `login`, and the shell, its
 /// child, leads a group of its own.
 #[cfg(target_os = "macos")]
-fn is_shell_under_login(group: libc::pid_t, login: libc::pid_t) -> bool {
-    ps_field(group, "ppid=").and_then(|parent| parent.parse::<libc::pid_t>().ok()) == Some(login)
+fn is_shell_under_login(group: Pid, login: Pid) -> bool {
+    ps_field(group, "ppid=").and_then(|parent| parent.parse::<Pid>().ok()) == Some(login)
 }
 
 /// Elsewhere the PTY's child is the shell itself.
-#[cfg(not(target_os = "macos"))]
-fn is_shell_under_login(_group: libc::pid_t, _child: libc::pid_t) -> bool {
+#[cfg(all(unix, not(target_os = "macos")))]
+fn is_shell_under_login(_group: Pid, _child: Pid) -> bool {
     false
 }
 
 #[cfg(target_os = "linux")]
-fn command_of(pid: libc::pid_t) -> Option<ProgramCommand> {
+fn command_of(pid: Pid) -> Option<ProgramCommand> {
     let comm = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
     let cmdline = std::fs::read(format!("/proc/{pid}/cmdline")).ok()?;
     let argv0 = cmdline.split(|byte| *byte == 0).next().unwrap_or_default();
@@ -141,7 +183,7 @@ fn command_of(pid: libc::pid_t) -> Option<ProgramCommand> {
 }
 
 #[cfg(target_os = "macos")]
-fn command_of(pid: libc::pid_t) -> Option<ProgramCommand> {
+fn command_of(pid: Pid) -> Option<ProgramCommand> {
     // `comm=` is the executable path on macOS; two calls, since paths with spaces make one line ambiguous
     let comm = ps_field(pid, "comm=")?;
     let args = ps_field(pid, "args=")?;
@@ -150,13 +192,24 @@ fn command_of(pid: libc::pid_t) -> Option<ProgramCommand> {
 }
 
 #[cfg(target_os = "macos")]
-fn ps_field(pid: libc::pid_t, field: &str) -> Option<String> {
+fn ps_field(pid: Pid, field: &str) -> Option<String> {
     let output = std::process::Command::new("ps").args(["-o", field, "-p", &pid.to_string()]).output().ok()?;
     output.status.success().then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-fn command_of(_pid: libc::pid_t) -> Option<ProgramCommand> {
+/// `comm` is the exe's name without `.exe`, as Linux names a process.
+#[cfg(windows)]
+fn command_of(pid: Pid) -> Option<ProgramCommand> {
+    let kind = sysinfo::ProcessRefreshKind::new().with_cmd(sysinfo::UpdateKind::Always);
+    crate::windows_processes::read(u32::try_from(pid).ok()?, kind, |process| {
+        let name = process.name().to_string_lossy();
+        let argv0 = process.cmd().first().map(|arg| arg.to_string_lossy().into_owned());
+        ProgramCommand { comm: name.strip_suffix(".exe").unwrap_or(&name).to_owned(), argv0: argv0.unwrap_or_default() }
+    })
+}
+
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
+fn command_of(_pid: Pid) -> Option<ProgramCommand> {
     None
 }
 
@@ -178,13 +231,16 @@ mod tests {
             command("zsh", "-zsh"),
             command("vim", "vim"),
             command("claude-dev", "claude-dev"),
+            command("node", "claude.exe"),
+            command("2.1.3", r"C:\Users\kb\.local\share\claude\versions\2.1.3"),
+            command("pwsh", r"C:\Program Files\PowerShell\7\pwsh.exe"),
         ];
 
         // when
         let detected = commands.map(|command| is_claude_code(&command));
 
         // then
-        assert_eq!(detected, [true, true, true, false, false, false]);
+        assert_eq!(detected, [true, true, true, false, false, false, true, true, false]);
     }
 
     #[cfg(target_os = "linux")]
@@ -260,7 +316,7 @@ mod tests {
             let directory = directory_of(probe.leader());
 
             // then
-            assert_eq!(directory, Some(dir.path().canonicalize().unwrap()));
+            assert_eq!(directory, Some(dunce::canonicalize(dir.path()).unwrap()));
         }
 
         #[test]

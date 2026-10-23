@@ -20,7 +20,7 @@ fn repo_with(text: &str) -> Option<Repo> {
         eprintln!("skipped: no `git` command on PATH");
         return None;
     }
-    let top = dir.path().canonicalize().unwrap();
+    let top = dunce::canonicalize(dir.path()).unwrap();
     let repo = Repo { _dir: dir, top, git };
     repo.run(&["init", "-q", "-b", "main"]);
     repo.run(&["config", "user.name", "Test"]);
@@ -226,9 +226,13 @@ fn hook(repo: &Repo, name: &str, script: &str) {
     let path = repo.top.join(".git/hooks").join(name);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(&path, format!("#!/bin/sh\nset -e\n{script}\n")).unwrap();
-    let mut permissions = fs::metadata(&path).unwrap().permissions();
-    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
-    fs::set_permissions(&path, permissions).unwrap();
+    // Git for Windows runs hooks through its own sh, whatever their mode
+    #[cfg(unix)]
+    {
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+        fs::set_permissions(&path, permissions).unwrap();
+    }
 }
 
 /// The repository's commits, newest first: `format` of each.
@@ -367,7 +371,7 @@ fn should_commit_in_a_linked_worktree_on_its_branch() {
     // given
     let Some(repo) = repo_with(HEAD_TEXT) else { return };
     let linked = tempfile::tempdir().unwrap();
-    let place = linked.path().canonicalize().unwrap().join("linked");
+    let place = dunce::canonicalize(linked.path()).unwrap().join("linked");
     repo.run(&["worktree", "add", "-q", "-b", "side", &place.to_string_lossy()]);
     let head = repo.head();
     let commit = BlockCommit { path: place.join("f"), head_id: head.clone(), text: b"a\nB\nc\nd\n".to_vec(), message: "on side".to_owned() };

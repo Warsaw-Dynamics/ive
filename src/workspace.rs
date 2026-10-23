@@ -31,7 +31,6 @@ use crate::sidebar::rows::{self, TreeKey};
 use crate::sidebar::view::{self as sidebar_view, Sidebar, Tree};
 use crate::sidebar::{self, view::badge};
 use crate::state::{RecentProject, SavedState};
-#[cfg(unix)]
 use crate::terminal::hosted::HostedTerminals;
 use crate::tabs::{TabId, Tabs};
 use crate::theme::{self, Theme};
@@ -87,7 +86,6 @@ pub struct Workspace {
     /// closed projects, newest first
     recent: Vec<RecentProject>,
     processes: Processes,
-    #[cfg(unix)]
     hosted: Option<HostedTerminals>,
     tabs: Tabs<Tab>,
     /// the gap between tabs a dragged tab would land in, while it is over one that moves it
@@ -215,7 +213,6 @@ pub struct Startup {
     pub api_calls: UnboundedReceiver<Call>,
     pub scripts: Scripts,
     /// set when this IVE owns the hosted terminals: shells then outlive IVE
-    #[cfg(unix)]
     pub hosted: Option<HostedTerminals>,
     /// SIGTERM and SIGINT, which go through the quit prompt, and SIGUSR1, the restart script's quit
     pub signals: Option<UnboundedReceiver<i32>>,
@@ -265,7 +262,6 @@ impl Workspace {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
             processes: Processes::default(),
-            #[cfg(unix)]
             hosted: startup.hosted,
             tabs: Tabs::default(),
             tab_drop_gap: None,
@@ -322,15 +318,15 @@ impl Workspace {
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
             updates: updates::start(window, cx),
         };
-        // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
-        // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
-        // do; a click on its Dock icon shows the window again.
+        // a closing window goes through the quit prompt; IVE quits from there. On macOS the × hides the window
+        // instead and IVE keeps running in the Dock until quit, as Mac apps do; a click on its Dock icon shows the
+        // window again.
         #[cfg(target_os = "macos")]
         window.on_window_should_close(cx, |window, _| {
             window.hide_window();
             false
         });
-        #[cfg(all(unix, not(target_os = "macos")))]
+        #[cfg(not(target_os = "macos"))]
         {
             let this = cx.entity().downgrade();
             window.on_window_should_close(cx, move |window, cx| this.update(cx, |workspace, cx| workspace.request_quit(window, cx)).is_err());
@@ -346,15 +342,11 @@ impl Workspace {
         }
         tracing::info_span!("restore_projects").in_scope(|| workspace.restore(&startup.saved, cx));
         let tabs = startup.saved.tabs.clone();
-        #[cfg(unix)]
         let sessions = {
             let adopted_tabs = if tabs.is_some() { processes::AdoptedTabs::AsSaved } else { processes::AdoptedTabs::Each };
             tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, window, cx))
         };
-        #[cfg(not(unix))]
-        let sessions = std::collections::HashMap::new();
         // another IVE in this profile keeps the terminals: its tabs are its own
-        #[cfg(unix)]
         if workspace.hosted.is_none() {
             workspace.tab_ownership = tab_state::TabOwnership::Guest(tabs.clone());
         }
@@ -901,6 +893,7 @@ fn resize_cursor() -> impl IntoElement {
 
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _span = tracing::debug_span!("render_workspace").entered();
         cx.global::<ClickTargets>().clear();
         // tabs, their order, scroll and carets change without telling the workspace each time; so does
         // the window's maximized or fullscreen state

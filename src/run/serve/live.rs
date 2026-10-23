@@ -290,7 +290,7 @@ mod tests {
     fn should_count_only_changes_to_served_files() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         std::fs::create_dir(root.join("other")).unwrap();
         for file in ["page.html", "unserved.rs", "other/app.css"] {
             std::fs::write(root.join(file), "old").unwrap();

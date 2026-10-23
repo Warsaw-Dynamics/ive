@@ -51,7 +51,7 @@ fn watched_dir(dir: &Path) -> Option<PathBuf> {
         eprintln!("ive: cannot create {}: {error}; scripts there reload only when IVE restarts", dir.display());
         return None;
     }
-    dir.canonicalize().ok()
+    dunce::canonicalize(dir).ok()
 }
 
 fn apply_events(mut events: UnboundedReceiver<ScriptEvent>, window: &mut Window, cx: &mut Context<Workspace>) -> Task<()> {

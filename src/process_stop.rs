@@ -28,6 +28,14 @@ impl Targets {
         }
     }
 
+    pub fn terminate(&self) {
+        self.signal(libc::SIGTERM);
+    }
+
+    pub fn kill(&self) {
+        self.signal(libc::SIGKILL);
+    }
+
     /// Whether a group's leader still runs; a zombie (exited, not reaped yet) does not.
     pub fn alive(&self) -> bool {
         self.groups().any(runs)

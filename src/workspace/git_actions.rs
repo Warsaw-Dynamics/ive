@@ -1,7 +1,6 @@
 //! The Git items of menus: a file's diff of uncommitted changes or against the base branch, the history of a path,
 //! and adding paths to `.gitignore`.
 
-use std::os::unix::ffi::OsStrExt as _;
 use std::path::PathBuf;
 
 use gpui::{Context, Window};
@@ -94,7 +93,7 @@ impl Workspace {
         let Some((checkout, left, right)) = self.compared_files(subject) else {
             return;
         };
-        let file = FilePaths { path: GitPath::from_bytes(right.as_os_str().as_bytes()), old_path: Some(GitPath::from_bytes(left.as_os_str().as_bytes())) };
+        let file = FilePaths { path: GitPath::of_path(&right), old_path: Some(GitPath::of_path(&left)) };
         let request = DiffRequest { dir: checkout.path.clone(), file, source: DiffSource::Files { left, right } };
         let label = self.checkout_label(&checkout);
         let loading = cx.background_executor().spawn({

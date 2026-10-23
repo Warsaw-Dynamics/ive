@@ -30,14 +30,14 @@ pub fn main_checkout_of(folder: &Path) -> Result<Option<PathBuf>, GitError> {
     } else {
         repo::open(common)?.workdir().map(Path::to_path_buf)
     };
-    Ok(main.map(|main| main.canonicalize().unwrap_or(main)))
+    Ok(main.map(|main| dunce::canonicalize(&main).unwrap_or(main)))
 }
 
 /// The common git dir of the repository whose main checkout is `main`, canonical: `<main>/.git` but for
 /// `--separate-git-dir` repositories.
 pub fn common_dir(main: &Path) -> Result<PathBuf, GitError> {
     let common = repo::open(main)?.commondir().to_path_buf();
-    Ok(common.canonicalize().unwrap_or(common))
+    Ok(dunce::canonicalize(&common).unwrap_or(common))
 }
 
 /// The checkouts of the repository whose main checkout is `main`: the main one, then each linked worktree
@@ -56,6 +56,7 @@ pub fn read_checkouts(main: &Path, statuses: &Statuses, since: Instant) -> Resul
     for ((dir, _), read) in dirs.iter().zip(reads) {
         match read {
             Ok(checkout) => checkouts.push(checkout),
+            Err(_) if dir != main && is_refused_as_not_owned(dir) => {}
             Err(error) if dir == main || dir.exists() => return Err(error),
             // deleted between listing and reading: skipped, as a pruned one
             Err(_) => {}
@@ -158,6 +159,13 @@ fn unborn_branch(repository: &Repository) -> Option<String> {
     Some(target.strip_prefix("refs/heads/").unwrap_or(target).to_owned())
 }
 
+/// libgit2 refuses a worktree whose folder another account owns, as git does without `safe.directory`. On Windows
+/// that is any folder an elevated program made (owned by Administrators), which Git for Windows itself accepts; such
+/// a worktree is left out rather than failing the whole project.
+fn is_refused_as_not_owned(dir: &Path) -> bool {
+    Repository::open(dir).err().is_some_and(|error| error.code() == ErrorCode::Owner)
+}
+
 /// Worktree folders, skipping those `validate` rejects (folder deleted outside git: prunable).
 fn linked_worktrees(repository: &Repository, main: &Path) -> Result<Vec<PathBuf>, GitError> {
     let names = repository.worktrees().map_err(|error| GitError::new("list the worktrees", main, error))?;
@@ -166,7 +174,7 @@ fn linked_worktrees(repository: &Repository, main: &Path) -> Result<Vec<PathBuf>
         .filter_map(|name| name.ok().flatten())
         .filter_map(|name| repository.find_worktree(name).ok())
         .filter(|worktree| worktree.validate().is_ok())
-        .map(|worktree| worktree.path().canonicalize().unwrap_or_else(|_| worktree.path().to_path_buf()))
+        .map(|worktree| dunce::canonicalize(worktree.path()).unwrap_or_else(|_| worktree.path().to_path_buf()))
         .collect();
     Ok(dirs)
 }

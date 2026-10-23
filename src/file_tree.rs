@@ -347,7 +347,7 @@ mod tests {
 
     fn sample_project() -> (tempfile::TempDir, PathBuf) {
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         fs::create_dir_all(root.join("src/model")).unwrap();
         fs::write(root.join("src/main.rs"), "").unwrap();
         fs::write(root.join("src/model/user.rs"), "").unwrap();

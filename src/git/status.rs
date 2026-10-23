@@ -1,6 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
@@ -142,7 +140,7 @@ impl TrackedFolders<'_> {
     fn has_tracked(&mut self, folder: &Path) -> bool {
         let index = self.index;
         *self.known.entry(folder.to_path_buf()).or_insert_with(|| {
-            let mut prefix = folder.as_os_str().as_bytes().to_vec();
+            let mut prefix = git_bytes(folder);
             prefix.push(b'/');
             index.find_prefix(prefix).is_ok()
         })
@@ -190,9 +188,30 @@ fn claim(dir: &Path, since: Instant) -> (Arc<OnceLock<Result<StatusRead, GitErro
 }
 
 /// git's path bytes as a relative path, without the `/` git puts after a folder.
+#[cfg(unix)]
+pub(crate) fn relative_path(bytes: &[u8]) -> PathBuf {
+    use std::os::unix::ffi::OsStrExt;
+    let bytes = bytes.strip_suffix(b"/").unwrap_or(bytes);
+    PathBuf::from(std::ffi::OsStr::from_bytes(bytes))
+}
+
+/// libgit2 keeps paths in UTF-8 on Windows, with `/` between folders.
+#[cfg(windows)]
 pub(crate) fn relative_path(bytes: &[u8]) -> PathBuf {
     let bytes = bytes.strip_suffix(b"/").unwrap_or(bytes);
-    PathBuf::from(OsStr::from_bytes(bytes))
+    PathBuf::from(String::from_utf8_lossy(bytes).replace('/', "\\"))
+}
+
+/// A relative path as git's index names it.
+#[cfg(unix)]
+fn git_bytes(path: &Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    path.as_os_str().as_bytes().to_vec()
+}
+
+#[cfg(windows)]
+fn git_bytes(path: &Path) -> Vec<u8> {
+    path.to_string_lossy().replace('\\', "/").into_bytes()
 }
 
 /// `None` for entries that are not changes (current, ignored, unreadable).
@@ -385,7 +404,7 @@ mod tests {
         let status = tree_status(repo.path()).expect("status");
 
         // then
-        let marks: HashMap<_, _> = status.marks.iter().map(|(path, mark)| (path.display().to_string(), *mark)).collect();
+        let marks: HashMap<_, _> = status.marks.iter().map(|(path, mark)| (crate::paths::slashed(path), *mark)).collect();
         assert_eq!(marks, HashMap::from([
             ("a.txt".to_owned(), Mark::Modified),
             ("dir/b.txt".to_owned(), Mark::Added),

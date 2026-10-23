@@ -27,7 +27,8 @@ pub enum QuitEvent {
     CloseRequested,
     /// SIGTERM or SIGINT
     Signal,
-    /// SIGUSR1: a restart script built the new IVE and starts it once this one quits
+    /// SIGUSR1 (Windows: the event `restart.ps1` sets): a restart script built the new IVE and starts it once this
+    /// one quits
     Replaced,
     StopAll,
     KeepRunning,
@@ -239,9 +240,12 @@ fn quit_event_of(signal: i32) -> QuitEvent {
 }
 
 /// Signals are caught on Unix only.
-#[cfg(not(unix))]
-fn quit_event_of(_signal: i32) -> QuitEvent {
-    QuitEvent::Signal
+#[cfg(windows)]
+fn quit_event_of(signal: i32) -> QuitEvent {
+    match signal {
+        crate::signals::REPLACED => QuitEvent::Replaced,
+        _ => QuitEvent::Signal,
+    }
 }
 
 pub fn prompt_message(running: usize) -> String {

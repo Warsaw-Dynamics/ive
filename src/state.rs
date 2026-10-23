@@ -271,7 +271,7 @@ pub fn save(state: &SavedState, path: &Path) -> Result<(), StateError> {
     let text = toml::to_string(state).map_err(|error| failed(error.to_string()))?;
     let staging = path.with_extension(format!("toml.{}-{}.tmp", std::process::id(), STAGING.fetch_add(1, Ordering::Relaxed)));
     fs::write(&staging, text).map_err(|error| failed(error.to_string()))?;
-    fs::rename(&staging, path).map_err(|error| {
+    crate::retry::replace_file(&staging, path).map_err(|error| {
         // a staging file left behind would never be cleaned up
         let _ = fs::remove_file(&staging);
         failed(error.to_string())
@@ -315,11 +315,12 @@ impl fmt::Display for StateError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::absolute;
     use crate::window_state::WindowMode;
 
     fn project(path: &str) -> SavedProject {
         SavedProject {
-            path: PathBuf::from(path),
+            path: absolute(path),
             id: "p".to_owned(),
             expanded: false,
             expanded_checkouts: Vec::new(),
@@ -335,26 +336,26 @@ mod tests {
             shown_folders: None,
             hidden_projects: Vec::new(),
             projects: vec![SavedProject {
-                path: PathBuf::from("/mnt/data/Projects/atlassian"),
+                path: absolute("/mnt/data/Projects/atlassian"),
                 id: "atlassian".to_owned(),
                 expanded: true,
-                expanded_checkouts: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")],
-                last_checkout: Some(PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")),
+                expanded_checkouts: vec![absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")],
+                last_checkout: Some(absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")),
                 folders: vec![SavedFolders {
-                    checkout: PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive"),
+                    checkout: absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive"),
                     shown: vec![FolderKind::Processes, FolderKind::Commits],
                     files_hidden: true,
                     folded: vec![FolderKind::Files],
                     unfolded: vec![FolderKind::Processes],
                     open_commits: vec!["ab".repeat(20)],
                     commits_shown: Some(30),
-                    files: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive/src")],
-                    hidden_groups: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")],
+                    files: vec![absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive/src")],
+                    hidden_groups: vec![absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-817-ive")],
                     change_folders: vec![SavedChangeFolder { list: "since-base".to_owned(), path: "src/ui".to_owned(), open: false }],
                 }],
-                hidden_worktrees: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-811")],
+                hidden_worktrees: vec![absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-811")],
             }],
-            recent: vec![RecentProject { path: PathBuf::from("/home/kb/Documents/notes"), id: "notes".to_owned() }],
+            recent: vec![RecentProject { path: absolute("/home/kb/Documents/notes"), id: "notes".to_owned() }],
             tabs: None,
             window: Some(SavedWindow { x: 1950., y: 40., width: 1000., height: 700., mode: WindowMode::Maximized }),
             history: Vec::new(),
@@ -547,7 +548,7 @@ mod tests {
     }
 
     fn shown(number: usize) -> SavedShown {
-        SavedShown { shown_at: number as i64, checkout: Some(PathBuf::from("/w")), tab: SavedTab::Settings { page: "appearance".to_owned() } }
+        SavedShown { shown_at: number as i64, checkout: Some(absolute("/w")), tab: SavedTab::Settings { page: "appearance".to_owned() } }
     }
 
     #[test]
@@ -557,7 +558,7 @@ mod tests {
         let path = dir.path().join("state.toml");
         let state = SavedState {
             history: vec![shown(1), shown(2)],
-            worktree_use: vec![SavedUse { checkout: PathBuf::from("/w"), used_at: 5 }],
+            worktree_use: vec![SavedUse { checkout: absolute("/w"), used_at: 5 }],
             ..sample()
         };
 

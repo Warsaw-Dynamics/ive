@@ -49,14 +49,14 @@ pub fn window_controls(theme: Theme, window: &Window, cx: &App) -> Option<Div> {
             controls.child(
                 window_button("minimize", icons::WINDOW_MINIMIZE, WindowControlArea::Min, theme)
                     .hover(|style| style.bg(rgb(theme.hover)))
-                    .on_click(|_event, window, _cx| window.minimize_window()),
+                    .when(ive_answers(WindowControlArea::Min), |button| button.on_click(|_event, window, _cx| window.minimize_window())),
             )
         })
         .when(supported.maximize, |controls| {
             controls.child(
                 window_button("maximize", maximize, WindowControlArea::Max, theme)
                     .hover(|style| style.bg(rgb(theme.hover)))
-                    .on_click(|_event, window, _cx| window.zoom_window()),
+                    .when(ive_answers(WindowControlArea::Max), |button| button.on_click(|_event, window, _cx| window.zoom_window())),
             )
         })
         .child(
@@ -103,6 +103,21 @@ fn request_quit(_event: &ClickEvent, window: &mut Window, cx: &mut App) {
     }
 }
 
+/// Whether IVE answers a press on the button for `area`. Windows minimises, maximises and restores the window
+/// itself, and shows snap layouts over the maximise button; close stays IVE's, which may ask first.
+fn ive_answers(area: WindowControlArea) -> bool {
+    !cfg!(windows) || matches!(area, WindowControlArea::Close)
+}
+
+/// On Windows a press anywhere in a row marked `WindowControlArea::Drag` moves the window, unless the element under
+/// the pointer occludes the row; elsewhere the row's own handlers decide.
+pub fn above_title_bar<E: InteractiveElement>(element: E) -> E {
+    if cfg!(windows) {
+        return element.occlude();
+    }
+    element
+}
+
 /// A window button; its icon is drawn as a mask so it can turn white over the red close hover.
 fn window_button(id: &'static str, name: &str, area: WindowControlArea, theme: Theme) -> Stateful<Div> {
     let group = format!("window-{id}");
@@ -115,7 +130,8 @@ fn window_button(id: &'static str, name: &str, area: WindowControlArea, theme: T
         .w(theme.sizes.window.control_width.px())
         .h_full()
         .window_control_area(area)
-        .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+        .map(above_title_bar)
+        .when(ive_answers(area), |button| button.on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation()))
         .child(
             svg()
                 .path(icons::path(theme.appearance, name))

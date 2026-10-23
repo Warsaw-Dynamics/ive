@@ -221,6 +221,7 @@ fn header_button(id: &'static str, name: &str, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
+        .map(crate::window_controls::above_title_bar)
         .p(sizes.header_button_padding.px())
         .rounded(sizes.header_button_radius.px())
         .cursor_pointer()

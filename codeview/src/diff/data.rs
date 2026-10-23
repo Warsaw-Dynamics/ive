@@ -1,5 +1,7 @@
 //! What a diff view shows: files, hunks and lines, as the host read them. Free of any git library.
 
+use std::path::{Path, PathBuf};
+
 pub const FILE_LINE_LIMIT: usize = 20_000;
 pub const VIEW_LINE_LIMIT: usize = 200_000;
 /// Larger files are not loaded: libgit2 marks them binary, IVE says "file too large".
@@ -16,6 +18,30 @@ impl GitPath {
 
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
+    }
+
+    /// `path` as git names it: its bytes on Unix; on Windows UTF-8 with `/` between folders, as libgit2 keeps them.
+    #[cfg(unix)]
+    pub fn of_path(path: &Path) -> Self {
+        use std::os::unix::ffi::OsStrExt;
+        Self(path.as_os_str().as_bytes().to_vec())
+    }
+
+    #[cfg(windows)]
+    pub fn of_path(path: &Path) -> Self {
+        Self(path.to_string_lossy().replace('\\', "/").into_bytes())
+    }
+
+    /// The path this names, relative to its repository.
+    #[cfg(unix)]
+    pub fn to_path(&self) -> PathBuf {
+        use std::os::unix::ffi::OsStrExt;
+        PathBuf::from(std::ffi::OsStr::from_bytes(&self.0))
+    }
+
+    #[cfg(windows)]
+    pub fn to_path(&self) -> PathBuf {
+        PathBuf::from(lossy(&self.0).replace('/', "\\"))
     }
 
     /// For display; bytes that are not UTF-8 show as U+FFFD.

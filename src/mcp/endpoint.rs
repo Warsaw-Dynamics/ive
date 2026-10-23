@@ -137,7 +137,7 @@ fn save(path: &Path, remembered: &Remembered) -> Result<(), String> {
     }
     let text = toml::to_string(remembered).map_err(|error| failed(&error))?;
     let staging = path.with_added_extension(format!("{}.tmp", std::process::id()));
-    write_private(&staging, &text).and_then(|()| fs::rename(&staging, path)).map_err(|error| {
+    write_private(&staging, &text).and_then(|()| crate::retry::replace_file(&staging, path)).map_err(|error| {
         // a staging file left behind would never be cleaned up
         let _ = fs::remove_file(&staging);
         failed(&error)

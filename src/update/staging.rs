@@ -35,21 +35,20 @@ const BINARY_NAME: &str = "ive.exe";
 #[cfg(not(windows))]
 const BINARY_NAME: &str = "ive";
 
-/// The terminal-host protocol the IVE `binary` speaks, by asking it; `None` when it cannot tell.
+/// The terminal-host protocol the IVE `binary` speaks, by asking it (on Windows its console twin `ive-cli.exe`, which
+/// runs the hosts); `None` when it cannot tell.
 pub fn staged_protocol(binary: &Path) -> Option<u16> {
-    let output = std::process::Command::new(binary).args(["--pty-host", "protocol"]).output().ok()?;
+    let asked = if cfg!(windows) { binary.with_file_name("ive-cli.exe") } else { binary.to_path_buf() };
+    let output = std::process::Command::new(asked).args(["--pty-host", "protocol"]).output().ok()?;
     output.status.success().then(|| String::from_utf8_lossy(&output.stdout).trim().parse().ok()).flatten()
 }
 
-/// The terminal-host protocol of this build; none on Windows, which has no terminal host.
+/// The terminal-host protocol of this build.
 pub fn own_protocol() -> Option<u16> {
-    #[cfg(unix)]
-    return Some(ptyhost::protocol::PROTOCOL);
-    #[cfg(not(unix))]
-    None
+    Some(ptyhost::protocol::PROTOCOL)
 }
 
-/// A release ready to swap in: its tag, where it is, and the terminal-host protocol it speaks (Windows has none).
+/// A release ready to swap in: its tag, where it is, and the terminal-host protocol it speaks.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Staged {
     pub tag: String,
@@ -197,14 +196,15 @@ mod tests {
     fn should_find_the_binary_in_an_extracted_release() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        write(&dir.path().join("ive-linux-x86_64-abc/ive"), "new");
+        let binary = dir.path().join("ive-linux-x86_64-abc").join(BINARY_NAME);
+        write(&binary, "new");
         let install = Install::Binary(PathBuf::from("/opt/ive/ive"));
 
         // when
         let found = find_staged_install(dir.path(), &install);
 
         // then
-        assert_eq!(found, Ok(dir.path().join("ive-linux-x86_64-abc/ive")));
+        assert_eq!(found, Ok(binary));
     }
 
     #[test]

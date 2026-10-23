@@ -118,6 +118,16 @@ pub fn check_restart_script(path: &std::path::Path) -> Result<(), String> {
     Err(format!("--restart script {} cannot be used: not executable", path.display()))
 }
 
+/// The Restart button runs this script through PowerShell, so it must be a `.ps1` file.
+#[cfg(windows)]
+pub fn check_restart_script(path: &std::path::Path) -> Result<(), String> {
+    let is_powershell = path.extension().is_some_and(|extension| extension.eq_ignore_ascii_case("ps1"));
+    if is_powershell && path.is_file() {
+        return Ok(());
+    }
+    Err(format!("--restart script {} cannot be used: not an existing .ps1 file", path.display()))
+}
+
 fn parse_profile(value: Option<OsString>) -> Result<Profile, ArgsError> {
     let value = value.ok_or(ArgsError::MissingProfile)?;
     Profile::parse(&value.to_string_lossy()).map_err(ArgsError::InvalidProfile)
@@ -336,5 +346,23 @@ mod tests {
         assert_eq!(checked[0], Ok(()));
         assert!(checked[1].as_ref().is_err_and(|error| error.contains("notes.txt") && error.contains("not executable")), "{checked:?}");
         assert!(checked[2].as_ref().is_err_and(|error| error.contains("gone.sh")), "{checked:?}");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn should_accept_only_an_existing_powershell_restart_script() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (script, plain) = (dir.path().join("restart.ps1"), dir.path().join("restart.sh"));
+        std::fs::write(&script, "").unwrap();
+        std::fs::write(&plain, "").unwrap();
+
+        // when
+        let checked = [check_restart_script(&script), check_restart_script(&plain), check_restart_script(&dir.path().join("gone.ps1"))];
+
+        // then
+        assert_eq!(checked[0], Ok(()));
+        assert!(checked[1].as_ref().is_err_and(|error| error.contains("restart.sh")), "{checked:?}");
+        assert!(checked[2].as_ref().is_err_and(|error| error.contains("gone.ps1")), "{checked:?}");
     }
 }

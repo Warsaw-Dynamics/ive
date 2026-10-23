@@ -7,7 +7,6 @@ pub mod configs_tab;
 pub mod file;
 pub mod link_bar;
 pub mod serve;
-#[cfg(unix)]
 pub mod signal;
 pub mod values;
 pub mod values_tab;

@@ -14,6 +14,9 @@ use crate::run::file::RunFile;
 pub const STALE_INDEX: Duration = Duration::from_secs(30);
 /// A checkout that changed is read again at most this often: a build writing files must not keep a read running.
 pub const REREAD_FLOOR: Duration = Duration::from_secs(2);
+/// A read is repeated no sooner than this many times its own length: on Windows a large checkout takes tens of
+/// seconds to read, and reading every checkout again every [`STALE_INDEX`] kept every core busy while the hub was open.
+pub const REREAD_SPACING: u32 = 10;
 
 /// One read of a checkout.
 #[derive(Debug, Clone, Default)]
@@ -42,6 +45,9 @@ pub struct Branch {
 struct Indexed {
     read: Option<Read>,
     read_at: Option<Instant>,
+    started_at: Option<Instant>,
+    /// how long the last read took
+    took: Duration,
     /// why the last read failed, until one succeeds
     failure: Option<String>,
     dirty: bool,
@@ -64,8 +70,9 @@ impl HubIndex {
             Some(indexed) if indexed.reading => false,
             Some(indexed) => {
                 let age = indexed.read_at.map(|at| now.saturating_duration_since(at));
-                let stale = age.is_none_or(|age| age > STALE_INDEX);
-                let changed = indexed.dirty && age.is_none_or(|age| age >= REREAD_FLOOR);
+                let spacing = indexed.took * REREAD_SPACING;
+                let stale = age.is_none_or(|age| age > STALE_INDEX.max(spacing));
+                let changed = indexed.dirty && age.is_none_or(|age| age >= REREAD_FLOOR.max(spacing));
                 changed || stale || indexed.read.as_ref().is_some_and(|read| self.ignored && read.ignored.is_none())
             }
         };
@@ -81,6 +88,7 @@ impl HubIndex {
         let indexed = self.checkouts.entry(checkout.to_path_buf()).or_default();
         indexed.reading = true;
         indexed.dirty = false;
+        indexed.started_at = Some(Instant::now());
     }
 
     /// A read of a checkout `started` gave this; one forgotten meanwhile (its project closed) is dropped.
@@ -88,6 +96,7 @@ impl HubIndex {
         if let Some(indexed) = self.checkouts.get_mut(checkout) {
             indexed.read = Some(read);
             indexed.read_at = Some(at);
+            indexed.took = indexed.started_at.map_or(Duration::ZERO, |started| at.saturating_duration_since(started));
             indexed.failure = None;
             indexed.reading = false;
         }
@@ -158,6 +167,23 @@ mod tests {
 
         // then
         assert_eq!(due, ["old", "dirty", "never"].map(path));
+    }
+
+    #[test]
+    fn should_space_reads_of_a_slow_checkout_by_their_length() {
+        // given
+        let mut index = HubIndex::default();
+        index.started(&path("slow"));
+        let read_at = Instant::now() + Duration::from_secs(20);
+        index.read(&path("slow"), Read::default(), read_at);
+        index.mark_dirty(&path("slow"));
+
+        // when
+        let soon = index.due(&[path("slow")], read_at + Duration::from_secs(31));
+        let later = index.due(&[path("slow")], read_at + Duration::from_secs(201));
+
+        // then
+        assert_eq!((soon, later), (Vec::new(), vec![path("slow")]));
     }
 
     #[test]

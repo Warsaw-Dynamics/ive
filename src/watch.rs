@@ -860,7 +860,7 @@ mod tests {
     fn should_report_a_new_file_in_a_watched_folder_but_not_in_its_unwatched_subfolder() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let watched = dir.path().canonicalize().unwrap();
+        let watched = dunce::canonicalize(dir.path()).unwrap();
         let unwatched = watched.join("sub");
         std::fs::create_dir(&unwatched).unwrap();
         let (sender, events) = mpsc::channel();

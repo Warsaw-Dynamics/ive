@@ -266,7 +266,7 @@ mod tests {
     }
 
     fn file(name: &str) -> SavedTab {
-        SavedTab::File { path: PathBuf::from("/p").join(name), panel: PanelState::default() }
+        SavedTab::File { path: crate::paths::absolute("/p").join(name), panel: PanelState::default() }
     }
 
     fn terminal(session: &str) -> SavedTab {
@@ -338,7 +338,7 @@ mod tests {
     fn should_drop_terminal_tabs_whose_session_ended() {
         // given
         let sessions = HashSet::from(["live".to_owned()]);
-        let open = Open { sessions: &sessions, projects: vec![("p".to_owned(), PathBuf::from("/p"))] };
+        let open = Open { sessions: &sessions, projects: vec![("p".to_owned(), crate::paths::absolute("/p"))] };
 
         // when
         let keeps = [open.keeps(&terminal("live")), open.keeps(&terminal("ended"))];
@@ -351,7 +351,7 @@ mod tests {
     fn should_drop_tabs_of_projects_that_are_no_longer_open() {
         // given
         let sessions = HashSet::new();
-        let open = Open { sessions: &sessions, projects: vec![("p".to_owned(), PathBuf::from("/p"))] };
+        let open = Open { sessions: &sessions, projects: vec![("p".to_owned(), crate::paths::absolute("/p"))] };
         let overview = |project: &str| SavedTab::ProjectOverview { project: project.to_owned(), section: "Git".to_owned() };
         let worktree = |path: &str| SavedTab::WorktreeOverview { checkout: PathBuf::from(path), section: "Git".to_owned() };
 

@@ -28,9 +28,7 @@ use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, Scree
 use super::progress::Progress;
 use super::session::{GridSize, Session};
 use super::text::{ScreenText, output_text, screen_text};
-#[cfg(unix)]
 use super::hosted::HostedTerminals;
-#[cfg(unix)]
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
 use crate::clipboard;
@@ -61,14 +59,9 @@ pub enum Source<'a> {
     /// a PTY of IVE's own; the program ends with IVE
     InProcess(Launch),
     /// a new host, labelled with `labels`; the program outlives IVE
-    #[cfg(unix)]
     Hosted { terminals: &'a HostedTerminals, launch: Launch, labels: Vec<(String, String)> },
     /// a host an earlier IVE started
-    #[cfg(unix)]
     Adopt { terminals: &'a HostedTerminals, session: &'a SessionInfo },
-    #[cfg(not(unix))]
-    #[allow(dead_code)]
-    Never(std::marker::PhantomData<&'a ()>),
 }
 
 /// Whether IVE saw the shell start, which tells whether a quick exit means it could not start.
@@ -98,12 +91,8 @@ impl TerminalView {
     pub fn open(process: ProcessId, working_directory: &Path, source: Source, window: &mut Window, cx: &mut Context<Workspace>) -> io::Result<Self> {
         let (start, (session, events)) = match source {
             Source::InProcess(launch) => (Start::New, Session::spawn(working_directory, &launch)?),
-            #[cfg(unix)]
             Source::Hosted { terminals, launch, labels } => (Start::New, Session::spawn_hosted(terminals, working_directory, &launch, labels)?),
-            #[cfg(unix)]
             Source::Adopt { terminals, session } => (Start::Adopted, Session::attach(terminals, session)?),
-            #[cfg(not(unix))]
-            Source::Never(_) => unreachable!("no hosted terminals outside Unix"),
         };
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
@@ -131,6 +120,11 @@ impl TerminalView {
         self.session.program_pid()
     }
 
+    #[cfg(windows)]
+    pub fn job(&self) -> Option<std::sync::Arc<crate::job::Job>> {
+        self.session.job()
+    }
+
     /// Ends the shell, hosted or not, as closing its terminal does.
     pub fn hang_up(&self) {
         self.session.hang_up();
@@ -148,7 +142,7 @@ impl TerminalView {
 
     /// The title the shell set, as IntelliJ shows it on terminal tabs.
     pub fn title(&self) -> String {
-        self.title.clone().unwrap_or_else(|| "Terminal".to_owned())
+        self.title.clone().unwrap_or_else(|| crate::process::DEFAULT_TITLE.to_owned())
     }
 
     pub fn progress(&self) -> Progress {
@@ -161,7 +155,6 @@ impl TerminalView {
     }
 
     /// Which program has the terminal, for Claude Code detection.
-    #[cfg(unix)]
     pub fn foreground(&self) -> Option<super::ForegroundProbe> {
         self.session.foreground().cloned()
     }
@@ -818,9 +811,12 @@ fn exit_code_of(status: Option<ExitStatus>) -> i32 {
     status.and_then(|status| status.code()).unwrap_or(-1)
 }
 
+/// How to attach to a lost terminal from a console: on Windows the console twin, since `ive.exe` has none.
+const ATTACH_COMMAND: &str = if cfg!(windows) { "ive-cli --pty-host attach" } else { "ive --pty-host attach" };
+
 fn exit_state_of(status: Option<ExitStatus>, elapsed: Duration, start: Start, lost: Option<&str>) -> TerminalState {
     if let Some(id) = lost {
-        return TerminalState::Failed(format!("Lost the terminal; it still runs: ive --pty-host attach {id}").into());
+        return TerminalState::Failed(format!("Lost the terminal; it still runs: {ATTACH_COMMAND} {id}").into());
     }
     match status {
         Some(status) if !status.success() && start == Start::New && elapsed < QUICK_EXIT => {
@@ -832,8 +828,6 @@ fn exit_state_of(status: Option<ExitStatus>, elapsed: Duration, start: Start, lo
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::process::ExitStatusExt;
-
     use super::*;
     use crate::script::keymap::{Binding, ClipboardTarget, Keymap, MouseButton as BoundButton, MouseKind, MouseTrigger, Scope, SelectionMode, Trigger};
 
@@ -978,10 +972,20 @@ mod tests {
         }
     }
 
+    /// A program's exit with `code`, as the OS reports it.
+    fn exited(code: u32) -> ExitStatus {
+        #[cfg(unix)]
+        return std::os::unix::process::ExitStatusExt::from_raw((code << 8) as i32);
+        #[cfg(windows)]
+        std::os::windows::process::ExitStatusExt::from_raw(code)
+    }
+
+    #[cfg(unix)]
     #[test]
     fn should_give_the_exit_code_or_128_plus_the_signal() {
         // given
-        let statuses = [Some(ExitStatus::from_raw(1 << 8)), Some(ExitStatus::from_raw(libc::SIGTERM)), None];
+        let killed = std::os::unix::process::ExitStatusExt::from_raw(libc::SIGTERM);
+        let statuses = [Some(exited(1)), Some(killed), None];
 
         // when
         let codes = statuses.map(exit_code_of);
@@ -993,7 +997,7 @@ mod tests {
     #[test]
     fn should_keep_a_run_that_fails_right_after_start() {
         // given
-        let status = Some(ExitStatus::from_raw(127 << 8));
+        let status = Some(exited(127));
 
         // when
         let state = run_exit_state_of(status, None);
@@ -1005,7 +1009,7 @@ mod tests {
     #[test]
     fn should_report_shell_that_failed_right_after_start() {
         // given
-        let status = Some(ExitStatus::from_raw(1 << 8));
+        let status = Some(exited(1));
 
         // when
         let message = failed(status, Duration::from_millis(100), Start::New, None);
@@ -1017,7 +1021,7 @@ mod tests {
     #[test]
     fn should_close_adopted_session_that_exits_quickly() {
         // given
-        let status = Some(ExitStatus::from_raw(1 << 8));
+        let status = Some(exited(1));
 
         // when
         let message = failed(status, Duration::from_millis(100), Start::Adopted, None);
@@ -1035,6 +1039,6 @@ mod tests {
         let message = failed(None, Duration::from_secs(60), Start::Adopted, lost);
 
         // then
-        assert_eq!(message.as_deref(), Some("Lost the terminal; it still runs: ive --pty-host attach t1a2b3"));
+        assert_eq!(message, Some(format!("Lost the terminal; it still runs: {ATTACH_COMMAND} t1a2b3")));
     }
 }

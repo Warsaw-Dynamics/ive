@@ -405,7 +405,7 @@ impl HubState {
             Place::Several { project, checkouts } => sources.by_recency(project, Some(checkouts)).first()?.checkout.path.clone(),
             Place::Nowhere => return None,
         };
-        Some((checkout.join(&relative).display().to_string(), relative))
+        Some((crate::paths::joined(&checkout, &relative).display().to_string(), relative))
     }
 }
 
@@ -426,6 +426,9 @@ mod tests {
     use crate::scratch::search::Generations;
     use crate::script::keymap::Builtin;
     use crate::tabs::Tabs;
+
+    /// `src/new.rs` in the `/a/ive` worktree, joined with the OS's separators
+    const NEW_RS: &str = if cfg!(windows) { "/a/ive\\src\\new.rs" } else { "/a/ive/src/new.rs" };
 
     fn atlassian() -> ProjectId {
         ProjectId::parse("atlassian").unwrap()
@@ -1105,7 +1108,7 @@ mod tests {
         let copied = act(&mut state, Builtin::HubCopyPath, &sources());
 
         // then
-        assert_eq!(typed_path, Effect::TypePath("/a/ive/src/new.rs".to_owned()));
+        assert_eq!(typed_path, Effect::TypePath(NEW_RS.to_owned()));
         assert_eq!(copied, Effect::CopyPath("src/new.rs".to_owned()));
     }
 
@@ -1119,7 +1122,7 @@ mod tests {
         let copied = act(&mut state, Builtin::CopyFullPath, &sources());
 
         // then
-        assert_eq!(copied, Effect::CopyPath("/a/ive/src/new.rs".to_owned()));
+        assert_eq!(copied, Effect::CopyPath(NEW_RS.to_owned()));
     }
 
     #[test]

@@ -1,4 +1,5 @@
-//! Where run configurations' secrets live: the OS wallet (Secret Service on Linux, Keychain on macOS).
+//! Where run configurations' secrets live: the OS wallet (Secret Service on Linux, Keychain on macOS, Credential
+//! Manager on Windows).
 
 /// A store of secrets by id; `vars.toml` holds only the ids.
 pub trait Wallet {
@@ -60,7 +61,7 @@ async fn unlocked_keyring() -> Result<oo7::Keyring, String> {
     Ok(keyring)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 impl Wallet for OsWallet {
     fn get(&self, id: &str) -> Result<Option<String>, String> {
         match self.entry(id)?.get_password() {
@@ -75,7 +76,7 @@ impl Wallet for OsWallet {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 impl OsWallet {
     fn entry(&self, id: &str) -> Result<keyring::Entry, String> {
         keyring::Entry::new(SERVICE, &self.account(id)).map_err(unavailable)

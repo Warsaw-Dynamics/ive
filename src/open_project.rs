@@ -802,7 +802,7 @@ mod tests {
     fn should_expand_the_files_again_after_a_restart() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         std::fs::create_dir_all(root.join("src/ui")).unwrap();
         std::fs::write(root.join("src/ui/view.rs"), "").unwrap();
         let mut project = OpenProject::placeholder(ProjectId::new("p"), root.clone());
@@ -957,7 +957,7 @@ mod tests {
     fn should_read_the_files_of_a_shown_checkout_only_after_the_first_scan() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         std::fs::write(root.join("a.txt"), "").unwrap();
         let mut project = OpenProject::placeholder(ProjectId::new("p"), root.clone());
         project.toggle();
@@ -978,7 +978,7 @@ mod tests {
     fn should_watch_the_shown_checkouts_folders_and_the_git_dir() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         std::fs::create_dir_all(root.join("wt/src")).unwrap();
         let mut project = OpenProject::placeholder(ProjectId::new("p"), root.clone());
         project.apply(1, Ok(scan(&root, &["wt"])));
@@ -996,7 +996,7 @@ mod tests {
     fn should_read_a_tree_shown_again_whole_since_it_was_not_watched() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         std::fs::create_dir_all(root.join("wt/src")).unwrap();
         let mut project = OpenProject::placeholder(ProjectId::new("p"), root.clone());
         project.apply(1, Ok(scan(&root, &["wt"])));
