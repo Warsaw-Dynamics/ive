@@ -7,6 +7,7 @@ use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Task, Window, 
 use super::git_event::CommitLink;
 use super::git_ui::{error_with_retry, layout_switch, muted};
 use crate::age::date_time;
+use crate::selectable::selectable;
 use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::Sides;
 use codeview::diff::Headers;
@@ -122,6 +123,7 @@ impl Render for CommitView {
             [] => "root commit".to_owned(),
             parents => format!("parents {}", parents.iter().map(Sha::short).collect::<Vec<_>>().join(", ")),
         };
+        let sha = header.info.sha.as_str().to_owned();
         let top = div()
             .flex()
             .flex_none()
@@ -131,10 +133,10 @@ impl Render for CommitView {
             .py(theme.sizes.git.commit_header_padding_y.px())
             .border_b(theme.sizes.git.commit_header_border.px())
             .border_color(rgb(theme.border))
-            .child(div().font_family(theme::mono_font(cx)).text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(header.info.sha.as_str().to_owned()))
-            .child(div().text_size(theme.sizes.git.text_size.px()).child(format!("{} · {}", header.info.author, date_time(header.info.when))))
-            .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).font_weight(theme.sizes.git.commit_subject_weight.font_weight()).child(header.message.clone()))
-            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(parents))
+            .child(div().font_family(theme::mono_font(cx)).text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(selectable(format!("commit-sha-{sha}"), sha.clone(), cx)))
+            .child(div().text_size(theme.sizes.git.text_size.px()).child(selectable(format!("commit-author-{sha}"), format!("{} · {}", header.info.author, date_time(header.info.when)), cx)))
+            .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).font_weight(theme.sizes.git.commit_subject_weight.font_weight()).child(selectable(format!("commit-message-{sha}"), header.message.clone(), cx)))
+            .child(div().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(selectable(format!("commit-parents-{sha}"), parents, cx)))
             .child(div().pt(theme.sizes.git.commit_subject_padding_top.px()).flex().child(layout_switch(&self.files, theme, cx)));
         div().flex().flex_col().flex_1().min_h_0().child(top).child(self.files.clone())
     }

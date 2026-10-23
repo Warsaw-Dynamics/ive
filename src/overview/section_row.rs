@@ -1,6 +1,7 @@
 use gpui::{App, Div, SharedString, div, prelude::*, rgb, transparent_black};
 
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::theme::{self, Theme};
 use crate::tooltip;
 
@@ -62,7 +63,7 @@ pub fn section_row(sections: &[(SharedString, bool, Listener)], location: Locati
         .font_family(theme::mono_font(cx))
         .text_size(sizes.location_text_size.px())
         .text_color(rgb(theme.muted))
-        .child(location.text.clone())
+        .child(selectable("overview-location-text", location.text.clone(), cx))
         .tooltip(tooltip::text_tooltip(location.full.clone()));
     div()
         .flex()

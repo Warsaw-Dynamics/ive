@@ -4,7 +4,6 @@ use gpui::{AnyElement, ClickEvent, Context, SharedString, div, prelude::*, rgb};
 
 use super::{Listener, Location, ProjectOverview, ProjectSection, distance_tags, section_row};
 use crate::editor::Tab;
-use crate::paths::tilde_home;
 use crate::project::{Checkout, Project, ProjectKind};
 use crate::tabs::TabId;
 use crate::theme::Theme;
@@ -58,7 +57,7 @@ pub fn render_project_overview(id: TabId, overview: &ProjectOverview, workspace:
 }
 
 fn location(project: &Project, theme: Theme) -> Location {
-    let path = tilde_home(&project.root);
+    let path = project.root.display().to_string();
     let text = match project.kind {
         ProjectKind::Git => path,
         ProjectKind::Plain => format!("{path} · no git"),

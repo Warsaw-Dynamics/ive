@@ -12,6 +12,7 @@ use gpui::{
 
 use crate::age::{Clock, unix_seconds};
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::icons;
 use crate::paging::{self, Paging};
 use crate::paths::tilde_home;
@@ -383,7 +384,7 @@ impl ScratchesSection {
             .flex()
             .flex_col()
             .gap(sizes.scratches_gap.px())
-            .child(div().text_size(sizes.scratches_hint_text_size.px()).text_color(rgb(theme.muted)).child(hint))
+            .child(div().text_size(sizes.scratches_hint_text_size.px()).text_color(rgb(theme.muted)).child(selectable("scratches-hint", hint, cx)))
             .child(div().flex().items_center().gap(sizes.scratches_toolbar_gap.px()).child(search).child(link_button("new-scratch", "+ New scratch", theme).on_click(target("new-scratch".to_owned(), new, cx))))
     }
 
