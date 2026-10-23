@@ -1,7 +1,13 @@
 //! Day-only Gantt grammar and boundary semantics from PlantUML MIT 1.2026.9.
 //! Copyright 2009-2024 Arnaud Roques; exact source traces/notices in provenance.
 use super::{
-    budget::{Budget, bound, invalid, unsupported},
+    budget::{Budget, bound},
+    parser::{
+        context,
+        error::ParseFailure,
+        gantt::{Command, Schedule},
+        timing::Site,
+    },
     source::Line,
 };
 use crate::RenderError;
@@ -13,7 +19,7 @@ const MAX_DAY: i32 = 3_652_058; // 9999-12-31, with 0001-01-01 at zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct CivilDay(pub i32);
 impl CivilDay {
-    fn parse(text: &str, line: &Line) -> Result<Self, RenderError> {
+    pub fn parse(text: &str, line: &Line) -> Result<Self, RenderError> {
         let bytes = text.as_bytes();
         if bytes.len() != 10
             || bytes[4] != b'-'
@@ -23,7 +29,7 @@ impl CivilDay {
                 .enumerate()
                 .any(|(i, c)| i != 4 && i != 7 && !c.is_ascii_digit())
         {
-            return Err(invalid(
+            return Err(super::budget::invalid(
                 line.number,
                 format!("expected ISO civil date YYYY-MM-DD in {:?}", line.text),
             ));
@@ -33,7 +39,7 @@ impl CivilDay {
         let day = text[8..].parse::<i32>().unwrap();
         if year == 0 || !(1..=12).contains(&month) || !(1..=month_days(year, month)).contains(&day)
         {
-            return Err(invalid(
+            return Err(super::budget::invalid(
                 line.number,
                 format!("invalid civil date {text:?} in {:?}", line.text),
             ));
@@ -51,7 +57,7 @@ impl CivilDay {
             .checked_add(delta)
             .filter(|v| (0..=MAX_DAY).contains(v))
             .ok_or_else(|| {
-                invalid(
+                super::budget::invalid(
                     line,
                     format!(
                         "civil date ordinal {} plus {delta} exceeds years 0001..9999",
@@ -143,95 +149,90 @@ enum Parent {
     Root,
     Task(usize),
 }
-struct Builder {
+struct TaskBuilder {
+    site: Site,
     task: Task,
     duration: Spec,
     start: Spec,
     frozen: Spec,
     parent: Parent,
 }
-struct Parser<'a> {
+pub(super) struct Builder<'a> {
     project: CivilDay,
-    tasks: Vec<Builder>,
+    tasks: Vec<TaskBuilder>,
     registry: BTreeMap<String, usize>,
     dependencies: Vec<Dependency>,
-    budget: &'a mut Budget,
+    pub budget: &'a mut Budget,
 }
-
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Gantt, RenderError> {
-    budget.depth(1)?;
-    let first = lines
-        .first()
-        .ok_or_else(|| invalid(1, "Gantt requires Project starts YYYY-MM-DD"))?;
-    budget.charge(first.text.len().saturating_mul(8) + 1)?;
-    let project = parse_project(first)?;
-    budget.item()?;
-    let mut parser = Parser {
-        project,
-        tasks: Vec::new(),
-        registry: BTreeMap::new(),
-        dependencies: Vec::new(),
-        budget,
-    };
-    for line in &lines[1..] {
-        parser
-            .budget
-            .charge(line.text.len().saturating_mul(8) + 1)?;
-        parser.statement(line)?;
+fn invalid(start: usize, message: impl std::fmt::Display) -> ParseFailure {
+    ParseFailure::owned_syntax(start..start, format!("{message}"))
+}
+fn unsupported(start: usize, message: &str) -> ParseFailure {
+    ParseFailure {
+        span: start..start,
+        kind: super::parser::error::FailureKind::Unsupported(message.to_owned().into()),
     }
-    parser.finish()
 }
-fn parse_project(line: &Line) -> Result<CivilDay, RenderError> {
-    let mut words = line.text.split_whitespace();
-    let (subject, verb, date) = (
-        words.next().unwrap_or(""),
-        words.next().unwrap_or(""),
-        words.next().unwrap_or(""),
-    );
-    if !subject.eq_ignore_ascii_case("project") || verb != "starts" || words.next().is_some() {
-        return Err(invalid(
-            line.number,
-            format!(
-                "Gantt requires explicit Project starts YYYY-MM-DD before tasks; found {:?}",
-                line.text
-            ),
-        ));
+fn shift(day: CivilDay, delta: i32, site: &Site) -> Result<CivilDay, ParseFailure> {
+    day.0
+        .checked_add(delta)
+        .filter(|value| (0..=MAX_DAY).contains(value))
+        .map(CivilDay)
+        .ok_or_else(|| {
+            invalid(
+                site.span.start,
+                "civil date arithmetic exceeds years 0001..9999",
+            )
+        })
+}
+impl<'a> Builder<'a> {
+    pub fn retained_bytes(items: usize) -> usize {
+        let vector = std::mem::size_of::<TaskBuilder>()
+            + std::mem::size_of::<Task>()
+            + std::mem::size_of::<Dependency>();
+        let tree_node =
+            12 * (std::mem::size_of::<(String, usize)>() + std::mem::size_of::<usize>());
+        items.saturating_mul(3 * vector + tree_node)
     }
-    CivilDay::parse(date, line)
-}
-impl Parser<'_> {
-    fn statement(&mut self, line: &Line) -> Result<(), RenderError> {
-        let (display, rest) = bracket(&line.text, line)?;
-        let (alias, tail) = if let Some(rest) = word(rest, "as") {
-            let (alias, tail) = bracket(rest, line)?;
-            (alias, tail)
-        } else {
-            (display, rest)
-        };
-        let (verb, rest) = tail
-            .split_once(char::is_whitespace)
-            .ok_or_else(|| unsupported(line.number, &format!("Gantt statement {:?}", line.text)))?;
-        let rest = rest.trim();
-        let id = self.task_id((alias, display), line)?;
-        match verb {
-            "lasts" | "requires" => self.duration(id, rest, line),
-            "starts" => self.set_start((id, Kind::Bar), rest, line),
-            "happens" => self.set_start((id, Kind::Milestone), rest, line),
-            _ => Err(unsupported(
-                line.number,
-                &format!("Gantt statement {}", line.text),
-            )),
+    pub fn tick(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(Into::into)
+    }
+    pub fn new(budget: &'a mut Budget) -> Self {
+        Self {
+            project: CivilDay(0),
+            tasks: Vec::new(),
+            registry: BTreeMap::new(),
+            dependencies: Vec::new(),
+            budget,
         }
     }
-    fn task_id(&mut self, names: (&str, &str), line: &Line) -> Result<usize, RenderError> {
+    pub fn project(&mut self, day: CivilDay) -> Result<(), ParseFailure> {
+        self.budget.item()?;
+        self.project = day;
+        Ok(())
+    }
+    pub fn apply(
+        &mut self,
+        names: (String, String),
+        command: Command,
+        site: Site,
+    ) -> Result<(), ParseFailure> {
+        self.budget.charge(1)?;
+        let id = self.task_id((&names.0, &names.1), &site)?;
+        match command {
+            Command::Duration(days) => self.duration(id, days, &site),
+            Command::Start(kind, schedule) => self.set_start((id, kind), schedule, &site),
+        }
+    }
+    fn task_id(&mut self, names: (&str, &str), line: &Site) -> Result<usize, ParseFailure> {
         let (code, display) = names;
         self.budget
             .charge(search_cost(self.registry.len()).saturating_mul(code.len() + 1))?;
         if let Some(&id) = self.registry.get(code) {
             if code != display && self.tasks[id].task.display != display {
                 return Err(invalid(
-                    line.number,
-                    format!("conflicting task alias {code:?} in {:?}", line.text),
+                    line.span.start,
+                    format!("conflicting task alias {code:?}"),
                 ));
             }
             return Ok(id);
@@ -246,64 +247,57 @@ impl Parser<'_> {
             code: code.into(),
             display: display.into(),
             start: self.project,
-            end: self.project.shift(1, line.number)?,
+            end: shift(self.project, 1, line)?,
             kind: Kind::Bar,
         };
-        self.tasks.push(Builder {
-            task,
-            duration: Spec::Default,
-            start: Spec::Default,
-            frozen: Spec::Default,
-            parent: Parent::Root,
-        });
+        context::push(
+            &mut self.tasks,
+            TaskBuilder {
+                site: line.clone(),
+                task,
+                duration: Spec::Default,
+                start: Spec::Default,
+                frozen: Spec::Default,
+                parent: Parent::Root,
+            },
+            self.budget,
+        )?;
         self.registry.insert(code.into(), id);
         Ok(id)
     }
-    fn duration(&mut self, id: usize, rest: &str, line: &Line) -> Result<(), RenderError> {
+    fn duration(&mut self, id: usize, days: i32, line: &Site) -> Result<(), ParseFailure> {
         self.check_frozen(id, line)?;
-        let days = parse_days(rest, line)?;
         let task = &mut self.tasks[id];
         if matches!(task.duration, Spec::Explicit) || task.task.kind == Kind::Milestone {
-            return Err(invalid(
-                line.number,
-                format!("conflicting duration in {:?}", line.text),
-            ));
+            return Err(invalid(line.span.start, "conflicting duration"));
         }
-        task.task.end = task.task.start.shift(days, line.number)?;
+        task.task.end = shift(task.task.start, days, line)?;
         task.duration = Spec::Explicit;
         Ok(())
     }
     fn set_start(
         &mut self,
         target: (usize, Kind),
-        rest: &str,
-        line: &Line,
-    ) -> Result<(), RenderError> {
+        schedule: Schedule,
+        line: &Site,
+    ) -> Result<(), ParseFailure> {
         let (id, kind) = target;
-        let rest = complement(rest, kind, line)?;
-        let (start, parent) = if rest.starts_with('[')
-            || rest.starts_with(|c: char| c.is_ascii_digit()) && rest.contains('[')
-            || word(rest, "after").is_some()
-            || word(rest, "with").is_some()
-        {
-            self.reference((id, kind), rest, line)?
-        } else {
-            (CivilDay::parse(rest, line)?, Parent::Root)
+        let (start, parent) = match schedule {
+            Schedule::Date(day) => (day, Parent::Root),
+            Schedule::Reference {
+                code,
+                endpoint,
+                offset,
+            } => self.reference((id, kind), (code, endpoint, offset), line)?,
         };
         self.check_frozen(id, line)?;
         if matches!(self.tasks[id].start, Spec::Explicit)
             || kind == Kind::Milestone && matches!(self.tasks[id].duration, Spec::Explicit)
         {
-            return Err(invalid(
-                line.number,
-                format!("conflicting start/milestone in {:?}", line.text),
-            ));
+            return Err(invalid(line.span.start, "conflicting start/milestone"));
         }
         if start < self.project {
-            return Err(invalid(
-                line.number,
-                format!("task starts before project date in {:?}", line.text),
-            ));
+            return Err(invalid(line.span.start, "task starts before project date"));
         }
         let task = &mut self.tasks[id];
         let days = if kind == Kind::Milestone {
@@ -311,7 +305,7 @@ impl Parser<'_> {
         } else {
             task.task.end.0 - task.task.start.0
         };
-        task.task.end = start.shift(days, line.number)?;
+        task.task.end = shift(start, days, line)?;
         task.task.start = start;
         task.task.kind = kind;
         task.start = Spec::Explicit;
@@ -321,42 +315,26 @@ impl Parser<'_> {
     fn reference(
         &mut self,
         target: (usize, Kind),
-        rest: &str,
-        line: &Line,
-    ) -> Result<(CivilDay, Parent), RenderError> {
-        let (prefix, tail) = rest
-            .split_once('[')
-            .ok_or_else(|| unsupported(line.number, &line.text))?;
-        let offset = parse_offset(prefix.trim(), line)?;
-        let (code, suffix) = bracket(&rest[rest.len() - tail.len() - 1..], line)?;
-        let endpoint = match suffix.strip_prefix("'s").map(str::trim) {
-            Some("start") => Endpoint::Start,
-            Some("end") => Endpoint::End,
-            _ => return Err(unsupported(line.number, &line.text)),
-        };
+        reference: (String, Endpoint, i32),
+        line: &Site,
+    ) -> Result<(CivilDay, Parent), ParseFailure> {
+        let (code, endpoint, offset) = reference;
         self.budget
             .charge(search_cost(self.registry.len()).saturating_mul(code.len() + 1))?;
-        let from = self.registry.get(code).copied().ok_or_else(|| {
-            invalid(
-                line.number,
-                format!("unknown task {code:?} in {:?}", line.text),
-            )
-        })?;
+        let from = self
+            .registry
+            .get(&code)
+            .copied()
+            .ok_or_else(|| invalid(line.span.start, format!("unknown task {code:?}")))?;
         self.check_cycle(target.0, from, line)?;
         let predecessor = &self.tasks[from];
         if predecessor.task.kind == Kind::Milestone {
-            return Err(unsupported(
-                line.number,
-                &format!("dependency on milestone in {}", line.text),
-            ));
+            return Err(unsupported(line.span.start, "dependency on milestone"));
         }
         if matches!(predecessor.duration, Spec::Default) {
             return Err(invalid(
-                line.number,
-                format!(
-                    "predecessor duration must be explicit before reference in {:?}",
-                    line.text
-                ),
+                line.span.start,
+                "predecessor duration must be explicit before reference",
             ));
         }
         let boundary = match endpoint {
@@ -368,15 +346,19 @@ impl Parser<'_> {
         } else {
             0
         };
-        let start = boundary.shift(offset + adjustment, line.number)?;
+        let start = shift(boundary, offset + adjustment, line)?;
         self.budget.item()?;
-        self.dependencies.push(Dependency {
-            from,
-            to: target.0,
-            endpoint,
-            offset,
-            kind: target.1,
-        });
+        context::push(
+            &mut self.dependencies,
+            Dependency {
+                from,
+                to: target.0,
+                endpoint,
+                offset,
+                kind: target.1,
+            },
+            self.budget,
+        )?;
         self.tasks[from].frozen = Spec::Explicit;
         Ok((start, Parent::Task(from)))
     }
@@ -384,15 +366,12 @@ impl Parser<'_> {
         &mut self,
         target: usize,
         mut predecessor: usize,
-        line: &Line,
-    ) -> Result<(), RenderError> {
+        line: &Site,
+    ) -> Result<(), ParseFailure> {
         loop {
             self.budget.charge(1)?;
             if predecessor == target {
-                return Err(invalid(
-                    line.number,
-                    format!("cyclic Gantt dependency in {:?}", line.text),
-                ));
+                return Err(invalid(line.span.start, "cyclic Gantt dependency"));
             }
             match self.tasks[predecessor].parent {
                 Parent::Root => return Ok(()),
@@ -400,28 +379,28 @@ impl Parser<'_> {
             }
         }
     }
-    fn check_frozen(&self, id: usize, line: &Line) -> Result<(), RenderError> {
+    fn check_frozen(&self, id: usize, line: &Site) -> Result<(), ParseFailure> {
         if matches!(self.tasks[id].frozen, Spec::Explicit) {
             return Err(invalid(
-                line.number,
+                line.span.start,
                 format!(
-                    "task {:?} is frozen after reference; later schedule edit {:?} is unsupported",
-                    self.tasks[id].task.code, line.text
+                    "task {:?} is frozen after reference; later schedule edit is unsupported",
+                    self.tasks[id].task.code
                 ),
             ));
         }
         Ok(())
     }
-    fn finish(self) -> Result<Gantt, RenderError> {
+    pub fn finish(self, site: Site) -> Result<Gantt, ParseFailure> {
         if self.tasks.is_empty() {
-            return Err(invalid(1, "Gantt requires at least one task"));
+            return Err(invalid(site.span.start, "Gantt requires at least one task"));
         }
         for builder in &self.tasks {
             self.budget.charge(1)?;
             let span = builder.task.end.0 - self.project.0;
             if span > MAX_SPAN {
                 return Err(invalid(
-                    1,
+                    builder.site.span.start,
                     format!(
                         "Gantt date span {span} for {:?} exceeds {MAX_SPAN} days",
                         builder.task.code
@@ -437,87 +416,13 @@ impl Parser<'_> {
         })
     }
 }
-fn bracket<'a>(text: &'a str, line: &Line) -> Result<(&'a str, &'a str), RenderError> {
-    if let Some(rest) = text.strip_prefix('[')
-        && let Some((value, tail)) = rest.split_once(']')
-        && !value.is_empty()
-        && !value.contains('[')
-    {
-        return Ok((value, tail.trim_start()));
-    }
-    Err(unsupported(
-        line.number,
-        &format!("Gantt task/project statement {}", line.text),
-    ))
-}
-fn word<'a>(text: &'a str, word: &str) -> Option<&'a str> {
-    text.strip_prefix(word)
-        .filter(|tail| tail.starts_with(char::is_whitespace))
-        .map(str::trim_start)
-}
-fn parse_days(text: &str, line: &Line) -> Result<i32, RenderError> {
-    let mut words = text.split_whitespace();
-    let value = number(words.next().unwrap_or(""), line)?;
-    if !matches!(words.next(), Some("day" | "days")) || words.next().is_some() || value == 0 {
-        return Err(unsupported(
-            line.number,
-            &format!("positive whole-day duration required in {}", line.text),
-        ));
-    }
-    Ok(value)
-}
-fn number(text: &str, line: &Line) -> Result<i32, RenderError> {
-    if text.is_empty() || text.len() > 4 || !text.bytes().all(|c| c.is_ascii_digit()) {
-        return Err(invalid(
-            line.number,
-            format!("bounded whole-day number required in {:?}", line.text),
-        ));
-    }
-    let value = text.parse::<i32>().unwrap();
-    if value > MAX_SPAN {
-        return Err(invalid(
-            line.number,
-            format!("day value {value} exceeds {MAX_SPAN} in {:?}", line.text),
-        ));
-    }
-    Ok(value)
-}
-fn parse_offset(text: &str, line: &Line) -> Result<i32, RenderError> {
-    if matches!(text, "" | "at" | "after" | "with") {
-        return Ok(0);
-    }
-    let mut words = text.split_whitespace();
-    let value = number(words.next().unwrap_or(""), line)?;
-    if !matches!(words.next(), Some("day" | "days")) {
-        return Err(unsupported(line.number, &line.text));
-    }
-    let offset = match words.next() {
-        Some("before") => -value,
-        Some("after") => value,
-        _ => return Err(unsupported(line.number, &line.text)),
-    };
-    if words.next().is_some() {
-        return Err(unsupported(line.number, &line.text));
-    }
-    Ok(offset)
-}
-fn complement<'a>(text: &'a str, kind: Kind, line: &Line) -> Result<&'a str, RenderError> {
-    let prefix = word(text, "on").or_else(|| word(text, "at"));
-    if kind == Kind::Bar
-        && text.contains('[')
-        && (word(text, "on").is_some() || prefix.is_some_and(|tail| !tail.starts_with('[')))
-    {
-        return Err(unsupported(
-            line.number,
-            &format!("Gantt start complement {}", line.text),
-        ));
-    }
-    Ok(prefix.unwrap_or(text))
-}
 fn search_cost(len: usize) -> usize {
     len.checked_ilog2().unwrap_or(0) as usize + 1
 }
-
+#[cfg(test)]
+pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Gantt, RenderError> {
+    super::parser::gantt::parse_test(lines, budget)
+}
 #[cfg(test)]
 mod tests {
     use super::*;

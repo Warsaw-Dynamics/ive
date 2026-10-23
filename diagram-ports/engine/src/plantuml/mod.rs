@@ -157,6 +157,20 @@ pub(crate) fn render(
     let hcl_model = hcl_document
         .map(|document| hcl::lower(document, &mut budget))
         .transpose()?;
+
+    let timing_model = if wrapper == source::Wrapper::Uml && selection == Selection::Timing {
+        Some(parser::timing::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
+    let gantt_model = if wrapper == source::Wrapper::Gantt {
+        Some(parser::gantt::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -197,8 +211,10 @@ pub(crate) fn render(
             let model = salt::parse(lines, context.budget)?;
             ("salt", saltscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Gantt {
-            let model = gantt::parse(lines, context.budget)?;
-            ("gantt", ganttscene::layout(&model, &mut context)?)
+            let model = gantt_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("Gantt selection has no parsed model".into())
+            })?;
+            ("gantt", ganttscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Mindmap {
             let model = mindmap_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML mindmap selection has no parsed model".into())
@@ -234,8 +250,10 @@ pub(crate) fn render(
             let family = model.family;
             (family, graph::layout(model, &mut context)?)
         } else if selection == Selection::Timing {
-            let model = timing::parse(lines, context.budget)?;
-            ("timing", timingscene::layout(&model, &mut context)?)
+            let model = timing_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("timing selection has no parsed model".into())
+            })?;
+            ("timing", timingscene::layout(model, &mut context)?)
         } else {
             let model = sequence_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML sequence selection has no parsed model".into())

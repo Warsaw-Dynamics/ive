@@ -11,6 +11,46 @@ fn source(body: &str) -> String {
     format!("@startuml\n{body}\n@enduml")
 }
 
+#[test]
+fn should_use_robust_and_concise_as_contextual_track_names() {
+    // given
+    let body = "robust robust\nconcise concise\n@0\nrobust is Ready\nconcise is Waiting\nrobust@0 -> concise@1 : handoff\nrobust@0 <-> @+1 : window\n@2";
+    // when
+    let result = render(&source(body), &options()).unwrap();
+    // then
+    assert_eq!(result.family, "timing");
+    assert!(result.svg.contains("Ready") && result.svg.contains("Waiting"));
+    assert!(
+        result.svg.contains("data-owner=\"robust\"")
+            && result.svg.contains("data-target=\"concise\"")
+    );
+}
+
+#[test]
+fn should_preserve_terminal_limit_errors_and_locate_timing_semantic_failures() {
+    // given
+    let mut config = options();
+    config.limits.model_items = 1;
+    // when
+    let limit = render(&source("robust V\n@0\nV is A\n@10"), &config).unwrap_err();
+    let semantic = render(&source("robust V\n@0\nunknown is A\n@10"), &options()).unwrap_err();
+    // then
+    assert!(matches!(limit, diagram_engine::RenderError::Backend(_)));
+    assert_eq!(
+        limit.to_string(),
+        "native diagram rendering failed: PlantUML model items value 2 exceeds limit 1"
+    );
+    assert!(matches!(
+        semantic,
+        diagram_engine::RenderError::InvalidSource(_)
+    ));
+    assert!(
+        semantic.to_string().contains("at line 4, column 1:"),
+        "{semantic}"
+    );
+    assert!(semantic.to_string().contains("unknown is A"), "{semantic}");
+}
+
 fn svg(body: &str) -> String {
     let result = render(&source(body), &options()).unwrap();
     assert_eq!(result.family, "timing");
