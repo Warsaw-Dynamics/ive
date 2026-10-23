@@ -273,7 +273,7 @@ fn read_text(path: &Path) -> Option<Vec<u8>> {
 
 /// `line` as a row shows it: whole when short, else [`SHOWN_CHARS`] of it starting a little before the `first`
 /// match; `ranges` moved into it, those outside it dropped.
-fn shown(line: &str, first: Range<usize>, ranges: Vec<Range<usize>>) -> (String, Vec<Range<usize>>) {
+pub(super) fn shown(line: &str, first: Range<usize>, ranges: Vec<Range<usize>>) -> (String, Vec<Range<usize>>) {
     if line.chars().count() <= SHOWN_CHARS {
         return (line.to_owned(), ranges);
     }
