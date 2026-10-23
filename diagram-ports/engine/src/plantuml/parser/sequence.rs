@@ -45,6 +45,16 @@ pub(in crate::plantuml) enum Token {
 }
 type Spanned = (usize, Token, usize);
 
+enum RowMode {
+    Command,
+    Note,
+}
+
+enum Suffix {
+    Header,
+    Label,
+}
+
 pub(in crate::plantuml) fn declare(left: Name, right: Name) -> Declaration {
     if right.quoted {
         return Declaration {
@@ -110,21 +120,19 @@ fn parse_body(body: &BodySource<'_>, budget: &mut Budget) -> Result<Sequence, Pa
             .strip_suffix('\n')
             .map_or(physical, |row| row.strip_suffix('\r').unwrap_or(row));
         let row = ownership.classify(raw, lexer.budget)?;
-        let evidence = ownership.advance(&row, &row.text, lexer.budget)?;
+        ownership.advance(&row, &row.text, lexer.budget)?;
         if note {
             if row.text.trim() == "end note" {
                 lexer.push(Token::EndNote, row.span(base, 0..row.text.len()))?;
                 lexer.push(Token::Newline, base + raw.len()..base + physical.len())?;
                 note = false;
             } else {
-                let value = lexer.copy(&row.text, row.span(base, 0..row.text.len()))?;
-                lexer.push(Token::Raw(value), row.span(base, 0..row.text.len()))?;
+                lexer.note_row(&row, base)?;
             }
         } else if row.text.trim().is_empty() {
             lexer.budget.charge(1).map_err(ParseFailure::terminal)?;
         } else {
-            lexer.row(&row, base)?;
-            note = evidence.note_body;
+            note = matches!(lexer.row(&row, base)?, RowMode::Note);
         }
         base += physical.len();
     }
@@ -173,59 +181,95 @@ impl Lexer<'_> {
         Ok(value.to_owned())
     }
 
-    fn row(&mut self, row: &Row, base: usize) -> Result<(), ParseFailure> {
-        let text = row.text.trim();
+    fn note_row(&mut self, row: &Row, base: usize) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)?;
+        let text = match (row.literal, row.opening_action) {
+            (true, true) => row.text.trim_start(),
+            (true, false) => row.text.as_str(),
+            _ => row.text.trim(),
+        };
+        if matches!((row.literal, text.is_empty()), (false, true)) {
+            return Ok(());
+        }
+        let start = match (row.literal, row.opening_action) {
+            (true, false) => 0,
+            _ => row.text.len() - row.text.trim_start().len(),
+        };
+        let span = row.span(base, start..start + text.len());
+        let value = self.copy(text, span.clone())?;
+        self.push(Token::Raw(value), span)
+    }
+
+    fn row(&mut self, row: &Row, base: usize) -> Result<RowMode, ParseFailure> {
         let start = row.text.len() - row.text.trim_start().len();
-        let first_end = self.scan_end(text, |ch| ch.is_whitespace())?;
-        let first = &text[..first_end];
-        let command = match first {
-            "participant" => Some(Token::Participant(ParticipantKind::Participant)),
-            "actor" => Some(Token::Participant(ParticipantKind::Actor)),
-            "database" => Some(Token::Participant(ParticipantKind::Database)),
-            "activate" => Some(Token::Lifecycle(Lifecycle::Activate)),
-            "deactivate" => Some(Token::Lifecycle(Lifecycle::Deactivate)),
-            "create" => Some(Token::Lifecycle(Lifecycle::Create)),
-            "destroy" => Some(Token::Lifecycle(Lifecycle::Destroy)),
-            "group" => Some(Token::Frame(FrameKind::Group)),
-            "alt" => Some(Token::Frame(FrameKind::Alt)),
-            "opt" => Some(Token::Frame(FrameKind::Opt)),
-            "loop" => Some(Token::Frame(FrameKind::Loop)),
-            "par" => Some(Token::Frame(FrameKind::Par)),
-            "break" => Some(Token::Frame(FrameKind::Break)),
-            "critical" => Some(Token::Frame(FrameKind::Critical)),
-            "else" => Some(Token::Else),
-            "end" => Some(Token::End),
-            "note" => Some(Token::Note),
-            _ => None,
+        let (head, first_end) = self.first_primitive(row, (base, start))?;
+        let command = match command_token(&head.text) {
+            Some(Token::Frame(kind)) => {
+                Some(Token::Frame(self.frame_kind(kind, row, (base, start))?))
+            }
+            command => command,
         };
         let tail = matches!(command, Some(Token::Frame(_) | Token::Else));
-        let mut cursor = start;
+        let is_else = matches!(command, Some(Token::Else));
+        let mode = match &command {
+            Some(Token::Note) => RowMode::Note,
+            _ => RowMode::Command,
+        };
+        let cursor = start + first_end;
+        let caption_start = match &command {
+            Some(Token::Frame(kind)) => start + kind.name().len(),
+            Some(Token::Else) => start + 4,
+            _ => cursor,
+        };
+        let span = row.span(base, start..caption_start.max(cursor));
         if let Some(command) = command {
-            self.push(command, row.span(base, start..start + first_end))?;
-            cursor += first_end;
+            self.push(command, span)?;
+        } else if head.quoted
+            || head
+                .text
+                .chars()
+                .all(|ch| ch.is_alphanumeric() || matches!(ch, '_' | '.' | '@'))
+        {
+            self.push(Token::Name(head), span)?;
+        } else {
+            return Err(ParseFailure::unsupported(
+                span,
+                "sequence identifier or attached syntax",
+            ));
         }
-        if tail {
-            let raw = &row.text[cursor..row.text.trim_end().len()];
-            let raw = if first == "else" {
+        let suffix = if tail {
+            let raw = &row.text[caption_start..row.text.trim_end().len()];
+            let raw = if is_else {
                 raw.trim()
             } else {
                 raw.strip_prefix(' ').unwrap_or(raw)
             };
-            let value = self.copy(raw, row.span(base, cursor..cursor + raw.len()))?;
+            let raw_start = if is_else {
+                caption_start + row.text[caption_start..].len()
+                    - row.text[caption_start..].trim_start().len()
+            } else {
+                caption_start + usize::from(row.text[caption_start..].starts_with(' '))
+            };
+            let value = self.copy(raw, row.span(base, raw_start..raw_start + raw.len()))?;
             self.push(
                 Token::Caption(value),
-                row.span(base, cursor..row.text.trim_end().len()),
+                row.span(base, raw_start..row.text.trim_end().len()),
             )?;
+            Suffix::Header
         } else {
-            self.primitives(row, (base, cursor))?;
-        }
+            self.primitives(row, (base, cursor))?
+        };
         self.push(
             Token::Newline,
             row.span(base, row.text.len()..row.text.len()),
-        )
+        )?;
+        Ok(match (mode, suffix) {
+            (RowMode::Note, Suffix::Header) => RowMode::Note,
+            _ => RowMode::Command,
+        })
     }
 
-    fn primitives(&mut self, row: &Row, location: (usize, usize)) -> Result<(), ParseFailure> {
+    fn primitives(&mut self, row: &Row, location: (usize, usize)) -> Result<Suffix, ParseFailure> {
         let (base, mut cursor) = location;
         while cursor < row.text.len() {
             let rest = &row.text[cursor..];
@@ -244,7 +288,7 @@ impl Lexer<'_> {
                 let span = row.span(base, start..(start + tail.len()));
                 let value = self.copy(tail, span.clone())?;
                 self.push(Token::Label(value), span)?;
-                return Ok(());
+                return Ok(Suffix::Label);
             }
             if ch == '"' {
                 let (name, bytes) = self.quoted(row, (base, cursor))?;
@@ -277,19 +321,7 @@ impl Lexer<'_> {
                 cursor += bytes;
                 continue;
             }
-            let mut bytes = ch.len_utf8();
-            for (index, ch) in rest.char_indices().skip(1) {
-                if ch.is_whitespace()
-                    || matches!(ch, '{' | '}' | ':' | '"')
-                    || operator_prefix(&rest[index..])
-                {
-                    break;
-                }
-                self.budget
-                    .charge(ch.len_utf8())
-                    .map_err(ParseFailure::terminal)?;
-                bytes = index + ch.len_utf8();
-            }
+            let bytes = self.scan_primitive_end(rest)?;
             let word = &rest[..bytes];
             let span = row.span(base, cursor..cursor + bytes);
             let token = match word {
@@ -317,7 +349,74 @@ impl Lexer<'_> {
             self.push(token, span)?;
             cursor += bytes;
         }
-        Ok(())
+        Ok(Suffix::Header)
+    }
+
+    fn frame_kind(
+        &mut self,
+        kind: FrameKind,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<FrameKind, ParseFailure> {
+        let (base, start) = location;
+        let text = &row.text[start..row.text.trim_end().len()];
+        let bytes = self.scan_end(text, |ch| ch == ' ')?;
+        let spelling = &text[..bytes];
+        if spelling == kind.name() {
+            return Ok(kind);
+        }
+        let value = self.copy(spelling, row.span(base, start..start + bytes))?;
+        Ok(FrameKind::Literal(value))
+    }
+
+    fn first_primitive(
+        &mut self,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<(Name, usize), ParseFailure> {
+        let (base, cursor) = location;
+        let rest = &row.text[cursor..];
+        self.budget
+            .charge(rest.chars().next().unwrap().len_utf8())
+            .map_err(ParseFailure::terminal)?;
+        if rest.starts_with('"') {
+            return self.quoted(row, location);
+        }
+        let bytes = self.scan_primitive_end(rest)?;
+        let text = self.copy(&rest[..bytes], row.span(base, cursor..cursor + bytes))?;
+        Ok((
+            Name {
+                text,
+                quoted: false,
+            },
+            bytes,
+        ))
+    }
+
+    fn scan_primitive_end(&mut self, text: &str) -> Result<usize, ParseFailure> {
+        if operator_prefix(text) {
+            return self.scan_end(text, |ch| {
+                !matches!(ch, '-' | '.' | '<' | '>' | '|' | 'o' | '*')
+            });
+        }
+        let first = text.chars().next().unwrap();
+        let mut end = first.len_utf8();
+        if matches!(first, '{' | '}' | ':') {
+            return Ok(end);
+        }
+        for (index, ch) in text.char_indices().skip(1) {
+            if ch.is_whitespace()
+                || matches!(ch, '{' | '}' | ':' | '"')
+                || operator_prefix(&text[index..])
+            {
+                return Ok(index);
+            }
+            self.budget
+                .charge(ch.len_utf8())
+                .map_err(ParseFailure::terminal)?;
+            end = index + ch.len_utf8();
+        }
+        Ok(end)
     }
 
     fn scan_end(&mut self, text: &str, stop: impl Fn(char) -> bool) -> Result<usize, ParseFailure> {
@@ -399,6 +498,29 @@ impl Lexer<'_> {
     }
 }
 
+fn command_token(first: &str) -> Option<Token> {
+    match first {
+        "participant" => Some(Token::Participant(ParticipantKind::Participant)),
+        "actor" => Some(Token::Participant(ParticipantKind::Actor)),
+        "database" => Some(Token::Participant(ParticipantKind::Database)),
+        "activate" => Some(Token::Lifecycle(Lifecycle::Activate)),
+        "deactivate" => Some(Token::Lifecycle(Lifecycle::Deactivate)),
+        "create" => Some(Token::Lifecycle(Lifecycle::Create)),
+        "destroy" => Some(Token::Lifecycle(Lifecycle::Destroy)),
+        "group" => Some(Token::Frame(FrameKind::Group)),
+        "alt" => Some(Token::Frame(FrameKind::Alt)),
+        "opt" => Some(Token::Frame(FrameKind::Opt)),
+        "loop" => Some(Token::Frame(FrameKind::Loop)),
+        "par" => Some(Token::Frame(FrameKind::Par)),
+        "break" => Some(Token::Frame(FrameKind::Break)),
+        "critical" => Some(Token::Frame(FrameKind::Critical)),
+        "else" => Some(Token::Else),
+        "end" => Some(Token::End),
+        "note" => Some(Token::Note),
+        _ => None,
+    }
+}
+
 fn operator_prefix(rest: &str) -> bool {
     ["--", "->", "..", "<-", "<|", "o-", "o.", "*-", "*.", "<."]
         .iter()
@@ -419,7 +541,12 @@ fn admit(
         budget.charge(chunk.len()).map_err(ParseFailure::terminal)?;
         for (_, token, _) in chunk {
             match token {
-                Token::Frame(_) => frames += 1,
+                Token::Frame(kind) => {
+                    frames += 1;
+                    if let FrameKind::Literal(value) = kind {
+                        literals = literals.saturating_add(value.capacity());
+                    }
+                }
                 Token::Name(name) => literals = literals.saturating_add(name.text.capacity()),
                 Token::Label(value) | Token::Caption(value) | Token::Raw(value) => {
                     literals = literals.saturating_add(value.capacity())
@@ -489,6 +616,120 @@ mod tests {
         let mut parsed = super::super::document::parse(&document, &mut budget)?;
         super::super::preamble::parse(&mut parsed, &mut budget)?;
         parse(parsed.body, &mut budget)
+    }
+
+    #[test]
+    fn should_recognize_adjacent_quoted_sequence_command_primitives() {
+        // given
+        for body in [
+            "participant\"A\"\nA -> B : hello",
+            "participant A\nactivate\"A\"\nA -> B : hello\ndeactivate\"A\"",
+            "\"participant\"\"Alpha\" as A\n\"activate\"\"A\"\nA -> B : hello\n\"deactivate\"\"A\"",
+        ] {
+            // when
+            let model = model(
+                &format!("@startuml\n{body}\n@enduml"),
+                &RenderOptions::default(),
+            )
+            .unwrap();
+            // then
+            assert_eq!(
+                model
+                    .participants
+                    .iter()
+                    .map(|p| p.name.as_str())
+                    .collect::<Vec<_>>(),
+                ["A", "B"],
+                "{body}"
+            );
+            assert!(format!("{model:?}").contains("from: 0, to: 1"), "{body}");
+        }
+    }
+
+    #[test]
+    fn should_reject_reserved_first_primitives_as_sequence_message_endpoints() {
+        // given
+        for first in [
+            "participant",
+            "actor",
+            "database",
+            "activate",
+            "deactivate",
+            "create",
+            "destroy",
+            "note",
+            "end",
+        ] {
+            for endpoint in [
+                format!("{first}->B : hello"),
+                format!("\"{first}\" -> B : hello"),
+            ] {
+                // when
+                let result = model(
+                    &format!("@startuml\n{endpoint}\n@enduml"),
+                    &RenderOptions::default(),
+                );
+                // then
+                assert!(
+                    matches!(
+                        result,
+                        Err(RenderError::InvalidSource(_) | RenderError::UnsupportedFeature(_))
+                    ),
+                    "accepted {endpoint}: {result:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn should_preserve_primitive_command_caption_and_note_ownership() {
+        // given
+        for (body, expected) in [
+            (
+                "participant A\n\"alt\" first\nA -> A : body\nend",
+                "kind: \"\\\"alt\\\"\"",
+            ),
+            (
+                "participant A\ngroup\"joined\" title\nA -> A : body\nend",
+                "kind: \"group\\\"joined\\\"\"",
+            ),
+            (
+                "participant A\nalt first\n\"else\" later\nA -> A : body\nend",
+                "Else(\"e\\\" later\")",
+            ),
+            (
+                "participant A\n\"note\" over A\n  keep\n\n' ignored\nend note\nA -> A : body",
+                "label: \"keep\"",
+            ),
+        ] {
+            // when
+            let model = model(
+                &format!("@startuml\n{body}\n@enduml"),
+                &RenderOptions::default(),
+            )
+            .unwrap();
+            // then
+            assert!(format!("{model:?}").contains(expected), "{body}: {model:?}");
+        }
+    }
+
+    #[test]
+    fn should_reject_else_under_a_noncanonical_frame_spelling() {
+        // given
+        for head in ["\"alt\" first", "alt\"joined\" first"] {
+            // when
+            let result = model(
+                &format!(
+                    "@startuml\nparticipant A\n{head}\nelse later\nA -> A : body\nend\n@enduml"
+                ),
+                &RenderOptions::default(),
+            );
+            // then
+            assert!(
+                matches!(result, Err(RenderError::InvalidSource(_))),
+                "accepted {head}: {result:?}"
+            );
+        }
     }
 
     #[test]

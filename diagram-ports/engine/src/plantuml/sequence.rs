@@ -69,7 +69,7 @@ pub(in crate::plantuml) struct Builder<'b> {
     retained_bytes: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::plantuml) enum FrameKind {
     Group,
     Alt,
@@ -78,9 +78,10 @@ pub(in crate::plantuml) enum FrameKind {
     Par,
     Break,
     Critical,
+    Literal(String),
 }
 impl FrameKind {
-    pub fn name(self) -> &'static str {
+    pub fn name(&self) -> &str {
         match self {
             Self::Group => "group",
             Self::Alt => "alt",
@@ -89,6 +90,7 @@ impl FrameKind {
             Self::Par => "par",
             Self::Break => "break",
             Self::Critical => "critical",
+            Self::Literal(value) => value,
         }
     }
 }
@@ -281,13 +283,17 @@ impl<'b> Builder<'b> {
             .depth(self.frames.len() + 1)
             .map_err(ParseFailure::terminal)?;
         self.tick()?;
+        self.budget
+            .text(kind.name().len())
+            .map_err(ParseFailure::terminal)?;
+        let display = kind.name().to_owned();
         retain(
             (&mut self.frames, &mut self.retained_bytes),
             kind,
             self.budget,
         )?;
         self.push(Event::Open {
-            kind: kind.name().into(),
+            kind: display,
             label,
         })
     }

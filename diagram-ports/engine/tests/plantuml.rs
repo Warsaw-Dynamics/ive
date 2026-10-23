@@ -12,6 +12,114 @@ fn diagram(body: &str) -> String {
 }
 
 #[test]
+fn should_render_adjacent_quoted_sequence_command_primitives() {
+    // given
+    for body in [
+        "participant\"A\"\nA -> B : hello",
+        "participant A\nactivate\"A\"\nA -> B : hello\ndeactivate\"A\"",
+        "\"participant\"\"Alpha\" as A\n\"activate\"\"A\"\nA -> B : hello\n\"deactivate\"\"A\"",
+    ] {
+        // when
+        let rendered = render(&diagram(body), &options()).unwrap();
+        // then
+        assert_eq!(rendered.family, "sequence", "{body}");
+        let xml = roxmltree::Document::parse(&rendered.svg).unwrap();
+        let message = xml
+            .descendants()
+            .find(|node| node.attribute("data-kind") == Some("message"))
+            .unwrap();
+        assert_eq!(message.attribute("data-owner"), Some("p0"), "{body}");
+        assert_eq!(message.attribute("data-target"), Some("p1"), "{body}");
+        assert!(rendered.svg.contains("hello"), "{body}");
+    }
+}
+
+#[test]
+fn should_reject_reserved_first_primitives_as_sequence_message_endpoints() {
+    // given
+    for first in [
+        "participant",
+        "actor",
+        "database",
+        "activate",
+        "deactivate",
+        "create",
+        "destroy",
+        "note",
+        "end",
+    ] {
+        for endpoint in [
+            format!("{first}->B : hello"),
+            format!("\"{first}\" -> B : hello"),
+        ] {
+            // when
+            let result = render(&diagram(&endpoint), &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(RenderError::InvalidSource(_) | RenderError::UnsupportedFeature(_))
+                ),
+                "accepted {endpoint}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn should_preserve_primitive_command_caption_and_note_ownership() {
+    // given
+    for (body, expected) in [
+        (
+            "participant A\n\"alt\" first\nA -> A : body\nend",
+            "\"alt\"",
+        ),
+        (
+            "participant A\ngroup\"joined\" title\nA -> A : body\nend",
+            "group\"joined\"",
+        ),
+        (
+            "participant A\nalt first\n\"else\" later\nA -> A : body\nend",
+            "e\" later",
+        ),
+        (
+            "participant A\n\"note\" over A\n  keep\n\n' ignored\nend note\nA -> A : body",
+            "keep",
+        ),
+    ] {
+        // when
+        let rendered = render(&diagram(body), &options()).unwrap();
+        // then
+        assert_eq!(rendered.family, "sequence");
+        let xml = roxmltree::Document::parse(&rendered.svg).unwrap();
+        assert!(
+            xml.descendants()
+                .any(|node| node.has_tag_name("text") && node.text() == Some(expected)),
+            "{body}"
+        );
+    }
+}
+
+#[test]
+fn should_reject_else_under_a_noncanonical_frame_spelling() {
+    // given
+    for head in ["\"alt\" first", "alt\"joined\" first"] {
+        // when
+        let result = render(
+            &diagram(&format!(
+                "participant A\n{head}\nelse later\nA -> A : body\nend"
+            )),
+            &options(),
+        );
+        // then
+        assert!(
+            matches!(result, Err(RenderError::InvalidSource(_))),
+            "accepted {head}"
+        );
+    }
+}
+
+#[test]
 fn should_render_implicit_state_descriptions_with_literal_arrow_text() {
     // given
     for label in [
