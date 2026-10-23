@@ -87,8 +87,8 @@ impl Selection {
         Some(self.span).filter(|span| self.id == id && !span.is_empty())
     }
 
-    fn anchor_in(&self, id: &str) -> Option<usize> {
-        Some(self.span.start).filter(|_| self.id == id)
+    fn holds(&self, id: &str) -> bool {
+        self.id == id
     }
 }
 
@@ -135,7 +135,7 @@ pub fn selectable(id: impl Into<SharedString>, text: impl Into<SharedString>, cx
             drag(&move_id, index, window, cx);
         })
         .on_mouse_down_out(move |_event, window: &mut Window, cx: &mut App| {
-            let holds = cx.try_global::<TextSelection>().is_some_and(|state| state.selection.id == out_id);
+            let holds = cx.try_global::<TextSelection>().is_some_and(|state| state.selection.holds(&out_id));
             if holds {
                 cx.global_mut::<TextSelection>().selection.clear();
                 window.refresh();
@@ -154,7 +154,7 @@ struct Press<'a> {
 fn press(press: Press, window: &mut Window, cx: &mut App) {
     let Press { id, text, index, event } = press;
     let state = cx.global_mut::<TextSelection>();
-    let extends = event.modifiers.shift && state.selection.anchor_in(id).is_some();
+    let extends = event.modifiers.shift && state.selection.holds(id);
     let (anchor, span) = match event.click_count {
         2 => (index, word_at(text, index)),
         count if count >= 3 => (0, Span { start: 0, end: text.len() }),
@@ -168,22 +168,21 @@ fn press(press: Press, window: &mut Window, cx: &mut App) {
     window.refresh();
 }
 
+/// Extends block `id`'s selection to `index`; a drag that began in another block leaves it alone.
 fn drag(id: &SharedString, index: usize, window: &mut Window, cx: &mut App) {
     let state = cx.global_mut::<TextSelection>();
-    if state.selection.anchor_in(id).is_none() {
-        return;
+    if state.selection.holds(id) {
+        let span = spanned(state.anchor, index);
+        state.selection.span = span;
+        window.refresh();
     }
-    let span = spanned(state.anchor, index);
-    let (text, id) = (state.selection.text.clone(), state.selection.id.clone());
-    state.selection.select(id, text, span);
-    window.refresh();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use gpui::{Modifiers, MouseUpEvent, Point, TestAppContext, VisualTestContext, point, px, size};
+    use gpui::{Modifiers, MouseUpEvent, Point, TestAppContext, VisualTestContext, point, px};
 
     use crate::theme::Appearance;
 
