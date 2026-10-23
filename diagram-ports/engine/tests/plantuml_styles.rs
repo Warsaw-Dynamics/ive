@@ -55,6 +55,125 @@ fn source(body: &str) -> String {
 }
 
 #[test]
+fn should_return_typed_errors_for_whitespace_only_preamble_values() {
+    // given
+    for whitespace in ["", " ", "\t", "\u{2003}", " \t\u{2003}\r"] {
+        for command in [
+            "title",
+            "legend",
+            "header",
+            "footer",
+            "left header",
+            "center footer",
+            "right header",
+            "title:",
+            "left header:",
+            "skinparam defaultFontSize",
+            "skinparam defaultFontName",
+            "skinparam defaultFontColor",
+            "skinparam titleFontStyle",
+            "skinparam BackgroundColor",
+        ] {
+            let input = source(&format!("{command}{whitespace}\nA -> B : x"));
+            // when
+            let result = render(&input, &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(diagram_engine::RenderError::InvalidSource(_)
+                        | diagram_engine::RenderError::UnsupportedFeature(_))
+                ),
+                "{input:?}: {result:?}"
+            );
+        }
+        for property in [
+            "FontSize",
+            "FontName",
+            "FontColor",
+            "FontStyle",
+            "BackgroundColor",
+        ] {
+            let input = source(&format!(
+                "<style>\nroot {{\n  {property}{whitespace}\n}}\n</style>\nA -> B : x"
+            ));
+            // when
+            let result = render(&input, &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(diagram_engine::RenderError::InvalidSource(_)
+                        | diagram_engine::RenderError::UnsupportedFeature(_))
+                ),
+                "{input:?}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn should_keep_repeated_stylesheets_linear_with_and_without_unrelated_definitions() {
+    // given
+    let sheet = "<style>\nroot {\nFontSize 20\n}\n</style>\n";
+    for definitions in [0, 200] {
+        let prefix = (0..definitions)
+            .map(|index| format!("!define UNUSED_{index} literal\n"))
+            .collect::<String>();
+        let small = source(&format!("{prefix}{}A -> B : x", sheet.repeat(100)));
+        let large = source(&format!("{prefix}{}A -> B : x", sheet.repeat(500)));
+        // when
+        let small = render(&small, &options()).unwrap();
+        let output = render(&large, &options()).unwrap();
+        // then
+        println!(
+            "repeated-sheet definitions={definitions} small-work={} large-work={} source-bytes={}",
+            small.layout_work_units,
+            output.layout_work_units,
+            large.len()
+        );
+        assert!(output.svg.contains("font-size=\"20\""));
+        assert!(
+            output.layout_work_units <= small.layout_work_units * 6,
+            "definitions {definitions}: work {} vs {}",
+            output.layout_work_units,
+            small.layout_work_units
+        );
+        assert!(
+            output.layout_work_units < large.len() * 100,
+            "definitions {definitions}: work {} for {} source bytes",
+            output.layout_work_units,
+            large.len()
+        );
+    }
+}
+
+#[test]
+fn should_allow_between_sheet_definitions_and_deny_later_expanded_sheet_definitions() {
+    // given
+    let prefix = "!define OPEN <style>\n!define CLOSE </style>\n<style>\nroot {\nFontSize 20\n}\n</style>\n!define BETWEEN literal\nOPEN\n";
+    let sheet = "root {\nFontSize 20\n}\nCLOSE\nA -> B : x";
+    let allowed = source(&format!("{prefix}{sheet}"));
+    let denied = source(&format!("{prefix}!define ILLEGAL value\n{sheet}"));
+    // when
+    let output = render(&allowed, &options()).unwrap();
+    let error = render(&denied, &options()).unwrap_err();
+    // then
+    assert!(output.svg.contains("font-size=\"20\""));
+    assert!(matches!(
+        error,
+        diagram_engine::RenderError::InvalidSource(_)
+    ));
+    assert!(error.to_string().contains("line 11, column 1"), "{error}");
+    assert!(
+        error
+            .to_string()
+            .contains("!define definition inside an expanded stylesheet"),
+        "{error}"
+    );
+}
+
+#[test]
 fn should_use_measured_frame_kind_and_multiline_caption_extents() {
     // given
     for size in [18, 96] {

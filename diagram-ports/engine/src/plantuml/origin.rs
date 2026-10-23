@@ -118,65 +118,6 @@ impl Document {
         }
     }
 
-    pub fn check_preamble(
-        &self,
-        body: Range<usize>,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let first_body = self.authored_line(body.start, budget)?;
-        for definition in &self.definitions {
-            budget.charge(1)?;
-            if definition.span.line >= first_body {
-                return Err(invalid(
-                    definition.span.line,
-                    format!(
-                        "!define definition {:?} must precede the first family statement at line {first_body}",
-                        definition.name
-                    ),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn deny_sheet_definitions(
-        &self,
-        sheet: Range<usize>,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let start = self.authored_line(sheet.start, budget)?;
-        let end = self.authored_line(sheet.end.saturating_sub(1), budget)?;
-        for definition in &self.definitions {
-            budget.charge(1)?;
-            if definition.span.line > start && definition.span.line < end {
-                return Err(invalid(
-                    definition.span.line,
-                    "!define definition inside an expanded stylesheet",
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn authored_line(&self, byte: usize, budget: &mut Budget) -> Result<usize, RenderError> {
-        budget.charge(self.text.len() + self.segments.len())?;
-        for segment in &self.segments {
-            if segment.output.contains(&byte) {
-                return Ok(match &segment.origin {
-                    Origin::Expansion { use_span, .. } => use_span.line,
-                    Origin::Direct(span) => {
-                        span.line
-                            + self.text[segment.output.start..byte]
-                                .bytes()
-                                .filter(|&byte| byte == b'\n')
-                                .count()
-                    }
-                });
-            }
-        }
-        Ok(1)
-    }
-
     pub fn map_error(&self, error: RenderError, budget: &mut Budget) -> RenderError {
         if matches!(
             error,
@@ -349,6 +290,124 @@ impl Document {
     }
 }
 
+/// Validates ordered preamble spans in one forward pass over existing origins.
+pub(super) struct PreambleCursor<'s> {
+    document: &'s Document,
+    segment: usize,
+    byte: usize,
+    // Authored rows are one-based; zero means this segment has not been visited.
+    line: usize,
+    definition: usize,
+}
+
+impl<'s> PreambleCursor<'s> {
+    pub fn new(document: &'s Document) -> Self {
+        Self {
+            document,
+            segment: 0,
+            byte: 0,
+            line: 0,
+            definition: 0,
+        }
+    }
+
+    pub fn check_preamble(
+        &mut self,
+        body: Range<usize>,
+        budget: &mut Budget,
+    ) -> Result<(), RenderError> {
+        let first_body = self.authored_line(body.start, budget)?;
+        self.advance_definitions(first_body, budget)?;
+        if let Some(definition) = self.document.definitions.get(self.definition) {
+            return Err(invalid(
+                definition.span.line,
+                format!(
+                    "!define definition {:?} must precede the first family statement at line {first_body}",
+                    definition.name
+                ),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn deny_sheet_definitions(
+        &mut self,
+        sheet: Range<usize>,
+        budget: &mut Budget,
+    ) -> Result<(), RenderError> {
+        let start = self.authored_line(sheet.start, budget)?;
+        let end = self.authored_line(sheet.end.saturating_sub(1), budget)?;
+        self.advance_definitions(start.saturating_add(1), budget)?;
+        if let Some(definition) = self.document.definitions.get(self.definition)
+            && definition.span.line < end
+        {
+            return Err(invalid(
+                definition.span.line,
+                "!define definition inside an expanded stylesheet",
+            ));
+        }
+        Ok(())
+    }
+
+    fn advance_definitions(&mut self, line: usize, budget: &mut Budget) -> Result<(), RenderError> {
+        loop {
+            budget.charge(1)?;
+            let Some(definition) = self.document.definitions.get(self.definition) else {
+                return Ok(());
+            };
+            if definition.span.line >= line {
+                return Ok(());
+            }
+            self.definition += 1;
+        }
+    }
+
+    fn authored_line(&mut self, byte: usize, budget: &mut Budget) -> Result<usize, RenderError> {
+        if byte < self.byte {
+            return Err(invalid(
+                1,
+                format!(
+                    "preamble origin byte {byte} precedes validated byte {}",
+                    self.byte
+                ),
+            ));
+        }
+        while let Some(segment) = self.document.segments.get(self.segment) {
+            budget.charge(1)?;
+            if segment.output.contains(&byte) {
+                self.line = self.read_segment_line(segment, byte, budget)?;
+                self.byte = byte;
+                return Ok(self.line);
+            }
+            self.segment += 1;
+            self.byte = segment.output.end;
+            self.line = 0;
+        }
+        budget.charge(1)?;
+        Ok(1)
+    }
+
+    fn read_segment_line(
+        &self,
+        segment: &Segment,
+        byte: usize,
+        budget: &mut Budget,
+    ) -> Result<usize, RenderError> {
+        match &segment.origin {
+            Origin::Expansion { use_span, .. } => Ok(use_span.line),
+            Origin::Direct(span) => {
+                let mut line = if self.line == 0 { span.line } else { self.line };
+                let start = self.byte.max(segment.output.start);
+                for chunk in self.document.text.as_bytes()[start..byte].chunks(256) {
+                    budget.charge(chunk.len())?;
+                    line += chunk.iter().filter(|&&byte| byte == b'\n').count();
+                }
+                Ok(line)
+            }
+        }
+    }
+}
+
 pub(super) struct Storage {
     retained: usize,
     segments: usize,
@@ -395,6 +454,133 @@ mod tests {
     use super::*;
     use crate::RenderOptions;
     use crate::plantuml::parser::error::ParseFailure;
+
+    #[test]
+    fn should_validate_repeated_sheet_origins_with_linear_work() {
+        // given
+        let prefix = (0..200)
+            .map(|index| format!("!define UNUSED_{index} literal\n"))
+            .collect::<String>();
+        let sheet = "<style>\nroot {\nFontSize 20\n}\n</style>\n";
+        let source = format!(
+            "@startuml\n{prefix}{}A -> B : x\n@enduml",
+            sheet.repeat(500)
+        );
+        let mut budget = Budget::new(&RenderOptions::default());
+        let document = crate::plantuml::preprocess::prepare(&source, &mut budget).unwrap();
+        let mut options = RenderOptions::default();
+        options.limits.layout_work = 100_000;
+        let mut budget = Budget::new(&options);
+        let mut cursor = PreambleCursor::new(&document);
+        // when
+        for (start, _) in document.text.match_indices("<style>") {
+            cursor
+                .deny_sheet_definitions(start..start + sheet.len() - 1, &mut budget)
+                .unwrap();
+        }
+        // then
+        println!(
+            "repeated-sheet origin work={} bytes={} segments={} definitions={}",
+            budget.work,
+            document.text.len(),
+            document.segments.len(),
+            document.definitions.len()
+        );
+        assert_eq!(cursor.definition, document.definitions.len());
+        assert!(
+            budget.work
+                < document.text.len()
+                    + document.segments.len()
+                    + document.definitions.len()
+                    + 5_000,
+            "work {} for {} source bytes",
+            budget.work,
+            document.text.len()
+        );
+    }
+
+    #[test]
+    fn should_map_ordered_authored_rows_across_direct_and_expanded_segments() {
+        // given
+        let mut budget = Budget::new(&RenderOptions::default());
+        let document = crate::plantuml::preprocess::prepare("\u{feff}@startuml\r\n!define LABEL Ω\r\ntitle LABEL\r\n<style>\r\nroot {\r\nFontSize 20\r\n}\r\n</style>\r\nA -> B : x\r\n@enduml", &mut budget).unwrap();
+        let mut cursor = PreambleCursor::new(&document);
+        for (marker, expected) in [
+            ("Ω", 3),
+            ("<style>", 4),
+            ("FontSize", 6),
+            ("</style>", 8),
+            ("A ->", 9),
+        ] {
+            // when
+            let line = cursor
+                .authored_line(document.text.find(marker).unwrap(), &mut budget)
+                .unwrap();
+            // then
+            assert_eq!(line, expected, "{marker}");
+        }
+    }
+
+    #[test]
+    fn should_interrupt_direct_origin_scanning_and_definition_advancement() {
+        // given
+        let text = "x\n".repeat(4096);
+        let document = Document {
+            segments: vec![Segment {
+                output: 0..text.len(),
+                origin: Origin::Direct(SourceSpan {
+                    start_byte: 0,
+                    end_byte: text.len(),
+                    line: 1,
+                    column: 1,
+                }),
+            }],
+            text,
+            definitions: Vec::new(),
+        };
+        let mut cursor = PreambleCursor::new(&document);
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.control.cancel_after_checkpoints(2);
+        // when
+        let error = cursor
+            .authored_line(document.text.len() - 1, &mut budget)
+            .unwrap_err();
+        // then
+        assert!(matches!(error, RenderError::Cancelled(_)));
+        assert!(budget.work > 0 && budget.work < document.text.len());
+        // given
+        let mut options = RenderOptions::default();
+        options.limits.layout_work = 2;
+        let mut budget = Budget::new(&options);
+        let mut cursor = PreambleCursor::new(&document);
+        // when
+        let error = cursor
+            .authored_line(document.text.len() - 1, &mut budget)
+            .unwrap_err();
+        // then
+        assert!(matches!(error, RenderError::Backend(_)));
+        assert!(budget.work <= 2);
+        // given
+        let prefix = (0..200)
+            .map(|index| format!("!define UNUSED_{index} literal\n"))
+            .collect::<String>();
+        let mut budget = Budget::new(&RenderOptions::default());
+        let document = crate::plantuml::preprocess::prepare(
+            &format!("@startuml\n{prefix}A -> B : x\n@enduml"),
+            &mut budget,
+        )
+        .unwrap();
+        let mut cursor = PreambleCursor::new(&document);
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.control.cancel_after_checkpoints(5);
+        // when
+        let error = cursor
+            .advance_definitions(usize::MAX, &mut budget)
+            .unwrap_err();
+        // then
+        assert!(matches!(error, RenderError::Cancelled(_)));
+        assert!(cursor.definition > 0 && cursor.definition < document.definitions.len());
+    }
 
     #[test]
     fn should_map_only_overlapping_expanded_bytes_and_preserve_utf8_byte_columns() {

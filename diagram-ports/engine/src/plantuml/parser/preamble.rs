@@ -5,7 +5,7 @@ use crate::{
     RenderError,
     plantuml::{
         budget::{Budget, bound},
-        origin::Document,
+        origin::{Document, PreambleCursor},
         source::Wrapper,
         style::{self, Alignment, Preamble, PropertyKey, Region, Role, Target},
     },
@@ -161,7 +161,7 @@ impl Lexer {
             budget.charge(chunk.len()).map_err(ParseFailure::terminal)?;
         }
         let mut start = cursor + rest.len() - rest.trim_start().len();
-        let mut end = row.text.trim_end().len();
+        let mut end = row.text.trim_end().len().max(start);
         if kind == TailKind::Region && row.text[start..end].starts_with(':') {
             self.push(Token::Colon, row.span(base, start..start + 1), budget)?;
             start += 1;
@@ -347,7 +347,7 @@ enum Syntax {
 
 pub(in crate::plantuml) struct Builder<'a> {
     pub budget: &'a mut Budget,
-    document: &'a Document,
+    origins: PreambleCursor<'a>,
     wrapper: Wrapper,
     pub preamble: Preamble,
     target: Target,
@@ -359,7 +359,7 @@ impl<'a> Builder<'a> {
     fn new(document: &'a Document, wrapper: Wrapper, budget: &'a mut Budget) -> Self {
         Self {
             budget,
-            document,
+            origins: PreambleCursor::new(document),
             wrapper,
             preamble: Preamble::default(),
             target: Target::Root,
@@ -491,7 +491,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn finish_sheet(&mut self, span: Range<usize>) -> Result<(), ParseFailure> {
-        self.document
+        self.origins
             .deny_sheet_definitions(span, self.budget)
             .map_err(ParseFailure::terminal)
     }
@@ -599,7 +599,8 @@ fn parse_tokens(
                 "invalid or incomplete document preamble/style syntax",
             )
         })?;
-    document
+    builder
+        .origins
         .check_preamble(body.clone(), builder.budget)
         .map_err(ParseFailure::terminal)?;
     Ok((builder.preamble, body))
@@ -648,6 +649,7 @@ fn admit(
         .saturating_mul(std::mem::size_of::<Spanned>())
         .saturating_add(adapters)
         .saturating_add(literal_bytes)
+        .saturating_add(std::mem::size_of::<PreambleCursor<'_>>())
         // Sixteen state/symbol slots, their growth transients, copied diagnostic
         // states and all expected-token String slots/contents are reserved first.
         .saturating_add(24 * symbol_bytes + 56 + 48 * std::mem::size_of::<String>() + 23 * 16);
@@ -665,12 +667,11 @@ fn admit(
     )
     .map_err(ParseFailure::terminal)?;
     budget
-        .charge(
-            tokens
-                .len()
-                .saturating_mul(4)
-                .saturating_add(3 + slots + 23 * (12 + 3)),
-        )
+        .charge(tokens.len().saturating_mul(4).saturating_add(
+            3 + slots
+                + 23 * (12 + 3)
+                + std::mem::size_of::<PreambleCursor<'_>>() / std::mem::size_of::<usize>(),
+        ))
         .map_err(ParseFailure::terminal)
 }
 
@@ -681,6 +682,34 @@ mod tests {
         RenderOptions,
         plantuml::style::{Alignment, Role},
     };
+
+    #[test]
+    fn should_emit_empty_literals_for_whitespace_only_value_tails() {
+        // given
+        for text in [
+            "title   ",
+            "left header\t\u{2003}",
+            "skinparam defaultFontSize \t",
+            "  FontSize \t\u{2003}",
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            let row = super::super::ownership::Ownership::default()
+                .classify(text, &mut budget)
+                .unwrap();
+            let mut lexer = Lexer::default();
+            // when
+            lexer.scan(&row, 10, &mut budget).unwrap();
+            // then
+            assert!(
+                lexer.tokens.iter().any(
+                    |(start, token, end)| matches!(token, Token::Value(value) if value.is_empty())
+                        && start == end
+                ),
+                "{text:?}: {:?}",
+                lexer.tokens
+            );
+        }
+    }
 
     #[test]
     fn should_lower_generated_region_tokens_and_preserve_the_body_span() {
