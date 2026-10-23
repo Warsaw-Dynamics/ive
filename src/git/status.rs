@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
-use git2::{Index, Status, StatusEntry, StatusOptions};
+use git2::{Index, Repository, Status, StatusEntry, StatusOptions};
 
 use super::repo::{self, GitError};
 use super::types::{GitPath, Mark, failed};
@@ -87,8 +87,55 @@ pub fn read(dir: &Path) -> Result<StatusRead, GitError> {
     }
     changes.sort_by(|a, b| a.path.cmp(&b.path));
     let index = repo.index().map_err(&fail)?;
+    ignored.extend(ignored_in_tracked_folders(&repo, &index).map_err(&fail)?);
     let tree = tree_of(&changes, ignored, &index);
     Ok(StatusRead { changes: Arc::new(changes), tree: Arc::new(tree) })
+}
+
+/// What git ignores inside the ignored folders the index has files in: a status that does not walk ignored folders
+/// leaves them out entirely (libgit2 1.9), and walking every ignored folder would walk `target`.
+fn ignored_in_tracked_folders(repo: &Repository, index: &Index) -> Result<Vec<PathBuf>, git2::Error> {
+    let folders = ignored_tracked_folders(repo, index)?;
+    if folders.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut options = StatusOptions::new();
+    options.include_ignored(true).recurse_ignored_dirs(true).exclude_submodules(true).disable_pathspec_match(true);
+    for folder in folders {
+        options.pathspec(folder);
+    }
+    let statuses = repo.statuses(Some(&mut options))?;
+    Ok(statuses.iter().filter(|entry| entry.status().is_ignored()).map(|entry| relative_path(entry.path_bytes())).collect())
+}
+
+/// The topmost folders git ignores that the index has files in.
+fn ignored_tracked_folders(repo: &Repository, index: &Index) -> Result<Vec<PathBuf>, git2::Error> {
+    let mut known = HashMap::new();
+    let mut found: Vec<PathBuf> = Vec::new();
+    for entry in index.iter() {
+        let path = relative_path(&entry.path);
+        // the index is sorted, so the files below a found folder follow it
+        if found.last().is_some_and(|folder| path.starts_with(folder)) {
+            continue;
+        }
+        found.extend(topmost_ignored_folder(repo, &path, &mut known)?);
+    }
+    Ok(found)
+}
+
+/// `path`'s topmost folder git ignores; `known` keeps the answers by folder.
+fn topmost_ignored_folder(repo: &Repository, path: &Path, known: &mut HashMap<PathBuf, bool>) -> Result<Option<PathBuf>, git2::Error> {
+    for folder in folders_of(path).rev() {
+        let ignored = match known.get(folder) {
+            Some(ignored) => *ignored,
+            // the trailing `/` makes git match the folder patterns (`docs/`)
+            None => *known.entry(folder.to_path_buf()).or_insert(repo.is_path_ignored(folder.join(""))?),
+        };
+        if ignored {
+            return Ok(Some(folder.to_path_buf()));
+        }
+    }
+    Ok(None)
 }
 
 /// The tree's view of a walked status, as a status that does not walk untracked folders reports it: a folder the
@@ -350,6 +397,24 @@ mod tests {
 
         // then
         assert_eq!(status.ignored, HashSet::from([PathBuf::from("build"), PathBuf::from("src/y.cache")]));
+    }
+
+    #[test]
+    fn should_report_ignored_files_of_an_ignored_folder_holding_tracked_files() {
+        // given
+        let repo = TestRepo::init();
+        repo.write(".gitignore", "/docs\n");
+        repo.write("docs/kept.md", "kept\n");
+        repo.stage("docs/kept.md");
+        repo.commit("first");
+        repo.write("docs/notes.md", "notes\n");
+        repo.write("docs/build/out/x.txt", "x\n");
+
+        // when
+        let status = tree_status(repo.path()).expect("status");
+
+        // then
+        assert_eq!(status.ignored, HashSet::from([PathBuf::from("docs/notes.md"), PathBuf::from("docs/build")]));
     }
 
     #[test]
