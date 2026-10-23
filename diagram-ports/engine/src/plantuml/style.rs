@@ -179,34 +179,7 @@ fn region(
         }
         return Ok(None);
     }
-    let (head, mut rest) = word(text);
-    let lower = head.to_ascii_lowercase();
-    let (name, align) = match lower.as_str() {
-        "left" | "center" | "right" => {
-            let (name, tail) = word(rest.trim_start());
-            if !name.eq_ignore_ascii_case("header") && !name.eq_ignore_ascii_case("footer") {
-                return Ok(None);
-            }
-            rest = tail;
-            (
-                name.to_ascii_lowercase(),
-                match lower.as_str() {
-                    "left" => Alignment::Left,
-                    "right" => Alignment::Right,
-                    _ => Alignment::Center,
-                },
-            )
-        }
-        _ => (
-            lower.clone(),
-            if lower == "header" {
-                Alignment::Right
-            } else {
-                Alignment::Center
-            },
-        ),
-    };
-    let Some(role) = Role::parse(&name) else {
+    let Some((role, align, rest)) = region_command(text) else {
         return Ok(None);
     };
     let payload = rest
@@ -247,6 +220,39 @@ fn region(
         text: value.into(),
         align,
     }))
+}
+
+pub(super) fn is_preamble(text: &str) -> bool {
+    let text = text.trim();
+    text.eq_ignore_ascii_case("<style>")
+        || text.eq_ignore_ascii_case("</style>")
+        || word(text).0.eq_ignore_ascii_case("skinparam")
+        || region_command(text).is_some()
+}
+
+fn region_command(text: &str) -> Option<(Role, Alignment, &str)> {
+    let (head, rest) = word(text);
+    let lower = head.to_ascii_lowercase();
+    let alignment = match lower.as_str() {
+        "left" => Alignment::Left,
+        "center" => Alignment::Center,
+        "right" => Alignment::Right,
+        _ => {
+            let role = Role::parse(&lower)?;
+            let alignment = if role == Role::Header {
+                Alignment::Right
+            } else {
+                Alignment::Center
+            };
+            return Some((role, alignment, rest));
+        }
+    };
+    let (name, rest) = word(rest.trim_start());
+    let role = Role::parse(&name.to_ascii_lowercase())?;
+    match role {
+        Role::Header | Role::Footer => Some((role, alignment, rest)),
+        _ => None,
+    }
 }
 
 fn word(text: &str) -> (&str, &str) {

@@ -161,9 +161,10 @@ fn tokenize(lines: &[Line], budget: &mut Budget) -> Result<Vec<Token>, RenderErr
                 budget.text(1)?;
                 text.push(ch);
                 if ch == '{'
-                    && let Some(marker) = rest.chars().next().filter(|c| {
-                        matches!(c, '+' | '#' | '-' | '!' | '^' | '*' | '/' | 'S' | 'T')
-                    })
+                    && let Some(marker) = rest
+                        .chars()
+                        .next()
+                        .filter(|c| matches!(c, '+' | '#' | '-' | '!' | '^' | '*' | '/' | 'S'))
                 {
                     budget.text(marker.len_utf8())?;
                     text.push(marker);
@@ -362,14 +363,7 @@ impl Parser<'_> {
 }
 
 fn classify(text: &str, line: usize) -> Result<(LeafKind, &str), RenderError> {
-    if matches!(
-        text.split_whitespace()
-            .next()
-            .unwrap_or("")
-            .to_ascii_lowercase()
-            .as_str(),
-        "skinparam" | "<style>" | "</style>" | "title" | "legend" | "header" | "footer"
-    ) {
+    if super::style::is_preamble(text) {
         return Err(unsupported(
             line,
             &format!("Salt styles/chrome must precede the table: {text:?}"),

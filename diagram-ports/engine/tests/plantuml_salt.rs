@@ -410,3 +410,109 @@ fn should_stop_salt_after_an_inflight_measurement_cancels() {
     assert!(error.contains("cancel"), "{error}");
     assert_eq!(host.calls.load(Ordering::Relaxed), 1);
 }
+
+#[test]
+fn should_reject_every_admitted_chrome_command_form_inside_tables() {
+    // given
+    let mut commands = vec![
+        "title: Late title".to_owned(),
+        "title : Late title".to_owned(),
+        "legend: Late legend".to_owned(),
+        "header: Late header".to_owned(),
+        "footer: Late footer".to_owned(),
+        "TiTlE: Late title".to_owned(),
+    ];
+    for alignment in ["left", "center", "right"] {
+        for region in ["header", "footer"] {
+            for separator in [" ", ": ", " : "] {
+                commands.push(format!("{alignment} {region}{separator}Late chrome"));
+            }
+        }
+    }
+    commands.push("RiGhT\tHeAdEr:\tLate chrome".into());
+    for command in &commands {
+        let output = svg(&format!("{command}\n{{A}}"));
+        assert!(
+            output.contains("id=\"document-"),
+            "missing prefix chrome for {command}"
+        );
+    }
+    // when
+    let accepted: Vec<_> = commands
+        .iter()
+        .filter(
+            |command| match render(&input(&format!("{{\nA\n{command}\n}}")), &options()) {
+                Ok(_) => true,
+                Err(error) => {
+                    assert!(
+                        error
+                            .to_string()
+                            .contains("Salt styles/chrome must precede"),
+                        "{command}: {error}"
+                    );
+                    false
+                }
+            },
+        )
+        .collect();
+    // then
+    assert!(accepted.is_empty(), "accepted late commands: {accepted:?}");
+}
+
+#[test]
+fn should_preserve_literal_controls_and_noncommand_text_near_chrome_keywords() {
+    // given
+    let body = "{\n\"title: field\" | [left header: button]\n[X] right footer: checkbox | (X) center header: radio\nsubtitle: ordinary | left title: ordinary\nright headerboard: ordinary | titlecase ordinary\n}";
+    // when
+    let output = svg(body);
+    let xml = roxmltree::Document::parse(&output).unwrap();
+    // then
+    for text in [
+        "title: field",
+        "left header: button",
+        "right footer: checkbox",
+        "center header: radio",
+        "subtitle: ordinary",
+        "left title: ordinary",
+        "right headerboard: ordinary",
+        "titlecase ordinary",
+    ] {
+        assert!(output.contains(text), "missing {text}");
+    }
+    for kind in [
+        "salt-field",
+        "salt-button",
+        "salt-checkbox-on",
+        "salt-radio-on",
+    ] {
+        assert_eq!(
+            xml.descendants()
+                .filter(|n| n.attribute("data-kind") == Some(kind))
+                .count(),
+            1,
+            "{kind}"
+        );
+    }
+}
+
+#[test]
+fn should_treat_inline_t_words_as_text_and_reserve_only_exact_tree_markers() {
+    // given
+    let mut rejected = Vec::new();
+    // when
+    for text in ["Text", "Textile", "T#literal"] {
+        match render(&input(&format!("{{{text}}}")), &options()) {
+            Ok(output) => assert!(output.svg.contains(text), "missing {text}"),
+            Err(error) => rejected.push(format!("{text}: {error}")),
+        }
+    }
+    for marker in ["T", "T#", "T+", "T-", "T!", "T^"] {
+        let result = render(&input(&format!("{{{marker}\nRoot\n}}")), &options());
+        assert!(result.is_err(), "accepted tree marker {marker}");
+    }
+    // then
+    assert!(
+        rejected.is_empty(),
+        "rejected ordinary inline text: {rejected:?}"
+    );
+}
