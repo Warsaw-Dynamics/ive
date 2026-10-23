@@ -20,6 +20,7 @@ pub(super) enum Wrapper {
     Hcl,
     Chen,
     Git,
+    Creole,
 }
 
 #[cfg(test)]

@@ -61,6 +61,7 @@ enum Mode {
     Uml,
     Literal,
     Git,
+    Creole,
     Other,
 }
 
@@ -78,7 +79,7 @@ impl Ownership {
                 && !self.graph
                 && !self.block
                 && raw.trim_start().starts_with(':'));
-        let literal = raw_body || matches!(self.mode, Mode::Literal | Mode::Git);
+        let literal = raw_body || matches!(self.mode, Mode::Literal | Mode::Git | Mode::Creole);
         let (text, offsets) = if literal || (!self.block && raw.trim_start().starts_with("!define"))
         {
             (raw.to_owned(), Vec::new())
@@ -88,9 +89,9 @@ impl Ownership {
         let command = text.trim();
         let kind = match (raw_body, classify(command)) {
             (true, _) => Kind::Content,
-            (_, Kind::Definition) if matches!(self.mode, Mode::Git) => Kind::Content,
+            (_, Kind::Definition) if matches!(self.mode, Mode::Git | Mode::Creole) => Kind::Content,
             (_, Kind::SheetStart | Kind::SheetEnd)
-                if matches!(self.mode, Mode::Literal | Mode::Git) =>
+                if matches!(self.mode, Mode::Literal | Mode::Git | Mode::Creole) =>
             {
                 Kind::Content
             }
@@ -136,6 +137,7 @@ impl Ownership {
                     | Wrapper::Board
                     | Wrapper::Hcl => Mode::Literal,
                     Wrapper::Git => Mode::Git,
+                    Wrapper::Creole => Mode::Creole,
                     _ => Mode::Other,
                 };
                 self.graph = wrapper == Wrapper::Chen;
@@ -261,6 +263,7 @@ fn classify(command: &str) -> Kind {
         ("hcl", Wrapper::Hcl),
         ("chen", Wrapper::Chen),
         ("git", Wrapper::Git),
+        ("creole", Wrapper::Creole),
     ] {
         if command.strip_prefix("@start") == Some(name) {
             return Kind::Start(wrapper);

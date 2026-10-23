@@ -74,7 +74,7 @@ impl Lexer {
             return Ok(());
         }
         let (base, wrapper, header) = location;
-        if wrapper == Wrapper::Git {
+        if matches!(wrapper, Wrapper::Git | Wrapper::Creole) {
             self.finished = true;
             return self.push(
                 Token::Body,

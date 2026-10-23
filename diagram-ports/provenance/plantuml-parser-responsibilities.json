@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "d3d068a plus Git; 26 generated grammars, no pending syntax or obsolete Line adapters",
+  "basis": "ffd73cb plus standalone Creole document;27 generated grammars, no pending syntax or obsolete Line adapter",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -522,7 +522,7 @@
     {
       "path": "engine/src/plantuml/text.rs",
       "groups": [
-        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["family#1", "new#1", "with_fonts#1", "with_origins#1", "label#1", "styled_label#1", "data_label#1", "tree_label#1", "region_label#1", "base#1", "measure_label#1", "literal_lines#1", "measure_line#1", "font_style#1", "validate_label#1", "append_label#1"]},
+        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["family#1", "new#1", "with_fonts#1", "with_origins#1", "label#1", "styled_label#1", "data_label#1", "tree_label#1", "region_label#1", "document_label#1", "base#1", "measure_label#1", "literal_lines#1", "measure_line#1", "font_style#1", "validate_label#1", "append_label#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["measure#1", "should_bound_aggregate_body_and_chrome_measurement_requests_before_host_call#1", "should_reject_oversized_label_before_scanning_or_retaining_it#1", "should_coalesce_equal_styles_and_keep_color_only_cache_changes#1", "should_bound_tokens_before_measuring_many_short_runs#1", "should_bound_marker_activation_and_escaped_punctuation_with_linear_work#1"]}
       ]
     },
@@ -902,6 +902,73 @@
           "symbols": [
             "should_cancel_long_raw_grid_lexing_before_retaining_a_named_token#1",
             "should_reject_generated_suffixes_and_cancel_generated_delivery_and_eof#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/creoledoc.rs",
+      "groups": [
+        {
+          "role": "semantic",
+          "reason": "Typed line/span and paragraph construction; no source syntax retry.",
+          "symbols": [
+            "new#1",
+            "line#1",
+            "extend#1",
+            "paragraph#1",
+            "finish#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/creoledocscene.rs",
+      "groups": [
+        {
+          "role": "layout",
+          "reason": "Bounded measured paragraph composition and native text scene; no structural syntax admission.",
+          "symbols": [
+            "layout#1",
+            "measure#1",
+            "join#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/creoledoc.rs",
+      "groups": [
+        {
+          "role": "generated-facade",
+          "reason": "Raw borrowed source delivery to generated line/paragraph/EOF productions; errors map once.",
+          "symbols": [
+            "parse#1",
+            "parse_body#1"
+          ]
+        },
+        {
+          "role": "lexical",
+          "reason": "UTF8/horizontal/newline primitives, one-pass protected-byte ownership and explicit unsupported markers.",
+          "symbols": [
+            "lex#1",
+            "reject_marker#1"
+          ]
+        },
+        {
+          "role": "infrastructure",
+          "reason": "Actual-table stack/diagnostic and simultaneous model/token retention admission.",
+          "symbols": [
+            "admit#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Direct generated syntax, source-span, allocation and cancellation controls.",
+          "symbols": [
+            "should_build_maximal_paragraphs_and_preserve_borrowed_physical_line_spans#1",
+            "should_reject_incomplete_generated_lines_and_cancel_each_token_and_eof#1",
+            "should_cancel_lexical_scanning_and_refuse_tiny_generated_admission_before_model_growth#1"
           ]
         }
       ]

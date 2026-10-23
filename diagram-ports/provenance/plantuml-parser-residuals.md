@@ -1,5 +1,7 @@
 # Completed current-parser migration inventory
 
+Task3Q adds `creoledoc.lalrpop` as the sole physical-line/maximal-paragraph/blank-paragraph/EOF authority for standalone Creole. Primitive raw word/space/newline ownership is lexical; typed source spans and measured composition are semantic/layout. Styled runs reuse the existing generated `creole.lalrpop` entry once per paragraph. Current inventory:27 grammars,90 authored modules/1269 classified functions, zero pending syntax exemptions. Earlier counts below describe historical checkpoints.
+
 Task3O adds the registered legacy BPM generated event/branch/else/end grammar and dedicated immutable instruction/flow graph with sparse native branch layout. Raw event labels, finite keyword/newline delivery and branch-depth admission remain lexical; graph lowering and bounded geometry remain below syntax. Current inventory after Task3M integration:26 grammars,87 authored Rust modules/1,252 classified function declarations. Older per-checkpoint counts below remain historical. Single/empty-arm branches, named merge/goto/resume and modern activity syntax are explicit errors, not pending handwritten syntax routes.
 
 Central Chart + EBNF + regex integration retains **24 generated grammars**, **81 authored Rust modules / 1,186 registered functions**, and zero pending syntax exemptions. All prior family grammars and Chart's typed legend/series/layout remain registered; new railroad syntax has its separate generated authority. The older per-task counts below describe historical checkpoints.

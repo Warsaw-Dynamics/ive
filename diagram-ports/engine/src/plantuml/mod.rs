@@ -17,6 +17,8 @@ mod chen;
 mod chenscene;
 mod chrome;
 mod creole;
+mod creoledoc;
+mod creoledocscene;
 mod data;
 mod datascene;
 mod ebnf;
@@ -222,6 +224,14 @@ pub(crate) fn render(
     } else {
         None
     };
+    let creole_document = if wrapper == source::Wrapper::Creole {
+        Some(parser::creoledoc::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -232,7 +242,9 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if let Some(model) = &git_model {
+        let (family, scene) = if let Some(model) = &creole_document {
+            ("creole", creoledocscene::layout(model, &mut context)?)
+        } else if let Some(model) = &git_model {
             ("git", gitscene::layout(model, &mut context)?)
         } else if let Some(model) = &bpm_model {
             ("bpm", bpmscene::layout(model, &mut context)?)

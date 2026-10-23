@@ -1,0 +1,27 @@
+// Physical lines and maximal text paragraphs separated by explicit blank lines.
+grammar(builder: &mut crate::plantuml::creoledoc::Builder<'_>);
+use crate::plantuml::{creoledoc::Paragraph, parser::{creoledoc::Token, error::ParseFailure}};
+use std::ops::Range;
+pub Document: () = {
+    <Chunks> => (),
+    <_chunks:Chunks> <lines:ParagraphLines> =>? builder.paragraph(Paragraph::Text(lines)).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Chunks: () = {
+    => (),
+    <_chunks:Chunks> <blank:BlankLine> =>? builder.paragraph(Paragraph::Blank(blank)).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_chunks:Chunks> <lines:ParagraphLines> <blank:BlankLine> =>? {
+        builder.paragraph(Paragraph::Text(lines)).and_then(|_| builder.paragraph(Paragraph::Blank(blank))).map_err(|error| lalrpop_util::ParseError::User { error })
+    },
+};
+ParagraphLines: Range<usize> = {
+    <line:TextLine> => line..line + 1,
+    <lines:ParagraphLines> <next:TextLine> =>? builder.extend(lines, next).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+TextLine: usize = <start:@L> <_parts:Parts> <end:@L> "newline" =>? builder.line(start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Parts: () = { "text" => (), <Parts> "text" =>? builder.budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) }) };
+BlankLine: usize = <start:@L> "blank" <end:@R> =>? builder.line(start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token { "text" => Token::Text, "newline" => Token::Newline, "blank" => Token::Blank }
+}

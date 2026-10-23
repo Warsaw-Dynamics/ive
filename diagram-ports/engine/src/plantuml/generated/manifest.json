@@ -48,6 +48,12 @@
       "grammarSha256": "4203f6ac35369754e9b2db6b1f614bdc6fd11ad41992fefbe3d158ace1e91649"
     },
     {
+      "generated": "engine/src/plantuml/generated/creoledoc.rs",
+      "generatedSha256": "1ad5048fd053b399512968938653d54d05c89b48fc84c0ecc83be7b49d7324e3",
+      "grammar": "engine/src/plantuml/parser/grammar/creoledoc.lalrpop",
+      "grammarSha256": "e3969a14dd20bf11223b15092e2573d29cc175dcab52ac3c59acb5f03a79dc2f"
+    },
+    {
       "generated": "engine/src/plantuml/generated/definition.rs",
       "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
       "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
@@ -55,9 +61,9 @@
     },
     {
       "generated": "engine/src/plantuml/generated/document.rs",
-      "generatedSha256": "353bd6692ad4de15f9905609ced3a0f687fa63f0d699076405c131e057005b1c",
+      "generatedSha256": "ab6119bc99343503c86222560a90ef1b8a208e5772a1d48145a59ff29f2d1d30",
       "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
-      "grammarSha256": "6d0ff164839deae47862ae90b103ea7a38f90a1a6e91a6876d46b789f1ad72d0"
+      "grammarSha256": "db9eccc1d40187f34c63a78365f892b9c154e059b60eaf13fd2ff7e816f2ade1"
     },
     {
       "generated": "engine/src/plantuml/generated/ebnf.rs",
