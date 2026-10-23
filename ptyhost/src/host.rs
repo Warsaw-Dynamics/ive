@@ -62,7 +62,9 @@ pub fn start(launcher: &Launcher, registry: &Registry, config: &HostConfig) -> i
     if registry.session(&config.id)?.is_some() {
         return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("session {} is already running", config.id)));
     }
-    registry.create_dir()?;
+    registry.create_dir().map_err(|error| about(error, "cannot create the terminals folder", registry.dir()))?;
+    let log = registry.log(&config.id);
+    let log_file = File::create(&log).map_err(|error| about(error, "cannot create the terminal host's log", &log))?;
     let mut command = Command::new(&launcher.exe);
     command
         .args(&launcher.args)
@@ -71,15 +73,20 @@ pub fn start(launcher: &Launcher, registry: &Registry, config: &HostConfig) -> i
         .env(DIR_ENV, registry.dir())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(File::create(registry.log(&config.id))?);
+        .stderr(log_file);
     // SAFETY: setsid is async-signal-safe
     unsafe { command.pre_exec(|| check(libc::setsid()).map(drop)) };
-    let mut host = command.spawn()?;
+    let mut host = command.spawn().map_err(|error| about(error, "cannot start the terminal host", &launcher.exe))?;
     let pid = host.id();
     let started = wait_until_live(registry, &config.id, &mut host);
     // reaps the host if it ends while the starter still runs; after that, init does
     std::thread::spawn(move || host.wait());
     started.map(|()| pid)
+}
+
+/// `error` with what failed and on which path, keeping its kind: `cannot start the terminal host /usr/bin/ive: …`.
+fn about(error: io::Error, what: &str, path: &std::path::Path) -> io::Error {
+    io::Error::new(error.kind(), format!("{what} {}: {error}", path.display()))
 }
 
 fn serve_args(config: &HostConfig) -> Vec<OsString> {
@@ -116,17 +123,20 @@ fn program_env(vars: impl Iterator<Item = (OsString, OsString)>) -> Vec<(OsStrin
 /// Waits until the session is live, or the host ended first; on failure the host's log becomes the error.
 fn wait_until_live(registry: &Registry, id: &str, host: &mut Child) -> io::Result<()> {
     let deadline = Instant::now() + START_TIMEOUT;
-    let mut ended = false;
-    while !ended && Instant::now() < deadline {
+    let mut ended = None;
+    while ended.is_none() && Instant::now() < deadline {
         if registry.session(id)?.is_some() {
             return Ok(());
         }
-        ended = host.try_wait()?.is_some();
+        ended = host.try_wait()?;
         std::thread::sleep(Duration::from_millis(10));
     }
     let log = std::fs::read_to_string(registry.log(id)).unwrap_or_default();
     let _ = std::fs::remove_file(registry.log(id));
-    let reason = if ended { "ended" } else { "did not start within 3 s" };
+    let reason = match ended {
+        Some(status) => format!("ended ({status})"),
+        None => "did not start within 3 s".to_owned(),
+    };
     Err(io::Error::other(format!("session {id} {reason}: {}", log.trim())))
 }
 
@@ -636,6 +646,21 @@ fn check(result: libc::c_int) -> io::Result<libc::c_int> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_name_host_program_that_cannot_start() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let registry = Registry::at(dir.path().join("r"));
+        let launcher = Launcher { exe: PathBuf::from("/no/such/ive"), args: Vec::new() };
+        let config = HostConfig { id: "t1".to_owned(), command: vec!["sh".to_owned()], cwd: PathBuf::from("/"), size: Size::DEFAULT, env: Vec::new(), labels: Vec::new() };
+
+        // when
+        let error = start(&launcher, &registry, &config).unwrap_err();
+
+        // then
+        assert!(error.to_string().starts_with("cannot start the terminal host /no/such/ive: "), "{error}");
+    }
 
     #[test]
     fn should_pass_env_to_the_host_outside_its_command_line() {

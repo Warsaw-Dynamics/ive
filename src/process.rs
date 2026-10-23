@@ -199,6 +199,11 @@ impl<V> Processes<V> {
         self.closing.insert(id);
     }
 
+    /// Whether IVE is ending process `id` itself, so a signal it dies of is no failure.
+    pub fn is_stopping(&self, id: ProcessId) -> bool {
+        self.stopping.contains(&id)
+    }
+
     pub fn is_closing(&self, id: ProcessId) -> bool {
         self.closing.contains(&id)
     }
@@ -548,6 +553,19 @@ mod tests {
         // then
         assert!(processes.is_closing(run));
         assert_eq!(processes.get(run).unwrap().run.as_ref().map(|origin| origin.life), Some(RunLife::Exited { code: 143, stopped: true }));
+    }
+
+    #[test]
+    fn should_know_a_process_ive_is_stopping() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let (stopped, running) = (processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap(), processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap());
+
+        // when
+        processes.mark_closing(stopped);
+
+        // then
+        assert_eq!((processes.is_stopping(stopped), processes.is_stopping(running)), (true, false));
     }
 
     #[test]

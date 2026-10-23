@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use alacritty_terminal::event::Event;
-use gpui::{App, Context, SharedString, Task, Window};
+use gpui::{App, Context, Task, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
@@ -16,7 +16,8 @@ use crate::process_directory::directory_of;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
-use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView};
+use crate::terminal::exit::{Started, start_failure};
+use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView, login_shell};
 use crate::theme::Theme;
 #[cfg(unix)]
 use crate::terminal::{DirectoryReport, DirectoryTracker, Sample};
@@ -92,6 +93,13 @@ impl Workspace {
     ) -> TabId {
         // hosted when this IVE owns the hosted terminals, so the shell outlives IVE
         #[cfg(unix)]
+        let runs_in = match &self.hosted {
+            Some(_) => "a terminal host, so it outlives IVE",
+            None => "IVE, so it ends with IVE",
+        };
+        #[cfg(not(unix))]
+        let runs_in = "IVE, so it ends with IVE";
+        #[cfg(unix)]
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch: Launch::shell(), labels: [session_labels(checkout.as_ref()), labels].concat() },
             None => Source::InProcess(Launch::shell()),
@@ -107,10 +115,10 @@ impl Workspace {
                 self.tree_changed(cx);
                 Tab::Process(id)
             }
-            Err(error) => Tab::Failed {
-                title: "Terminal".to_owned(),
-                failure: crate::failure::Failure::new(format!("Cannot start a shell in {}: {error}", directory.display())),
-            },
+            Err(error) => {
+                let started = Started { command: login_shell(), folder: directory.display().to_string() };
+                Tab::Failed { title: "Terminal".to_owned(), failure: start_failure(started, runs_in, &error) }
+            }
         };
         self.open_tab(tab, window, cx)
     }
@@ -293,7 +301,7 @@ impl Workspace {
     }
 
     /// Removes the process; its tab closes, or, with `failure`, shows why the shell ended.
-    fn remove_process(&mut self, id: ProcessId, failure: Option<SharedString>, window: &mut Window, cx: &mut Context<Self>) {
+    fn remove_process(&mut self, id: ProcessId, failure: Option<crate::failure::Failure>, window: &mut Window, cx: &mut Context<Self>) {
         let title = self.processes.get(id).map(|process| process.title()).unwrap_or_default();
         let was_live_run = self.processes.get(id).is_some_and(|process| process.run.is_some() && process.is_live());
         self.processes.close(id);
@@ -302,8 +310,8 @@ impl Workspace {
         }
         if let Some(tab) = self.tabs.find(|tab| tab.shows_process(id)) {
             match failure {
-                Some(error) => {
-                    self.tabs.replace(tab, Tab::Failed { title, failure: crate::failure::Failure::new(error.to_string()) });
+                Some(failure) => {
+                    self.tabs.replace(tab, Tab::Failed { title, failure });
                 }
                 None => {
                     self.tabs.close(tab);
@@ -339,7 +347,9 @@ impl Workspace {
             TerminalState::Running if shown => cx.notify(),
             TerminalState::Running => detached.into_iter().for_each(|tab| self.redraw_tab_window(tab, cx)),
             TerminalState::Closed => self.remove_process(id, None, window, cx),
-            TerminalState::Failed(error) => self.remove_process(id, Some(error), window, cx),
+            // a shell IVE is stopping dies of the signal IVE sent: no failure
+            TerminalState::Failed(_) if self.processes.is_stopping(id) => self.remove_process(id, None, window, cx),
+            TerminalState::Failed(failure) => self.remove_process(id, Some(failure), window, cx),
             TerminalState::Exited(code) => {
                 self.run_exited(id, code, window, cx);
                 // Stop ends a run for good: its row goes rather than stay greyed
