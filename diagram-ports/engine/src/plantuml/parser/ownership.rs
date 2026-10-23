@@ -33,6 +33,7 @@ pub(in crate::plantuml) struct Row {
     pub annotated_start: bool,
 }
 
+#[derive(Clone, Copy)]
 pub(in crate::plantuml) struct Ownership {
     block: bool,
     mode: Mode,

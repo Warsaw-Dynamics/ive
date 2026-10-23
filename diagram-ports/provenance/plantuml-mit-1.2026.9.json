@@ -2334,7 +2334,9 @@
       "path": "net/sourceforge/plantuml/sequencediagram/command/CommandParticipant.java",
       "sha256": "c74459ee3f59a63cc9c17421bb32280cac43961870c528b3db5083fa38e49826",
       "rust": [
-        "engine/src/plantuml/sequence.rs"
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Participant kinds and lifecycle declaration semantics; repeated declarations deliberately rejected.",
       "copyrights": [
@@ -2347,7 +2349,9 @@
       "path": "net/sourceforge/plantuml/sequencediagram/command/CommandParticipantA.java",
       "sha256": "9727e6883fa7de1903c9ad13d81a1588a7f27561f6b9a3d05a4dfe147b113f97",
       "rust": [
-        "engine/src/plantuml/sequence.rs"
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Unquoted and display/alias participant declaration syntax subset.",
       "copyrights": [
@@ -2361,7 +2365,9 @@
       "sha256": "03761e98aa8f1be792613db723c8df549f1c4b4f35d681e1ba19d3ab08034bca",
       "rust": [
         "engine/src/plantuml/sequence.rs",
-        "engine/src/plantuml/arrow.rs"
+        "engine/src/plantuml/arrow.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Directional/dashed/open/self messages and endpoint ownership subset.",
       "copyrights": [
@@ -2374,7 +2380,9 @@
       "path": "net/sourceforge/plantuml/sequencediagram/command/CommandActivate.java",
       "sha256": "fdafa6611415bc04ee783569cc4e0b8c79b7b762812d7ccebffed1f8af26da31",
       "rust": [
-        "engine/src/plantuml/sequence.rs"
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Explicit activation/deactivation/create/destroy event vocabulary and balanced native stacks.",
       "copyrights": [
@@ -2387,7 +2395,9 @@
       "path": "net/sourceforge/plantuml/sequencediagram/command/CommandGrouping.java",
       "sha256": "42df2cf669c2654284ef41878601a8686e5395f85af286499073ce9d4b1faf7a",
       "rust": [
-        "engine/src/plantuml/sequence.rs"
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Nested group/alt/else/loop/opt/par/break/critical event vocabulary; no parallel execution anchors.",
       "copyrights": [
@@ -2400,7 +2410,9 @@
       "path": "net/sourceforge/plantuml/command/note/sequence/FactorySequenceNoteCommand.java",
       "sha256": "4d42db46c6ec4441108c5e58ec87c735f19b766d25d341a19c484539dbdb0323",
       "rust": [
-        "engine/src/plantuml/sequence.rs"
+        "engine/src/plantuml/sequence.rs",
+        "engine/src/plantuml/parser/sequence.rs",
+        "engine/src/plantuml/parser/grammar/sequence.lalrpop"
       ],
       "behavior": "Single-participant left/right/over note grammar and multiline labels.",
       "copyrights": [

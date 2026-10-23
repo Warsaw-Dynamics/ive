@@ -77,6 +77,11 @@ pub(crate) fn render(
     } else {
         Selection::Sequence
     };
+    let sequence_model = if wrapper == source::Wrapper::Uml && selection == Selection::Sequence {
+        Some(parser::sequence::parse(prepared.body, &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -139,8 +144,10 @@ pub(crate) fn render(
             let model = timing::parse(lines, context.budget)?;
             ("timing", timingscene::layout(&model, &mut context)?)
         } else {
-            let model = sequence::parse(lines, context.budget)?;
-            ("sequence", sequence::layout(&model, &mut context)?)
+            let model = sequence_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML sequence selection has no parsed model".into())
+            })?;
+            ("sequence", sequence::layout(model, &mut context)?)
         };
         let scene = chrome::compose(scene, &preamble, &mut context)?;
         let raw = svg::serialize(&scene, &mut budget)?;

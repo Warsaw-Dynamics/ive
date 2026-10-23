@@ -170,7 +170,11 @@ fn scan<'s>(
     )
     .map_err(ParseFailure::terminal)?;
     budget.checkpoint().map_err(ParseFailure::terminal)?;
+    budget
+        .charge(3 * std::mem::size_of::<Ownership>())
+        .map_err(ParseFailure::terminal)?;
     let mut ownership = Ownership::default();
+    let mut body_ownership = ownership;
     let mut tokens = Vec::new();
     let mut lines = Vec::new();
     let mut preamble = super::preamble::Lexer::default();
@@ -187,6 +191,8 @@ fn scan<'s>(
         } else {
             raw
         };
+        budget.charge(1).map_err(ParseFailure::terminal)?;
+        let checkpoint = ownership;
         let row = ownership.classify(raw, budget)?;
         if row.text.trim_start().starts_with('!') {
             return Err(ParseFailure::unsupported(
@@ -220,7 +226,12 @@ fn scan<'s>(
         match row.kind {
             Kind::Start(value) => wrapper = value,
             Kind::Content | Kind::Empty | Kind::Trivia | Kind::SheetStart | Kind::SheetEnd => {
+                let finished = preamble.finished();
                 preamble.row(&row, (offset, wrapper, evidence), budget)?;
+                if !finished && preamble.finished() {
+                    budget.charge(1).map_err(ParseFailure::terminal)?;
+                    body_ownership = checkpoint;
+                }
                 append_line(row, (index + 1, wrapper, raw), &mut lines, budget)?
             }
             _ => {}
@@ -231,7 +242,8 @@ fn scan<'s>(
     let adapters = lines
         .capacity()
         .saturating_mul(std::mem::size_of::<Line>())
-        .saturating_add(document.text.len().saturating_mul(2));
+        .saturating_add(document.text.len().saturating_mul(2))
+        .saturating_add(std::mem::size_of::<BodySource<'_>>());
     let retained = adapters.saturating_add(preamble.retained_bytes());
     let bounds = validate_retained(tokens, (offset, retained), budget)?;
     if timing_at > 0 && !timing_declaration {
@@ -245,6 +257,8 @@ fn scan<'s>(
         body: BodySource {
             document,
             range: bounds.range,
+            ownership: body_ownership,
+            adapters,
         },
         lines,
         preamble_tokens: preamble.tokens,

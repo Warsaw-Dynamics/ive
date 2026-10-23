@@ -55,6 +55,9 @@ pub(in crate::plantuml) struct Lexer {
 }
 
 impl Lexer {
+    pub fn finished(&self) -> bool {
+        self.finished
+    }
     pub fn retained_bytes(&self) -> usize {
         self.tokens
             .capacity()
@@ -549,11 +552,7 @@ pub(in crate::plantuml) fn parse(
     budget: &mut Budget,
 ) -> Result<(Preamble, Range<usize>), RenderError> {
     let tokens = std::mem::take(&mut prepared.preamble_tokens);
-    let adapters = prepared
-        .lines
-        .capacity()
-        .saturating_mul(std::mem::size_of::<super::super::source::Line>())
-        .saturating_add(prepared.body.document.text.len().saturating_mul(2));
+    let adapters = prepared.body.adapters;
     let (preamble, boundary) = parse_tokens(
         Input {
             tokens,

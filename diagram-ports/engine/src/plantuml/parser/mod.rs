@@ -6,6 +6,7 @@ pub(super) mod error;
 pub(super) mod header;
 pub(super) mod ownership;
 pub(super) mod preamble;
+pub(super) mod sequence;
 pub(super) mod token;
 
 pub(super) use definition::parse_definition;
@@ -13,6 +14,8 @@ pub(super) use definition::parse_definition;
 pub(super) struct BodySource<'s> {
     pub document: &'s super::origin::Document,
     pub range: std::ops::Range<usize>,
+    pub ownership: ownership::Ownership,
+    pub adapters: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -40,3 +43,8 @@ mod generated_header;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/preamble.rs"]
 mod generated_preamble;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/sequence.rs"]
+mod generated_sequence;

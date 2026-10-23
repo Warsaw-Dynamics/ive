@@ -1,12 +1,10 @@
 //! PlantUML MIT 1.2026.9: sequencediagram command event semantics.
 //! Lane geometry is original native code; exact source traces are in provenance/.
 use super::{
-    arrow::{self, Arrow, End},
-    budget::{Budget, invalid, unsupported},
-    lexer,
+    arrow::{self, Arrow},
+    budget::{Budget, invalid},
     scene::{Dash, Decoration, Element, Paint, Point, Rect, Scene, Shape, text_at},
-    source::Line,
-    text::{Context, Label, validate_label},
+    text::{Context, Label},
 };
 use crate::RenderError;
 
@@ -23,7 +21,7 @@ pub(super) struct Participant {
     pub kind: ParticipantKind,
 }
 #[derive(Clone, Copy, Debug)]
-enum Side {
+pub(in crate::plantuml) enum Side {
     Left,
     Right,
     Over,
@@ -61,330 +59,348 @@ enum Life {
     Alive,
     Dead,
 }
-struct Parser {
+pub(in crate::plantuml) struct Builder<'b> {
+    pub budget: &'b mut Budget,
     model: Sequence,
     active: Vec<usize>,
     life: Vec<Life>,
-    frames: Vec<String>,
+    frames: Vec<FrameKind>,
+    note: String,
+    retained_bytes: usize,
 }
 
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Sequence, RenderError> {
-    let mut parser = Parser {
-        model: Sequence {
-            participants: Vec::new(),
-            events: Vec::new(),
-        },
-        active: Vec::new(),
-        life: Vec::new(),
-        frames: Vec::new(),
-    };
-    let mut index = 0;
-    while index < lines.len() {
-        budget.charge(1)?;
-        let line = &lines[index];
-        let (head, label) = lexer::split_label(line);
-        let tokens = lexer::tokens(
-            &Line {
-                number: line.number,
-                text: head.into(),
-            },
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::plantuml) enum FrameKind {
+    Group,
+    Alt,
+    Opt,
+    Loop,
+    Par,
+    Break,
+    Critical,
+}
+impl FrameKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Group => "group",
+            Self::Alt => "alt",
+            Self::Opt => "opt",
+            Self::Loop => "loop",
+            Self::Par => "par",
+            Self::Break => "break",
+            Self::Critical => "critical",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug)]
+pub(in crate::plantuml) enum Lifecycle {
+    Activate,
+    Deactivate,
+    Create,
+    Destroy,
+}
+#[derive(Clone, Debug)]
+pub(in crate::plantuml) struct Name {
+    pub text: String,
+    pub quoted: bool,
+}
+pub(in crate::plantuml) struct Declaration {
+    pub name: String,
+    pub label: String,
+}
+pub(in crate::plantuml) struct Message {
+    pub left: Name,
+    pub right: Name,
+    pub arrow: Arrow,
+    pub reverse: bool,
+    pub label: String,
+}
+pub(in crate::plantuml) struct Anchor {
+    pub side: Side,
+    pub name: Name,
+}
+
+use super::parser::error::ParseFailure;
+use std::ops::Range;
+
+impl<'b> Builder<'b> {
+    pub fn new(budget: &'b mut Budget, retained_bytes: usize) -> Self {
+        Self {
             budget,
-        )?;
-        if tokens.is_empty() {
-            return Err(invalid(line.number, "empty command"));
+            model: Sequence {
+                participants: Vec::new(),
+                events: Vec::new(),
+            },
+            active: Vec::new(),
+            life: Vec::new(),
+            frames: Vec::new(),
+            note: String::new(),
+            retained_bytes,
         }
-        if tokens[0].text == "note" {
-            let label = collect_note((lines, &mut index), label, budget)?;
-            parser.note((line.number, &tokens), &label, budget)?;
-        } else {
-            parser.command(line, &tokens, label, budget)?;
-        }
-        index += 1;
     }
-    if !parser.frames.is_empty() || parser.active.iter().any(|n| *n > 0) {
-        return Err(invalid(
-            lines.last().unwrap().number,
-            "unclosed group or activation",
-        ));
-    }
-    if parser.model.participants.is_empty() {
-        return Err(invalid(1, "sequence has no participants"));
-    }
-    Ok(parser.model)
-}
 
-fn collect_note(
-    input: (&[Line], &mut usize),
-    single: &str,
-    budget: &mut Budget,
-) -> Result<String, RenderError> {
-    let (lines, index) = input;
-    let mut body = String::new();
-    if lexer::split_label(&lines[*index]).0 != lines[*index].text {
-        super::text::append_label(&mut body, single, budget)?;
-        return Ok(body);
+    pub fn tick(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)
     }
-    let start = *index;
-    while *index + 1 < lines.len() {
-        *index += 1;
-        if lines[*index].text == "end note" {
-            return Ok(body);
-        }
-        if *index > start + 1 {
-            super::text::append_label(&mut body, "\n", budget)?;
-        }
-        super::text::append_label(&mut body, &lines[*index].text, budget)?;
-    }
-    Err(invalid(lines[start].number, "unterminated note"))
-}
 
-impl Parser {
-    fn participant(&mut self, name: &str, budget: &mut Budget) -> Result<usize, RenderError> {
-        budget.charge(self.model.participants.len())?;
+    pub fn single(&mut self, name: Name) -> Result<Declaration, ParseFailure> {
+        self.budget
+            .charge(name.text.len())
+            .map_err(ParseFailure::terminal)?;
+        Ok(Declaration {
+            name: name.text.clone(),
+            label: name.text,
+        })
+    }
+
+    pub fn finish(self, span: Range<usize>) -> Result<Sequence, ParseFailure> {
+        self.budget
+            .charge(self.active.len())
+            .map_err(ParseFailure::terminal)?;
+        self.budget.checkpoint().map_err(ParseFailure::terminal)?;
+        if self.active.iter().any(|n| *n > 0) {
+            return Err(ParseFailure::syntax(span, "unclosed group or activation"));
+        }
+        if self.model.participants.is_empty() {
+            return Err(ParseFailure::syntax(span, "sequence has no participants"));
+        }
+        Ok(self.model)
+    }
+
+    fn participant(&mut self, name: &str) -> Result<usize, ParseFailure> {
+        self.budget
+            .charge(self.model.participants.len())
+            .map_err(ParseFailure::terminal)?;
         if let Some(index) = self.model.participants.iter().position(|p| p.name == name) {
             return Ok(index);
         }
-        budget.item()?;
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(name.len().saturating_mul(2))
+            .map_err(ParseFailure::terminal)?;
         let index = self.model.participants.len();
-        self.model.participants.push(Participant {
-            name: name.into(),
-            label: name.into(),
-            kind: ParticipantKind::Participant,
-        });
-        self.active.push(0);
-        self.life.push(Life::Alive);
+        retain(
+            (&mut self.model.participants, &mut self.retained_bytes),
+            Participant {
+                name: name.into(),
+                label: name.into(),
+                kind: ParticipantKind::Participant,
+            },
+            self.budget,
+        )?;
+        retain((&mut self.active, &mut self.retained_bytes), 0, self.budget)?;
+        retain(
+            (&mut self.life, &mut self.retained_bytes),
+            Life::Alive,
+            self.budget,
+        )?;
         Ok(index)
     }
 
-    fn push(&mut self, event: Event, budget: &mut Budget) -> Result<(), RenderError> {
-        budget.item()?;
-        self.model.events.push(event);
-        Ok(())
+    fn push(&mut self, event: Event) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        retain(
+            (&mut self.model.events, &mut self.retained_bytes),
+            event,
+            self.budget,
+        )
     }
 
-    fn command(
+    pub fn declare(
         &mut self,
-        line: &Line,
-        tokens: &[lexer::Token],
-        label: &str,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        if matches!(
-            tokens[0].text.as_str(),
-            "participant"
-                | "actor"
-                | "database"
-                | "activate"
-                | "deactivate"
-                | "create"
-                | "destroy"
-                | "end"
-        ) && lexer::split_label(line).0 != line.text
-        {
-            return Err(unsupported(line.number, "non-message command colon suffix"));
-        }
-        match tokens[0].text.as_str() {
-            "participant" | "actor" | "database" => self.declare(line, tokens, budget),
-            "activate" | "deactivate" | "create" | "destroy" => {
-                self.lifecycle(line, tokens, budget)
-            }
-            "group" | "alt" | "opt" | "loop" | "par" | "break" | "critical" => {
-                self.open(line, budget)
-            }
-            "else" => {
-                validate_label(line.text[4..].trim(), line.number)?;
-                if self.frames.last().is_none_or(|f| f != "alt" && f != "par") {
-                    return Err(invalid(line.number, "else outside alt/par frame"));
-                }
-                self.push(Event::Else(line.text[4..].trim().into()), budget)
-            }
-            "end" if tokens.len() == 1 => {
-                self.frames
-                    .pop()
-                    .ok_or_else(|| invalid(line.number, "end without group"))?;
-                self.push(Event::Close, budget)
-            }
-            _ => self.message(line, tokens, label, budget),
-        }
-    }
-
-    fn declare(
-        &mut self,
-        line: &Line,
-        tokens: &[lexer::Token],
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let (name, label) = lexer::name(&tokens[1..], line.number)?;
-        validate_label(&label, line.number)?;
-        budget.charge(self.model.participants.len())?;
+        declaration: (ParticipantKind, Declaration),
+        span: Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        let (kind, Declaration { name, label }) = declaration;
+        self.budget
+            .charge(self.model.participants.len())
+            .map_err(ParseFailure::terminal)?;
         if self.model.participants.iter().any(|p| p.name == name) {
-            return Err(invalid(
-                line.number,
-                format!("duplicate participant {name:?}"),
-            ));
+            return Err(ParseFailure::syntax(span, "duplicate sequence participant"));
         }
-        let id = self.participant(&name, budget)?;
-        self.model.participants[id] = Participant {
-            name,
-            label,
-            kind: match tokens[0].text.as_str() {
-                "actor" => ParticipantKind::Actor,
-                "database" => ParticipantKind::Database,
-                _ => ParticipantKind::Participant,
-            },
-        };
+        let id = self.participant(&name)?;
+        self.budget
+            .text(label.len())
+            .map_err(ParseFailure::terminal)?;
+        self.model.participants[id] = Participant { name, label, kind };
         Ok(())
     }
 
-    fn lifecycle(
+    pub fn lifecycle(
         &mut self,
-        line: &Line,
-        tokens: &[lexer::Token],
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        if tokens.len() != 2 {
-            return Err(unsupported(line.number, &line.text));
-        }
-        lexer::validate_name(&tokens[1], line.number)?;
-        let existed = self
-            .model
-            .participants
-            .iter()
-            .any(|p| p.name == tokens[1].text);
-        let id = self.participant(&tokens[1].text, budget)?;
+        command: (Lifecycle, Name),
+        span: Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        let (kind, name) = command;
+        self.budget
+            .charge(self.model.participants.len())
+            .map_err(ParseFailure::terminal)?;
+        let existed = self.model.participants.iter().any(|p| p.name == name.text);
+        let id = self.participant(&name.text)?;
         if matches!(self.life[id], Life::Dead) {
-            return Err(invalid(line.number, "participant already destroyed"));
+            return Err(ParseFailure::syntax(span, "participant already destroyed"));
         }
-        let event = match tokens[0].text.as_str() {
-            "activate" => {
+        let event = match kind {
+            Lifecycle::Activate => {
+                self.budget
+                    .depth(self.active[id] + 1)
+                    .map_err(ParseFailure::terminal)?;
                 self.active[id] += 1;
-                budget.depth(self.active[id])?;
                 Event::Activate(id)
             }
-            "deactivate" => {
-                self.active[id] = self.active[id]
-                    .checked_sub(1)
-                    .ok_or_else(|| invalid(line.number, "deactivate without activate"))?;
+            Lifecycle::Deactivate => {
+                self.active[id] = self.active[id].checked_sub(1).ok_or_else(|| {
+                    ParseFailure::syntax(span.clone(), "deactivate without activate")
+                })?;
                 Event::Deactivate(id)
             }
-            "create" if !existed => Event::Create(id),
-            "create" => return Err(invalid(line.number, "create requires a new participant")),
-            _ => {
+            Lifecycle::Create if existed => {
+                return Err(ParseFailure::syntax(
+                    span,
+                    "create requires a new participant",
+                ));
+            }
+            Lifecycle::Create => Event::Create(id),
+            Lifecycle::Destroy => {
                 if self.active[id] > 0 {
-                    return Err(invalid(line.number, "destroy with unclosed activation"));
+                    return Err(ParseFailure::syntax(
+                        span,
+                        "destroy with unclosed activation",
+                    ));
                 }
                 self.life[id] = Life::Dead;
                 Event::Destroy(id)
             }
         };
-        self.push(event, budget)
+        self.push(event)
     }
 
-    fn open(&mut self, line: &Line, budget: &mut Budget) -> Result<(), RenderError> {
-        let (kind, label) = line.text.split_once(' ').unwrap_or((&line.text, ""));
-        validate_label(label, line.number)?;
-        self.frames.push(kind.into());
-        budget.depth(self.frames.len())?;
-        self.push(
-            Event::Open {
-                kind: kind.into(),
-                label: label.into(),
-            },
-            budget,
-        )
+    pub fn open(&mut self, frame: (FrameKind, String)) -> Result<(), ParseFailure> {
+        let (kind, label) = frame;
+        self.budget
+            .depth(self.frames.len() + 1)
+            .map_err(ParseFailure::terminal)?;
+        self.tick()?;
+        retain(
+            (&mut self.frames, &mut self.retained_bytes),
+            kind,
+            self.budget,
+        )?;
+        self.push(Event::Open {
+            kind: kind.name().into(),
+            label,
+        })
     }
 
-    fn note(
-        &mut self,
-        statement: (usize, &[lexer::Token]),
-        label: &str,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let (line, tokens) = statement;
-        let (side, name) = match tokens {
-            [_, side, of, name]
-                if of.text == "of" && matches!(side.text.as_str(), "left" | "right") =>
-            {
-                (
-                    if side.text == "left" {
-                        Side::Left
-                    } else {
-                        Side::Right
-                    },
-                    name,
-                )
-            }
-            [_, over, name] if over.text == "over" => (Side::Over, name),
-            _ => {
-                return Err(unsupported(
-                    line,
-                    "note positioning (expected left/right of or over one participant)",
-                ));
-            }
-        };
-        validate_label(label, line)?;
-        lexer::validate_name(name, line)?;
-        let participant = self.participant(&name.text, budget)?;
-        self.push(
-            Event::Note {
-                participant,
-                side,
-                label: label.into(),
-            },
-            budget,
-        )
+    pub fn branch(&mut self, label: String, span: Range<usize>) -> Result<(), ParseFailure> {
+        if matches!(self.frames.last(), Some(FrameKind::Alt | FrameKind::Par)) {
+            return self.push(Event::Else(label));
+        }
+        Err(ParseFailure::syntax(span, "else outside alt/par frame"))
     }
 
-    fn message(
-        &mut self,
-        line: &Line,
-        tokens: &[lexer::Token],
-        label: &str,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let [left, middle, right] = tokens else {
-            return Err(unsupported(line.number, &line.text));
-        };
-        for endpoint in [left, right] {
-            lexer::validate_name(endpoint, line.number)?;
+    pub fn close(&mut self) -> Result<(), ParseFailure> {
+        self.tick()?;
+        self.frames.pop();
+        self.push(Event::Close)
+    }
+
+    pub fn append_note(&mut self, row: String) -> Result<(), ParseFailure> {
+        self.append_note_part(&row)
+    }
+
+    pub fn separate_note(&mut self) -> Result<(), ParseFailure> {
+        self.append_note_part("\n")
+    }
+
+    fn append_note_part(&mut self, part: &str) -> Result<(), ParseFailure> {
+        if self.note.len().saturating_add(part.len()) > self.note.capacity() {
+            self.budget
+                .charge(self.note.len())
+                .map_err(ParseFailure::terminal)?;
         }
-        let mut arrow = arrow::parse(&middle.text, line.number)?;
-        if !matches!(arrow.start, End::None | End::Open | End::Filled)
-            || !matches!(arrow.end, End::None | End::Open | End::Filled)
-        {
-            return Err(unsupported(line.number, "sequence extremity"));
-        }
-        let reverse = arrow.start != End::None && arrow.end == End::None;
-        if arrow.start != End::None && arrow.end != End::None {
-            return Err(unsupported(line.number, "bidirectional sequence arrow"));
-        }
-        if reverse {
-            arrow.end = arrow.start;
-            arrow.start = End::None;
-        }
-        if middle.text.contains("--") {
-            arrow.dash = Dash::Dashed;
-        }
-        validate_label(label, line.number)?;
-        let a = self.participant(&left.text, budget)?;
-        let b = self.participant(&right.text, budget)?;
+        super::text::append_label(&mut self.note, part, self.budget).map_err(ParseFailure::terminal)
+    }
+
+    pub fn finish_note(&mut self, anchor: Anchor) -> Result<(), ParseFailure> {
+        let label = std::mem::take(&mut self.note);
+        self.note(anchor, label)
+    }
+
+    pub fn note(&mut self, anchor: Anchor, label: String) -> Result<(), ParseFailure> {
+        let participant = self.participant(&anchor.name.text)?;
+        self.push(Event::Note {
+            participant,
+            side: anchor.side,
+            label,
+        })
+    }
+
+    pub fn message(&mut self, message: Message, span: Range<usize>) -> Result<(), ParseFailure> {
+        let Message {
+            left,
+            right,
+            arrow,
+            reverse,
+            label,
+        } = message;
+        let a = self.participant(&left.text)?;
+        let b = self.participant(&right.text)?;
         if matches!(self.life[a], Life::Dead) || matches!(self.life[b], Life::Dead) {
-            return Err(invalid(
-                line.number,
+            return Err(ParseFailure::syntax(
+                span,
                 "message references a destroyed participant",
             ));
         }
         let (from, to) = if reverse { (b, a) } else { (a, b) };
-        self.push(
-            Event::Message {
-                from,
-                to,
-                arrow,
-                label: label.into(),
-            },
-            budget,
-        )
+        self.push(Event::Message {
+            from,
+            to,
+            arrow,
+            label,
+        })
     }
+}
+
+fn retain<T>(
+    target: (&mut Vec<T>, &mut usize),
+    value: T,
+    budget: &mut Budget,
+) -> Result<(), ParseFailure> {
+    let (values, retained) = target;
+    budget.charge(1).map_err(ParseFailure::terminal)?;
+    if values.len() == values.capacity() {
+        let capacity = values.capacity().saturating_mul(2).max(4);
+        let bytes = capacity.saturating_mul(std::mem::size_of::<T>());
+        super::budget::bound(
+            "sequence retained model arena bytes",
+            retained.saturating_add(bytes),
+            budget.limits.source_bytes.saturating_mul(256),
+        )
+        .map_err(ParseFailure::terminal)?;
+        budget
+            .charge(values.len())
+            .map_err(ParseFailure::terminal)?;
+        let old = values.capacity().saturating_mul(std::mem::size_of::<T>());
+        values
+            .try_reserve_exact(capacity - values.len())
+            .map_err(|error| {
+                ParseFailure::terminal(RenderError::Backend(format!(
+                    "PlantUML sequence model allocation for capacity {capacity} failed: {error}"
+                )))
+            })?;
+        *retained = retained
+            .saturating_sub(old)
+            .saturating_add(values.capacity().saturating_mul(std::mem::size_of::<T>()));
+        super::budget::bound(
+            "sequence actual model arena bytes",
+            *retained,
+            budget.limits.source_bytes.saturating_mul(256),
+        )
+        .map_err(ParseFailure::terminal)?;
+    }
+    values.push(value);
+    Ok(())
 }
 
 const FRAME_GAP: f64 = 8.;
@@ -766,14 +782,21 @@ mod tests {
 
     fn draw(source: &str) -> Scene {
         let mut budget = Budget::new(&RenderOptions::default());
-        let (preamble, lines) = super::super::source::prepare_styled(source, &mut budget).unwrap();
-        let model = parse(&lines, &mut budget).unwrap();
+        let (preamble, model) = prepare(source, &mut budget);
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         layout(
             &model,
             &mut Context::new(&session, &mut budget).with_fonts(preamble.fonts),
         )
         .unwrap()
+    }
+
+    fn prepare(source: &str, budget: &mut Budget) -> (super::super::style::Preamble, Sequence) {
+        let document = super::super::preprocess::prepare(source, budget).unwrap();
+        let mut prepared = super::super::parser::document::parse(&document, budget).unwrap();
+        let (preamble, _) = super::super::parser::preamble::parse(&mut prepared, budget).unwrap();
+        let model = super::super::parser::sequence::parse(prepared.body, budget).unwrap();
+        (preamble, model)
     }
 
     fn occupied(element: &Element) -> (f64, f64) {
@@ -959,9 +982,8 @@ mod tests {
         // given
         let source = "@startuml\nparticipant Alpha as A\nA <- B : Response\nactivate A\nA -> A : Self\ndeactivate A\n@enduml";
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines = super::super::source::prepare(source, &mut budget).unwrap();
         // when
-        let model = parse(&lines, &mut budget).unwrap();
+        let (_, model) = prepare(source, &mut budget);
         // then
         assert_eq!(
             model
@@ -988,8 +1010,7 @@ mod tests {
         // given
         let source = "@startuml\nparticipant A\ngroup outer\nloop inner\ncreate B\nA -> B : Create\nactivate B\nB -> B : Work\nnote right of B : Inspect current work\ndeactivate B\ndestroy B\nend\nend\n@enduml";
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines = super::super::source::prepare(source, &mut budget).unwrap();
-        let model = parse(&lines, &mut budget).unwrap();
+        let (_, model) = prepare(source, &mut budget);
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         // when
         let scene = layout(&model, &mut Context::new(&session, &mut budget)).unwrap();
