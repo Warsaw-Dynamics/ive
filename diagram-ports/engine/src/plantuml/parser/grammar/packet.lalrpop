@@ -1,0 +1,44 @@
+// Actual direct/canonical packet body, range/configuration and complete attribute syntax.
+grammar(builder: &mut crate::plantuml::packet::Builder<'_>);
+use crate::plantuml::{packet::{Attributes, Attribute, Configuration, Direction, FieldInput, Range}, parser::{packet::Token, error::ParseFailure}};
+pub Packet: () = { <Commands>, "packetdiag" <HeaderSpace?> "{" "newline" <Commands> "}" "newline" };
+HeaderSpace: () = "header space";
+Commands: () = { => (), <Commands> <Command> => () };
+Command: () = {
+ <l:@L> <range:FieldRange> "gap" <label:"label"> <attributes:Attributes> "newline" <r:@R> =>? builder.field(FieldInput { range, label, attributes }, l..r).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <l:@L> <configuration:Configuration> <_semi:Semi?> "newline" <r:@R> =>? builder.configure(configuration, l..r).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <_unknown:UnknownConfiguration> "=" => (),
+};
+UnknownConfiguration: () = <l:@L> <name:"unknown"> <r:@R> =>? builder.unknown(name, l..r).map_err(|error| lalrpop_util::ParseError::User { error });
+Semi: () = ";";
+FieldRange: Range = { <value:"integer"> <_colon:Colon?> => Range::Unit(value), <start:"integer"> "-" <end:"integer"> <_colon:Colon?> => Range::Inclusive(start,end), "*" => Range::Auto };
+Colon: () = ":";
+Configuration: Configuration = {
+ "colwidth" "=" <value:"integer"> => Configuration::Columns(value),
+ "scale_interval" "=" <value:"integer"> => Configuration::Interval(value),
+ "node_height" "=" <value:"integer"> => Configuration::NodeHeight(value),
+ "scale_direction" "=" "ltr" => Configuration::Direction(Direction::Ltr),
+ "scale_direction" "=" "rtl" => Configuration::Direction(Direction::Rtl),
+ "same_height" "=" "true" => Configuration::SameHeight(true),
+ "same_height" "=" "false" => Configuration::SameHeight(false),
+};
+Attributes: Attributes = { => Attributes::default(), "[" <values:NonemptyAttributes> "]" => values };
+NonemptyAttributes: Attributes = {
+ <attribute:Attribute> =>? builder.attribute(Attributes::default(), attribute).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <values:NonemptyAttributes> "," <attribute:Attribute> =>? builder.attribute(values, attribute).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Attribute: (Attribute, std::ops::Range<usize>) = {
+ <l:@L> "len" "=" <value:"integer"> <r:@R> => (Attribute::Length(value), l..r),
+ <l:@L> "height" "=" <value:"integer"> <r:@R> => (Attribute::Height(value), l..r),
+ <attribute:UnknownAttribute> "=" => attribute,
+};
+UnknownAttribute: (Attribute, std::ops::Range<usize>) = <l:@L> <name:"unknown"> <r:@R> =>? builder.unknown_attribute(name, l..r).map_err(|error| lalrpop_util::ParseError::User { error });
+extern { type Location = usize; type Error = ParseFailure;
+ enum Token {
+ "packetdiag" => Token::Packetdiag, "header space" => Token::HeaderSpace, "{" => Token::Open, "}" => Token::Close,
+ "colwidth" => Token::Columns, "scale_interval" => Token::Interval, "scale_direction" => Token::Direction, "node_height" => Token::NodeHeight, "same_height" => Token::SameHeight,
+ "ltr" => Token::Ltr, "rtl" => Token::Rtl, "true" => Token::True, "false" => Token::False, "len" => Token::Len, "height" => Token::Height,
+ "integer" => Token::Integer(<usize>), "unknown" => Token::Unknown(<String>), "*" => Token::Star, "-" => Token::Minus, ":" => Token::Colon,
+ "=" => Token::Equals, ";" => Token::Semi, "gap" => Token::Gap, "label" => Token::Label(<String>), "[" => Token::AttrOpen, "]" => Token::AttrClose, "," => Token::Comma, "newline" => Token::Newline,
+ }
+}

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Generated structured activity instructions, nested control blocks and raw actions preserve the activity model. Generated timing tracks/cursors/exact integers/connections and Gantt project/date/task/alias/duration/reference grammar preserve their models. Generated admitted Creole tag/symbol nesting and complete EOF construct existing styled runs; escapes, URLs and same-line symbolic pair eligibility remain lexical. Other family grammars remain pending. Complete Chen owners/composites/associations/cardinalities and EOF preserve Chen qualified identities with contextual keyword names. Generated JSON objects/arrays/members/numbers and literal HCL named blocks/headers/fields/containers construct the preserved ordered Value and Document before unchanged data lowering/layout. Generated PlantUML-specific YAML offside map/list/entry and narrow flow productions construct ordered string Value models; primitive capability, tab, quote, comment and literal ownership remains lexical. Generated Salt table/row/column/cell/widget syntax preserves postorder arenas, direct lexical escapes and same-row spans. Generated nwdiag network/group/server/property statements preserve global identities, membership addresses and sparse layout.",
+  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Generated structured activity instructions, nested control blocks and raw actions preserve the activity model. Generated timing tracks/cursors/exact integers/connections and Gantt project/date/task/alias/duration/reference grammar preserve their models. Generated admitted Creole tag/symbol nesting and complete EOF construct existing styled runs; escapes, URLs and same-line symbolic pair eligibility remain lexical. Other family grammars remain pending. Complete Chen owners/composites/associations/cardinalities and EOF preserve Chen qualified identities with contextual keyword names. Generated JSON objects/arrays/members/numbers and literal HCL named blocks/headers/fields/containers construct the preserved ordered Value and Document before unchanged data lowering/layout. Generated PlantUML-specific YAML offside map/list/entry and narrow flow productions construct ordered string Value models; primitive capability, tab, quote, comment and literal ownership remains lexical. Generated Salt table/row/column/cell/widget syntax preserves postorder arenas, direct lexical escapes and same-row spans. Generated nwdiag network/group/server/property statements preserve global identities, membership addresses and sparse layout. Generated packetdiag canonical/direct bodies, configuration assignments, inclusive/auto ranges, literal labels, attributes and EOF construct the existing Config/Field/Packet before unchanged conserved fragment projection/layout.",
   "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, sequence participant/message/note/frame/lifecycle semantics, scoped two-phase state identity/resolution and admitted Creole style semantics are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
   "authoredFiles": [
     "engine/src/plantuml/parser/activity.rs",
@@ -25,6 +25,7 @@
     "engine/src/plantuml/parser/grammar/header.lalrpop",
     "engine/src/plantuml/parser/grammar/json.lalrpop",
     "engine/src/plantuml/parser/grammar/nwdiag.lalrpop",
+    "engine/src/plantuml/parser/grammar/packet.lalrpop",
     "engine/src/plantuml/parser/grammar/preamble.lalrpop",
     "engine/src/plantuml/parser/grammar/salt.lalrpop",
     "engine/src/plantuml/parser/grammar/sequence.lalrpop",
@@ -40,6 +41,7 @@
     "engine/src/plantuml/parser/nwdiag.rs",
     "engine/src/plantuml/parser/outline.rs",
     "engine/src/plantuml/parser/ownership.rs",
+    "engine/src/plantuml/parser/packet.rs",
     "engine/src/plantuml/parser/preamble.rs",
     "engine/src/plantuml/parser/salt.rs",
     "engine/src/plantuml/parser/sequence.rs",
@@ -65,6 +67,7 @@
     "engine/src/plantuml/generated/json.rs",
     "engine/src/plantuml/generated/manifest.json",
     "engine/src/plantuml/generated/nwdiag.rs",
+    "engine/src/plantuml/generated/packet.rs",
     "engine/src/plantuml/generated/preamble.rs",
     "engine/src/plantuml/generated/salt.rs",
     "engine/src/plantuml/generated/sequence.rs",

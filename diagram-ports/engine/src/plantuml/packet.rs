@@ -2,8 +2,8 @@
 //! Copyright 2009-2024/2009-2026 Arnaud Roques; kolulu23, Duy Nguyen, The-Lum.
 //! MIT grant and precise per-file credits/hashes retained in provenance/.
 use super::{
-    budget::{Budget, bound, invalid, unsupported},
-    source::Line,
+    budget::{Budget, bound},
+    parser::error::ParseFailure,
 };
 use crate::RenderError;
 
@@ -39,230 +39,229 @@ pub(super) struct Packet {
     pub rows: usize,
 }
 
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Packet, RenderError> {
-    let mut config = Config {
-        columns: 16,
-        interval: 0,
-        direction: Direction::Ltr,
-        node_height: 32,
-        same_height: false,
-    };
-    let mut fields = Vec::new();
-    let mut braces = 0;
-    let mut seen = false;
-    for line in lines {
-        budget.charge(line.text.len() + 1)?;
-        let text = line.text.trim();
-        if text.is_empty() {
-            continue;
-        }
-        if text == "packetdiag {" || text == "packetdiag{" {
-            if seen || braces != 0 {
-                return Err(invalid(
-                    line.number,
-                    format!("unexpected packet opener {text:?}"),
-                ));
-            }
-            braces = 1;
-            seen = true;
-            continue;
-        }
-        if text == "}" {
-            if braces != 1 {
-                return Err(invalid(line.number, "unexpected packet closing brace"));
-            }
-            braces = 2;
-            continue;
-        }
-        if braces == 2 {
-            return Err(invalid(
-                line.number,
-                format!("packet input after closing brace {text:?}"),
-            ));
-        }
-        seen = true;
-        if text.contains('=')
-            && text
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .bytes()
-                .next()
-                .is_some_and(|c| c.is_ascii_alphabetic())
-        {
-            configure(&mut config, line, budget)?;
-        } else {
-            field(&mut fields, line, budget)?;
-        }
-    }
-    if braces == 1 {
-        return Err(invalid(1, "unterminated packetdiag brace"));
-    }
-    if fields.is_empty() {
-        return Err(invalid(1, "packetdiag requires fields"));
-    }
-    if config.interval == 0 {
-        config.interval = (config.columns / 2).max(1);
-    }
-    config.interval = config.interval.min(config.columns);
-    let fragments = fragment(&fields, &config, budget)?;
-    let rows = fragments.last().map_or(0, |f| f.row + 1);
-    Ok(Packet {
-        config,
-        fields,
-        fragments,
-        rows,
-    })
+#[derive(Clone, Copy)]
+pub(in crate::plantuml) enum Range {
+    Unit(usize),
+    Inclusive(usize, usize),
+    Auto,
+}
+#[derive(Default)]
+pub(in crate::plantuml) struct Attributes {
+    length: usize,
+    height: usize,
+}
+pub(in crate::plantuml) enum Attribute {
+    Length(usize),
+    Height(usize),
+}
+pub(in crate::plantuml) enum Configuration {
+    Columns(usize),
+    Interval(usize),
+    NodeHeight(usize),
+    Direction(Direction),
+    SameHeight(bool),
+}
+pub(in crate::plantuml) struct FieldInput {
+    pub range: Range,
+    pub label: String,
+    pub attributes: Attributes,
+}
+pub(in crate::plantuml) struct Builder<'b> {
+    budget: &'b mut Budget,
+    config: Config,
+    fields: Vec<Field>,
 }
 
-fn number(value: &str, line: usize) -> Result<usize, RenderError> {
-    if value.is_empty() || value.len() > 7 || !value.bytes().all(|b| b.is_ascii_digit()) {
-        return Err(invalid(line, format!("invalid packet integer {value:?}")));
-    }
-    value
-        .parse()
-        .map_err(|_| invalid(line, format!("invalid packet integer {value:?}")))
-}
-fn positive(value: &str, line: usize) -> Result<usize, RenderError> {
-    let n = number(value, line)?;
-    if n == 0 {
-        return Err(invalid(
-            line,
-            format!("packet value must be positive: {value:?}"),
-        ));
-    }
-    Ok(n)
-}
-fn configure(config: &mut Config, line: &Line, budget: &mut Budget) -> Result<(), RenderError> {
-    let text = line.text.trim();
-    let text = text.strip_suffix(';').unwrap_or(text);
-    let Some((key, value)) = text.split_once('=') else {
-        return Err(invalid(line.number, &line.text));
-    };
-    budget.item()?;
-    let value = value.trim();
-    match key.trim() {
-        "colwidth" => {
-            config.columns = positive(value, line.number)?;
-            bound("packet colwidth", config.columns, 999)?;
+impl<'b> Builder<'b> {
+    pub fn new(budget: &'b mut Budget) -> Self {
+        Self {
+            budget,
+            config: Config {
+                columns: 16,
+                interval: 0,
+                direction: Direction::Ltr,
+                node_height: 32,
+                same_height: false,
+            },
+            fields: Vec::new(),
         }
-        "scale_interval" => config.interval = positive(value, line.number)?,
-        "node_height" => {
-            config.node_height = positive(value, line.number)?;
-            bound("packet node height", config.node_height, 999)?;
+    }
+    pub fn configure(
+        &mut self,
+        configuration: Configuration,
+        span: std::ops::Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        match configuration {
+            Configuration::Columns(value) => {
+                self.config.columns = positive(value, &span)?;
+                bound("packet colwidth", value, 999).map_err(ParseFailure::terminal)?;
+            }
+            Configuration::Interval(value) => self.config.interval = positive(value, &span)?,
+            Configuration::NodeHeight(value) => {
+                self.config.node_height = positive(value, &span)?;
+                bound("packet node height", value, 999).map_err(ParseFailure::terminal)?;
+            }
+            Configuration::Direction(value) => self.config.direction = value,
+            Configuration::SameHeight(value) => self.config.same_height = value,
         }
-        "scale_direction" => {
-            config.direction = match value {
-                "ltr" => Direction::Ltr,
-                "rtl" => Direction::Rtl,
-                _ => {
-                    return Err(invalid(
-                        line.number,
-                        format!("invalid packet direction {value:?}"),
-                    ));
-                }
+        Ok(())
+    }
+    pub fn attribute(
+        &mut self,
+        mut attributes: Attributes,
+        attribute: (Attribute, std::ops::Range<usize>),
+    ) -> Result<Attributes, ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        let (attribute, span) = attribute;
+        match attribute {
+            Attribute::Length(value) if attributes.length == 0 => {
+                attributes.length = positive(value, &span)?
+            }
+            Attribute::Height(value) if attributes.height == 0 => {
+                attributes.height = positive(value, &span)?
+            }
+            _ => {
+                return Err(ParseFailure::unsupported(
+                    span,
+                    "duplicate packet len/height attribute",
+                ));
             }
         }
-        "same_height" => {
-            config.same_height = match value {
-                "true" => true,
-                "false" => false,
-                _ => {
-                    return Err(invalid(
-                        line.number,
-                        format!("invalid packet same_height {value:?}"),
-                    ));
-                }
-            }
-        }
-        _ => return Err(unsupported(line.number, &line.text)),
+        Ok(attributes)
     }
-    Ok(())
-}
-fn field(fields: &mut Vec<Field>, line: &Line, budget: &mut Budget) -> Result<(), RenderError> {
-    let text = line.text.trim();
-    let split = text.find(char::is_whitespace).ok_or_else(|| {
-        invalid(
-            line.number,
-            format!("packet field needs label separator: {text:?}"),
+    pub fn field(
+        &mut self,
+        input: FieldInput,
+        span: std::ops::Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        bound("label bytes", input.label.len(), 16 * 1024).map_err(ParseFailure::terminal)?;
+        let (start, end) = self.resolve(input.range, input.attributes.length, span.clone())?;
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(input.label.len())
+            .map_err(ParseFailure::terminal)?;
+        super::parser::context::push(
+            &mut self.fields,
+            Field {
+                start,
+                end,
+                label: input.label,
+                height: input.attributes.height.max(1),
+            },
+            self.budget,
         )
-    })?;
-    let token = &text[..split];
-    let range = if token.starts_with('*') {
-        token
-    } else {
-        token.strip_suffix(':').unwrap_or(token)
-    };
-    let (label, length, height) = attributes(text[split..].trim(), line.number, budget)?;
-    bound("label bytes", label.len(), 16 * 1024)?;
-    let (start, end) = if let Some((a, b)) = range.split_once('-') {
-        if length != 0 {
-            return Err(invalid(
-                line.number,
-                "len attribute cannot override explicit packet range",
+    }
+    fn resolve(
+        &mut self,
+        range: Range,
+        length: usize,
+        span: std::ops::Range<usize>,
+    ) -> Result<(usize, usize), ParseFailure> {
+        let (start, end) = match range {
+            Range::Inclusive(start, end) => {
+                if length != 0 {
+                    return Err(ParseFailure::syntax(
+                        span,
+                        "len attribute cannot override explicit packet range",
+                    ));
+                }
+                (start, end)
+            }
+            Range::Unit(start) => (
+                start,
+                start
+                    .checked_add(length.max(1) - 1)
+                    .ok_or_else(|| ParseFailure::syntax(span.clone(), "packet end overflow"))?,
+            ),
+            Range::Auto => {
+                let start = self.fields.last().map_or(0, |field| field.end + 1);
+                (
+                    start,
+                    start
+                        .checked_add(length.max(1) - 1)
+                        .ok_or_else(|| ParseFailure::syntax(span.clone(), "packet end overflow"))?,
+                )
+            }
+        };
+        if end < start || end > 9_999_999 {
+            self.budget.text(128).map_err(ParseFailure::terminal)?;
+            return Err(ParseFailure::owned_syntax(
+                span,
+                format!("invalid inclusive packet range {start}-{end}"),
             ));
         }
-        (number(a, line.number)?, number(b, line.number)?)
-    } else {
-        let start = if range == "*" {
-            fields.last().map_or(0, |f| f.end + 1)
-        } else {
-            number(range, line.number)?
-        };
-        let end = start
-            .checked_add(length.max(1) - 1)
-            .ok_or_else(|| invalid(line.number, "packet end overflow"))?;
-        (start, end)
-    };
-    if end < start || end > 9_999_999 {
-        return Err(invalid(
-            line.number,
-            format!("invalid inclusive packet range {start}-{end}"),
+        Ok((start, end))
+    }
+    pub fn unknown(
+        &mut self,
+        name: String,
+        span: std::ops::Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        Err(self.reject(name, span))
+    }
+    pub fn unknown_attribute(
+        &mut self,
+        name: String,
+        span: std::ops::Range<usize>,
+    ) -> Result<(Attribute, std::ops::Range<usize>), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        Err(self.reject(name, span))
+    }
+    fn reject(&mut self, name: String, span: std::ops::Range<usize>) -> ParseFailure {
+        if let Err(error) = self
+            .budget
+            .text(name.len().saturating_mul(4).saturating_add(128))
+        {
+            return ParseFailure::terminal(error);
+        }
+        ParseFailure {
+            span,
+            kind: super::parser::error::FailureKind::Unsupported(
+                format!("unsupported packet command or attribute {name:?}").into(),
+            ),
+        }
+    }
+    pub fn finish(mut self, span: std::ops::Range<usize>) -> Result<Packet, ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)?;
+        if self.fields.is_empty() {
+            return Err(ParseFailure::syntax(span, "packetdiag requires fields"));
+        }
+        if self.config.interval == 0 {
+            self.config.interval = (self.config.columns / 2).max(1);
+        }
+        self.config.interval = self.config.interval.min(self.config.columns);
+        let fragments =
+            fragment(&self.fields, &self.config, self.budget).map_err(ParseFailure::terminal)?;
+        let rows = fragments.last().map_or(0, |fragment| fragment.row + 1);
+        Ok(Packet {
+            config: self.config,
+            fields: self.fields,
+            fragments,
+            rows,
+        })
+    }
+}
+
+fn positive(value: usize, span: &std::ops::Range<usize>) -> Result<usize, ParseFailure> {
+    if value == 0 {
+        return Err(ParseFailure::syntax(
+            span.clone(),
+            "packet value must be positive: 0",
         ));
     }
-    budget.item()?;
-    budget.text(label.len())?;
-    fields.push(Field {
-        start,
-        end,
-        label: label.into(),
-        height,
-    });
-    Ok(())
+    Ok(value)
 }
-fn attributes<'a>(
-    text: &'a str,
-    line: usize,
+
+#[cfg(test)]
+pub(super) fn parse(
+    lines: &[super::source::Line],
     budget: &mut Budget,
-) -> Result<(&'a str, usize, usize), RenderError> {
-    let Some(open) = text.find('[') else {
-        return Ok((text, 0, 1));
-    };
-    if !text.ends_with(']') {
-        return Err(invalid(
-            line,
-            format!("malformed packet attributes {text:?}"),
-        ));
-    }
-    let mut length = 0;
-    let mut height = 0;
-    for entry in text[open + 1..text.len() - 1].split(',') {
-        budget.charge(entry.len() + 1)?;
-        budget.item()?;
-        let Some((key, value)) = entry.split_once('=') else {
-            return Err(invalid(
-                line,
-                format!("malformed packet attribute {entry:?}"),
-            ));
-        };
-        match key.trim() {
-            "len" if length == 0 => length = positive(value.trim(), line)?,
-            "height" if height == 0 => height = positive(value.trim(), line)?,
-            _ => return Err(unsupported(line, entry)),
-        }
-    }
-    Ok((text[..open].trim_end(), length, height.max(1)))
+) -> Result<Packet, RenderError> {
+    super::parser::outline::test_parse(lines, "packetdiag", budget, super::parser::packet::parse)
 }
+
 fn fragment(
     fields: &[Field],
     config: &Config,
@@ -296,7 +295,7 @@ fn fragment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RenderOptions;
+    use crate::{RenderOptions, plantuml::source::Line};
 
     #[test]
     fn should_reject_oversized_packet_label_before_fragment_generation() {

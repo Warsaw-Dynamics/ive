@@ -189,6 +189,14 @@ pub(crate) fn render(
     } else {
         None
     };
+    let packet_model = if wrapper == source::Wrapper::Packet {
+        Some(parser::packet::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -210,8 +218,10 @@ pub(crate) fn render(
             })?;
             ("files", filesscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Packet {
-            let model = packet::parse(lines, context.budget)?;
-            ("packetdiag", packetscene::layout(&model, &mut context)?)
+            let model = packet_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML packetdiag selection has no parsed model".into())
+            })?;
+            ("packetdiag", packetscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Board {
             let model = board_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML board selection has no parsed model".into())

@@ -15,6 +15,7 @@ pub(super) mod json;
 pub(super) mod nwdiag;
 pub(super) mod outline;
 pub(super) mod ownership;
+pub(super) mod packet;
 pub(super) mod preamble;
 pub(super) mod salt;
 pub(super) mod sequence;
@@ -149,3 +150,8 @@ mod generated_yaml;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/salt.rs"]
 mod generated_salt;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/packet.rs"]
+mod generated_packet;

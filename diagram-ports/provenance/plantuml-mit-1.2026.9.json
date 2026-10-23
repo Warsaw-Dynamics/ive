@@ -172,9 +172,11 @@
       ],
       "rust": [
         "engine/src/plantuml/packet.rs",
-        "engine/src/plantuml/packetscene.rs"
+        "engine/src/plantuml/packetscene.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Config defaults, inclusive field identity, declaration-width placement and row splitting/direction/heights. Native corrects remainder conservation, max-height row clearance and colwidth1 default interval.",
+      "behavior": "Config defaults, inclusive field identity, declaration-width placement and row splitting/direction/heights. Native corrects remainder conservation, max-height row clearance and colwidth1 default interval. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -215,9 +217,11 @@
         "* Contribution: The-Lum"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Inclusive ranges, single-bit len, auto start after last end and requested height. Native complete attributes reject rotate/unknown/duplicate values, descending ranges and len on explicit range.",
+      "behavior": "Inclusive ranges, single-bit len, auto start after last end and requested height. Native complete attributes reject rotate/unknown/duplicate values, descending ranges and len on explicit range. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -229,9 +233,11 @@
         "* Original Author:  kolulu23"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Positive colwidth1..999 controls actual row wrapping.",
+      "behavior": "Positive colwidth1..999 controls actual row wrapping. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -243,9 +249,11 @@
         "* Original Author:  kolulu23"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Positive node_height1..999 controls vertical unit; native also reserves full measured label height.",
+      "behavior": "Positive node_height1..999 controls vertical unit; native also reserves full measured label height. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -257,9 +265,11 @@
         "* Original Author:  kolulu23"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Positive scale_interval controls actual tick numbering and is capped at final configured colwidth.",
+      "behavior": "Positive scale_interval controls actual tick numbering and is capped at final configured colwidth. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -273,9 +283,11 @@
       ],
       "rust": [
         "engine/src/plantuml/packet.rs",
-        "engine/src/plantuml/packetscene.rs"
+        "engine/src/plantuml/packetscene.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "ltr/rtl reverses actual block placement and tick indices.",
+      "behavior": "ltr/rtl reverses actual block placement and tick indices. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -288,9 +300,11 @@
       ],
       "rust": [
         "engine/src/plantuml/packet.rs",
-        "engine/src/plantuml/packetscene.rs"
+        "engine/src/plantuml/packetscene.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "same_height promotes actual row cells to maximum; native always reserves maximum row clearance.",
+      "behavior": "same_height promotes actual row cells to maximum; native always reserves maximum row clearance. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -302,9 +316,11 @@
         "* Original Author:  kolulu23"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Canonical packetdiag opener; native admits only one optional balanced canonical braced body.",
+      "behavior": "Canonical packetdiag opener; native admits only one optional balanced canonical braced body. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -316,9 +332,11 @@
         "* Original Author:  kolulu23"
       ],
       "rust": [
-        "engine/src/plantuml/packet.rs"
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/parser/packet.rs",
+        "engine/src/plantuml/parser/grammar/packet.lalrpop"
       ],
-      "behavior": "Closing brace marker; native validates whole balanced block and rejects trailing substantive input.",
+      "behavior": "Closing brace marker; native validates whole balanced block and rejects trailing substantive input. Generated productions own optional canonical braces, complete configuration/range/attribute syntax and EOF; typed actions retain the same models and conserved fragment projection.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
