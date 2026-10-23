@@ -10,6 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-22-diagram-ports-implementation-design.md`; upstream-analysis reference `docs/superpowers/specs/2026-10-22-diagram-ports-handoff.md`.
 
+## Owner-directed parser amendment — 2026-10-23
+
+The owner explicitly requires LALRPOP for PlantUML and rewriting the current ad-hoc parsers. Execute `docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md`, designed in `docs/superpowers/specs/2026-10-23-plantuml-lalrpop-design.md`, before remaining PlantUML-family breadth. Preserve already verified models/layouts/viewer and all safety/source constraints; historical parser implementation choices below do not override this direction. The canonical orchestration checklist is `/mnt/data/Projects/ive/progress.md`.
+
 ## Global Constraints
 
 - Attempt full coverage, Mermaid first then PlantUML; report actual compatibility and remaining gaps honestly.
