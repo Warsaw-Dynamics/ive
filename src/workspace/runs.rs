@@ -460,7 +460,7 @@ impl Workspace {
 
     /// A run that cannot start says why in a tab of its own.
     fn run_failed(&mut self, request: &RunRequest, error: String, window: &mut Window, cx: &mut Context<Self>) {
-        self.open_tab(Tab::Failed { title: format!("Run {}", request.key), error: error.into() }, window, cx);
+        self.open_tab(Tab::Failed { title: format!("Run {}", request.key), failure: crate::failure::Failure::new(error) }, window, cx);
     }
 
     /// The request that runs `id`'s configuration again.

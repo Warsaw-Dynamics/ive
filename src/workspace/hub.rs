@@ -537,7 +537,7 @@ impl Workspace {
         // the hub there is now: the one that asked may be closed, or opened again
         let Some(hub) = self.hub_tab_id() else {
             if let Some(error) = notice {
-                self.open_tab(Tab::Failed { title: "New worktree".to_owned(), error: error.into() }, window, cx);
+                self.open_tab(Tab::Failed { title: "New worktree".to_owned(), failure: crate::failure::Failure::new(error) }, window, cx);
             }
             return;
         };

@@ -109,7 +109,7 @@ impl Workspace {
             }
             Err(error) => Tab::Failed {
                 title: "Terminal".to_owned(),
-                error: format!("Cannot start a shell in {}: {error}", directory.display()).into(),
+                failure: crate::failure::Failure::new(format!("Cannot start a shell in {}: {error}", directory.display())),
             },
         };
         self.open_tab(tab, window, cx)
@@ -289,7 +289,7 @@ impl Workspace {
             return;
         }
         let error = format!("Process {pid} did not stop: it still ran {} s after SIGKILL. IVE no longer manages it.", KILL_GRACE.as_secs());
-        self.open_tab(Tab::Failed { title, error: error.into() }, window, cx);
+        self.open_tab(Tab::Failed { title, failure: crate::failure::Failure::new(error) }, window, cx);
     }
 
     /// Removes the process; its tab closes, or, with `failure`, shows why the shell ended.
@@ -303,7 +303,7 @@ impl Workspace {
         if let Some(tab) = self.tabs.find(|tab| tab.shows_process(id)) {
             match failure {
                 Some(error) => {
-                    self.tabs.replace(tab, Tab::Failed { title, error });
+                    self.tabs.replace(tab, Tab::Failed { title, failure: crate::failure::Failure::new(error.to_string()) });
                 }
                 None => {
                     self.tabs.close(tab);

@@ -243,7 +243,9 @@ impl Workspace {
                 let checkout = tab.checkout(self).map(|checkout| checkout.path);
                 let detached = self.tabs.is_detached(id);
                 let temporary = self.tabs.is_temporary(id);
-                let mut listed = json!({ "id": id.value(), "kind": tab.kind(), "title": tab.title(self), "checkout": checkout, "shown": Some(id) == shown, "detached": detached, "temporary": temporary });
+                let title = tab.title(self);
+                let mut listed = json!({ "id": id.value(), "kind": tab.kind(), "title": title, "checkout": checkout, "shown": Some(id) == shown, "detached": detached, "temporary": temporary });
+                add_failure(tab, &title, &mut listed);
                 self.add_opened_from_hub(id, &mut listed);
                 listed
             })
@@ -450,6 +452,13 @@ fn parse_hub_state(hub: serde_json::Value) -> Result<HubState, String> {
     serde_json::from_value(hub).map_err(|error| format!("open_hub: the hub state is not one open_hub made: {error}"))
 }
 
+/// A failed tab's report as `error`, the text its Copy error copies.
+fn add_failure(tab: &Tab, title: &str, listed: &mut serde_json::Value) {
+    if let Tab::Failed { failure, .. } = tab {
+        listed["error"] = json!(failure.report(title));
+    }
+}
+
 fn active_tab_json(shown: Option<(u64, &str, Option<&Path>)>) -> serde_json::Value {
     match shown {
         Some((tab, kind, checkout)) => json!({ "tab": tab, "kind": kind, "checkout": checkout }),
@@ -485,6 +494,33 @@ fn run_configs_json(folder: &Path, file: &RunFile, shown: &HashMap<String, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_list_failed_tab_error() {
+        // given
+        let tab = Tab::Failed { title: "Terminal".to_owned(), failure: crate::failure::Failure::new("The shell exited").with("Folder", "/p") };
+        let mut listed = json!({ "kind": "failed" });
+
+        // when
+        add_failure(&tab, "Terminal", &mut listed);
+
+        // then
+        let error = listed["error"].as_str().expect("an error");
+        assert!(error.starts_with("Terminal: The shell exited\n\nFolder: /p\n"), "{error}");
+    }
+
+    #[test]
+    fn should_not_add_error_to_other_tabs() {
+        // given
+        let tab = Tab::Unloaded(crate::saved_tabs::SavedTab::Hub);
+        let mut listed = json!({ "kind": "hub" });
+
+        // when
+        add_failure(&tab, "Hub", &mut listed);
+
+        // then
+        assert_eq!(listed.get("error"), None);
+    }
 
     #[test]
     fn should_describe_run_configurations() {
