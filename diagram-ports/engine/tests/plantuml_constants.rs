@@ -253,6 +253,26 @@ fn should_report_bounded_candidates_for_identical_expanded_late_labels() {
 }
 
 #[test]
+fn should_report_generated_nesting_in_label_local_bytes_with_expansion_lineage() {
+    // given
+    let source = "@startuml\n!define RICH <b>bad</i>\nA -> B : RICH\n@enduml";
+    // when
+    let error = render(source, &options()).unwrap_err();
+    // then
+    assert!(matches!(
+        error,
+        diagram_engine::RenderError::UnsupportedFeature(_)
+    ));
+    let error = error.to_string();
+    assert!(error.contains("label-local line 1, column 7"), "{error}");
+    assert!(error.contains("label-local bytes 6..10"), "{error}");
+    assert_eq!(error.matches("expansion \"RICH\"").count(), 1, "{error}");
+    assert!(error.contains("used at line 3, column 10"), "{error}");
+    assert!(error.contains("defined at line 2"), "{error}");
+    assert!(!error.contains("PlantUML at line 1"), "{error}");
+}
+
+#[test]
 fn should_identify_inert_duplicate_label_candidates_and_omitted_occurrences() {
     // given
     let source = format!(

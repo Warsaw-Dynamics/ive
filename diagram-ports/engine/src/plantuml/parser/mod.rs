@@ -3,6 +3,7 @@ pub(super) mod activity;
 pub(super) mod board;
 pub(super) mod chen;
 pub(super) mod context;
+pub(super) mod creole;
 pub(super) mod definition;
 pub(super) mod document;
 pub(super) mod error;
@@ -113,6 +114,11 @@ mod generated_gantt;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/nwdiag.rs"]
 mod generated_nwdiag;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/creole.rs"]
+mod generated_creole;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]

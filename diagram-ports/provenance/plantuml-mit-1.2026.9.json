@@ -2834,6 +2834,8 @@
       "rust": [
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/svg.rs"
       ],
       "behavior": "Case/alias-aware rejection of unsupported HTML-style font decorations. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
@@ -2852,6 +2854,8 @@
       "rust": [
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/svg.rs"
       ],
       "behavior": "Registered unsupported Creole command vocabulary; no command silently lowered to literal text. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
@@ -2883,6 +2887,8 @@
       "rust": [
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/svg.rs"
       ],
       "behavior": "Paired Creole delimiter recognition and legacy style-to-end-of-line rejection. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
@@ -2940,6 +2946,8 @@
       "rust": [
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/svg.rs"
       ],
       "behavior": "Literal tilde escapes and backslash-tilde decoding before native measurement/painting. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
@@ -3157,6 +3165,8 @@
       "sha256": "7322037fe78634321b6e2592a8c03a6ff0fc0f0ab2aba422a6db730d16605ef8",
       "rust": [
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/svg.rs"
       ],
@@ -3175,6 +3185,8 @@
       "sha256": "6b8894ef3c7e9c10f275a886ac4a4e1716efc2b663c04bb9af35d9cf24ee5ecb",
       "rust": [
         "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/parser/creole.rs",
+        "engine/src/plantuml/parser/grammar/creole.lalrpop",
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/svg.rs"
       ],

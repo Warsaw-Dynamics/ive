@@ -30,6 +30,12 @@
       "grammarSha256": "ae028b0dbaf00ed0cedf2bcb528f4fc94e81d8b322e74b922fa729a898d9d5ee"
     },
     {
+      "generated": "engine/src/plantuml/generated/creole.rs",
+      "generatedSha256": "142b44ea65358f201c91d03e29500dbf0aad3111d4457ead4a84eb41a81ef5ce",
+      "grammar": "engine/src/plantuml/parser/grammar/creole.lalrpop",
+      "grammarSha256": "4203f6ac35369754e9b2db6b1f614bdc6fd11ad41992fefbe3d158ace1e91649"
+    },
+    {
       "generated": "engine/src/plantuml/generated/definition.rs",
       "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
       "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
