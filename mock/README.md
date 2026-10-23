@@ -34,7 +34,7 @@ DESIGN.md "Menus"): Send to Terminal ▸ (terminals most recently used first, th
 relative in its own worktree), Open in Terminal, Run (shell files, `.run.toml` folders), Find in Files…, Copy Path ▸,
 Open In ▸ and Git ▸ (Show Diff, Compare with Base Branch, Show History, Add to .gitignore); submenus open on hover. There is no title
 bar: Settings and the window buttons sit at the right end of the tab row; the gear (or Ctrl+,) opens Settings,
-whose Appearance page switches the theme. Alt+F12 opens a terminal in the current tab's checkout.
+whose Appearance page switches Mode (dark, light) and Theme (Default or a `themes/<name>.toml`), and whose Scripts page says where every customisation goes, with Copy instructions. Alt+F12 opens a terminal in the current tab's checkout.
 Ctrl+E opens the hub (a proposal, DESIGN.md "Hub"): recent items, changes in every worktree and running processes;
 typing searches the monorepo's real file paths fzf-style (`data/files.gz`; regenerate with `tools/hub-files.sh`; it also samples the ignored files). Alt+I searches excluded and gitignored files too.
 Ctrl+Shift+F (in the hub too) searches the files' contents instead: rows `path:line` with the matches marked, Alt+R
