@@ -1,18 +1,20 @@
 //! The Worktrees section's state: its filter field, the branches without a worktree, paging, the selection, and a
 //! worktree being added. The workspace draws it with the project's checkouts (`workspace/worktree_list.rs`).
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-use gpui::{App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, Subscription, Task};
+use gpui::{App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, ScrollStrategy, Subscription, Task};
 
 use super::git_event::GitEvent;
 use super::project_git::ProjectContext;
-use super::worktree_rows::{Group, GroupKind, RowId, Selection, resolved, selection_of};
-use crate::git::refs::{self, BranchInfo, Refs, without_worktree};
+use super::worktree_rows::{Candidate, Group, GroupKind, RowId, Selection, resolved, selection_of};
+use crate::git::refs::{self, BranchInfo, BranchName, Refs, without_worktree};
 use crate::git::repo::GitError;
 use crate::git::worktree_add::add_worktree;
 use crate::paging::Paging;
 use crate::project::ProjectId;
+use crate::scrollbar::{ListScroll, ScrollState};
 use crate::text_input::{TextInput, TextInputEvent};
 
 pub const HOOKS_NOTE: &str = "libgit2 checks out the files; it runs no git hooks (post-checkout) and ignores sparse checkout";
@@ -20,12 +22,41 @@ pub const PLACEHOLDER: &str = "Filter worktrees and branches…";
 /// The filter field's click target.
 const INPUT_TARGET: &str = "worktree-filter";
 
+/// Branches without a worktree, newest first, with the text the filter matches and an index by shown name: a
+/// repository can have thousands, and the list filters and looks them up every frame.
+#[derive(Default)]
+struct ListedBranches {
+    branches: Vec<BranchInfo>,
+    candidates: Vec<Candidate>,
+    by_name: HashMap<String, usize>,
+}
+
+impl ListedBranches {
+    fn new(branches: Vec<BranchInfo>) -> Self {
+        let shown: Vec<String> = branches.iter().map(|branch| branch.name.display()).collect();
+        let candidates = branches.iter().zip(&shown).map(|(branch, name)| Candidate::new(RowId::Branch(name.clone()), &format!("{name} {}", remote_of(branch)))).collect();
+        let by_name = shown.into_iter().enumerate().map(|(index, name)| (name, index)).collect();
+        Self { branches, candidates, by_name }
+    }
+
+    fn get(&self, shown: &str) -> Option<&BranchInfo> {
+        self.by_name.get(shown).map(|&index| &self.branches[index])
+    }
+}
+
+/// `local`, or the remote a branch is only on.
+fn remote_of(branch: &BranchInfo) -> &str {
+    match &branch.name {
+        BranchName::Local(_) => "local",
+        BranchName::Remote { remote, .. } => remote,
+    }
+}
+
 pub struct WorktreeList {
     context: ProjectContext,
     /// as last read; the next read reuses them while no ref moved
     refs: Option<Refs>,
-    /// branches without a worktree, newest first
-    branches: Vec<BranchInfo>,
+    branches: ListedBranches,
     /// where new worktrees go, as `.ive.toml` says
     worktrees_folder: Option<String>,
     load_error: Option<String>,
@@ -37,6 +68,9 @@ pub struct WorktreeList {
     adding: Option<String>,
     /// why the last add failed
     error: Option<String>,
+    /// the list draws only the lines in view
+    scroll: ListScroll,
+    scrollbar: ScrollState,
     _input_events: Subscription,
     _load: Option<Task<()>>,
     _add: Option<Task<()>>,
@@ -57,10 +91,12 @@ impl WorktreeList {
                 list.filter_changed(cx);
             }
         });
+        let scroll = ListScroll::new();
+        let scrollbar = ScrollState::for_list(&scroll);
         let mut list = Self {
             context,
             refs: None,
-            branches: Vec::new(),
+            branches: ListedBranches::default(),
             worktrees_folder: None,
             load_error: None,
             input,
@@ -69,6 +105,8 @@ impl WorktreeList {
             hidden_open: true,
             adding: None,
             error: None,
+            scroll,
+            scrollbar,
             _input_events: events,
             _load: None,
             _add: None,
@@ -89,12 +127,26 @@ impl WorktreeList {
         self.input.read(cx).text().to_owned()
     }
 
-    pub fn branches(&self) -> &[BranchInfo] {
-        &self.branches
+    /// The branches without a worktree as the filter matches them, newest first.
+    pub fn branch_candidates(&self) -> &[Candidate] {
+        &self.branches.candidates
     }
 
     pub fn branch(&self, shown: &str) -> Option<&BranchInfo> {
-        self.branches.iter().find(|branch| branch.name.display() == shown)
+        self.branches.get(shown)
+    }
+
+    pub fn scroll(&self) -> &ListScroll {
+        &self.scroll
+    }
+
+    pub fn scrollbar(&self) -> &ScrollState {
+        &self.scrollbar
+    }
+
+    /// Scrolls the list's `line` into view, as the selection moves to it.
+    pub fn scroll_to_line(&self, line: usize) {
+        self.scroll.list_handle().scroll_to_item(line, ScrollStrategy::Nearest);
     }
 
     pub fn worktrees_folder(&self) -> Option<&str> {
@@ -185,7 +237,10 @@ impl WorktreeList {
             Ok(refs) => {
                 let mut branches = without_worktree(&refs.branches, &self.context.checked_out());
                 branches.sort_by_key(|branch| std::cmp::Reverse(branch.when.seconds));
-                self.branches = branches;
+                // read every few seconds: mostly the same branches
+                if branches != self.branches.branches {
+                    self.branches = ListedBranches::new(branches);
+                }
                 self.refs = Some(refs);
                 self.load_error = None;
             }

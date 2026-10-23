@@ -233,6 +233,9 @@ code { font-family: var(--mono); }
 /* overview/project.rs: padding 24, top 6, bottom 32; the body 18 px under the section row. */
 .page { flex: 1; min-height: 0; overflow: auto; padding: 6px 24px 32px; font-size: 16px; }
 .page__section { margin-top: 18px; }
+/* Worktrees and Scratches fill the page and scroll themselves: the app draws only the rows in view */
+.page--fill { display: flex; flex-direction: column; }
+.page--fill > .page__section { flex: 1; min-height: 0; }
 /* section_row.rs: 34 px buttons, padding 12, 14 px, a 2 px underline in the checkout's colour (the accent for a
    project); the location on the right in 12 px mono, then ↑/↓ tags. */
 .otabs { flex: none; display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border); }
@@ -269,10 +272,14 @@ button.card:hover { border-color: var(--accent); }
    the selected row on theme.selected, the keys row); a 3 px bar in the checkout's colour; Hide / Show and + Worktree on
    hover and while selected. */
 .wtlist { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-.wtlist__search { width: 420px; }
-.wtlist__list { flex: none; overflow: visible; padding: 0 0 4px; }
-.wtlist__toggle { width: 100%; text-align: left; align-items: center; gap: 4px; }
-.wtlist__more { padding: 4px 30px; }
+.wtlist__search { flex: none; width: 420px; }
+/* the list scrolls between the filter and the keys; every line (header, row, note, paging) is a 24 px row */
+.wtlist__list { flex: 1; min-height: 0; overflow: auto; padding: 0; }
+.wtlist .hub__section { box-sizing: border-box; height: 24px; align-items: flex-end; padding: 0 4px 4px; }
+.wtlist .hub__empty { display: flex; align-items: center; height: 24px; padding: 0 8px 0 30px; }
+.wtlist .hub__age { white-space: nowrap; }
+.wtlist__toggle { width: 100%; text-align: left; gap: 4px; }
+.wtlist__more { height: 24px; padding: 0 30px; }
 .wtlist__keys { border: 0; padding: 0 2px; }
 .wtrow { gap: 6px; padding-left: 4px; }
 .wtrow__colour { flex: none; width: 3px; height: 14px; border-radius: 2px; }
@@ -310,6 +317,8 @@ button.card:hover { border-color: var(--accent); }
 /* scratches.rs: hint, search (420 px) and + New scratch; groups with a 24 px header; flat 24 px rows, Rename and
    Delete on hover. */
 .scratches { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+/* the listing scrolls under the toolbar; headers, rows and paging are 24 px lines, no gap between groups */
+.scratches__list { flex: 1; min-height: 0; overflow: auto; }
 .scratches__hint { font-size: 12px; color: var(--muted); }
 .scratches__toolbar { display: flex; align-items: center; gap: 12px; }
 .scratches__search { width: 420px; }
@@ -321,7 +330,7 @@ button.card:hover { border-color: var(--accent); }
 .scratch-row__first { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .scratch-row__actions { flex: none; display: flex; gap: 8px; visibility: hidden; }
 .scratch-row:hover .scratch-row__actions { visibility: visible; }
-.scratches__group .more { padding: 4px 8px; }
+.scratches__group .more { height: 24px; padding: 0 8px; }
 
 /* git_log_tab.rs segments (padding 10/4, radius 6, 14 px; picked on theme.selected with the accent outline). */
 .seg { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
@@ -352,7 +361,10 @@ button.card:hover { border-color: var(--accent); }
 
 /* git_log_tab.rs: padding 24, top 12, gap 10; segments with counts, then a bordered list. */
 .gitlog { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 24px 0; }
-.gitlog__body { flex: 1; min-height: 0; overflow: auto; padding-bottom: 24px; }
+/* each view's box scrolls itself (the app draws only the rows in view); a short list's box ends under its last row */
+.gitlog__body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gitlog__body > div { display: flex; flex-direction: column; min-height: 0; }
+.gitlog__body .rows { min-height: 0; overflow: auto; margin-bottom: 32px; }
 .gitlog__empty { padding: 8px; font-size: 14px; }
 
 /* commit_tab.rs: padding 16/12, gap 4: full sha (12 px mono muted), author · date (14 px), message (medium), parents. */

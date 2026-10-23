@@ -753,7 +753,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `list_run_configs` | a folder's `.run.toml` read now: each configuration's key, name, kind (`run`, `serve`), command (secrets as `${name}`), live state and process id; or the file's error |
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
 | `list_targets` | what `click` can press now, by name: every tree row and its actions (also rows scrolled out of view), overview sections and cards, Settings, prompt buttons (see the names below) |
-| `click` | click a target from `list_targets`, as the mouse would; a tree row out of view is scrolled to first; answers once the window has drawn the result |
+| `click` | click a target from `list_targets`, as the mouse would; a tree, Worktrees or Scratches row out of view is scrolled to first; answers once the window has drawn the result |
 | `window_keys`, `window_text` | keys or text for whatever has the keyboard: a prompt (Enter, Escape), a terminal, a text field, the workspace's key bindings (`alt-f12`) |
 | `show_process` | show a process's tab by its `list_projects` id, opening it again after its tab was closed |
 | `open_project` | open a folder's project, as Open Folder… with it picked; answers with its id once it is open |

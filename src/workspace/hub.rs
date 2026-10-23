@@ -1,5 +1,6 @@
 //! The hub tab in the workspace: opening it, its keys, what it lists, and the searches over the file index.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -881,10 +882,11 @@ impl Workspace {
         let open_checkouts: Vec<PathBuf> = self.projects.iter().flat_map(|open| open.listed_checkouts().map(|checkout| checkout.path.clone())).collect();
         let shown = self.shown_projects();
         let hidden = self.projects.iter().map(|open| open.project.id.clone()).filter(|id| !shown.contains(id)).collect();
+        let open_tabs = self.tab_identities();
         Sources {
             hidden,
             projects: self.hub_projects(),
-            recent: recent_items(&self.history, |shown| self.presence(shown), |path| self.checkout_of_path(path)),
+            recent: recent_items(&self.history, |shown| self.presence(shown, &open_tabs), |path| self.checkout_of_path(path)),
             changed: self.changed_items(),
             running: self.process_items(true),
             processes: self.process_items(false),
@@ -924,8 +926,19 @@ impl Workspace {
         Some(ProjectInfo { id: id.clone(), name: project.name.clone(), git: project.kind == ProjectKind::Git, worktrees })
     }
 
-    fn presence(&self, shown: &Shown) -> Presence {
-        if let Some((tab, open)) = self.tabs.iter().find(|(_, tab)| tab.identity(self).as_ref() == Some(&shown.identity)) {
+    /// The open tabs by what they show, the first of tabs showing the same: Recent looks up hundreds of entries.
+    fn tab_identities(&self) -> HashMap<TabIdentity, TabId> {
+        let mut identities = HashMap::new();
+        for (id, tab) in self.tabs.iter() {
+            if let Some(identity) = tab.identity(self) {
+                identities.entry(identity).or_insert(id);
+            }
+        }
+        identities
+    }
+
+    fn presence(&self, shown: &Shown, open_tabs: &HashMap<TabIdentity, TabId>) -> Presence {
+        if let Some((tab, open)) = open_tabs.get(&shown.identity).and_then(|tab| Some((*tab, self.tabs.get(*tab)?))) {
             return Presence::Open { tab, title: open.title(self) };
         }
         let running = |process: &crate::process::Process| Presence::Process { id: process.id, title: process.title() };
@@ -1001,15 +1014,20 @@ impl Workspace {
         for open in &self.projects {
             let project = &open.project;
             let mut seen: Vec<(String, String, Vec<PathBuf>, String)> = Vec::new();
+            // where in `seen` each folder and key is: a project can have a thousand configurations
+            let mut at: HashMap<(&str, &str), usize> = HashMap::new();
             for checkout in open.listed_checkouts() {
                 let Some(read) = self.hub_index.files(&checkout.path) else {
                     continue;
                 };
                 for (folder, file) in read.configs.iter() {
                     for config in &file.configs {
-                        match seen.iter_mut().find(|(at, key, _, _)| at == folder && *key == config.key) {
-                            Some((_, _, checkouts, _)) => checkouts.push(checkout.path.clone()),
-                            None => seen.push((folder.clone(), config.key.clone(), vec![checkout.path.clone()], config.name.clone())),
+                        match at.get(&(folder.as_str(), config.key.as_str())) {
+                            Some(&index) => seen[index].2.push(checkout.path.clone()),
+                            None => {
+                                at.insert((folder, &config.key), seen.len());
+                                seen.push((folder.clone(), config.key.clone(), vec![checkout.path.clone()], config.name.clone()));
+                            }
                         }
                     }
                 }

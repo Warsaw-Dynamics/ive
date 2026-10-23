@@ -139,6 +139,8 @@ Right end: project path (`~/Projects/atlassian`, or `… · no git`).
     stripe, branch icon, label (the branch too when it differs), folder, grey tags ("N changes"/"clean", ↑/↓,
     "● n running" in green), last use. A click shows it expanded in the tree; Hide on hover (not on the main checkout).
   - **Hidden** (collapsible, only when there are some): the same rows faded, Show on hover.
+  The filter stays at the top and the keys row at the bottom; the list between them scrolls, and ↑↓ keep the
+  selected row in view (see "Scale rules").
   - **Branches without a worktree**: newest first, 10 + paging; "local" or "only on origin" (faded icon). A click
     adds its worktree where `.ive.toml` says, as New worktree did; "+ Worktree" on hover.
 - **Databases** *(not in the app yet)*: IntelliJ-style data-source tree.
@@ -222,6 +224,9 @@ worktree, else its first open checkout.
 - Built for a monorepo: 102 data sources (not in the app yet), 600 scratches (`checkouts-data.js`, Faker, seeded).
   Run configurations scale by folder: the tab lists a checkout's `.run.toml` files by folder.
 - Every long list shows **10** entries with "Show 10 more", "Show all" and "or refine the search".
+- A list that can grow to thousands (the Worktrees list's branches, Scratches, the Git log's views) fills its page and
+  scrolls itself, drawing only the rows in view: "Show all" over 2,000 branches costs what 10 do. Its lines (group
+  headers, rows, notes, paging) are one row high. The hub draws at most 80 rows per section ("80 of N · type to narrow").
 
 ## Worktree folders
 
