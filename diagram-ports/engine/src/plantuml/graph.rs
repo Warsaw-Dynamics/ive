@@ -4,7 +4,7 @@ use super::{
     budget::{Budget, invalid},
     scene::{Dash, Decoration, Element, Paint, Point, Rect, Scene, Shape, text_at},
     text::{Context, Label},
-    uml::{Direction, Kind, Member, Parent, Uml},
+    uml::{Direction, Fill, Kind, Member, Parent, Uml},
 };
 use crate::RenderError;
 use dugong::{
@@ -66,19 +66,26 @@ pub(super) fn layout(model: &Uml, context: &mut Context<'_>) -> Result<Scene, Re
     let measured = measure(model, context)?;
     let labels = measure_relations(model, context)?;
     let mut graph = build_graph(model, &measured, &labels, context.budget)?;
-    let mut work = Work {
-        budget: context.budget,
-        failure: Failure::None,
-    };
-    let result = dugong::layout_controlled(&mut graph, &mut work);
-    if let Failure::Error(error) = work.failure {
-        return Err(error);
-    }
-    result.map_err(|e| RenderError::Backend(format!("PlantUML Dagre layout: {e}")))?;
+    layout_checked(&mut graph, context.budget)?;
     let mut scene = Scene::new();
     draw_nodes(model, &measured, &graph, &mut scene, context)?;
     draw_edges(model, &labels, &graph, &mut scene, context)?;
     Ok(scene)
+}
+
+pub(super) fn layout_checked(
+    graph: &mut Graph<NodeLabel, EdgeLabel, GraphLabel>,
+    budget: &mut Budget,
+) -> Result<(), RenderError> {
+    let mut work = Work {
+        budget,
+        failure: Failure::None,
+    };
+    let result = dugong::layout_controlled(graph, &mut work);
+    if let Failure::Error(error) = work.failure {
+        return Err(error);
+    }
+    result.map_err(|e| RenderError::Backend(format!("PlantUML Dagre layout: {e}")))
 }
 
 fn measure(model: &Uml, context: &mut Context<'_>) -> Result<Vec<Measured>, RenderError> {
@@ -269,6 +276,9 @@ fn draw_nodes(
             element.owner = format!("n{parent}");
         }
         element.shapes = super::shapes::node(rect, entity.kind.name());
+        if let Fill::Authored(color) = entity.fill {
+            element.shapes = vec![Shape::Rect(rect, 0., Paint::Color(color))];
+        }
         let header_y = rect.y
             + if matches!(
                 entity.kind,

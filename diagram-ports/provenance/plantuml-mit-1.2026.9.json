@@ -1249,25 +1249,40 @@
     {
       "path": "net/sourceforge/plantuml/tim/EaterAffectationDefine.java",
       "sha256": "001009a5bd744874e72233f839523eea054c07459621a137e68ab7062afb84db",
-      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "rust": [
+        "engine/src/plantuml/preprocess.rs"
+      ],
       "behavior": "Lines120-133: eagerly expand prior values in the same-line literal, retain authored quote characters, then freeze. Native restricts names to ASCII1-64 bytes, literals16KiB, immutable preamble definitions; no scope mutation or TIM evaluation.",
-      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
       "path": "net/sourceforge/plantuml/tim/TContext.java",
       "sha256": "b914f5053b91d59c2b9578f663d531823e59f34615657fadd3562a11f529fc5d",
-      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "rust": [
+        "engine/src/plantuml/preprocess.rs"
+      ],
       "behavior": "Lines458-520, only the variable/ordinary-character branches: scan original input left-to-right, append a frozen value, advance original cursor without rescanning inserted text. Functions, procedures, evaluation, includes, ambient services and all other context machinery are not translated.",
-      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
       "path": "net/sourceforge/plantuml/tim/VariableManager.java",
       "sha256": "a9ec4da9f0ed946f97e81daa54b4a67a747b39561739c170a827237166476a36",
-      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "rust": [
+        "engine/src/plantuml/preprocess.rs"
+      ],
       "behavior": "Lines131-155 scalar append/cursor contract and216-236 case-sensitive boundaries/backslash-n exception. Native rejects ## adjacent to a matched constant, admits no JSON indexing, and explicitly rejects non-ASCII adjacency to a known ASCII constant instead of claiming Java Unicode/UTF16 category equivalence.",
-      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     },
     {
@@ -2274,7 +2289,7 @@
       "rust": [
         "engine/src/plantuml/source.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2472,7 +2487,7 @@
       "rust": [
         "engine/src/plantuml/uml.rs"
       ],
-      "behavior": "Description-family shared component/deployment/usecase vocabulary.",
+      "behavior": "Description-family shared component/deployment/usecase vocabulary. Lines207-209 register ArchiMate description commands; only the icon-free single-line command is admitted. ArchiMate remains DESCRIPTION, without a separate wrapper/family.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2948,6 +2963,192 @@
         "* Original Author:  Arnaud Roques"
       ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cheneer/ChenEerDiagram.java",
+      "sha256": "0b059002a1b59627343447dc77e362cd1c4130fe860cfa9c7c87c3e95a3ff932",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs"
+      ],
+      "behavior": "Lexical owner stack independent of package containment.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cheneer/command/CommandCreateEntity.java",
+      "sha256": "5dc5ecec3bb8dc4eb2c6060d50a231c93fdf18d4c0db15fbf142f2ae35e44485",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs"
+      ],
+      "behavior": "Mandatory owner braces, display/alias and entity/relationship kinds; colors, decorations and nested declarations rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cheneer/command/CommandCreateAttribute.java",
+      "sha256": "5132aa2ebed227a4797091ae7f92d30377629eaf041d5920f08fd4581eddec36",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs"
+      ],
+      "behavior": "Owner-qualified identities, duplicate rejection, separate composite attributes and real ownership links; identifier-only aliases.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cheneer/command/CommandAssociate.java",
+      "sha256": "dd7535cb4900aca7738d380440472e50b39436d10c7f9ff430303680bd6162db",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/chenscene.rs"
+      ],
+      "behavior": "Declared endpoints, undirected associations, central cardinalities, normal/bold participation; mismatched markers rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/cheneer/command/CommandEndGroup.java",
+      "sha256": "a8112e6b39f38b37030e867dcbf5afed521fde86fa4b0b056ec8d339152ef59d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs"
+      ],
+      "behavior": "Close lexical attribute owner; unbalanced braces rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImageChenEntity.java",
+      "sha256": "2b8dab51933e203d773e6df0e5e7c89b2dd099b2552c0de304a78013c042f7e0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chenscene.rs"
+      ],
+      "behavior": "Measured rectangle entity; weak decoration rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImageChenRelationship.java",
+      "sha256": "a0ebf31a21bde41913e0e6f38673c35d8a8845d7a78b6fc076f09d5515061b21",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chenscene.rs"
+      ],
+      "behavior": "Measured 2:1 diamond fitting text interior; identifying rejected; native margins/routes differ.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImageChenAttribute.java",
+      "sha256": "7a4c20e3e0d361bd71c135bbc1c3ea28f1e15d031a7100ec374160542e26da5e",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/chenscene.rs"
+      ],
+      "behavior": "Separate measured oval; key/multi/derived rejected; native ellipse fitting and intersections.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/descdiagram/command/CommandArchimate.java",
+      "sha256": "9c4e956d56b471342d01337eb2fe3440961deaed824defbe38c709e4fd5d4c8b",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Icon-free DESCRIPTION declaration, authored fill and display/alias; every icon position, package and multiline rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/decoration/LinkType.java",
+      "sha256": "1346a0a1efdd3545377eae89c02d20274bfc08391b3d6176c2e1325cf9cbbb12",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques",
+        "* Contribution :  Hisashi Miyashita"
+      ],
+      "rust": [
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/chenscene.rs"
+      ],
+      "behavior": "No-head association and goBold participation; Hisashi Miyashita contribution retained.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/decoration/LinkStyle.java",
+      "sha256": "f34b53429547a46203b03b07c0dcab5eb26eb797110fe043bc1956d3626c407a",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/svg.rs"
+      ],
+      "behavior": "Bold participation actual 2px stroke, not parallel lines.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/decoration/symbol/USymbols.java",
+      "sha256": "0f2ae92a208f717c539a403e485676762cf070fa6e7caa6b68f94bba9adb24c5",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/graph.rs"
+      ],
+      "behavior": "ARCHIMATE is USymbolRectangle(SName.archimate); no icons or invented layers.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/decoration/symbol/USymbolRectangle.java",
+      "sha256": "2e794e523a701cb54264906ba50a5461e3e8b93308d6c44ebb458bfaedd9d0a5",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/graph.rs"
+      ],
+      "behavior": "Plain measured rectangle and authored fill; native margins differ from original ten-pixel margins.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/color/ColorTrieNode.java",
+      "sha256": "c4869733e8fe82394b8e128f239d98670f27db57918dfc09f86f5bbc15366757",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/uml.rs"
+      ],
+      "behavior": "Only LightBlue=ADD8E6 and LightGreen=90EE90 constants; no other table, trie algorithm or assets.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -3170,13 +3371,23 @@
       "path": "fixtures/plantuml/constantsequence.puml",
       "sha256": "9971b56f9b1073641dfdb5776bdb53e0dbc51f30d985d00ae5b35aaaff9dddff",
       "origin": "Independently authored Task3D2 native eager-constant/paint example; not copied upstream or an original geometry oracle.",
-      "expectedLabels": ["SECOND", "Ready", "Ready now", "Browser"]
+      "expectedLabels": [
+        "SECOND",
+        "Ready",
+        "Ready now",
+        "Browser"
+      ]
     },
     {
       "path": "fixtures/plantuml/constantgraph.puml",
       "sha256": "f796db25708f84943ca5d7c01f19acc2d41f67f8a2c4eb94468f1b0c3b4f5215",
       "origin": "Independently authored Task3D2 native eager-constant/class/document example; not copied upstream or an original geometry oracle.",
-      "expectedLabels": ["Ready", "Account", "balance", "confirmed Ready"]
+      "expectedLabels": [
+        "Ready",
+        "Account",
+        "balance",
+        "confirmed Ready"
+      ]
     },
     {
       "path": "fixtures/plantuml/mindmap.puml",
@@ -3357,6 +3568,26 @@
         "Accounts",
         "Ledger"
       ]
+    },
+    {
+      "path": "fixtures/plantuml/chen.puml",
+      "sha256": "5666cbec5b209f9fa8ce034d3ef5f89a802fc4da0a5e09b295c6bfc56f098986",
+      "origin": "Independently authored native viewer example; no original pixel parity claim."
+    },
+    {
+      "path": "fixtures/plantuml/chenbase.puml",
+      "sha256": "d689aebba3196e628ed7c84bc805b89cfb806985f3f9df1e07d7fb4f3f27f163",
+      "origin": "/tmp/ive-plantuml-native-oracles/chen-entities-relationship.puml (exact bytes; original unchanged)"
+    },
+    {
+      "path": "fixtures/plantuml/archimate.puml",
+      "sha256": "73041e5113179ecb130544fdbc6e23719e227cb14d6e831b2b31b670f8a15d75",
+      "origin": "Independently authored native viewer example; no original pixel parity claim."
+    },
+    {
+      "path": "fixtures/plantuml/archimatebase.puml",
+      "sha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
+      "origin": "/tmp/ive-plantuml-native-oracles/archimate-authentic-uml.puml (exact bytes; original unchanged)"
     }
   ],
   "oracle": {
@@ -3419,7 +3650,9 @@
     "engine/src/plantuml/shapes.rs",
     "engine/src/plantuml/style.rs",
     "engine/src/plantuml/creole.rs",
-    "engine/src/plantuml/chrome.rs"
+    "engine/src/plantuml/chrome.rs",
+    "engine/src/plantuml/chen.rs",
+    "engine/src/plantuml/chenscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",

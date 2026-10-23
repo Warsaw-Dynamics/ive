@@ -459,7 +459,7 @@ fn property(font: &mut Font, property: (&str, &str), line: usize) -> Result<(), 
     Ok(())
 }
 
-fn color(value: &str, line: usize) -> Result<Color, RenderError> {
+pub(super) fn color(value: &str, line: usize) -> Result<Color, RenderError> {
     if value.len() != 7
         || !value.starts_with('#')
         || !value[1..].bytes().all(|ch| ch.is_ascii_hexdigit())

@@ -41,7 +41,7 @@ fn should_contain_actual_native_inventory_labels_inside_owning_shapes() {
     let platform = gpui_platform::current_platform(true);
     let resources =
         NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
-    for family in ["files", "packetdiag", "board", "hcl"] {
+    for family in ["files", "packetdiag", "board", "hcl", "chen", "archimate"] {
         for size in [6, 14, 96] {
             if family == "hcl" && size != 14 {
                 continue;
@@ -86,7 +86,16 @@ fn should_contain_actual_native_inventory_labels_inside_owning_shapes() {
                     continue;
                 };
                 let kind = element.attribute("data-kind").unwrap();
-                let enclosure = if matches!(kind, "files-note" | "packet-fragment" | "board-card") {
+                let enclosure = if matches!(
+                    kind,
+                    "files-note"
+                        | "packet-fragment"
+                        | "board-card"
+                        | "chen-entity"
+                        | "chen-relationship"
+                        | "chen-attribute"
+                        | "archimate"
+                ) {
                     group.children().iter().find_map(|n| {
                         if let usvg::Node::Path(p) = n {
                             Some(p.abs_bounding_box())
@@ -131,11 +140,34 @@ fn should_contain_actual_native_inventory_labels_inside_owning_shapes() {
                                     && ink.bottom() <= bounds.bottom() + 0.5,
                                 "{family} {size}px {kind} ink {ink:?} enclosure {bounds:?}"
                             );
+                            if matches!(kind, "chen-attribute" | "chen-relationship") {
+                                for (x, y) in [
+                                    (ink.left(), ink.top()),
+                                    (ink.right(), ink.top()),
+                                    (ink.left(), ink.bottom()),
+                                    (ink.right(), ink.bottom()),
+                                ] {
+                                    let dx = (x - bounds.x() - bounds.width() / 2.).abs()
+                                        / (bounds.width() / 2.);
+                                    let dy = (y - bounds.y() - bounds.height() / 2.).abs()
+                                        / (bounds.height() / 2.);
+                                    let boundary = if kind == "chen-attribute" {
+                                        dx.hypot(dy)
+                                    } else {
+                                        dx + dy
+                                    };
+                                    assert!(
+                                        boundary <= 1.001,
+                                        "{family} {size}px {kind} ink exceeds actual shape: {boundary}"
+                                    );
+                                }
+                            }
                         }
                     }
                 }
             }
-            assert!(painted >= 7, "{family} inspected only {painted} runs");
+            let minimum = if family == "archimate" { 6 } else { 7 };
+            assert!(painted >= minimum, "{family} inspected only {painted} runs");
             assert!(bridge.calls.load(Ordering::Relaxed) > 0);
             assert_eq!(bridge.fallback.load(Ordering::Relaxed), 0);
             eprintln!(

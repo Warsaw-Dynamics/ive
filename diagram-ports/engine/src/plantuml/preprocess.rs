@@ -90,6 +90,7 @@ impl Processor<'_> {
                             | "@startpacketdiag"
                             | "@startboard"
                             | "@starthcl"
+                            | "@startchen"
                     ))
             {
                 inside = true;
@@ -102,6 +103,7 @@ impl Processor<'_> {
                         | "@startpacketdiag"
                         | "@startboard"
                         | "@starthcl"
+                        | "@startchen"
                 );
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if !raw_text
@@ -119,6 +121,7 @@ impl Processor<'_> {
                             | "@endpacketdiag"
                             | "@endboard"
                             | "@endhcl"
+                            | "@endchen"
                     ))
             {
                 inside = false;

@@ -25,6 +25,7 @@ pub(super) enum Kind {
     Actor,
     Usecase,
     Rectangle,
+    Archimate,
     Note,
 }
 impl Kind {
@@ -43,6 +44,7 @@ impl Kind {
             Self::Actor => "actor",
             Self::Usecase => "usecase",
             Self::Rectangle => "rectangle",
+            Self::Archimate => "archimate",
             Self::Note => "note",
         }
     }
@@ -77,6 +79,12 @@ pub(super) struct Entity {
     pub parent: Parent,
     pub members: Vec<Member>,
     pub container: bool,
+    pub fill: Fill,
+}
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Fill {
+    Default,
+    Authored(super::style::Color),
 }
 #[derive(Debug)]
 pub(super) struct Relation {
@@ -202,6 +210,7 @@ fn kind(word: &str) -> Option<Kind> {
         "actor" => Kind::Actor,
         "usecase" => Kind::Usecase,
         "rectangle" => Kind::Rectangle,
+        "archimate" => Kind::Archimate,
         "note" => Kind::Note,
         _ => return None,
     })
@@ -264,7 +273,26 @@ impl Parser {
         } else {
             (kind(&tokens[0].text).unwrap(), 1)
         };
+        let (start, fill) = if entity_kind == Kind::Archimate {
+            let color = tokens
+                .get(start)
+                .ok_or_else(|| invalid(line.number, "archimate requires a color and name"))?;
+            if color.quoted {
+                return Err(unsupported(line.number, &line.text));
+            }
+            let fill = match color.text.to_ascii_lowercase().as_str() {
+                "#lightblue" => super::style::Color(0xadd8e6),
+                "#lightgreen" => super::style::Color(0x90ee90),
+                _ => super::style::color(&color.text, line.number)?,
+            };
+            (start + 1, Fill::Authored(fill))
+        } else {
+            (start, Fill::Default)
+        };
         let open = tokens.last().is_some_and(|t| t.text == "{" && !t.quoted);
+        if entity_kind == Kind::Archimate && open {
+            return Err(unsupported(line.number, &line.text));
+        }
         let end = tokens.len() - usize::from(open);
         if entity_kind == Kind::Note
             && (open
@@ -279,6 +307,9 @@ impl Parser {
             ));
         }
         let (alias, label) = lexer::name(&tokens[start..end], line.number)?;
+        if entity_kind == Kind::Archimate {
+            lexer::validate_identifier(&alias, line.number)?;
+        }
         let is_uml = entity_kind.members();
         budget.charge(self.model.entities.len().saturating_mul(2))?;
         let is_description = matches!(
@@ -289,6 +320,7 @@ impl Parser {
                 | Kind::Actor
                 | Kind::Usecase
                 | Kind::Rectangle
+                | Kind::Archimate
         );
         if (is_uml
             && self.model.entities.iter().any(|e| {
@@ -300,6 +332,7 @@ impl Parser {
                         | Kind::Actor
                         | Kind::Usecase
                         | Kind::Rectangle
+                        | Kind::Archimate
                 )
             }))
             || (is_description && self.model.entities.iter().any(|e| e.kind.members()))
@@ -341,6 +374,7 @@ impl Parser {
             parent,
             members: Vec::new(),
             container,
+            fill,
         });
         if entity_kind.members() {
             self.model.family = if entity_kind == Kind::Object && self.model.family != "class" {
@@ -502,6 +536,7 @@ impl Parser {
             parent: relation.scope,
             members: Vec::new(),
             container: false,
+            fill: Fill::Default,
         });
         Ok(id)
     }

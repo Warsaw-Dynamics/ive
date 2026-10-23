@@ -5,6 +5,20 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit exact Chen and icon-free rectangle semantics without subtype or asset paths', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const path of ['cheneer/ChenEerDiagram.java', 'cheneer/command/CommandCreateAttribute.java', 'svek/image/EntityImageChenRelationship.java', 'decoration/LinkStyle.java', 'decoration/symbol/USymbolRectangle.java', 'klimt/color/ColorTrieNode.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const path of ['cheneer/command/CommandMultiSubclass.java', 'cheneer/command/CommandSimpleSubclass.java', 'svek/image/EntityImageChenCircle.java', 'decoration/symbol/USymbolCloud.java', 'klimt/color/OtherColors.java', 'smetana/SmetanaForJson.java', 'stdlib/archimate/sprite.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should admit exact inventory semantics and reject unselected source siblings', () => {
   // given
   const source = manifest();

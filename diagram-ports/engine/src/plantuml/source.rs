@@ -22,6 +22,7 @@ pub(super) enum Wrapper {
     Packet,
     Board,
     Hcl,
+    Chen,
 }
 
 pub(super) fn prepare_document(
@@ -46,6 +47,7 @@ pub(super) fn prepare_document(
         "@startpacketdiag" => (Wrapper::Packet, "@endpacketdiag"),
         "@startboard" => (Wrapper::Board, "@endboard"),
         "@starthcl" => (Wrapper::Hcl, "@endhcl"),
+        "@startchen" => (Wrapper::Chen, "@endchen"),
         _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
     };
     budget.charge(source.len())?;
@@ -55,7 +57,7 @@ pub(super) fn prepare_document(
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.charge(raw.len() + 1)?;
         let normalized;
-        let raw = if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag) {
+        let raw = if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag | Wrapper::Chen) {
             normalized = strip_comments(raw, &mut block_comment, budget)?;
             normalized.trim()
         } else {
@@ -75,7 +77,8 @@ pub(super) fn prepare_document(
                 ));
             }
             budget.text(raw.len())?;
-            if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag) && raw.is_empty() {
+            if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag | Wrapper::Chen) && raw.is_empty()
+            {
                 continue;
             }
             lines.push(Line {
@@ -89,10 +92,14 @@ pub(super) fn prepare_document(
             ));
         }
     }
-    if wrapper == Wrapper::Nwdiag && block_comment {
+    if matches!(wrapper, Wrapper::Nwdiag | Wrapper::Chen) && block_comment {
         return Err(invalid(
             source.lines().count(),
-            "unterminated nwdiag block comment",
+            if wrapper == Wrapper::Chen {
+                "unterminated Chen block comment"
+            } else {
+                "unterminated nwdiag block comment"
+            },
         ));
     }
     if state != 2 || lines.iter().all(|line| line.text.trim().is_empty()) {
@@ -311,6 +318,7 @@ pub(super) fn graph_declaration(line: &Line) -> bool {
                 | "package"
                 | "namespace"
                 | "usecase"
+                | "archimate"
         )
 }
 

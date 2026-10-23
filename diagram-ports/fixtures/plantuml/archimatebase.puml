@@ -1,0 +1,5 @@
+@startuml
+archimate #LightBlue "Order service" as Orders
+archimate #LightGreen "Customer record" as Record
+Orders --> Record : reads
+@enduml

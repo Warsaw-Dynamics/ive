@@ -58,6 +58,14 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-chen",
+        source: include_str!("../../fixtures/plantuml/chen.puml"),
+    },
+    Example {
+        name: "plantuml-archimate",
+        source: include_str!("../../fixtures/plantuml/archimate.puml"),
+    },
+    Example {
         name: "plantuml-files",
         source: include_str!("../../fixtures/plantuml/files.puml"),
     },
@@ -161,6 +169,28 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_chen_and_icon_free_archimate_with_honest_families() {
+        // given
+        for (name, family, kind) in [
+            ("plantuml-chen", "chen", "chen-relationship"),
+            ("plantuml-archimate", "description", "archimate"),
+        ] {
+            // when
+            let source = super::source(name).unwrap();
+            let output = diagram_engine::render(
+                source,
+                &diagram_engine::RenderOptions {
+                    language: diagram_engine::Language::PlantUml,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            // then
+            assert_eq!(output.family, family);
+            assert!(output.svg.contains(&format!("data-kind=\"{kind}\"")));
+        }
+    }
     #[test]
     fn should_find_four_native_inventory_examples_with_real_family_shapes() {
         // given

@@ -57,6 +57,7 @@ pub(super) enum Shape {
 pub(super) enum Dash {
     Solid,
     Dashed,
+    Bold,
 }
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub(super) enum Decoration {

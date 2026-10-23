@@ -89,6 +89,11 @@ impl Writer {
                 fill.value()
             )),
             Shape::Line(points, dash) => {
+                if matches!(dash, super::scene::Dash::Bold) {
+                    self.add("<polyline stroke-width=\"2\" fill=\"none\" points=\"")?;
+                    self.points(points)?;
+                    return self.add("\"/>");
+                }
                 self.add(&format!(
                     "<polyline fill=\"none\" stroke-dasharray=\"{}\" points=\"",
                     match dash {

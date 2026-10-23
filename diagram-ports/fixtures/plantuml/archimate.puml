@@ -1,0 +1,9 @@
+@startuml
+skinparam defaultFontName Liberation Sans
+title Icon-free ArchiMate description rectangles
+archimate #LightBlue "Order service" as Orders
+archimate #LightGreen "Customer record" as Record
+archimate #FFE1A6 "Audit trail" as Audit
+Orders --> Record : reads
+Orders --> Audit : records
+@enduml
