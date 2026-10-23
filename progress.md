@@ -1,12 +1,12 @@
 # Diagram ports — progress and orchestration
 
-Updated: 2026-10-23 12:48:17 UTC. Owner: primary controller agent.
+Updated: 2026-10-23. Owner: primary controller agent.
 
 This is the visible master checklist for further work. The controller updates it at implementation, verification, review and handoff milestones. Detailed working evidence remains in the internal SDD ledger linked below. Checked implementation is not automatically checked compatibility: family admission, semantics, geometry and pixel parity are separate claims.
 
 ## Current status
 
-- Execution is frozen for the owner's next-session handoff. Read [diagram-ports-handoff.md](diagram-ports-handoff.md); all worker checkpoints are committed and stopped.
+- Execution resumed at the owner's request. Current method: implement a grammar stage, run focused tests, fix failures, and repeat. Broad independent review is deferred until the assembled port is ready. The handoff remains a record of the previous checkpoint.
 
 - Mermaid and the standalone native pgui viewer are implemented and independently reviewed.
 - Native PlantUML checkpoints through timing, Gantt, Salt, nwdiag and files/packetdiag/board/HCL are independently approved.
@@ -19,13 +19,13 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Current committed head | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — first parallel parser batch fully verified and independently approved |
-| Last approved product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | None — all workers committed checkpoints and stopped for handoff |
+| Current committed head | `e9c1354` — tested UML and activity parser routes integrated |
+| Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
+| Current implementers | Chen, JSON/HCL, and timing/Gantt stages in isolated worktrees |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
-| Pending reviews | UML fix1 at0c2ee0e needs scoped re-review; activity at1b0c234 needs initial review; JSON/HCL e71d646 remains WIP |
-| Next implementation | Resume Task10 newest tests/provenance/proof while reviewing UML and activity; then remaining grammar queue |
-| Latest independent controller checks | 602 Rust tests +seven actual faults, all16 gates,18 Node/3 generator/5 notice tests,67-package audit,nine reproducible parsers,unchanged43 baseline, six native captures and six empty-PATH exports |
+| Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
+| Next implementation | Complete Chen, JSON/HCL and timing/Gantt; integrate tested checkpoints, then continue remaining grammar queue |
+| Latest independent controller checks | At `e9c1354`, full serial workspace `cargo test --locked --offline --workspace -- --test-threads=1` passes, including seven actual worker faults; immutable43 baseline and 220 MIT/43 fixture/43 module audit also pass. Earlier `0c5177e` completed all16 gates and six native captures/exports. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
 | Latest native compatibility captures | Sequence/state/mindmap/WBS/files/board measurements7/7/5/5/12/8,all zero fallback; controller inspected/hash-verified and stopped all viewers |
@@ -166,7 +166,7 @@ Boundaries: packet full-label scale/max-height row policy deliberately differs f
 - [ ] Migrate timing/Gantt, Salt/nwdiag and files/packet/board grammars.
 - [ ] Migrate applicable shared syntax parsing (preambles/styles/supported directives/markup), explicitly separating lexical and semantic work.
 - [ ] Remove superseded ad-hoc syntax dispatch; no generated Line* wrapper forwarding to legacy parsers, no runtime legacy fallback after cutover.
-- [ ] Verify accepted/rejected grammar, identity/geometry/source-location/bounds and genuine native captures; independent review each cutover.
+- [ ] Verify accepted/rejected grammar, identity/geometry/source-location/bounds and genuine native captures; perform broad independent review after implementation.
 - [ ] Resume remaining family queue using LALRPOP, then final evidence/whole-branch review.
 
 Approach: staged real grammar cutovers with existing models/layouts retained. Custom bounded lexing/preprocessing stays explicit where it owns comments/raw modes/macros; it is not a substitute for generated structural grammar. Definitions, document/header syntax and preamble/style/skinparam/region syntax are independently approved as rewritten; family and Creole syntax remain pending.
@@ -179,12 +179,12 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 2 | Document wrappers/lexical ownership/source-span error bridge | DONE —92c9520; both header findings addressed, independent scoped approval; Gantt EOF defect resolved |
 | 3 | Preambles/styles/chrome syntax | DONE —f5a10a0; both Important findings addressed, independent scoped approval; root544/all16 gates/native/public probes pass |
 | 4 | Sequence | DONE —1506eb1 integrated0c5177e; both compatibility fixes reviewed, full combined gates/native pass |
-| 5 | UML/description/ArchiMate/names/arrows | FROZEN0c2ee0e —322 tests/scoped checks pass; fix1 raw-byte-bound re-review pending |
-| 6 | Chen/contextual keyword repair | Pending |
+| 5 | UML/description/ArchiMate/names/arrows | INTEGRATED8a58a71 from tested0c2ee0e —362 UML-only focused tests pass; broad review deferred |
+| 6 | Chen/contextual keyword repair | IN PROGRESS — isolated worktree from tested UML head |
 | 7 | State | DONE —ec60840 integrated0c5177e; adjacency fix reviewed, full combined gates/native pass |
-| 8 | Structured activity | FROZEN1b0c234 —180unit+93public/scoped checks pass; initial independent review pending |
+| 8 | Structured activity | INTEGRATEDe9c1354 from tested1b0c234 — combined focused suite375, strict Clippy/fmt and private generator11 pass; root full serial workspace tests and seven worker faults pass; broad review deferred |
 | 9 | Mindmap/WBS/files/board | DONE —4a31cb7 integrated0c5177e; syntax/label limit fix reviewed, full combined gates/native pass |
-| 10 | JSON/HCL | WIPe71d646 — newest tests unverified; provenance/admission proof and final checks unfinished |
+| 10 | JSON/HCL | IN PROGRESS from WIPe71d646 — newest tests, provenance/admission proof and final checks being completed |
 | 11 | PlantUML YAML | Pending |
 | 12 | Timing/Gantt/assigned defects | Pending |
 | 13 | Salt | Pending |
@@ -195,10 +195,11 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 
 Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generated definitions, wrappers, shared ownership, typed headers, origin/body spans and preamble/style/skinparam/region grammar are active. That checkpoint passed544 Rust+seven faults/all16 gates,18Node,generator3/notice5/67-package audit/four reproducible outputs and unchanged43-fixture baseline SHA a14d47f73af4f7c78c67dc746ac5c51eb96d89e54db1b52425cc1b8e08fafafe. Empty-value errors are typed; repeated500 sheets pass with/without definitions and identical SVGs. Actual styled/constants20/22/12/14 and font6/14/96 each8 native,all zero fallback, are inspected/hash-verified; exports/cleanup pass. The table above tracks subsequent cutover reviews and pending combined verification.
 
-### Acceleration now in use
+### Implementation loop now in use
 
-- Independent family ports use separate state, tree, UML and activity worktrees. A designated integration writer combines reviewed branches in `diagram-ports`; the controller runs the complete shared gates once per combined batch.
-- Workers run focused regression tests, generated-table resource proofs, source audits and strict checks; each task still receives independent review. Native captures and baseline exports run centrally.
+- Owner direction (2026-10-23): continue implementation without per-stage independent review. The broad review moves to the end. Cost if wrong: defects may accumulate across grammar stages, so each checkpoint needs focused tests, exact failing cases, and a reproducible commit before integration.
+- Independent family ports use separate worktrees. A designated integration writer combines tested branches in `diagram-ports`; the controller runs shared gates on combined batches.
+- Workers implement, run focused regression tests, repair failures and commit coherent checkpoints. Broad review happens at the end; native captures and baseline exports run centrally at meaningful integration milestones.
 - Cargo commands share an outer build lock to avoid competing with the existing500ms test. Generator binaries use a separate target directory per checkout: their embedded checkout paths caused cross-worktree output generation when a shared executable was reused. The private targets fix that hazard; no source baseline or assertion was weakened.
 - The previous10–18hour estimate described serial execution and is superseded. The first combined integration is complete; remaining time chiefly depends on grammar implementations and compatibility fixes. No revised completion time is claimed yet.
 
@@ -287,8 +288,8 @@ These remain explicit gaps, not hidden success claims. Final coverage must refin
 ## Orchestration rules
 
 1. Controller owns this file and the evidence ledger; update both at each real milestone. Give agents a pointer here, but keep report/diff details in their scoped handoffs.
-2. One product implementer per isolated worktree; independent family tasks run concurrently. One central integration writer; fresh independent task review gates each branch and full shared checks run per combined batch.
-3. Never call a stage complete from tests alone. Blocking review findings require a scoped fix and re-review. Record Minor deferrals explicitly for final triage.
+2. One product implementer per isolated worktree; independent family tasks run concurrently. One central integration writer; use focused tests and combined gates as the implementation loop.
+3. Mark tested implementation milestones separately from final compatibility approval. Defer broad review findings and final triage until the assembled port is ready.
 4. Preserve source/license/runtime-I/O restrictions, public APIs, existing regressions, immutable typed models and shared resource budgets.
 5. Continue the ordered queue after the current gate; do not stop at a status report, replan already completed work or claim full parity from family counts.
 
