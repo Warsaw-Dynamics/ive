@@ -238,10 +238,9 @@ impl<'a> Guard<'a> {
                 Kind::Merge(merge) => {
                     self.scratch(context.surface, merge.inputs().len())?;
                 }
-                Kind::Image(image) => {
-                    self.children(image.root(), context)?;
-                }
                 other => {
+                    // feImage replaces the parent linear transform with scale-only
+                    // in resvg; ordinary subtree accounting cannot bound its tiles.
                     return Err(format!(
                         "diagram SVG filter {} has unsupported bounded raster work",
                         filter_name(other)
@@ -304,6 +303,7 @@ fn transformed(rect: Rect, transform: Transform) -> Result<Rect, String> {
 fn filter_name(kind: &usvg::filter::Kind) -> &'static str {
     use usvg::filter::Kind;
     match kind {
+        Kind::Image(_) => "feImage",
         Kind::ConvolveMatrix(_) => "feConvolveMatrix",
         Kind::DiffuseLighting(_) => "feDiffuseLighting",
         Kind::DisplacementMap(_) => "feDisplacementMap",

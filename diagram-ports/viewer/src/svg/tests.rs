@@ -512,6 +512,40 @@ fn should_reject_repeated_legal_bitmaps_before_decoding_or_painting() {
 }
 
 #[test]
+fn should_reject_filter_image_with_cancelling_pattern_shear_before_rasterization() {
+    // given
+    let source = r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <defs>
+        <pattern id="p" patternUnits="userSpaceOnUse" width="100" height="100"
+                 patternTransform="matrix(1 0 -50 1 0 0)">
+          <rect width="1" height="1"/>
+        </pattern>
+        <rect id="art" width="1" height="1" fill="url(#p)"/>
+        <filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="1" height="1">
+          <feImage href="#art" x="0" y="0" width="1" height="1"/>
+        </filter>
+      </defs>
+      <g transform="matrix(1 0 50 1 0 0)">
+        <rect width="1" height="1" filter="url(#f)"/>
+      </g>
+    </svg>"##;
+    let display = parse(source);
+    // when
+    // Never render this source: resvg's scale-only feImage context would request
+    // a 250100-by-100 pattern tile, despite the cancelling parent/pattern shears.
+    let result = raster_guard::check(
+        &display.tree,
+        Transform::identity(),
+        (100, 100),
+        &AtomicBool::new(false),
+    );
+    // then
+    let error = result.expect_err("filter image must be rejected before any raster allocation");
+    assert!(error.contains("feImage"), "{error}");
+    assert!(error.contains("unsupported bounded raster work"), "{error}");
+}
+
+#[test]
 fn should_reject_oversize_or_cumulative_effect_surfaces_before_allocation() {
     // given
     let cases = [
