@@ -1,6 +1,7 @@
 // Original grammar for the supported MIT state subset; semantic traces are in provenance.
 grammar(builder: &mut crate::plantuml::state::Builder<'_>);
-use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::Token, error::ParseFailure}};
+use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::{Token, join_shaft, require_adjacent}, error::ParseFailure}};
+use std::ops::Range;
 
 pub State: () = <Items>;
 Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
@@ -38,8 +39,14 @@ Endpoint: Name = { <Name>, "[*]" => Name { text: "[*]".into(), quoted: false } }
 Label: Caption = { => Caption::Absent, ":" <label:"label"> => Caption::Present(label) };
 DescriptionLabel: Caption = { => Caption::Absent, <_colon:DescriptionColon> <label:"label"> => Caption::Present(label) };
 DescriptionColon: () = { ":", "attached colon" };
-Arrow: bool = { <Hyphens> ">" => false, "<" <Hyphens> => true };
-Hyphens: () = { "-", <Hyphens> "-" };
+Arrow: bool = {
+    <shaft:Hyphens> <start:@L> <head:">"> <end:@R> =>? require_adjacent((shaft.end, head), start..end).map(|()| false).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <head:"<"> <end:@R> <shaft:Hyphens> =>? require_adjacent((head + 1, shaft.start), start..end).map(|()| true).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Hyphens: Range<usize> = {
+    <at:"-"> => at..at + 1,
+    <shaft:Hyphens> <start:@L> <at:"-"> <end:@R> =>? join_shaft(shaft, at, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
 
 extern {
     type Location = usize;
@@ -58,9 +65,9 @@ extern {
         "}" => Token::Close,
         ":" => Token::Colon,
         "attached colon" => Token::AttachedColon,
-        "<" => Token::Less,
-        ">" => Token::Greater,
-        "-" => Token::Minus,
+        "<" => Token::Less(<usize>),
+        ">" => Token::Greater(<usize>),
+        "-" => Token::Minus(<usize>),
         "unknown" => Token::Unknown,
         "newline" => Token::Newline,
     }

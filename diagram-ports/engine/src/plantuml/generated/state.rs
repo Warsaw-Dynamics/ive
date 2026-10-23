@@ -1,7 +1,8 @@
 // auto-generated: "lalrpop 0.23.2"
-// sha3: e2539b743f0a7b919d185297188a5a3af40df5e28cfdb63051c3f8a19680b873
+// sha3: 0b11d91775f4d4c209accf89691495b7c6b43720651ac22b234289d52d0ab564
 // features: 
-use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::Token, error::ParseFailure}};
+use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::{Token, join_shaft, require_adjacent}, error::ParseFailure}};
+use std::ops::Range;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
 #[allow(unused_imports)]
@@ -13,7 +14,8 @@ extern crate alloc;
 #[allow(explicit_outlives_requirements, non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::needless_lifetimes, clippy::type_complexity, clippy::needless_return, clippy::too_many_arguments, clippy::match_single_binding, clippy::clone_on_copy, clippy::unit_arg)]
 mod __parse__State {
 
-    use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::Token, error::ParseFailure}};
+    use crate::plantuml::{state::{Caption, Declaration, Name}, parser::{state::{Token, join_shaft, require_adjacent}, error::ParseFailure}};
+    use std::ops::Range;
     #[allow(unused_extern_crates)]
     extern crate lalrpop_util as __lalrpop_util;
     #[allow(unused_imports)]
@@ -32,6 +34,7 @@ mod __parse__State {
         Variant5(()),
         Variant6(Declaration),
         Variant7(Caption),
+        Variant8(Range<usize>),
     }
     const __ACTION: &[i8] = &[
         // State 0
@@ -489,9 +492,9 @@ mod __parse__State {
             Token::Close if true => Some(10),
             Token::Colon if true => Some(11),
             Token::AttachedColon if true => Some(12),
-            Token::Less if true => Some(13),
-            Token::Greater if true => Some(14),
-            Token::Minus if true => Some(15),
+            Token::Less(_) if true => Some(13),
+            Token::Greater(_) if true => Some(14),
+            Token::Minus(_) if true => Some(15),
             Token::Unknown if true => Some(16),
             Token::Newline if true => Some(17),
             _ => None,
@@ -505,13 +508,17 @@ mod __parse__State {
     ) -> __Symbol<>
     {
         #[allow(clippy::manual_range_patterns)]match __token_index {
-            0 | 1 | 2 | 3 | 4 | 5 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 => __Symbol::Variant0(__token),
+            0 | 1 | 2 | 3 | 4 | 5 | 8 | 9 | 10 | 11 | 12 | 16 | 17 => __Symbol::Variant0(__token),
             6 => match __token {
                 Token::Name(__tok0) if true => __Symbol::Variant1(__tok0),
                 _ => unreachable!(),
             },
             7 => match __token {
                 Token::Label(__tok0) if true => __Symbol::Variant2(__tok0),
+                _ => unreachable!(),
+            },
+            13 | 14 | 15 => match __token {
+                Token::Less(__tok0) | Token::Greater(__tok0) | Token::Minus(__tok0) if true => __Symbol::Variant3(__tok0),
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -871,10 +878,32 @@ mod __parse__State {
                 __reduce1(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             2 => {
-                __reduce2(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
+                // Arrow = Hyphens, ">" => ActionFn(51);
+                assert!(__symbols.len() >= 2);
+                let __sym1 = __pop_Variant3(__symbols);
+                let __sym0 = __pop_Variant8(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym1.2.clone();
+                let __nt = match super::__action51::<>(builder, __sym0, __sym1) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant4(__nt), __end));
+                (2, 2)
             }
             3 => {
-                __reduce3(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
+                // Arrow = "<", Hyphens => ActionFn(52);
+                assert!(__symbols.len() >= 2);
+                let __sym1 = __pop_Variant8(__symbols);
+                let __sym0 = __pop_Variant3(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym1.2.clone();
+                let __nt = match super::__action52::<>(builder, __sym0, __sym1) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant4(__nt), __end));
+                (2, 2)
             }
             4 => {
                 __reduce4(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
@@ -886,7 +915,7 @@ mod __parse__State {
                 __reduce6(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             7 => {
-                // CompositeOpen = "state", "gap", Declaration, Opener, "newline" => ActionFn(48);
+                // CompositeOpen = "state", "gap", Declaration, Opener, "newline" => ActionFn(53);
                 assert!(__symbols.len() >= 5);
                 let __sym4 = __pop_Variant0(__symbols);
                 let __sym3 = __pop_Variant5(__symbols);
@@ -895,7 +924,7 @@ mod __parse__State {
                 let __sym0 = __pop_Variant0(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym4.2.clone();
-                let __nt = match super::__action48::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
+                let __nt = match super::__action53::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -915,14 +944,14 @@ mod __parse__State {
                 (1, 5)
             }
             9 => {
-                // Declaration = Name, "as", Name => ActionFn(49);
+                // Declaration = Name, "as", Name => ActionFn(54);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant1(__symbols);
                 let __sym1 = __pop_Variant0(__symbols);
                 let __sym0 = __pop_Variant1(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym2.2.clone();
-                let __nt = match super::__action49::<>(builder, __sym0, __sym1, __sym2) {
+                let __nt = match super::__action54::<>(builder, __sym0, __sym1, __sym2) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -957,10 +986,21 @@ mod __parse__State {
                 __reduce18(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             19 => {
-                __reduce19(builder, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
+                // Hyphens = Hyphens, "-" => ActionFn(55);
+                assert!(__symbols.len() >= 2);
+                let __sym1 = __pop_Variant3(__symbols);
+                let __sym0 = __pop_Variant8(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym1.2.clone();
+                let __nt = match super::__action55::<>(builder, __sym0, __sym1) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant8(__nt), __end));
+                (2, 10)
             }
             20 => {
-                // Item = "state", "gap", Declaration, DescriptionLabel, "newline" => ActionFn(50);
+                // Item = "state", "gap", Declaration, DescriptionLabel, "newline" => ActionFn(56);
                 assert!(__symbols.len() >= 5);
                 let __sym4 = __pop_Variant0(__symbols);
                 let __sym3 = __pop_Variant7(__symbols);
@@ -969,7 +1009,7 @@ mod __parse__State {
                 let __sym0 = __pop_Variant0(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym4.2.clone();
-                let __nt = match super::__action50::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
+                let __nt = match super::__action56::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -993,7 +1033,7 @@ mod __parse__State {
                 (4, 11)
             }
             22 => {
-                // Item = LeftName, DescriptionColon, "label", "newline" => ActionFn(51);
+                // Item = LeftName, DescriptionColon, "label", "newline" => ActionFn(57);
                 assert!(__symbols.len() >= 4);
                 let __sym3 = __pop_Variant0(__symbols);
                 let __sym2 = __pop_Variant2(__symbols);
@@ -1001,7 +1041,7 @@ mod __parse__State {
                 let __sym0 = __pop_Variant1(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym3.2.clone();
-                let __nt = match super::__action51::<>(builder, __sym0, __sym1, __sym2, __sym3) {
+                let __nt = match super::__action57::<>(builder, __sym0, __sym1, __sym2, __sym3) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -1009,7 +1049,7 @@ mod __parse__State {
                 (4, 11)
             }
             23 => {
-                // Item = LeftEndpoint, Arrow, Endpoint, Label, "newline" => ActionFn(52);
+                // Item = LeftEndpoint, Arrow, Endpoint, Label, "newline" => ActionFn(58);
                 assert!(__symbols.len() >= 5);
                 let __sym4 = __pop_Variant0(__symbols);
                 let __sym3 = __pop_Variant7(__symbols);
@@ -1018,7 +1058,7 @@ mod __parse__State {
                 let __sym0 = __pop_Variant1(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym4.2.clone();
-                let __nt = match super::__action52::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
+                let __nt = match super::__action58::<>(builder, __sym0, __sym1, __sym2, __sym3, __sym4) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -1151,6 +1191,16 @@ mod __parse__State {
             _ => __symbol_type_mismatch()
         }
     }
+    fn __pop_Variant8<
+    >(
+        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>
+    ) -> (usize, Range<usize>, usize)
+     {
+        match __symbols.pop() {
+            Some((__l, __Symbol::Variant8(__v), __r)) => (__l, __v, __r),
+            _ => __symbol_type_mismatch()
+        }
+    }
     fn __pop_Variant2<
     >(
         __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>
@@ -1220,42 +1270,6 @@ mod __parse__State {
         let __nt = super::__action41::<>(builder, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 1)
-    }
-    fn __reduce2<
-    >(
-        builder: &mut crate::plantuml::state::Builder<'_>,
-        __lookahead_start: Option<&usize>,
-        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>,
-        _: core::marker::PhantomData<()>,
-    ) -> (usize, usize)
-    {
-        // Arrow = Hyphens, ">" => ActionFn(37);
-        assert!(__symbols.len() >= 2);
-        let __sym1 = __pop_Variant0(__symbols);
-        let __sym0 = __pop_Variant5(__symbols);
-        let __start = __sym0.0.clone();
-        let __end = __sym1.2.clone();
-        let __nt = super::__action37::<>(builder, __sym0, __sym1);
-        __symbols.push((__start, __Symbol::Variant4(__nt), __end));
-        (2, 2)
-    }
-    fn __reduce3<
-    >(
-        builder: &mut crate::plantuml::state::Builder<'_>,
-        __lookahead_start: Option<&usize>,
-        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>,
-        _: core::marker::PhantomData<()>,
-    ) -> (usize, usize)
-    {
-        // Arrow = "<", Hyphens => ActionFn(38);
-        assert!(__symbols.len() >= 2);
-        let __sym1 = __pop_Variant5(__symbols);
-        let __sym0 = __pop_Variant0(__symbols);
-        let __start = __sym0.0.clone();
-        let __end = __sym1.2.clone();
-        let __nt = super::__action38::<>(builder, __sym0, __sym1);
-        __symbols.push((__start, __Symbol::Variant4(__nt), __end));
-        (2, 2)
     }
     fn __reduce4<
     >(
@@ -1445,30 +1459,12 @@ mod __parse__State {
     ) -> (usize, usize)
     {
         // Hyphens = "-" => ActionFn(39);
-        let __sym0 = __pop_Variant0(__symbols);
+        let __sym0 = __pop_Variant3(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
         let __nt = super::__action39::<>(builder, __sym0);
-        __symbols.push((__start, __Symbol::Variant5(__nt), __end));
+        __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 10)
-    }
-    fn __reduce19<
-    >(
-        builder: &mut crate::plantuml::state::Builder<'_>,
-        __lookahead_start: Option<&usize>,
-        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>,
-        _: core::marker::PhantomData<()>,
-    ) -> (usize, usize)
-    {
-        // Hyphens = Hyphens, "-" => ActionFn(40);
-        assert!(__symbols.len() >= 2);
-        let __sym1 = __pop_Variant0(__symbols);
-        let __sym0 = __pop_Variant5(__symbols);
-        let __start = __sym0.0.clone();
-        let __end = __sym1.2.clone();
-        let __nt = super::__action40::<>(builder, __sym0, __sym1);
-        __symbols.push((__start, __Symbol::Variant5(__nt), __end));
-        (2, 10)
     }
     fn __reduce24<
     >(
@@ -2188,11 +2184,13 @@ fn __action36<
 fn __action37<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    (_, __0, _): (usize, (), usize),
-    (_, _, _): (usize, Token, usize),
-) -> bool
+    (_, shaft, _): (usize, Range<usize>, usize),
+    (_, start, _): (usize, usize, usize),
+    (_, head, _): (usize, usize, usize),
+    (_, end, _): (usize, usize, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
-    false
+    require_adjacent((shaft.end, head), start..end).map(|()| false).map_err(|error| lalrpop_util::ParseError::User { error })
 }
 
 #[allow(unused_variables)]
@@ -2200,11 +2198,13 @@ fn __action37<
 fn __action38<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    (_, _, _): (usize, Token, usize),
-    (_, __0, _): (usize, (), usize),
-) -> bool
+    (_, start, _): (usize, usize, usize),
+    (_, head, _): (usize, usize, usize),
+    (_, end, _): (usize, usize, usize),
+    (_, shaft, _): (usize, Range<usize>, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
-    true
+    require_adjacent((head + 1, shaft.start), start..end).map(|()| true).map_err(|error| lalrpop_util::ParseError::User { error })
 }
 
 #[allow(unused_variables)]
@@ -2212,9 +2212,10 @@ fn __action38<
 fn __action39<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    (_, __0, _): (usize, Token, usize),
-)
+    (_, at, _): (usize, usize, usize),
+) -> Range<usize>
 {
+    at..at + 1
 }
 
 #[allow(unused_variables)]
@@ -2222,10 +2223,13 @@ fn __action39<
 fn __action40<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    (_, __0, _): (usize, (), usize),
-    (_, _, _): (usize, Token, usize),
-)
+    (_, shaft, _): (usize, Range<usize>, usize),
+    (_, start, _): (usize, usize, usize),
+    (_, at, _): (usize, usize, usize),
+    (_, end, _): (usize, usize, usize),
+) -> Result<Range<usize>,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
+    join_shaft(shaft, at, start..end).map_err(|error| lalrpop_util::ParseError::User { error })
 }
 
 #[allow(unused_variables)]
@@ -2256,6 +2260,62 @@ fn __action42<
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
 fn __action43<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, Range<usize>, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, usize, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
+    let __temp0 = __action42(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action37(
+        builder,
+        __0,
+        __temp0,
+        __1,
+        __2,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action44<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, usize, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, Range<usize>, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.0.clone();
+    let __end0 = __0.0.clone();
+    let __temp0 = __action42(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action38(
+        builder,
+        __temp0,
+        __0,
+        __1,
+        __2,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action45<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Token, usize),
@@ -2289,7 +2349,7 @@ fn __action43<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action44<
+fn __action46<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Name, usize),
@@ -2319,7 +2379,35 @@ fn __action44<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action45<
+fn __action47<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, Range<usize>, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, usize, usize),
+) -> Result<Range<usize>,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
+    let __temp0 = __action42(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action40(
+        builder,
+        __0,
+        __temp0,
+        __1,
+        __2,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action48<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Token, usize),
@@ -2353,7 +2441,7 @@ fn __action45<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action46<
+fn __action49<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Name, usize),
@@ -2385,7 +2473,7 @@ fn __action46<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action47<
+fn __action50<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Name, usize),
@@ -2419,18 +2507,15 @@ fn __action47<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action48<
+fn __action51<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    __0: (usize, Token, usize),
-    __1: (usize, Token, usize),
-    __2: (usize, Declaration, usize),
-    __3: (usize, (), usize),
-    __4: (usize, Token, usize),
-) -> Result<(),__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+    __0: (usize, Range<usize>, usize),
+    __1: (usize, usize, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
-    let __start0 = __4.2.clone();
-    let __end0 = __4.2.clone();
+    let __start0 = __1.2.clone();
+    let __end0 = __1.2.clone();
     let __temp0 = __action41(
         builder,
         &__start0,
@@ -2441,9 +2526,6 @@ fn __action48<
         builder,
         __0,
         __1,
-        __2,
-        __3,
-        __4,
         __temp0,
     )
 }
@@ -2451,16 +2533,15 @@ fn __action48<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action49<
+fn __action52<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
-    __0: (usize, Name, usize),
-    __1: (usize, Token, usize),
-    __2: (usize, Name, usize),
-) -> Result<Declaration,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+    __0: (usize, usize, usize),
+    __1: (usize, Range<usize>, usize),
+) -> Result<bool,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
-    let __start0 = __2.2.clone();
-    let __end0 = __2.2.clone();
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
     let __temp0 = __action41(
         builder,
         &__start0,
@@ -2470,22 +2551,21 @@ fn __action49<
     __action44(
         builder,
         __0,
-        __1,
-        __2,
         __temp0,
+        __1,
     )
 }
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action50<
+fn __action53<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Token, usize),
     __1: (usize, Token, usize),
     __2: (usize, Declaration, usize),
-    __3: (usize, Caption, usize),
+    __3: (usize, (), usize),
     __4: (usize, Token, usize),
 ) -> Result<(),__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
@@ -2511,7 +2591,93 @@ fn __action50<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action51<
+fn __action54<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, Name, usize),
+    __1: (usize, Token, usize),
+    __2: (usize, Name, usize),
+) -> Result<Declaration,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __2.2.clone();
+    let __end0 = __2.2.clone();
+    let __temp0 = __action41(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action46(
+        builder,
+        __0,
+        __1,
+        __2,
+        __temp0,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action55<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, Range<usize>, usize),
+    __1: (usize, usize, usize),
+) -> Result<Range<usize>,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __1.2.clone();
+    let __end0 = __1.2.clone();
+    let __temp0 = __action41(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action47(
+        builder,
+        __0,
+        __1,
+        __temp0,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action56<
+>(
+    builder: &mut crate::plantuml::state::Builder<'_>,
+    __0: (usize, Token, usize),
+    __1: (usize, Token, usize),
+    __2: (usize, Declaration, usize),
+    __3: (usize, Caption, usize),
+    __4: (usize, Token, usize),
+) -> Result<(),__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __4.2.clone();
+    let __end0 = __4.2.clone();
+    let __temp0 = __action41(
+        builder,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action48(
+        builder,
+        __0,
+        __1,
+        __2,
+        __3,
+        __4,
+        __temp0,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action57<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Name, usize),
@@ -2528,7 +2694,7 @@ fn __action51<
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action46(
+    __action49(
         builder,
         __0,
         __1,
@@ -2541,7 +2707,7 @@ fn __action51<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action52<
+fn __action58<
 >(
     builder: &mut crate::plantuml::state::Builder<'_>,
     __0: (usize, Name, usize),
@@ -2559,7 +2725,7 @@ fn __action52<
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action47(
+    __action50(
         builder,
         __0,
         __1,

@@ -28,13 +28,35 @@ pub(in crate::plantuml) enum Token {
     Close,
     Colon,
     AttachedColon,
-    Less,
-    Greater,
-    Minus,
+    Less(usize),
+    Greater(usize),
+    Minus(usize),
     Unknown,
     Newline,
 }
 type Spanned = (usize, Token, usize);
+
+pub(in crate::plantuml) fn require_adjacent(
+    positions: (usize, usize),
+    span: Range<usize>,
+) -> Result<(), ParseFailure> {
+    if positions.0 == positions.1 {
+        return Ok(());
+    }
+    Err(ParseFailure::unsupported(
+        span,
+        "state arrow operator primitives must be contiguous",
+    ))
+}
+
+pub(in crate::plantuml) fn join_shaft(
+    shaft: Range<usize>,
+    next: usize,
+    span: Range<usize>,
+) -> Result<Range<usize>, ParseFailure> {
+    require_adjacent((shaft.end, next), span)?;
+    Ok(shaft.start..next + 1)
+}
 
 pub(in crate::plantuml) fn parse(
     body: BodySource<'_>,
@@ -152,15 +174,16 @@ impl Lexer<'_> {
                 cursor += bytes;
                 continue;
             }
+            // Row cursors preserve comment-removal joins; triples keep expanded origin spans.
             let (token, bytes) = if rest.starts_with("[*]") {
                 (Token::Pseudo, 3)
             } else {
                 match ch {
                     '{' => (Token::Open, 1),
                     '}' => (Token::Close, 1),
-                    '<' => (Token::Less, 1),
-                    '>' => (Token::Greater, 1),
-                    '-' => (Token::Minus, 1),
+                    '<' => (Token::Less(cursor), 1),
+                    '>' => (Token::Greater(cursor), 1),
+                    '-' => (Token::Minus(cursor), 1),
                     _ => self.word(rest)?,
                 }
             };
@@ -311,6 +334,7 @@ fn admit(
         + std::mem::size_of::<Name>()
         + std::mem::size_of::<Declaration>()
         + std::mem::size_of::<Caption>()
+        + std::mem::size_of::<Range<usize>>()
         + 4 * std::mem::size_of::<usize>();
     let retained = token_capacity
         .saturating_mul(std::mem::size_of::<Spanned>())
@@ -390,6 +414,43 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn should_reject_generated_state_arrows_split_between_operator_primitives() {
+        // given
+        for arrow in [
+            "- >", "-- >", "- ->", "- - >", "< -", "<- -", "< --", "-\t>", "<\t-",
+        ] {
+            // when
+            let result = model(&format!("state A\nA {arrow} B"));
+            // then
+            assert!(result.is_err(), "accepted split arrow {arrow:?}");
+        }
+    }
+
+    #[test]
+    fn should_keep_state_operator_adjacency_after_comment_removal() {
+        // given
+        for (arrow, from, to) in [
+            ("->", 0, 1),
+            ("-->", 0, 1),
+            ("<--", 1, 0),
+            ("-/'Ω'/>", 0, 1),
+            ("-/'gap'/-/'gap'/>", 0, 1),
+            ("</'gap'/-/'gap'/-", 1, 0),
+        ] {
+            // when
+            let result = model(&format!("state A\nA {arrow} B : literal - >")).unwrap();
+            // then
+            assert_eq!(result.transitions.len(), 1, "{arrow}");
+            assert_eq!(
+                (result.transitions[0].from, result.transitions[0].to),
+                (from, to),
+                "{arrow}"
+            );
+            assert_eq!(result.transitions[0].label, "literal - >");
+        }
     }
 
     #[test]
@@ -606,8 +667,8 @@ mod tests {
                     text: "A".into(),
                     quoted: false,
                 }),
-                Token::Minus,
-                Token::Greater,
+                Token::Minus(5),
+                Token::Greater(6),
                 Token::Name(Name {
                     text: "B".into(),
                     quoted: false,
