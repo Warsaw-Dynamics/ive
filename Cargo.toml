@@ -30,8 +30,8 @@ getrandom = "0.4.3"
 git2 = { version = "0.21.0", default-features = false }
 # Zed's gpui with our fixes (Warsaw-Dynamics/pgui, branch zed-main: a snapshot of Zed plus one commit each).
 # gpui is Apache-2.0.
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73" }
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["font-kit", "wayland", "x11"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "291caf391d12f25b353ec9baba14e5f135fdcc35" }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "291caf391d12f25b353ec9baba14e5f135fdcc35", features = ["font-kit", "wayland", "x11"] }
 # the code view: syntax highlighting and colour keys
 codeview = { path = "codeview" }
 # walks project folders without git, honouring .gitignore-style files (the hub's file list)
@@ -84,7 +84,7 @@ signal-hook = "0.4"
 keyring = { version = "3.6.3", features = ["apple-native"] }
 # Metal shaders compiled at startup: building them ahead needs the `metal` tool of a full Xcode, not just the Command
 # Line Tools
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["runtime_shaders"] }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "291caf391d12f25b353ec9baba14e5f135fdcc35", features = ["runtime_shaders"] }
 
 [target.'cfg(windows)'.dependencies]
 # Print Screen puts a bitmap on the clipboard, saved as PNG when pasted
@@ -99,7 +99,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Stora
 [dev-dependencies]
 codeview = { path = "codeview", features = ["test-support"] }
 # gpui's test app, for driving a file tab's saves in unit tests
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["test-support"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "291caf391d12f25b353ec9baba14e5f135fdcc35", features = ["test-support"] }
 tempfile = "3"
 
 # Dependencies (memchr, gpui's renderer) are unusably slow unoptimised: opening a 10M-line file took
@@ -109,8 +109,3 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
-
-# until the Windows move_to commit is pushed to the fork and the rev above bumped: the local clone with it
-[patch."https://github.com/Warsaw-Dynamics/pgui.git"]
-gpui = { path = "D:/Programy/Rust/gpui/crates/gpui" }
-gpui_platform = { path = "D:/Programy/Rust/gpui/crates/gpui_platform" }
