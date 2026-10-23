@@ -94,6 +94,8 @@ The [advanced-state example](fixtures/plantuml/stateadvanced.puml), [public exte
 
 Detailed contracts and checks: [engine controls](engine/tests/plantuml_control.rs), [host SVG/native tests](viewer/src/svg/tests.rs), [raster guard](viewer/src/svg/raster_guard.rs), [worker protocol](viewer/src/worker.rs), [worker tests](viewer/tests/worker.rs), [fault scenarios](viewer/tests/worker_faults.rs) and [native cache lifetime](viewer/tests/native_lifetime.rs).
 
+Known residuals remain visible: late-label diagnostic columns can be coarse, and YAML nested-flow/quote errors may point to line 1. Large parser/layout modules remain maintainability work rather than an unresolved port gate. The audited Merman core/render dependencies still emit inherited `Atomic::fetch_update` deprecation warnings; their vendor bytes and the frozen baseline are unchanged. The 500 ms action test is sensitive to load from concurrent builds; it passed the serial full and all-targets runs with its original threshold unchanged. These observations are not claimed as fixes.
+
 ## Navigable evidence and provenance
 
 | Durable repository evidence | What to inspect |
