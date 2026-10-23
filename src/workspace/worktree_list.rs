@@ -8,7 +8,7 @@ use crate::editor::Tab;
 use crate::open_project::OpenProject;
 use crate::overview::worktree_list::WorktreeList;
 use crate::overview::worktree_list_view::{Drawn, DrawnGroup, DrawnRow, render_worktree_list};
-use crate::overview::worktree_rows::{Candidate, Group, GroupKind, KeyEffect, ListInput, ListKey, RowId, groups, key_effect, kept_place};
+use crate::overview::worktree_rows::{Candidate, Group, GroupKind, KeyEffect, ListInput, ListKey, RowId, groups, key_effect, kept_place, line_of, lines};
 use crate::overview::{ProjectSection, project_card_tags};
 use crate::age::Clock;
 use crate::colors::checkout_colour;
@@ -20,7 +20,7 @@ use crate::theme::Theme;
 impl Workspace {
     /// The Worktrees list of `project`, or the main checkout's row alone for a plain folder (`list` is `None`).
     pub(crate) fn render_worktree_list(&self, project: &ProjectId, list: Option<&Entity<WorktreeList>>, theme: Theme, cx: &mut Context<Self>) -> Div {
-        let drawn = self.drawn_list(project, list.map(|list| list.read(cx)), theme, cx);
+        let drawn = self.drawn_list(project, list.map(|list| list.read(cx)), cx);
         render_worktree_list(drawn, list, theme, cx)
     }
 
@@ -31,19 +31,14 @@ impl Workspace {
         };
         let query = list.map(|list| list.query(cx)).unwrap_or_default();
         let text = |checkout: &Checkout| format!("{} {} {}", checkout.label, checkout.branch.as_deref().unwrap_or_default(), checkout.path.display());
-        let candidate = |checkout: &Checkout| Candidate { id: RowId::Checkout(checkout.path.clone()), text: text(checkout) };
+        let candidate = |checkout: &Checkout| Candidate::new(RowId::Checkout(checkout.path.clone()), &text(checkout));
         let used = open.listed_checkouts().map(|checkout| (checkout, self.worktree_use.last_used(&checkout.path, &self.history))).collect();
-        let branches = list.map_or_else(Vec::new, |list| {
-            let remote = |branch: &crate::git::refs::BranchInfo| match &branch.name {
-                crate::git::refs::BranchName::Local(_) => "local".to_owned(),
-                crate::git::refs::BranchName::Remote { remote, .. } => remote.clone(),
-            };
-            list.branches().iter().map(|branch| Candidate { id: RowId::Branch(branch.name.display()), text: format!("{} {}", branch.name.display(), remote(branch)) }).collect()
-        });
+        let shown: Vec<Candidate> = by_last_use(used).into_iter().map(candidate).collect();
+        let hidden: Vec<Candidate> = open.hidden_checkouts().map(candidate).collect();
         let input = ListInput {
-            shown: by_last_use(used).into_iter().map(candidate).collect(),
-            hidden: open.hidden_checkouts().map(candidate).collect(),
-            branches,
+            shown: &shown,
+            hidden: &hidden,
+            branches: list.map_or(&[], WorktreeList::branch_candidates),
             query: &query,
             branches_visible: list.map_or(0, WorktreeList::branches_visible),
             git: list.is_some(),
@@ -51,32 +46,26 @@ impl Workspace {
         groups(&input)
     }
 
-    fn drawn_list(&self, project: &ProjectId, list: Option<&WorktreeList>, theme: Theme, cx: &App) -> Drawn {
+    fn drawn_list(&self, project: &ProjectId, list: Option<&WorktreeList>, cx: &App) -> Drawn {
         let groups = self.list_groups(project, list, cx);
         let selected = list.and_then(|list| list.selected(&groups));
         let hidden_open = list.is_none_or(WorktreeList::hidden_open);
-        let Some(open) = self.open_project(project) else {
-            return Drawn { project: project.clone(), groups: Vec::new(), selected, hidden_open, error: None, strip: Vec::new() };
-        };
-        let drawn = groups.iter().map(|group| self.drawn_group(group, open, list, theme)).collect();
+        let headers = groups.iter().map(|group| drawn_group(group, list)).collect();
         let error = list.and_then(|list| list.error().or(list.load_error()).map(str::to_owned));
         let escape = if selected.is_some() { "back to typing" } else { "clear" };
         let strip = match list {
             Some(_) => vec![("↑↓", "move"), ("Enter", "show in the tree · add the branch's worktree"), ("Space", "hide or show · add the worktree, staying put"), ("type", "filter"), ("Esc", escape)],
             None => Vec::new(),
         };
-        Drawn { project: project.clone(), groups: drawn, selected, hidden_open, error, strip }
+        Drawn { project: project.clone(), lines: lines(&groups, hidden_open), groups, headers, selected, hidden_open, error, strip }
     }
 
-    fn drawn_group(&self, group: &Group, open: &OpenProject, list: Option<&WorktreeList>, theme: Theme) -> DrawnGroup {
-        let rows = group.rows.iter().filter_map(|row| self.drawn_row(row, open, list, theme)).collect();
-        let folder = list.and_then(WorktreeList::worktrees_folder).unwrap_or(crate::ive_toml::DEFAULT_WORKTREES).to_owned();
-        let (title, hint, empty) = match group.kind {
-            GroupKind::Worktrees => ("Worktrees".to_owned(), "the main checkout, then by last use".to_owned(), Some("No worktree matches")),
-            GroupKind::Hidden => (format!("Hidden {}", group.total), "not in the tree, the hub or New terminal; their tabs stay open".to_owned(), None),
-            GroupKind::Branches => (format!("Branches without a worktree {}", group.total), format!("newest first; Enter adds its worktree in {folder}"), Some("No branch matches")),
+    /// The rows of `ids` as drawn, `None` for one no longer there: only the rows in view are drawn.
+    pub(crate) fn drawn_rows(&self, project: &ProjectId, list: Option<&WorktreeList>, ids: &[&RowId], theme: Theme) -> Vec<Option<DrawnRow>> {
+        let Some(open) = self.open_project(project) else {
+            return ids.iter().map(|_| None).collect();
         };
-        DrawnGroup { kind: group.kind, title, hint, rows, total: group.total, empty }
+        ids.iter().map(|row| self.drawn_row(row, open, list, theme)).collect()
     }
 
     fn drawn_row(&self, row: &RowId, open: &OpenProject, list: Option<&WorktreeList>, theme: Theme) -> Option<DrawnRow> {
@@ -158,7 +147,13 @@ impl Workspace {
             (read.selected(&groups), read.hidden_open(), read.query(cx).is_empty())
         };
         match key_effect(key, &groups, hidden_open, selected.as_ref(), query_empty) {
-            KeyEffect::Select(row) => list.update(cx, |list, cx| list.select(row.as_ref(), &groups, cx)),
+            KeyEffect::Select(row) => list.update(cx, |list, cx| {
+                let line = row.as_ref().and_then(|row| line_of(&lines(&groups, hidden_open), &groups, row));
+                if let Some(line) = line {
+                    list.scroll_to_line(line);
+                }
+                list.select(row.as_ref(), &groups, cx);
+            }),
             KeyEffect::Open(row) => self.open_list_row(&project, &list, &row, window, cx),
             KeyEffect::Toggle(row) => self.toggle_list_row(&project, &list, &row, cx),
             KeyEffect::ClearFilter => list.update(cx, |list, cx| list.clear_filter(cx)),
@@ -232,6 +227,16 @@ impl Workspace {
             }
         }
     }
+}
+
+fn drawn_group(group: &Group, list: Option<&WorktreeList>) -> DrawnGroup {
+    let folder = list.and_then(WorktreeList::worktrees_folder).unwrap_or(crate::ive_toml::DEFAULT_WORKTREES).to_owned();
+    let (title, hint, empty) = match group.kind {
+        GroupKind::Worktrees => ("Worktrees".to_owned(), "the main checkout, then by last use".to_owned(), Some("No worktree matches")),
+        GroupKind::Hidden => (format!("Hidden {}", group.total), "not in the tree, the hub or New terminal; their tabs stay open".to_owned(), None),
+        GroupKind::Branches => (format!("Branches without a worktree {}", group.total), format!("newest first; Enter adds its worktree in {folder}"), Some("No branch matches")),
+    };
+    DrawnGroup { kind: group.kind, title, hint, total: group.total, shown: group.rows.len(), empty }
 }
 
 /// The keys the list takes: plain arrows, Enter, Space and Escape.
