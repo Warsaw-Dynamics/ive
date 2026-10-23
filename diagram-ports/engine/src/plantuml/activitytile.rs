@@ -45,8 +45,14 @@ pub(super) fn layout(block: &Block, context: &mut Context<'_>) -> Result<Scene, 
     };
     let mut tile = builder.block(block)?;
     shift(&mut tile, Point::new(24., 24.), builder.context.budget)?;
+    builder.context.budget.charge(tile.elements.len())?;
+    // Container fills must precede incoming flows from any enclosing composition.
+    let (containers, content): (Vec<_>, Vec<_>) = tile
+        .elements
+        .into_iter()
+        .partition(|element| matches!(element.kind, "activity-group" | "activity-partition"));
     let mut scene = Scene::new();
-    for element in tile.elements {
+    for element in containers.into_iter().chain(content) {
         scene.push(element, builder.context.budget)?;
     }
     Ok(scene)
@@ -338,13 +344,15 @@ impl Builder<'_, '_> {
             tile.input.point.x = width / 2.;
             if let Exit::Live(port) = &mut tile.output {
                 port.point.x = width / 2.;
+                port.point.y = 8.;
             }
             if let Shape::Rect(rect, _, _) = &mut tile.elements[0].shapes[0] {
                 rect.width = width;
             }
             for shape in &mut tile.elements[0].shapes {
-                if let Shape::Text(point, label, _) = shape {
-                    point.x = (width - label.width) / 2.;
+                if let Shape::Text(point, _, _) = shape {
+                    point.x = width / 2. + 10.;
+                    point.y = 18.;
                 }
             }
         }
@@ -560,7 +568,7 @@ impl Builder<'_, '_> {
     fn group(&mut self, block: &Block, input: (&str, GroupKind)) -> Result<Tile, RenderError> {
         let mut body = self.block(block)?;
         let title = self.context.label(input.0)?;
-        let width = (body.width + 48.).max(title.width + 40.);
+        let width = (body.width + 48.).max(title.width + 64.);
         let height = body.height + title.height + 60.;
         let id = self.id()?;
         let mut element = Element::new(
@@ -598,12 +606,29 @@ impl Builder<'_, '_> {
             }
         }
         let mut elements = vec![element];
+        let entry = Port {
+            id,
+            point: Point::new(width - 12., 0.),
+        };
+        self.flow(
+            &mut elements,
+            Flow {
+                from: entry,
+                to: body.input,
+                label: "",
+                via: vec![
+                    Point::new(entry.point.x, body.input.point.y - 12.),
+                    Point::new(body.input.point.x, body.input.point.y - 12.),
+                ],
+                label_at: entry.point,
+            },
+        )?;
         elements.extend(body.elements);
         Ok(Tile {
             elements,
             width,
             height,
-            input: body.input,
+            input: entry,
             output: body.output,
         })
     }
@@ -727,6 +752,122 @@ mod tests {
         match element.shapes[0] {
             Shape::Rect(rect, _, _) => rect,
             _ => panic!("expected rectangle for {}", element.kind),
+        }
+    }
+
+    #[test]
+    fn should_paint_incoming_group_flow_above_every_opaque_container() {
+        // given
+        for source in [
+            "start\npartition P {\n:Inside;\n}\nstop",
+            "start\npartition P {\ngroup Q {\n:Inside;\n}\n}\nstop",
+            "if (x) then (yes)\npartition P {\n:Inside;\n}\nendif\nstop",
+        ] {
+            // when
+            let scene = draw(source);
+            let action = scene.elements.iter().find(|e| e.name == "Inside").unwrap();
+            let (index, flow) = scene
+                .elements
+                .iter()
+                .enumerate()
+                .find(|(_, e)| e.kind == "activity-flow" && e.target == action.id)
+                .unwrap();
+            let Shape::Polygon(head, Paint::Ink) = &flow.shapes[1] else {
+                panic!("missing incoming arrowhead");
+            };
+            let bounds = box_of(action);
+            // then
+            assert_eq!(head[0].y, bounds.y);
+            assert_eq!(head[0].x, bounds.x + bounds.width / 2.);
+            for (container_index, container) in scene
+                .elements
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| matches!(e.kind, "activity-partition" | "activity-group"))
+            {
+                assert_inside(&flow.shapes[1], box_of(container));
+                assert!(
+                    container_index < index,
+                    "opaque {} hides incoming arrowhead",
+                    container.kind
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn should_connect_labeled_join_bar_directly_to_following_instruction() {
+        // given
+        let source = "start\nfork\n:Left;\nfork again\n:Right;\nend fork {all}\n:After;\nstop";
+        // when
+        let scene = draw(source);
+        let join = scene
+            .elements
+            .iter()
+            .find(|e| e.kind == "activity-join")
+            .unwrap();
+        let after = scene.elements.iter().find(|e| e.name == "After").unwrap();
+        let flow = scene
+            .elements
+            .iter()
+            .find(|e| e.owner == join.id && e.target == after.id)
+            .unwrap();
+        let Shape::Line(points, _) = &flow.shapes[0] else {
+            panic!("missing join output path");
+        };
+        let bar = box_of(join);
+        // then
+        assert_eq!(points[0].x, bar.x + bar.width / 2.);
+        assert_eq!(
+            points[0].y,
+            bar.y + bar.height,
+            "output path is detached from join bar"
+        );
+        assert_eq!(points.last().unwrap().y, box_of(after).y);
+        let Shape::Text(label_at, label, _) = &join.shapes[1] else {
+            panic!("missing join label");
+        };
+        assert!(
+            label_at.x > points[0].x || label_at.x + label.width < points[0].x,
+            "label overlaps output stem"
+        );
+    }
+
+    #[test]
+    fn should_route_nested_group_inputs_clear_of_long_captions() {
+        // given
+        let source = "start\npartition \"A long outer partition caption across the centerline\" {\ngroup \"A long inner group caption across the centerline\" {\n:Inside;\n}\n}\nstop";
+        // when
+        let scene = draw(source);
+        // then
+        for container in scene
+            .elements
+            .iter()
+            .filter(|e| matches!(e.kind, "activity-partition" | "activity-group"))
+        {
+            let Shape::Text(origin, label, _) = &container.shapes[1] else {
+                panic!("caption");
+            };
+            for flow in scene.elements.iter().filter(|e| e.kind == "activity-flow") {
+                let Shape::Line(points, _) = &flow.shapes[0] else {
+                    panic!("flow");
+                };
+                for segment in points.windows(2) {
+                    let x0 = segment[0].x.min(segment[1].x);
+                    let x1 = segment[0].x.max(segment[1].x);
+                    let y0 = segment[0].y.min(segment[1].y);
+                    let y1 = segment[0].y.max(segment[1].y);
+                    assert!(
+                        x1 < origin.x
+                            || x0 > origin.x + label.width + 24.
+                            || y1 < origin.y
+                            || y0 > origin.y + label.height,
+                        "flow {} crosses caption or its routing clearance: {}",
+                        flow.id,
+                        container.name
+                    );
+                }
+            }
         }
     }
 

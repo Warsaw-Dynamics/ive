@@ -19,6 +19,9 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
         budget.checkpoint()?;
         let line = offset + 1;
         if body != TextBody::None {
+            if raw.trim_start().starts_with('!') {
+                return Err(unsupported(line, raw));
+            }
             budget.text(raw.len())?;
             let text = if body == TextBody::Note && raw.trim() == "end note" {
                 body = TextBody::None;
@@ -70,22 +73,23 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
             ));
         }
         let statement = Line { number: line, text };
-        graph_grammar |= matches!(
-            statement.text.split_whitespace().next().unwrap_or(""),
-            "class"
-                | "abstract"
-                | "interface"
-                | "enum"
-                | "annotation"
-                | "object"
-                | "state"
-                | "component"
-                | "node"
-                | "rectangle"
-                | "package"
-                | "namespace"
-                | "usecase"
-        );
+        graph_grammar |= !super::has_identifier_arrow(&statement)
+            && matches!(
+                statement.text.split_whitespace().next().unwrap_or(""),
+                "class"
+                    | "abstract"
+                    | "interface"
+                    | "enum"
+                    | "annotation"
+                    | "object"
+                    | "state"
+                    | "component"
+                    | "node"
+                    | "rectangle"
+                    | "package"
+                    | "namespace"
+                    | "usecase"
+            );
         if !graph_grammar {
             body = text_body(&statement);
         }
@@ -177,6 +181,20 @@ fn strip_comments(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<St
 mod tests {
     use super::*;
     use crate::RenderOptions;
+
+    #[test]
+    fn should_preserve_literal_raw_rows_around_nonleading_exclamation_marks() {
+        // given
+        let source = "@startuml\n:opening ! literal\n  body ! literal  \n\nending;\n@enduml";
+        let mut budget = Budget::new(&RenderOptions::default());
+        // when
+        let lines = prepare(source, &mut budget).unwrap();
+        // then
+        assert_eq!(
+            lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>(),
+            [":opening ! literal", "  body ! literal  ", "", "ending;"]
+        );
+    }
 
     #[test]
     fn should_charge_long_line_scanning_before_finishing_the_line() {

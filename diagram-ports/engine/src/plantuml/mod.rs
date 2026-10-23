@@ -86,6 +86,9 @@ enum Selection {
 fn select(lines: &[source::Line]) -> Selection {
     let mut candidate = Selection::Sequence;
     for line in lines {
+        if has_identifier_arrow(line) {
+            continue;
+        }
         let word = line.text.split_whitespace().next().unwrap_or("");
         if matches!(
             word,
@@ -158,4 +161,12 @@ fn select(lines: &[source::Line]) -> Selection {
     } else {
         Selection::Sequence
     }
+}
+
+fn has_identifier_arrow(line: &source::Line) -> bool {
+    let text = line.text.trim_start();
+    let word = text.split_whitespace().next().unwrap_or("");
+    !word.starts_with('[')
+        && !lexer::split_label(line).0.ends_with("[*]")
+        && lexer::arrow_at(text[word.len()..].trim_start()).is_some()
 }

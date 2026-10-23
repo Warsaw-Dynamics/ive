@@ -122,6 +122,9 @@ struct Parser {
 
 pub(super) fn is_graph(lines: &[Line]) -> bool {
     for line in lines {
+        if super::has_identifier_arrow(line) {
+            continue;
+        }
         let word = line.text.split_whitespace().next().unwrap_or("");
         if word == "note" {
             return line

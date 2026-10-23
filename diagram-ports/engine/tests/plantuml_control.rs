@@ -13,6 +13,137 @@ fn svg(body: &str) -> String {
 }
 
 #[test]
+fn should_reject_preprocessing_inside_raw_action_and_note_bodies() {
+    // given
+    for body in [
+        ":before\n!include ive-review-nonexistent-include.puml\nafter;",
+        ":before\n  !define VALUE replacement\nafter;",
+        "note over A\n  !include ive-review-nonexistent-include.puml\nend note",
+        "note over A\n!if true\ntext\n!endif\nend note",
+    ] {
+        // when
+        let result = render(
+            &format!("@startuml\n{body}\n@enduml"),
+            &RenderOptions {
+                language: Language::PlantUml,
+                ..Default::default()
+            },
+        );
+        // then
+        let error = result
+            .expect_err("raw body admitted preprocessing")
+            .to_string();
+        assert!(error.contains("line 3"), "{error}");
+        assert!(error.contains('!'), "{error}");
+    }
+}
+
+#[test]
+fn should_reject_ancestor_state_references_without_synthesizing_local_copies() {
+    // given
+    for body in [
+        "state A\nstate Outer {\nstate B\nA --> B\n}",
+        "state Outer {\nstate Inner {\nstate B\nB --> A\n}\n}\nstate A",
+        "state A\nstate Outer {\nstate A\nstate B\nA --> B\n}",
+        "state Outer {\nstate A\n}\nstate A",
+    ] {
+        // when
+        let result = render(
+            &format!("@startuml\n{body}\n@enduml"),
+            &RenderOptions {
+                language: Language::PlantUml,
+                ..Default::default()
+            },
+        );
+        // then
+        assert!(result.is_err(), "invented a local ancestor copy: {body}");
+    }
+}
+
+#[test]
+fn should_admit_sequence_participants_named_like_state_and_activity_commands() {
+    // given
+    for name in [
+        "start",
+        "stop",
+        "state",
+        "repeat",
+        "fork",
+        "partition",
+        "class",
+        "if",
+        "while",
+    ] {
+        for declaration in [
+            String::new(),
+            format!("actor {name}\n"),
+            format!("database {name}\n"),
+        ] {
+            let body = format!("{declaration}{name} -> Bob : hello");
+            // when
+            let result = render(
+                &format!("@startuml\n{body}\n@enduml"),
+                &RenderOptions {
+                    language: Language::PlantUml,
+                    ..Default::default()
+                },
+            )
+            .unwrap_or_else(|error| panic!("{body}: {error}"));
+            // then
+            assert_eq!(result.family, "sequence", "{body}");
+            assert!(result.svg.contains("hello"));
+        }
+    }
+}
+
+#[test]
+fn should_attach_descriptions_to_punctuated_quoted_state_displays() {
+    // given
+    for display in ["well-known", "left < right", "a -> b"] {
+        let body = format!("state \"{display}\" as S : description");
+        // when
+        let result = svg(&body);
+        let xml = roxmltree::Document::parse(&result).unwrap();
+        let labels: Vec<_> = xml
+            .descendants()
+            .filter(|n| n.has_tag_name("text"))
+            .filter_map(|n| n.text())
+            .collect();
+        // then
+        assert_eq!(labels, [display, "description"]);
+    }
+}
+
+#[test]
+fn should_preserve_raw_note_rows_after_keyword_named_sequence_messages() {
+    // given
+    let body =
+        "state -> Bob : hello\nnote over Bob\n  state value  \n\n  start ! literal\nend note";
+    // when
+    let result = svg(body);
+    let xml = roxmltree::Document::parse(&result).unwrap();
+    // then
+    let labels: Vec<_> = xml
+        .descendants()
+        .filter(|n| n.has_tag_name("text"))
+        .filter_map(|n| n.text())
+        .collect();
+    assert!(labels.contains(&"  state value  "));
+    assert!(labels.contains(&"  start ! literal"));
+}
+
+#[test]
+fn should_keep_implicit_state_family_for_pseudostate_targets() {
+    // given
+    let body = "A --> [*] : finished";
+    // when
+    let result = svg(body);
+    // then
+    assert!(result.contains("state-final"));
+    assert!(result.contains("finished"));
+}
+
+#[test]
 fn should_reuse_initial_and_final_per_scope() {
     // given
     let body = "state One {\n[*] --> A\n[*] --> B\nA --> [*]\nB --> [*]\n}\nstate Two {\n[*] --> C\nC --> [*]\n}\n[*] --> One\nOne --> [*]";

@@ -22,6 +22,7 @@ pub(super) enum Kind {
 }
 #[derive(Debug)]
 pub(super) struct Node {
+    line: usize,
     pub name: String,
     pub label: String,
     pub descriptions: Vec<String>,
@@ -80,6 +81,11 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<State, Render
             "unclosed composite state",
         ));
     }
+    for node in &model.nodes {
+        if find_ancestor(&model, (&node.name, node.scope), budget)?.is_some() {
+            return Err(unsupported(node.line, "cross-ownership state declaration"));
+        }
+    }
     for (line, scope) in pending {
         statement(&mut model, (line, scope), budget)?;
     }
@@ -134,6 +140,7 @@ fn declare(
     text::validate_label(description, line.number)?;
     let id = model.nodes.len();
     model.nodes.push(Node {
+        line: line.number,
         name,
         label,
         descriptions: vec![],
@@ -150,13 +157,13 @@ fn statement(
 ) -> Result<(), RenderError> {
     let (line, scope) = input;
     let (head, description) = lexer::split_label(line);
-    if let Some(index) = head.find(['-', '<']) {
+    let declaration = head.starts_with("state ");
+    if !declaration && let Some(index) = head.find(['-', '<']) {
         return transition(model, (line, scope, index), budget);
     }
     if head == line.text {
         return Err(unsupported(line.number, &line.text));
     }
-    let declaration = head.starts_with("state ");
     let head = head.strip_prefix("state ").unwrap_or(head);
     let tokens = lexer::tokens(
         &Line {
@@ -254,6 +261,9 @@ fn resolve(
     if let Some(id) = find(model, (name, scope, kind)) {
         return Ok(id);
     }
+    if kind == Kind::State && find_ancestor(model, (name, scope), budget)?.is_some() {
+        return Err(unsupported(line, "cross-ownership state endpoint"));
+    }
     if name.contains('.') || name.contains(':') {
         return Err(unsupported(line, "unresolved qualified state endpoint"));
     }
@@ -261,6 +271,7 @@ fn resolve(
     budget.text(name.len() * 2)?;
     let id = model.nodes.len();
     model.nodes.push(Node {
+        line,
         name: name.into(),
         label: if kind == Kind::State {
             name.into()
@@ -272,6 +283,22 @@ fn resolve(
         kind,
     });
     Ok(id)
+}
+
+fn find_ancestor(
+    model: &State,
+    input: (&str, Scope),
+    budget: &mut Budget,
+) -> Result<Option<usize>, RenderError> {
+    let (name, mut scope) = input;
+    while let Scope::State(id) = scope {
+        scope = model.nodes[id].scope;
+        budget.charge(model.nodes.len() + 1)?;
+        if let Some(id) = find(model, (name, scope, Kind::State)) {
+            return Ok(Some(id));
+        }
+    }
+    Ok(None)
 }
 
 fn find(model: &State, input: (&str, Scope, Kind)) -> Option<usize> {
@@ -296,6 +323,32 @@ fn find(model: &State, input: (&str, Scope, Kind)) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_leave_state_identity_unchanged_when_rejecting_an_ancestor_endpoint() {
+        // given
+        let mut budget = Budget::new(&crate::RenderOptions::default());
+        let lines = super::super::source::prepare(
+            "@startuml\nstate A\nstate Outer {\nstate B\n}\n@enduml",
+            &mut budget,
+        )
+        .unwrap();
+        let mut model = parse(&lines, &mut budget).unwrap();
+        // when
+        let result = resolve(
+            &mut model,
+            ("A", Scope::State(1), Kind::State, 5),
+            &mut budget,
+        );
+        // then
+        assert!(result.unwrap_err().to_string().contains("cross-ownership"));
+        assert_eq!(model.nodes.len(), 3);
+        assert_eq!(
+            model.nodes.iter().filter(|node| node.name == "A").count(),
+            1
+        );
+        assert_eq!(model.nodes[0].scope, Scope::Root);
+    }
     #[test]
     fn should_charge_declaration_identity_search_before_scanning() {
         // given
