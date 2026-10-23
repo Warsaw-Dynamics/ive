@@ -75,4 +75,7 @@
 
 Additional credited contributor on CommandLinkClass, CommandCreateElementFull and CommandLinkElement: Hisashi Miyashita.
 
+Additional credited contributor on StateDiagram, CommandLinkStateCommon, CommandLinkState and CommandLinkStateReverse: Serge Wenger.
+Original credit line retained in the manifest: * Contribution   :  Serge Wenger
+
 This notice is the exact generated MIT-edition grant header from the authorized 1.2026.9 source. The native implementation imports no third-party assets listed in that distribution header. Exact file provenance and unmodified hashes are in plantuml-mit-1.2026.9.json.

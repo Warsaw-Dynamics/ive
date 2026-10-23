@@ -58,6 +58,14 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-state",
+        source: include_str!("../../fixtures/plantuml/state.puml"),
+    },
+    Example {
+        name: "plantuml-activity",
+        source: include_str!("../../fixtures/plantuml/activity.puml"),
+    },
+    Example {
         name: "plantuml-sequence",
         source: include_str!("../../fixtures/plantuml/sequence.puml"),
     },
@@ -89,6 +97,28 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_native_state_and_activity_examples() {
+        // given
+        for (name, family) in [
+            ("plantuml-state", "state"),
+            ("plantuml-activity", "activity"),
+        ] {
+            // when
+            let source = super::source(name).unwrap();
+            let result = diagram_engine::render(
+                source,
+                &diagram_engine::RenderOptions {
+                    language: diagram_engine::Language::PlantUml,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            // then
+            assert_eq!(result.family, family);
+        }
+    }
+
     #[test]
     fn should_find_a_real_plantuml_example() {
         // given

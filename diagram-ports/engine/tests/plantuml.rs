@@ -468,8 +468,8 @@ fn should_reject_unsupported_syntax_with_a_source_location() {
         "<style>\nclass { Color red }\n</style>",
         "A -> B : hello\nunknown command",
         "& A -> B : parallel",
-        "state S",
-        "start\n:read;\nstop",
+        "state S <<choice>>",
+        "start\nbreak\nstop",
         "class A\nA -right-> B",
         "class A\nA::port --> B",
     ];

@@ -1,7 +1,10 @@
 //! Native subset translated from the authorized PlantUML MIT 1.2026.9 source artifact.
 //! Copyright 2009-2024 Arnaud Roques; credited link/declaration contribution: Hisashi Miyashita.
+//! Credited state/transition contribution: Serge Wenger.
 //! MIT grant retained in provenance/LICENSE-PlantUML-MIT.txt.
 //! Exact behavioral source traces and copyright notices: provenance/plantuml-mit-1.2026.9.json.
+mod activity;
+mod activitytile;
 mod arrow;
 mod budget;
 mod graph;
@@ -10,6 +13,8 @@ mod scene;
 mod sequence;
 mod shapes;
 mod source;
+mod state;
+mod stategraph;
 mod svg;
 mod text;
 mod uml;
@@ -32,7 +37,20 @@ pub(crate) fn render(
         .with_text_measurement_policy(options.text_measurement.clone())
         .begin_session_with_control(budget.control.clone())
         .map_err(|e| RenderError::Backend(e.to_string()))?;
-    let (family, scene) = if uml::is_graph(&lines) {
+    let selection = select(&lines);
+    let (family, scene) = if selection == Selection::Activity {
+        let model = activity::parse(&lines, &mut budget)?;
+        (
+            "activity",
+            activitytile::layout(&model, &mut text::Context::new(&session, &mut budget))?,
+        )
+    } else if selection == Selection::State {
+        let model = state::parse(&lines, &mut budget)?;
+        (
+            "state",
+            stategraph::layout(&model, &mut text::Context::new(&session, &mut budget))?,
+        )
+    } else if selection == Selection::Uml {
         let model = uml::parse(&lines, &mut budget)?;
         let family = model.family;
         (
@@ -54,5 +72,90 @@ pub(crate) fn render(
         .into_string();
     budget.checkpoint()?;
     crate::svg::validate(&svg, &options.limits)?;
-    Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence and UML graphs; unsupported syntax fails explicitly. Dagre geometry differs from Graphviz; text baselines use the PlantUML default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+    Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states and structured activities; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+}
+
+#[derive(PartialEq, Eq)]
+enum Selection {
+    Sequence,
+    Uml,
+    State,
+    Activity,
+}
+
+fn select(lines: &[source::Line]) -> Selection {
+    let mut candidate = Selection::Sequence;
+    for line in lines {
+        let word = line.text.split_whitespace().next().unwrap_or("");
+        if matches!(
+            word,
+            "class"
+                | "abstract"
+                | "object"
+                | "interface"
+                | "enum"
+                | "annotation"
+                | "component"
+                | "node"
+                | "rectangle"
+                | "package"
+                | "namespace"
+                | "usecase"
+        ) {
+            return Selection::Uml;
+        }
+        if word == "state" {
+            return Selection::State;
+        }
+        if line.text.starts_with(':')
+            || matches!(
+                word.trim_end_matches(';'),
+                "start" | "stop" | "repeat" | "fork" | "partition"
+            )
+            || line.text.starts_with("if(")
+            || line.text.starts_with("if (")
+            || line.text.starts_with("while(")
+            || line.text.starts_with("while (")
+        {
+            return Selection::Activity;
+        }
+        if word == "note" {
+            return if uml::is_graph(std::slice::from_ref(line)) {
+                Selection::Uml
+            } else {
+                Selection::Sequence
+            };
+        }
+        if matches!(
+            word,
+            "participant"
+                | "activate"
+                | "deactivate"
+                | "alt"
+                | "loop"
+                | "opt"
+                | "create"
+                | "destroy"
+        ) {
+            return Selection::Sequence;
+        }
+        let (head, _) = lexer::split_label(line);
+        if head.starts_with("[*]") || head.ends_with("[*]") {
+            return Selection::State;
+        }
+        if head != line.text
+            && !head.contains(['-', '<', '>'])
+            && !matches!(word, "actor" | "database")
+        {
+            candidate = Selection::State;
+        }
+    }
+    if candidate == Selection::State {
+        return candidate;
+    }
+    if uml::is_graph(lines) {
+        Selection::Uml
+    } else {
+        Selection::Sequence
+    }
 }

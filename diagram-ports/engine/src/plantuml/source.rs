@@ -13,9 +13,39 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     let mut lines = Vec::new();
     let mut block_comment = false;
     let mut state = 0;
+    let mut body = TextBody::None;
+    let mut graph_grammar = false;
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.checkpoint()?;
         let line = offset + 1;
+        if body != TextBody::None {
+            budget.text(raw.len())?;
+            let text = if body == TextBody::Note && raw.trim() == "end note" {
+                body = TextBody::None;
+                "end note".to_owned()
+            } else {
+                if body == TextBody::Action && raw.trim_end().ends_with(';') {
+                    body = TextBody::None;
+                }
+                raw.to_owned()
+            };
+            lines.push(Line { number: line, text });
+            continue;
+        }
+        if state == 1 && !graph_grammar && !block_comment && raw.trim_start().starts_with(':') {
+            budget.text(raw.len())?;
+            let statement = Line {
+                number: line,
+                text: raw.trim_start().to_owned(),
+            };
+            body = if statement.text.trim_end().ends_with(';') {
+                TextBody::None
+            } else {
+                TextBody::Action
+            };
+            lines.push(statement);
+            continue;
+        }
         let text = strip_comments(raw, &mut block_comment, budget)?
             .trim()
             .to_owned();
@@ -39,7 +69,27 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
                 format!("expected one @startuml/@enduml block, found {text:?}"),
             ));
         }
-        lines.push(Line { number: line, text });
+        let statement = Line { number: line, text };
+        graph_grammar |= matches!(
+            statement.text.split_whitespace().next().unwrap_or(""),
+            "class"
+                | "abstract"
+                | "interface"
+                | "enum"
+                | "annotation"
+                | "object"
+                | "state"
+                | "component"
+                | "node"
+                | "rectangle"
+                | "package"
+                | "namespace"
+                | "usecase"
+        );
+        if !graph_grammar {
+            body = text_body(&statement);
+        }
+        lines.push(statement);
     }
     if block_comment {
         return Err(invalid(
@@ -51,6 +101,27 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
         return Err(invalid(1, "expected a nonempty, complete @startuml block"));
     }
     Ok(lines)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TextBody {
+    None,
+    Action,
+    Note,
+}
+
+fn text_body(line: &Line) -> TextBody {
+    if line.text.starts_with(':') && !line.text.ends_with(';') {
+        return TextBody::Action;
+    }
+    if ["note over ", "note left", "note right", "note beside "]
+        .iter()
+        .any(|prefix| line.text.starts_with(prefix))
+        && super::lexer::split_label(line).0 == line.text
+    {
+        return TextBody::Note;
+    }
+    TextBody::None
 }
 
 fn strip_comments(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, RenderError> {

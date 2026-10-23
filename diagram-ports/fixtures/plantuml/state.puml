@@ -1,0 +1,12 @@
+@startuml
+state Fulfilment {
+  [*] --> Queued
+  Queued --> Packed : pack
+  state Packed {
+    [*] --> Sealed
+    Sealed --> Checked : inspect
+  }
+  Packed --> [*]
+}
+[*] --> Fulfilment
+@enduml

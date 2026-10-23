@@ -15,7 +15,7 @@ const safe = value => typeof value === 'string' && !value.split('/').some(part =
 export function validateManifest(manifest) {
   if (manifest.edition !== 'PlantUML MIT' || manifest.version !== '1.2026.9' || manifest.sourceRoot !== sourceRoot || manifest.artifact.path !== artifact || manifest.artifact.sha256 !== artifactHash) throw new Error('unauthorized PlantUML edition, source root or artifact');
   for (const file of manifest.sourceFiles) {
-    if (!safe(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|utils\/CharHidder\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|klimt\/(?:font|creole\/(?:legacy|command)))\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
+    if (!safe(file.path) || /\/(?:gen|h|smetana|elk)\//.test(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|utils\/CharHidder\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|statediagram|activitydiagram3|klimt\/(?:font|creole\/(?:legacy|command)))\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
     if (!/^[a-f0-9]{64}$/.test(file.sha256) || file.notice !== 'provenance/LICENSE-PlantUML-MIT.txt') throw new Error(`invalid source hash/notice: ${file.path}`);
     if (file.rust.some(target => !manifest.nativeModules.includes(target))) throw new Error(`unregistered Rust destination: ${file.path}`);
   }
@@ -33,6 +33,10 @@ export function audit(manifest) {
     const archived = execFileSync('unzip', ['-p', artifact, file.path], { timeout: 5000, maxBuffer: 2 * 1024 * 1024 });
     if (sha256(extracted) !== file.sha256 || !archived.equals(extracted)) throw new Error(`source/ZIP checksum mismatch: ${file.path}`);
     if (!extracted.toString().split('package ')[0].includes('under the terms of the MIT License.')) throw new Error(`MIT-edition grant missing: ${file.path}`);
+    const credits = extracted.toString().split('package ')[0].split('\n').map(line => line.trim()).filter(line => /(?:Original\s+Author|Contribut(?:ion|or)s?)\s*:/i.test(line));
+    for (const credit of credits) {
+      if (!file.copyrights.includes(credit)) throw new Error(`missing source credit: ${file.path}: ${credit}`);
+    }
   }
   for (const file of manifest.fixtures) {
     if (sha256(fs.readFileSync(path.join(root, file.path))) !== file.sha256) throw new Error(`fixture checksum mismatch: ${file.path}`);
@@ -40,6 +44,9 @@ export function audit(manifest) {
   const actual = fs.readdirSync(path.join(root, 'engine/src/plantuml')).map(name => `engine/src/plantuml/${name}`).sort();
   if (JSON.stringify(actual) !== JSON.stringify([...manifest.nativeModules].sort())) throw new Error('native module inventory changed');
   if (!fs.readFileSync(path.join(root, 'provenance/LICENSE-PlantUML-MIT.txt'), 'utf8').includes('Hisashi Miyashita')) throw new Error('contributor notice missing');
+  for (const notice of ['provenance/LICENSE-PlantUML-MIT.txt', 'THIRD-PARTY-NOTICES.md']) {
+    if (!fs.readFileSync(path.join(root, notice), 'utf8').includes('Serge Wenger')) throw new Error(`contributor notice missing: ${notice}: Serge Wenger`);
+  }
   return `Verified ${manifest.sourceFiles.length} MIT-edition source/ZIP hashes, ${manifest.fixtures.length} fresh fixture hashes and ${actual.length} native modules.`;
 }
 

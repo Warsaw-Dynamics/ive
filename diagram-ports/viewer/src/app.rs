@@ -357,9 +357,15 @@ impl Viewer {
                     .text_xs()
                     .text_color(rgb(0x94a3b8))
                     .child(if self.language == "plantuml" {
-                        "PLANTUML · 5 EXAMPLES"
+                        format!(
+                            "PLANTUML · {} EXAMPLES",
+                            examples::for_language(&self.language).len()
+                        )
                     } else {
-                        "MERMAID · 37 VARIANTS"
+                        format!(
+                            "MERMAID · {} VARIANTS",
+                            examples::for_language(&self.language).len()
+                        )
                     }),
             )
             .child(
