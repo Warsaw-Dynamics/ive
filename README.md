@@ -156,7 +156,8 @@ preview shows the lines around it. It searches the hub's scope (the worktrees of
 their scratches), or the files and folders Find in Files was picked on, named above the rows (`Contents of src +1`);
 Backspace on an empty query drops them for the scope. Gitignored and excluded files are left out unless Alt+I, but a
 folder picked in the tree is searched even when it is ignored itself. Files over 8 MB and binary files are skipped,
-and the list stops at 2,000 lines. The counter reads `matches in files · ms`.
+and the list stops at 2,000 lines. The counter reads `matches in files · ms`. The lines stay as found: files
+changing on disk do not search again, a change to the query does.
 
 Prefixes: `>` actions (New terminal, New scratch, Git log, project overview, Close Other Tabs, Settings, theme), `@`
 processes and run configurations (Enter shows a configuration's live run, or starts one), `#` worktrees and the

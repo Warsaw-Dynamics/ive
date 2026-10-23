@@ -12,6 +12,7 @@ use crate::git::{refs, status};
 use crate::hub::corpus::{self, Corpus, ProjectInput};
 use crate::hub::files::{self, CheckoutFiles};
 use crate::hub::index::{Branch, Read};
+use crate::hub::model::Effect;
 use crate::open_project::OpenProject;
 use crate::run::file::{self as run_file, RUN_FILE, RunFile};
 use crate::editor::Tab;
@@ -184,7 +185,11 @@ impl Workspace {
         if std::mem::take(&mut self.corpus_build.again) {
             self.rebuild_corpus(cx);
         }
-        if let Some(id) = self.hub_tab_id() {
+        let searched = self.hub_tab_id().and_then(|id| match self.tabs.get(id) {
+            Some(Tab::Hub(hub)) => Some((id, hub.state.index_changed())),
+            _ => None,
+        });
+        if let Some((id, Effect::Search)) = searched {
             self.start_hub_search(id, cx);
         }
         cx.notify();

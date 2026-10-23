@@ -143,6 +143,14 @@ impl HubState {
         (mode(self) == Mode::Content && long_enough).then(|| ContentQuery { text: self.query.clone(), mode: self.matching })
     }
 
+    /// The file index was read again: file names are searched again, while a contents search's lines stay as found.
+    pub fn index_changed(&self) -> Effect {
+        match mode(self) {
+            Mode::Content => Effect::Nothing,
+            _ => Effect::Search,
+        }
+    }
+
     /// The query field's text changed.
     pub fn typed(&mut self, text: String) -> Effect {
         if let Some(pick) = &mut self.pick {
@@ -881,6 +889,32 @@ mod tests {
 
         // then
         assert_eq!((short, long.map(|query| query.text)), (None, Some("fn".to_owned())));
+    }
+
+    #[test]
+    fn should_keep_contents_lines_when_the_index_changes() {
+        // given
+        let mut state = HubState { content: true, ..HubState::default() };
+        typed(&mut state, "fn main");
+
+        // when
+        let effect = state.index_changed();
+
+        // then
+        assert_eq!(effect, Effect::Nothing);
+    }
+
+    #[test]
+    fn should_search_file_names_again_when_the_index_changes() {
+        // given
+        let mut state = HubState::default();
+        typed(&mut state, "main");
+
+        // when
+        let effect = state.index_changed();
+
+        // then
+        assert_eq!(effect, Effect::Search);
     }
 
     #[test]
