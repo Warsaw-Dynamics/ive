@@ -1,6 +1,7 @@
 //! The theme `config.theme` holds: the bundled default, and the typed, checked form IVE draws with.
 
 mod sizes;
+pub mod user;
 mod values;
 
 use std::collections::BTreeMap;
