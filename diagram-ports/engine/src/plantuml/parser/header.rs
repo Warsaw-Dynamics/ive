@@ -335,7 +335,10 @@ fn quote(rest: &str, budget: &mut Budget) -> Result<(Atom, usize), ParseFailure>
 }
 
 fn punctuation(rest: &str) -> (Atom, usize) {
-    if rest.starts_with("[*]") {
+    if rest.starts_with("[H*]") {
+        return (Atom::Initial, 4);
+    }
+    if rest.starts_with("[*]") || rest.starts_with("[H]") {
         return (Atom::Initial, 3);
     }
     if rest.starts_with("::") {

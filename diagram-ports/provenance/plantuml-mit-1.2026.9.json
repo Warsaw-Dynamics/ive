@@ -1885,7 +1885,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1902,7 +1902,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1919,7 +1919,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1936,7 +1936,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1953,7 +1953,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1969,7 +1969,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -1985,7 +1985,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -2001,7 +2001,7 @@
         "engine/src/plantuml/parser/state.rs",
         "engine/src/plantuml/parser/grammar/state.lalrpop"
       ],
-      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; history/concurrency/styles rejected.",
+      "behavior": "Named/aliased and nested declarations, ordered descriptions, scoped role-specific pseudostates and ordinary directed transitions; ordered concurrent regions, scoped shallow/deep history and supported pseudostates; other styles remain rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* (C) Copyright 2009-2024, Arnaud Roques",
@@ -4431,6 +4431,107 @@
       ],
       "behavior": "Standalone raw physical-line collection and default serif14 black FULL styled text without automatic wrapping; generated native paragraph structure and measured composition, not original pixel geometry.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/statediagram/command/CommandConcurrentState.java",
+      "sha256": "d4f69081c7c332617d0eccb3fdad8ebbb82b5d70e12ecdd36d4da2c2356d119a",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/state.rs",
+        "engine/src/plantuml/parser/grammar/state.lalrpop"
+      ],
+      "behavior": "Ordered separator grammar and current composite/later-region ownership.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/stereo/Stereogroup.java",
+      "sha256": "6b9adab91e026f0357bb952b4a565cf731014669274d6bd5a5c78012d296a4bb",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/state.rs"
+      ],
+      "behavior": "Supported first stereotype kind mapping; unknown/additional stereotypes reject.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/ConcurrentStates.java",
+      "sha256": "da6619b2ca2477a1d5793a9663bb2332ae789dbd9ddaeb32f67e957f7593ed4c",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/stategraph.rs"
+      ],
+      "behavior": "First-axis measured regional sum/max composition and dashed separators; original native routes replace upstream rendering.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/GroupMakerState.java",
+      "sha256": "b38a8dc011bc52f85ef6428ac28eb506a3386c40d4072d1c3b4e195c39f546e2",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/stategraph.rs"
+      ],
+      "behavior": "Primary ordinary contents followed by ordered generated regions without region state headers; no Graphviz implementation.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImageSynchroBar.java",
+      "sha256": "661c581c4867dceb9a550b2ab8e9ebd0e01b36df19a577aae11439f62be84bc6",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/stategraph.rs"
+      ],
+      "behavior": "Actual 80x8 fork/join primitive in default top-to-bottom layout.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImagePseudoState.java",
+      "sha256": "83f3f27625402659820c79716d1853030d301e0a598decdc39641a881f5bbfa4",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/stategraph.rs"
+      ],
+      "behavior": "Circle with centered H, measured to fit effective font in native geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/svek/image/EntityImageDeepHistory.java",
+      "sha256": "965cb7efec977eada2f39a51de8e93ad6b124d6ed3d3b8e78b5237442c789aec",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques",
+        "* Contribution   :  Serge Wenger"
+      ],
+      "rust": [
+        "engine/src/plantuml/state.rs",
+        "engine/src/plantuml/stategraph.rs"
+      ],
+      "behavior": "Independent deep-history kind/glyph H*, including retained Serge Wenger credit.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4994,6 +5095,43 @@
         "record": "/tmp/ive-task3q-original.json",
         "observed": "serif14 black, bold700/italic/underline/strike, visible blank line, literal unknown angles; no automatic wrapping"
       }
+    },
+    {
+      "path": "fixtures/plantuml/stateregions.puml",
+      "sha256": "9b98e7fa6a8e5e6fc9c029e685cc6f13ba6766ba034437cdbfa76f8438ecf927",
+      "origin": "/tmp/ive-plantuml-state-extension.KTsBTu/horizontal.puml (exact original-positive source bytes)",
+      "originalEvidence": {
+        "svgSha256": "651801737a03d3115523fba877363b8cd38e4cdd34c7415792a4b227545b9a34",
+        "topology": "/tmp/ive-plantuml-state-extension.KTsBTu/horizontal.topology.txt"
+      }
+    },
+    {
+      "path": "fixtures/plantuml/statehistory.puml",
+      "sha256": "273afa175561eee22ce7ff11434542c89fcde9c50ea7b255faaa4d578288c47c",
+      "origin": "/tmp/ive-plantuml-state-extension.KTsBTu/named_history_distinct.puml (exact original-positive source bytes)",
+      "originalEvidence": {
+        "svgSha256": "3a9e3c34a40e200b01b5dda29beb5e8d9efe3a33098df3a536f5d74b56a4437f",
+        "topology": "/tmp/ive-plantuml-state-extension.KTsBTu/named_history_distinct.topology.txt"
+      }
+    },
+    {
+      "path": "fixtures/plantuml/statepseudos.puml",
+      "sha256": "9b68f372b1dbb1f8bc4e9268b0607c046bcdb8fa158b722fb9f7148af8e5c1ff",
+      "origin": "/tmp/ive-plantuml-state-extension.KTsBTu/pseudos.puml (exact original-positive source bytes)",
+      "originalEvidence": {
+        "svgSha256": "7de3ab089dafc491a3b4e3511b7313cd3cdb8da5ddbc2513e572fa243a07d282",
+        "topology": "/tmp/ive-plantuml-state-extension.KTsBTu/pseudos.topology.txt"
+      }
+    },
+    {
+      "path": "fixtures/plantuml/stateadvanced.puml",
+      "sha256": "5c1c2029939305cdb360955e2537e9edeaa5cd50f4cc6d2d843a2079cf3e8864",
+      "origin": "Authored native viewer region/history/choice/fork/join validation fixture; original check recorded separately.",
+      "originalEvidence": {
+        "svgSha256": "dbaba743878d745aeed5be3a681e00d2b46e8045092a6847890c4b6b817d921c",
+        "record": "/tmp/ive-task3b2-original-9rb3_j1g/record.json",
+        "observed": "Original MIT renderer exited0; Machine/Idle/Working and pause/ready/enter/leave labels retained."
+      }
     }
   ],
   "oracle": {
@@ -5082,7 +5220,7 @@
     "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",
     "Strict ordered duplicate-preserving JSON and narrow preflighted PlantUML YAML string semantics. Data labels remain literal and do not enter UML rich-text/newline normalization. New tree/data labels measure and emit the same explicit Arial/Liberation Sans/DejaVu Sans/Noto Sans/sans-serif chain. EclipseSource minimal-json MIT notice retained.",
     "State owns a distinct typed model and recursive checked Dagre graph adapter. Activity uses structured instructions with bottom-up explicit entry/live/dead exit ports; neither is a UML/sequence AST rewrite.",
-    "State-qualified declarations/cross-ownership transitions and activity next-arrow/backward-route syntax remain explicit subset rejections. No concurrency/history/swimlane semantics are claimed.",
+    "State-qualified declarations, ports and styled transitions plus activity next-arrow/backward-route/swimlane syntax remain explicit rejections. Task3B2 adds ordered concurrent regions, history/pseudostates and bounded ownership-valid container routes with visible separators; no execution or pixel parity.",
     "Typed native ASTs and SVG scenes; no PlantUML-to-Mermaid source rewriting.",
     "Dagre layout from separately audited dugong0.9.2, not PlantUML Graphviz/Smetana/ELK code.",
     "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",

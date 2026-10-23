@@ -1,0 +1,14 @@
+@startuml
+state Choose <<choice>>
+state Junction <<junction>>
+state Split <<fork>>
+state Join <<join>>
+[*] --> Split
+Split --> A : left
+Split --> B : right
+A --> Join
+B --> Join
+Join --> Choose
+Choose --> Junction : yes
+Junction --> [*]
+@enduml

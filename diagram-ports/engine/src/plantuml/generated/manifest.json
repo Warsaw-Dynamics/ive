@@ -151,9 +151,9 @@
     },
     {
       "generated": "engine/src/plantuml/generated/state.rs",
-      "generatedSha256": "ed52f0313911849eefa4c2290ed370fe0191bac2322a4bd6402069c2641d180f",
+      "generatedSha256": "360c2c1f1d28e3d1d373036d4ccf6bb570724acb0a923053054d468d22defc17",
       "grammar": "engine/src/plantuml/parser/grammar/state.lalrpop",
-      "grammarSha256": "276497c8cc77dafb56d958d1de4765e91c4fd3bdaf5eeca3863edbc3112cdbca"
+      "grammarSha256": "1e6703644be27365c8ea9a4cf42734487f18feaf294b2ca3d925db8742b43cea"
     },
     {
       "generated": "engine/src/plantuml/generated/timing.rs",

@@ -400,9 +400,9 @@ fn should_select_families_without_reading_payload_as_commands() {
 fn should_reject_unsupported_control_syntax_and_mismatched_stacks() {
     // given
     for body in [
-        "state S <<choice>>",
-        "state S {\n--\nstate B\n}",
-        "state A\nA --> [H]",
+        "state S <<custom>>",
+        "state S {\n-\nstate B\n}",
+        "state A\nA --> [H**]",
         "state A\nA --> [ * ]",
         "state A\nA ..> B",
         "state A\nA -right-> B",

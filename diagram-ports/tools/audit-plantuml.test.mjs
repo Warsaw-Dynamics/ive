@@ -5,6 +5,20 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit exact state region and pseudostate primitives without importing Graphviz builders', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const path of ['stereo/Stereogroup.java', 'svek/ConcurrentStates.java', 'svek/GroupMakerState.java', 'svek/image/EntityImageSynchroBar.java', 'svek/image/EntityImagePseudoState.java', 'svek/image/EntityImageDeepHistory.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const path of ['svek/GraphvizImageBuilder.java', 'svek/GeneralImageBuilder.java', 'svek/OtherStateBuilder.java', 'stereo/OtherStereotype.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should admit only the selected Git grid semantics and reject excluded layout sources', () => {
   // given
   const source = manifest();

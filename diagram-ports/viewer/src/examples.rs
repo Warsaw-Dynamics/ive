@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-state-advanced",
+        source: include_str!("../../fixtures/plantuml/stateadvanced.puml"),
+    },
+    Example {
         name: "plantuml-flow",
         source: include_str!("../../fixtures/plantuml/flow.puml"),
     },
@@ -273,6 +277,35 @@ mod tests {
                 && output.svg.contains("signal")
                 && output.svg.contains("save")
         );
+    }
+
+    #[test]
+    fn should_find_concurrent_history_and_pseudostate_native_example() {
+        // given
+        let source = super::source("plantuml-state-advanced").unwrap();
+        // when
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "state");
+        for (kind, count) in [
+            ("state-region", 2),
+            ("state-history", 1),
+            ("state-choice", 1),
+            ("state-fork-join", 2),
+            ("state-transition", 8),
+        ] {
+            assert_eq!(
+                output.svg.matches(&format!("data-kind=\"{kind}\"")).count(),
+                count
+            );
+        }
     }
 
     #[test]

@@ -24,6 +24,11 @@ pub(in crate::plantuml) enum Token {
     Name(Name),
     Label(String),
     Pseudo,
+    History(crate::plantuml::state::Kind),
+    StereoOpen,
+    StereoClose,
+    Bar(usize),
+    Dot,
     Open,
     Close,
     Colon,
@@ -175,7 +180,15 @@ impl Lexer<'_> {
                 continue;
             }
             // Row cursors preserve comment-removal joins; triples keep expanded origin spans.
-            let (token, bytes) = if rest.starts_with("[*]") {
+            let (token, bytes) = if rest.starts_with("[H*]") {
+                (Token::History(crate::plantuml::state::Kind::DeepHistory), 4)
+            } else if rest.starts_with("[H]") {
+                (Token::History(crate::plantuml::state::Kind::History), 3)
+            } else if rest.starts_with("<<") {
+                (Token::StereoOpen, 2)
+            } else if rest.starts_with(">>") {
+                (Token::StereoClose, 2)
+            } else if rest.starts_with("[*]") {
                 (Token::Pseudo, 3)
             } else {
                 match ch {
@@ -184,6 +197,8 @@ impl Lexer<'_> {
                     '<' => (Token::Less(cursor), 1),
                     '>' => (Token::Greater(cursor), 1),
                     '-' => (Token::Minus(cursor), 1),
+                    '|' => (Token::Bar(cursor), 1),
+                    '.' => (Token::Dot, 1),
                     _ => self.word(rest)?,
                 }
             };
@@ -204,7 +219,10 @@ impl Lexer<'_> {
     fn word(&mut self, rest: &str) -> Result<(Token, usize), ParseFailure> {
         let mut bytes = 0;
         for (index, ch) in rest.char_indices() {
-            if ch.is_alphanumeric() || matches!(ch, '_' | '.') {
+            if ch.is_alphanumeric()
+                || ch == '_'
+                || (ch == '*' && rest[..index].eq_ignore_ascii_case("history"))
+            {
                 self.budget
                     .charge(ch.len_utf8())
                     .map_err(ParseFailure::terminal)?;
@@ -321,8 +339,8 @@ fn admit(
             }
         }
     }
-    // Actual 59-state/18-terminal tables use at most 2d+8 live states and
-    // four reductions between deliveries. Reserve four extra states.
+    // Actual 79-state/23-terminal tables use at most 2d+8 live states and
+    // five reductions between deliveries. Reserve four extra states.
     let live = openers
         .min(budget.limits.nesting_depth)
         .saturating_mul(2)
@@ -341,7 +359,7 @@ fn admit(
         .saturating_add(literals)
         .saturating_add(adapters)
         .saturating_add(growing.saturating_mul(symbol + 1))
-        .saturating_add(diagnostic + 48 * std::mem::size_of::<String>() + 18 * 32)
+        .saturating_add(diagnostic + 48 * std::mem::size_of::<String>() + 23 * 32)
         .saturating_add(std::mem::size_of::<Builder<'_>>())
         .saturating_add(budget.limits.source_bytes.saturating_mul(16));
     bound(
@@ -357,8 +375,8 @@ fn admit(
         .charge(
             tokens
                 .len()
-                .saturating_mul(5)
-                .saturating_add(4 + slots + 18 * (live + 4)),
+                .saturating_mul(6)
+                .saturating_add(5 + slots + 23 * (live + 5)),
         )
         .map_err(ParseFailure::terminal)?;
     Ok(retained)
@@ -381,6 +399,106 @@ mod tests {
         let mut parsed = super::super::document::parse(&document, &mut budget)?;
         super::super::preamble::parse(&mut parsed, &mut budget)?;
         parse(parsed.body, &mut budget)
+    }
+
+    #[test]
+    fn should_keep_primary_later_region_identity_and_reverse_singleton_roles() {
+        // given
+        let body = "state S {\nA <-- [*]\n[*] <-- A\n--\nB <-- [*]\n[*] <-- B\n||\nstate C\n}";
+        // when
+        let state = model(body).unwrap();
+        // then
+        assert_eq!(state.regions.len(), 3);
+        assert_eq!(
+            state.regions.iter().map(|r| r.ordinal).collect::<Vec<_>>(),
+            [0, 1, 2]
+        );
+        assert!(
+            state
+                .regions
+                .iter()
+                .all(|r| r.axis == crate::plantuml::state::Axis::Stacked)
+        );
+        assert_eq!(state.regions[0].scope, Scope::State(0));
+        assert_eq!(state.regions[1].scope, Scope::Region(1));
+        for pair in state.transitions.as_chunks::<2>().0 {
+            assert_eq!(state.nodes[pair[0].from].kind, Kind::Initial);
+            assert_eq!(state.nodes[pair[1].to].kind, Kind::Final);
+            assert_eq!(
+                state.nodes[pair[0].from].scope,
+                state.nodes[pair[1].to].scope
+            );
+        }
+        assert_ne!(
+            state.nodes[state.transitions[0].from].scope,
+            state.nodes[state.transitions[2].from].scope
+        );
+    }
+
+    #[test]
+    fn should_reuse_history_singletons_and_keep_named_lifecycle_and_history_identity() {
+        // given
+        let body = "state S {\nstate h <<history>>\nstate d <<HiStOrY*>>\nstate start <<start>>\n[*] --> start\nh --> [H]\n[H] --> h\nd --> [H*]\n[H*] --> d\n}\nstate Outside\nOutside --> S[H]";
+        // when
+        let state = model(body).unwrap();
+        // then
+        assert_eq!(
+            state
+                .nodes
+                .iter()
+                .filter(|n| n.kind == Kind::History)
+                .count(),
+            2
+        );
+        assert_eq!(
+            state
+                .nodes
+                .iter()
+                .filter(|n| n.kind == Kind::DeepHistory)
+                .count(),
+            2
+        );
+        assert_eq!(
+            state
+                .nodes
+                .iter()
+                .filter(|n| n.kind == Kind::Initial)
+                .count(),
+            2
+        );
+        let history = state.nodes.iter().position(|n| n.name == "[H]").unwrap();
+        assert_eq!(state.transitions[1].to, history);
+        assert_eq!(state.transitions[2].from, history);
+        assert_eq!(state.transitions.last().unwrap().to, history);
+    }
+
+    #[test]
+    fn should_bound_region_and_typed_path_arenas_and_reject_invalid_separator_suffixes() {
+        // given
+        for body in [
+            "state S {\n-\n}",
+            "state S {\n|\n}",
+            "state S {\n- -\n}",
+            "state S {\n| |\n}",
+            "state S {\n-- label\n}",
+            "state A\nA --> S [H]",
+            "state A\nA --> S. N[H]",
+            "state h <<history>>\nh : discarded",
+            "state h <<custom>>",
+        ] {
+            // when
+            let parsed = model(body);
+            // then
+            assert!(parsed.is_err(), "accepted {body}");
+        }
+        let body = "state S {\n--\n--\n}";
+        let mut options = RenderOptions::default();
+        options.limits.model_items = 3;
+        // when
+        let result =
+            super::super::test_support::body((body, "uml"), &mut Budget::new(&options), parse);
+        // then
+        assert!(result.is_err());
     }
 
     #[test]
@@ -521,9 +639,9 @@ mod tests {
             "state A\nA --> B ignored",
             "state A\nA -->",
             "state A\nA --> B :",
-            "state A\nA --> [H]",
-            "state A <<choice>>",
-            "state A {\n--\n}",
+            "state A\nA --> [H**]",
+            "state A <<custom>>",
+            "state A {\n-\n}",
         ] {
             // when
             let error = model(body).unwrap_err();

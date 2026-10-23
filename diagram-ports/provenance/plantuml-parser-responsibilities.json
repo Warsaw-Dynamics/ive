@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "8ebb34e plus standalone Creole;29 generated grammars, no pending syntax or obsolete Line adapters",
+  "basis": "465b9c8 plus generated advanced state regions/history/pseudostates;29 grammar pairs, no runtime fallback",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -380,7 +380,7 @@
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["push#1", "copy#1", "admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["row#1", "word#1", "quoted#1"]},
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["require_adjacent#1", "join_shaft#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["model#1", "should_build_generated_state_forward_composites_local_ids_and_scoped_pseudostates#1", "should_reject_generated_state_arrows_split_between_operator_primitives#1", "should_keep_state_operator_adjacency_after_comment_removal#1", "should_preserve_state_command_boundaries_and_reserved_left_endpoint_policy#1", "should_reject_a_trailing_bare_opener_in_a_state_declaration#1", "should_preserve_transition_label_separators_and_literal_state_name_spelling#1", "should_reject_generated_state_incomplete_structures_and_unknown_suffixes#1", "should_accept_supported_state_closers_arrows_and_empty_descriptions#1", "should_continue_shared_state_comment_ownership_and_keep_utf8_crlf_labels#1", "should_map_state_failure_once_at_its_frozen_expansion_use#1", "should_locate_generated_state_suffix_after_an_inline_utf8_comment#1", "should_bound_generated_state_source_depth_work_items_and_cancellation#1", "should_bound_generated_state_openers_at_the_actual_nesting_limit#1", "should_cancel_generated_state_delivery_and_retaining_reductions#1", "should_bound_state_tokens_and_cancel_literal_copy_before_allocation#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["model#1", "should_build_generated_state_forward_composites_local_ids_and_scoped_pseudostates#1", "should_reject_generated_state_arrows_split_between_operator_primitives#1", "should_keep_state_operator_adjacency_after_comment_removal#1", "should_preserve_state_command_boundaries_and_reserved_left_endpoint_policy#1", "should_reject_a_trailing_bare_opener_in_a_state_declaration#1", "should_preserve_transition_label_separators_and_literal_state_name_spelling#1", "should_reject_generated_state_incomplete_structures_and_unknown_suffixes#1", "should_accept_supported_state_closers_arrows_and_empty_descriptions#1", "should_continue_shared_state_comment_ownership_and_keep_utf8_crlf_labels#1", "should_map_state_failure_once_at_its_frozen_expansion_use#1", "should_locate_generated_state_suffix_after_an_inline_utf8_comment#1", "should_bound_generated_state_source_depth_work_items_and_cancellation#1", "should_bound_generated_state_openers_at_the_actual_nesting_limit#1", "should_cancel_generated_state_delivery_and_retaining_reductions#1", "should_bound_state_tokens_and_cancel_literal_copy_before_allocation#1", "should_keep_primary_later_region_identity_and_reverse_singleton_roles#1", "should_reuse_history_singletons_and_keep_named_lifecycle_and_history_identity#1", "should_bound_region_and_typed_path_arenas_and_reject_invalid_separator_suffixes#1"]}
       ]
     },
     {
@@ -494,15 +494,15 @@
     {
       "path": "engine/src/plantuml/state.rs",
       "groups": [
-        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["new#1", "tick#1", "single#1", "alias#1", "declare#1", "open#1", "close#1", "describe#1", "transition#1", "scope#1", "defer#1", "add#1", "finish#1", "resolve#1", "is_name#1", "find_ancestor#1", "find#1", "retain#1"]},
+        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["new#1", "tick#1", "single#1", "alias#1", "declare#1", "open#1", "close#1", "describe#1", "transition#1", "scope#1", "defer#1", "add#1", "finish#1", "resolve#1", "is_name#1", "find_ancestor#1", "find#1", "retain#1", "path#1", "extend_path#1", "separate#1", "stereotype#1", "endpoint#1", "resolve_path#1", "history_owner#1", "parent_scope#1", "concurrent_ancestor#1", "primary_concurrency#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_admit_state_arena_growth_before_allocating#1", "should_leave_state_identity_unchanged_when_rejecting_an_ancestor_endpoint#1", "should_charge_declaration_identity_search_before_scanning#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/stategraph.rs",
       "groups": [
-        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["charge#1", "layout#1", "compose#1", "arrange#1", "draw_group#1", "node_shapes#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_contain_nested_state_descriptions_children_and_pseudostates#1", "should_interrupt_inside_checked_state_graph_layout#1"]}
+        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["charge#1", "layout#1", "compose#1", "arrange#1", "draw_group#1", "node_shapes#1", "compose_regions#1", "advanced#1", "admit_extension#1", "context_boundary_margins#1", "border#1", "draw_boundaries#1", "locate#1", "common_scope#1", "owns#1", "clear_route#1", "crosses#1", "overlaps#1"]},
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_contain_nested_state_descriptions_children_and_pseudostates#1", "should_interrupt_inside_checked_state_graph_layout#1", "extension#1", "should_clip_real_routes_to_advanced_circle_and_diamond_borders#1", "should_compose_measured_regions_on_first_axis_and_contain_large_font_history#1", "should_cancel_during_independent_region_layout#1"]}
       ]
     },
     {

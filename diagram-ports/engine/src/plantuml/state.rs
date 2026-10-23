@@ -11,6 +11,7 @@ use std::ops::Range;
 pub(super) enum Scope {
     Root,
     State(usize),
+    Region(usize),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Kind {
@@ -18,6 +19,23 @@ pub(super) enum Kind {
     Composite,
     Initial,
     Final,
+    History,
+    DeepHistory,
+    Choice,
+    Junction,
+    ForkJoin,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Axis {
+    Stacked,
+    SideBySide,
+}
+#[derive(Debug)]
+pub(super) struct Region {
+    pub owner: usize,
+    pub scope: Scope,
+    pub ordinal: usize,
+    pub axis: Axis,
 }
 #[derive(Debug)]
 pub(super) struct Node {
@@ -33,11 +51,23 @@ pub(super) struct Transition {
     pub from: usize,
     pub to: usize,
     pub label: String,
+    pub span: Range<usize>,
 }
 #[derive(Debug)]
 pub(super) struct State {
     pub nodes: Vec<Node>,
     pub transitions: Vec<Transition>,
+    pub regions: Vec<Region>,
+}
+pub(in crate::plantuml) struct NamePath {
+    pub names: Vec<Name>,
+    pub end: usize,
+}
+pub(in crate::plantuml) enum Endpoint {
+    Named(NamePath),
+    Role,
+    History(Kind),
+    ScopedHistory(NamePath, Kind),
 }
 
 #[derive(Clone, Debug)]
@@ -60,7 +90,7 @@ pub(in crate::plantuml) enum Caption {
 }
 enum Statement {
     Description(Name, String),
-    Transition(Name, Name, String),
+    Transition(Endpoint, Endpoint, String),
 }
 struct Pending {
     statement: Statement,
@@ -83,6 +113,7 @@ impl<'b> Builder<'b> {
             model: State {
                 nodes: vec![],
                 transitions: vec![],
+                regions: vec![],
             },
             scopes: vec![],
             pending: vec![],
@@ -92,6 +123,37 @@ impl<'b> Builder<'b> {
 
     pub fn tick(&mut self) -> Result<(), ParseFailure> {
         self.budget.charge(1).map_err(ParseFailure::terminal)
+    }
+
+    pub fn path(&mut self, name: Name, start: usize) -> Result<NamePath, ParseFailure> {
+        let end = start + name.text.len();
+        let mut names = Vec::new();
+        retain((&mut names, &mut self.retained_bytes), name, self.budget)?;
+        Ok(NamePath { names, end })
+    }
+
+    pub fn extend_path(
+        &mut self,
+        input: (NamePath, Name),
+        positions: (usize, usize),
+    ) -> Result<NamePath, ParseFailure> {
+        let (mut path, name) = input;
+        let (dot, start) = positions;
+        if path.names.iter().any(|n| n.quoted) || name.quoted || path.end != dot || dot + 1 != start
+        {
+            return Err(ParseFailure::unsupported(
+                dot..start,
+                "qualified state names require contiguous unquoted components",
+            ));
+        }
+        self.budget.depth(path.names.len() + 1)?;
+        path.end = start + name.text.len();
+        retain(
+            (&mut path.names, &mut self.retained_bytes),
+            name,
+            self.budget,
+        )?;
+        Ok(path)
     }
 
     pub fn single(&mut self, name: Name) -> Result<Declaration, ParseFailure> {
@@ -136,17 +198,17 @@ impl<'b> Builder<'b> {
 
     pub fn declare(
         &mut self,
-        input: (Declaration, Caption),
+        input: (Declaration, Kind, Caption),
         span: Range<usize>,
     ) -> Result<(), ParseFailure> {
-        let (value, label) = input;
+        let (value, kind, label) = input;
         if value.name == "begin" && matches!(value.spelling, Spelling::Identifier) {
             return Err(ParseFailure::unsupported(
                 span,
                 "state opener requires a preceding declaration",
             ));
         }
-        let id = self.add(value, Kind::State, span.clone())?;
+        let id = self.add(value, kind, span.clone())?;
         if let Caption::Present(label) = label {
             self.budget
                 .charge(self.model.nodes[id].name.len())
@@ -184,6 +246,91 @@ impl<'b> Builder<'b> {
         Ok(())
     }
 
+    pub fn separate(
+        &mut self,
+        input: (Axis, usize),
+        span: Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        let (axis, length) = input;
+        self.tick()?;
+        if length < 2 {
+            return Err(ParseFailure::unsupported(
+                span,
+                "state concurrent separator requires at least two contiguous markers",
+            ));
+        }
+        let owner = match self.scope() {
+            Scope::State(id) => id,
+            Scope::Region(id) => self.model.regions[id].owner,
+            Scope::Root => {
+                return Err(ParseFailure::unsupported(
+                    span,
+                    "root state concurrent separators are unsupported",
+                ));
+            }
+        };
+        self.budget.charge(self.model.regions.len())?;
+        let axis = if let Some(region) = self.model.regions.iter().find(|r| r.owner == owner) {
+            region.axis
+        } else {
+            self.budget.item()?;
+            retain(
+                (&mut self.model.regions, &mut self.retained_bytes),
+                Region {
+                    owner,
+                    scope: Scope::State(owner),
+                    ordinal: 0,
+                    axis,
+                },
+                self.budget,
+            )?;
+            axis
+        };
+        let ordinal = self
+            .model
+            .regions
+            .iter()
+            .filter(|r| r.owner == owner)
+            .count();
+        let id = self.model.regions.len();
+        self.budget.item()?;
+        retain(
+            (&mut self.model.regions, &mut self.retained_bytes),
+            Region {
+                owner,
+                scope: Scope::Region(id),
+                ordinal,
+                axis,
+            },
+            self.budget,
+        )?;
+        *self.scopes.last_mut().unwrap() = Scope::Region(id);
+        Ok(())
+    }
+
+    pub fn stereotype(&mut self, name: Name, span: Range<usize>) -> Result<Kind, ParseFailure> {
+        self.budget.charge(name.text.len())?;
+        if name.quoted {
+            return Err(ParseFailure::unsupported(
+                span,
+                "quoted state stereotype is unsupported",
+            ));
+        }
+        match name.text.to_ascii_lowercase().as_str() {
+            "choice" => Ok(Kind::Choice),
+            "junction" => Ok(Kind::Junction),
+            "fork" | "join" => Ok(Kind::ForkJoin),
+            "start" => Ok(Kind::Initial),
+            "end" => Ok(Kind::Final),
+            "history" => Ok(Kind::History),
+            "history*" => Ok(Kind::DeepHistory),
+            _ => Err(ParseFailure::unsupported(
+                span,
+                "unsupported state stereotype",
+            )),
+        }
+    }
+
     pub fn describe(
         &mut self,
         value: (Name, String),
@@ -194,11 +341,11 @@ impl<'b> Builder<'b> {
 
     pub fn transition(
         &mut self,
-        input: (Name, Name, bool, Caption),
+        input: (Endpoint, Endpoint, bool, Caption),
         span: Range<usize>,
     ) -> Result<(), ParseFailure> {
         let (left, right, reverse, label) = input;
-        if left.quoted || right.quoted {
+        if [&left, &right].iter().any(|value| matches!(value, Endpoint::Named(path) | Endpoint::ScopedHistory(path, _) if path.names.iter().any(|name|name.quoted))) {
             return Err(ParseFailure::unsupported(
                 span,
                 "quoted state transition endpoint",
@@ -312,7 +459,13 @@ impl<'b> Builder<'b> {
         {
             match statement {
                 Statement::Description(name, label) => {
-                    let id = self.resolve((&name.text, scope, Kind::State), span)?;
+                    let id = self.resolve((&name.text, scope, Kind::State), span.clone())?;
+                    if !matches!(self.model.nodes[id].kind, Kind::State | Kind::Composite) {
+                        return Err(ParseFailure::unsupported(
+                            span,
+                            "descriptions on state pseudostates are unsupported",
+                        ));
+                    }
                     self.budget
                         .text(label.len())
                         .map_err(ParseFailure::terminal)?;
@@ -326,15 +479,32 @@ impl<'b> Builder<'b> {
                     )?;
                 }
                 Statement::Transition(from, to, label) => {
-                    let from = self.resolve((&from.text, scope, Kind::Initial), span.clone())?;
-                    let to = self.resolve((&to.text, scope, Kind::Final), span)?;
+                    let from = self.endpoint(from, (scope, Kind::Initial), span.clone())?;
+                    let to = self.endpoint(to, (scope, Kind::Final), span.clone())?;
+                    if concurrent_ancestor(&self.model, self.model.nodes[from].scope, self.budget)?
+                        != concurrent_ancestor(
+                            &self.model,
+                            self.model.nodes[to].scope,
+                            self.budget,
+                        )?
+                    {
+                        return Err(ParseFailure::unsupported(
+                            span,
+                            "state transition crosses concurrent region ownership",
+                        ));
+                    }
                     self.budget.item().map_err(ParseFailure::terminal)?;
                     self.budget
                         .text(label.len())
                         .map_err(ParseFailure::terminal)?;
                     retain(
                         (&mut self.model.transitions, &mut self.retained_bytes),
-                        Transition { from, to, label },
+                        Transition {
+                            from,
+                            to,
+                            label,
+                            span,
+                        },
                         self.budget,
                     )?;
                 }
@@ -343,30 +513,139 @@ impl<'b> Builder<'b> {
         Ok(self.model)
     }
 
+    fn endpoint(
+        &mut self,
+        endpoint: Endpoint,
+        input: (Scope, Kind),
+        span: Range<usize>,
+    ) -> Result<usize, ParseFailure> {
+        let (scope, role) = input;
+        match endpoint {
+            Endpoint::Named(path) => self.resolve_path(path, scope, span),
+            Endpoint::Role => self.resolve(("[*]", scope, role), span),
+            Endpoint::History(kind) => self.resolve(
+                (
+                    if kind == Kind::History { "[H]" } else { "[H*]" },
+                    scope,
+                    kind,
+                ),
+                span,
+            ),
+            Endpoint::ScopedHistory(path, kind) => {
+                let id = self.history_owner(path, scope, span.clone())?;
+                self.resolve(
+                    (
+                        if kind == Kind::History { "[H]" } else { "[H*]" },
+                        Scope::State(id),
+                        kind,
+                    ),
+                    span,
+                )
+            }
+        }
+    }
+
+    fn resolve_path(
+        &mut self,
+        path: NamePath,
+        scope: Scope,
+        span: Range<usize>,
+    ) -> Result<usize, ParseFailure> {
+        let mut parts = path.names.into_iter();
+        let first = parts.next().unwrap();
+        let mut id = self.resolve((&first.text, scope, Kind::State), span.clone())?;
+        for part in parts {
+            self.budget
+                .charge(self.model.nodes.len().saturating_mul(part.text.len() + 1))?;
+            id = find(&self.model, (&part.text, Scope::State(id), Kind::State)).ok_or_else(
+                || ParseFailure::unsupported(span.clone(), "unresolved qualified state endpoint"),
+            )?;
+        }
+        let direct = self.model.nodes[id].scope;
+        if (matches!(scope, Scope::Region(_)) && direct != scope)
+            || (matches!(direct, Scope::Region(_)) && direct != scope)
+        {
+            return Err(ParseFailure::unsupported(
+                span,
+                "ordinary state endpoint is outside its direct concurrent region",
+            ));
+        }
+        Ok(id)
+    }
+
+    fn history_owner(
+        &mut self,
+        path: NamePath,
+        mut scope: Scope,
+        span: Range<usize>,
+    ) -> Result<usize, ParseFailure> {
+        let mut result = 0;
+        for name in path.names {
+            self.budget
+                .charge(self.model.nodes.len().saturating_mul(name.text.len() + 1))?;
+            let mut parent = scope;
+            let mut depth = 0;
+            while parent != Scope::Root {
+                self.budget.charge(1)?;
+                depth += 1;
+                parent = match parent {
+                    Scope::Region(id) => self.model.nodes[self.model.regions[id].owner].scope,
+                    _ => parent_scope(&self.model, parent),
+                };
+            }
+            self.budget.depth(depth + 1)?;
+            let existing = if let Some(id) = find(&self.model, (&name.text, scope, Kind::State)) {
+                Some(id)
+            } else {
+                find_ancestor(&self.model, (&name.text, scope), self.budget)?
+            };
+            let id = if let Some(id) = existing {
+                id
+            } else {
+                self.resolve((&name.text, scope, Kind::State), span.clone())?
+            };
+            if !matches!(self.model.nodes[id].kind, Kind::State | Kind::Composite) {
+                return Err(ParseFailure::unsupported(
+                    span,
+                    "history target is not a composite state",
+                ));
+            }
+            self.model.nodes[id].kind = Kind::Composite;
+            scope = Scope::State(id);
+            result = id;
+        }
+        Ok(result)
+    }
+
     fn resolve(
         &mut self,
         input: (&str, Scope, Kind),
         span: Range<usize>,
     ) -> Result<usize, ParseFailure> {
         let (name, scope, role) = input;
-        let kind = if name == "[*]" { role } else { Kind::State };
+        let kind = if matches!(name, "[*]" | "[H]" | "[H*]") {
+            role
+        } else {
+            Kind::State
+        };
         self.budget
             .charge(self.model.nodes.len() + name.len() + 1)
             .map_err(ParseFailure::terminal)?;
-        if name != "[*]" && !is_name(name) {
+        if kind == Kind::State && !is_name(name) {
             return Err(ParseFailure::unsupported(
                 span,
-                "state endpoint; history/concurrency/decorations are unsupported",
+                "unsupported state endpoint",
             ));
         }
         if let Some(id) = find(&self.model, (name, scope, kind)) {
             return Ok(id);
         }
         if kind == Kind::State
-            && find_ancestor(&self.model, (name, scope), self.budget)
-                .map_err(ParseFailure::terminal)?
-                .is_some()
+            && let Some(id) = find_ancestor(&self.model, (name, scope), self.budget)?
         {
+            if primary_concurrency(&self.model, scope, self.budget)? {
+                return Ok(id);
+            }
             return Err(ParseFailure::unsupported(
                 span,
                 "cross-ownership state endpoint",
@@ -377,6 +656,21 @@ impl<'b> Builder<'b> {
                 span,
                 "unresolved qualified state endpoint",
             ));
+        }
+        if kind == Kind::State {
+            self.budget
+                .charge(self.model.nodes.len().saturating_mul(name.len() + 1))?;
+            for node in &self.model.nodes {
+                if node.name == name
+                    && node.scope != scope
+                    && concurrent_ancestor(&self.model, node.scope, self.budget)?.is_some()
+                {
+                    return Err(ParseFailure::unsupported(
+                        span,
+                        "state endpoint belongs to another concurrent region",
+                    ));
+                }
+            }
         }
         self.budget.item().map_err(ParseFailure::terminal)?;
         self.budget
@@ -416,8 +710,8 @@ fn find_ancestor(
     budget: &mut Budget,
 ) -> Result<Option<usize>, RenderError> {
     let (name, mut scope) = input;
-    while let Scope::State(id) = scope {
-        scope = model.nodes[id].scope;
+    while scope != Scope::Root {
+        scope = parent_scope(model, scope);
         budget.charge(model.nodes.len() + 1)?;
         if let Some(id) = find(model, (name, scope, Kind::State)) {
             return Ok(Some(id));
@@ -428,11 +722,11 @@ fn find_ancestor(
 
 fn find(model: &State, input: (&str, Scope, Kind)) -> Option<usize> {
     let (name, scope, kind) = input;
-    if matches!(kind, Kind::Initial | Kind::Final) {
+    if matches!(name, "[*]" | "[H]" | "[H*]") {
         return model
             .nodes
             .iter()
-            .position(|n| n.scope == scope && n.kind == kind);
+            .position(|n| n.scope == scope && n.kind == kind && n.name == name);
     }
     if let Scope::State(id) = scope
         && model.nodes[id].name == name
@@ -443,6 +737,49 @@ fn find(model: &State, input: (&str, Scope, Kind)) -> Option<usize> {
         .nodes
         .iter()
         .position(|n| n.scope == scope && n.name == name)
+}
+
+pub(super) fn parent_scope(model: &State, scope: Scope) -> Scope {
+    match scope {
+        Scope::Root => Scope::Root,
+        Scope::State(id) => model.nodes[id].scope,
+        Scope::Region(id) => Scope::State(model.regions[id].owner),
+    }
+}
+
+fn concurrent_ancestor(
+    model: &State,
+    mut scope: Scope,
+    budget: &mut Budget,
+) -> Result<Option<usize>, RenderError> {
+    while scope != Scope::Root {
+        budget.charge(1)?;
+        if let Scope::Region(id) = scope {
+            return Ok(Some(id));
+        }
+        scope = parent_scope(model, scope);
+    }
+    Ok(None)
+}
+
+fn primary_concurrency(
+    model: &State,
+    mut scope: Scope,
+    budget: &mut Budget,
+) -> Result<bool, RenderError> {
+    while scope != Scope::Root {
+        budget.charge(model.regions.len() + 1)?;
+        if matches!(scope, Scope::Region(_)) {
+            return Ok(false);
+        }
+        if let Scope::State(owner) = scope
+            && model.regions.iter().any(|r| r.owner == owner)
+        {
+            return Ok(true);
+        }
+        scope = parent_scope(model, scope);
+    }
+    Ok(false)
 }
 
 fn retain<T>(
