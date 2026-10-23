@@ -50,6 +50,18 @@ test('should reject unselected timing waveform and resource implementation paths
   }
 });
 
+test('should admit selected Gantt semantics while rejecting calendar resource and layout implementations', () => {
+  // given
+  const source = manifest();
+  source.sourceFiles[0].path = 'net/sourceforge/plantuml/gantt/lang/SubjectTask.java';
+  // when / then
+  assert.doesNotThrow(() => validateManifest(source));
+  for (const path of ['net/sourceforge/plantuml/gantt/Resource.java', 'net/sourceforge/plantuml/gantt/ngm/NGMAllocation.java', 'net/sourceforge/plantuml/gantt/lang/SubjectResource.java', 'net/sourceforge/plantuml/gantt/draw/RectangleTask.java']) {
+    source.sourceFiles[0].path = path;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should reject missing exact contributor credits despite colon spacing', () => {
   // given
   const source = manifest();

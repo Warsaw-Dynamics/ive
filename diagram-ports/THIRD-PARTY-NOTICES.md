@@ -22,6 +22,8 @@ Rust dependency section generated with `cargo about generate --config ../about.t
 
 The bounded timing checkpoint additionally translates the eighteen exact MIT `timingdiagram` grammar/model/layout sources in the manifest. Their actual credits are `(C) Copyright 2009-2024, Arnaud Roques` and `Original Author:  Arnaud Roques`; the full MIT grant linked above applies. Integer timing, initial-state/equal-time ownership and constraint/message resolution are native subsets. Measured waveform/ribbon geometry, sparse tick selection and routing are original native implementations. `timingbase.puml`, `timingdual.puml` and `timinglane.puml` preserve independently authored reference-input bytes and hashes; `timing.puml` is an independently authored native viewer example. No source renderer, icon, font, theme or additional dependency was imported.
 
+The bounded Gantt checkpoint additionally translates the seventeen exact MIT `gantt` task/project/duration/reference/date/solver/default-calendar/bar/diamond sources in the manifest. They credit `(C) Copyright 2009-2024, Arnaud Roques` and `Original Author:  Arnaud Roques`; the complete MIT grant linked above applies. ISO civil arithmetic, sparse measured date ticks and orthogonal routes are original native implementations. Freeze-after-reference, explicit predecessor duration and cycle rejection are narrower native admission policies. `ganttbase.puml`, `ganttalias.puml` and `ganttleap.puml` preserve exact independently authored original-reference inputs; `gantt.puml` is a new native viewer example. No renderer/calendar asset/theme/icon/font/additional dependency was imported.
+
 ## Licences
 
 - Apache License 2.0: 393 crates

@@ -79,7 +79,7 @@ impl Processor<'_> {
                 && (command.eq_ignore_ascii_case("@startuml")
                     || matches!(
                         command,
-                        "@startmindmap" | "@startwbs" | "@startjson" | "@startyaml"
+                        "@startmindmap" | "@startwbs" | "@startjson" | "@startyaml" | "@startgantt"
                     ))
             {
                 inside = true;
@@ -87,7 +87,10 @@ impl Processor<'_> {
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if !raw_text
                 && (command.eq_ignore_ascii_case("@enduml")
-                    || matches!(command, "@endmindmap" | "@endwbs" | "@endjson" | "@endyaml"))
+                    || matches!(
+                        command,
+                        "@endmindmap" | "@endwbs" | "@endjson" | "@endyaml" | "@endgantt"
+                    ))
             {
                 inside = false;
                 self.direct(physical, span.slice(0..physical.len()))?;

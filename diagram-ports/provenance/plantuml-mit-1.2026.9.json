@@ -10,6 +10,227 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/gantt/command/NaturalGanttCommand.java",
+      "sha256": "f6cff4856f430fd225d8192ff62ca5a47990ff22108250ab9a62d33f6dd56aae",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 149: ordered natural command evaluation. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/SubjectTask.java",
+      "sha256": "7ed685c0628134c4a66648eae5254f3efc299bd0a4be3c3224f370d0026e2f02",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 163: task verbs/alias/milestone. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/SubjectGantt.java",
+      "sha256": "00c7f9d18f4a880e3b2da3b29c712ac80dd4eaf189da70d0adbcee71e0b5b3d4",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 136: explicit project start. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/ComplementDuration.java",
+      "sha256": "2d739f92a72afbceed27e182de33d61dbeaff1db8bc0be6ecdf67ce5d878dce2",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 129: duration grammar/units. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/ComplementBeforeOrAfterOrAtTaskStartOrEnd.java",
+      "sha256": "f47b8a25bfba703e0f3a88097c70a41e38076275b46a1ff83361525ea1579881",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 126: precedence complement. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/AbstractComplementTaskInstant.java",
+      "sha256": "c678b40b34522b28b43fc87865e8cac339b83ae4e8c5715afc520954ffeca2fd",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 123: lookup/offset/calendar mode. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/DayPattern.java",
+      "sha256": "541cf228cfa175d3a221a208df80795242cece2b83038338a5f7b9b4ebbdea89",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 145: date forms and validation. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/Verbs.java",
+      "sha256": "fd6328360915bba632217199bd5dc8381411b5dde7f7bf6db8e799862a2e3680",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 127: lasts/requires verbs. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/core/TaskCode.java",
+      "sha256": "3f7eec7088e22701401b28c04411d044fd70bf9a846bbe5667ee4e5c12f9d73a",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 119: alias identity vs label. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/core/TaskInstant.java",
+      "sha256": "2746478d628b639783d378ffea0108f5b76c2bc7c7799706128bd5459b4c05a3",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 145: start/end boundary resolution. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/core/TaskImpl.java",
+      "sha256": "386d59aa3b5e2eb90587c31b05562b0e1b5f548407a3ec18dc2a5fda45ee363a",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 312: cached dates/calendar normalization. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/solver/Solver.java",
+      "sha256": "2aa5461a13596ab203cbceed637806663573bfce0f0e0ac109029d19b81a7569",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 136: ordered constraints solver. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/GanttDiagram.java",
+      "sha256": "c6439921dd6782bcf46cf1f27969a10f380a3d8a9618d58fcdde197e7af80a2f",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 329: task creation/order/project start. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/OpenClose.java",
+      "sha256": "3195f609d6fe8c133df17003ac0115aad0e0c711385904a7f2fb2ce7f99116f2",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 156: default open days/week length. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/draw/TaskDrawDiamond.java",
+      "sha256": "8305961f2610abde31ee64d7d84e390444fb60f8d2cea154105c21b62d8467ae",
+      "rust": [
+        "engine/src/plantuml/ganttscene.rs"
+      ],
+      "behavior": "From line 185: milestone drawing. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/draw/TaskDrawRegular.java",
+      "sha256": "f42271f14b21a7488e35a8eb69dd8cc1b4702769508600437702370c906a402b",
+      "rust": [
+        "engine/src/plantuml/ganttscene.rs"
+      ],
+      "behavior": "From line 157: duration bar/daily pauses. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gantt/lang/TimeResolution.java",
+      "sha256": "58ea613a932b211016ffb22ef16e6342f01e61a54122bada22a6654cec0f02a1",
+      "rust": [
+        "engine/src/plantuml/gantt.rs"
+      ],
+      "behavior": "From line 134: ISO-like date numeric grammar. Native bounded ISO civil-day arithmetic (years 0001..9999, spans/durations/offsets at most 7300 days); default seven OPEN days, ordered alias identities, half-open task ends and last-occupied-day end milestones. Initial native policy requires explicit predecessor duration before reference and freezes schedule fields thereafter; conflicting inputs and cycles reject rather than final reactive DAG rescheduling. Start links own drawn arrows; happens links retain semantic references without inventing arrows. Calendars/resources/mixed units/percent/task colors/printscale and other unimplemented commands reject. Measured calendar/bar/diamond geometry is original native layout; no assets or upstream renderer imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/timingdiagram/TimingDiagramFactory.java",
       "sha256": "1a9efcf876bdf078d379441a6d52fdf1713ed64a90b18c0050913022c7ad7080",
       "rust": [
@@ -1271,7 +1492,7 @@
       "rust": [
         "engine/src/plantuml/source.rs"
       ],
-      "behavior": "Recognize exact UML wrapper; other wrapper families remain unsupported.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -1949,6 +2170,32 @@
   ],
   "fixtures": [
     {
+      "path": "fixtures/plantuml/ganttbase.puml",
+      "sha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+      "origin": "/tmp/ive-plantuml-native-oracles/gantt-dated-dependencies.puml",
+      "authorship": "Exact independently authored original-reference input, not copied upstream example.",
+      "claim": "Admitted dated schedule semantics, not native geometry/pixel parity."
+    },
+    {
+      "path": "fixtures/plantuml/ganttalias.puml",
+      "sha256": "652c8648afbf5814d01c6fde36e24c19924d51c2ab1422ea67800ec42ae6a0fe",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/gantt-alias-milestones.puml",
+      "authorship": "Exact independently authored original-reference input, not copied upstream example.",
+      "claim": "Admitted dated schedule semantics, not native geometry/pixel parity."
+    },
+    {
+      "path": "fixtures/plantuml/ganttleap.puml",
+      "sha256": "c2438204d02f7a3a3a9653bc973ad749170f0b667ebc0a804fa5b8568d6b0128",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/gantt-date-leap.puml",
+      "authorship": "Exact independently authored original-reference input, not copied upstream example.",
+      "claim": "Admitted dated schedule semantics, not native geometry/pixel parity."
+    },
+    {
+      "path": "fixtures/plantuml/gantt.puml",
+      "sha256": "cd5df287b33ecdc5e551156292fa16067f18bdc440a8a023d73739845013332c",
+      "origin": "Independently authored native alias/duration/dependency/milestone viewer fixture with shared fonts/chrome/constants; not an original styling/pixel oracle."
+    },
+    {
       "path": "fixtures/plantuml/timingbase.puml",
       "sha256": "b63360b1f508f465a335bece9b632db5353caf2a4614243e7eb94e4c9d326caf",
       "origin": "/tmp/ive-plantuml-native-oracles/timing-transitions.puml",
@@ -2187,6 +2434,8 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/gantt.rs",
+    "engine/src/plantuml/ganttscene.rs",
     "engine/src/plantuml/timing.rs",
     "engine/src/plantuml/timingscene.rs",
     "engine/src/plantuml/preprocess.rs",
@@ -2217,6 +2466,7 @@
     "engine/src/plantuml/chrome.rs"
   ],
   "implementationNotes": [
+    "Task3F adds a dedicated deterministic day-only Gantt model and measured date axis/bar/diamond scene. ISO dates are explicit and bounded; all seven days are open. Dependency dates are captured in source order with conservative freeze-after-reference admission, not a final reactive DAG. Native sparse calendar ticks and routes differ from upstream geometry; milestone references do not invent drawn arrows. No new runtime IO, ambient dates, dependencies or assets.",
     "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",
     "Strict ordered duplicate-preserving JSON and narrow preflighted PlantUML YAML string semantics. Data labels remain literal and do not enter UML rich-text/newline normalization. New tree/data labels measure and emit the same explicit Arial/Liberation Sans/DejaVu Sans/Noto Sans/sans-serif chain. EclipseSource minimal-json MIT notice retained.",
     "State owns a distinct typed model and recursive checked Dagre graph adapter. Activity uses structured instructions with bottom-up explicit entry/live/dead exit ports; neither is a UML/sequence AST rewrite.",

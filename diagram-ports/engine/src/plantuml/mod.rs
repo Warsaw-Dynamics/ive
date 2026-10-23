@@ -11,6 +11,8 @@ mod chrome;
 mod creole;
 mod data;
 mod datascene;
+mod gantt;
+mod ganttscene;
 mod graph;
 mod lexer;
 mod origin;
@@ -58,7 +60,10 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if wrapper == source::Wrapper::Mindmap {
+        let (family, scene) = if wrapper == source::Wrapper::Gantt {
+            let model = gantt::parse(lines, context.budget)?;
+            ("gantt", ganttscene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Mindmap {
             let model = tree::parse_mindmap(lines, context.budget)?;
             ("mindmap", treescene::mindmap(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Wbs {
@@ -97,7 +102,7 @@ pub(crate) fn render(
             .into_string();
         budget.checkpoint()?;
         crate::svg::validate(&svg, &options.limits)?;
-        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, integer timing, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, integer timing, dated Gantt, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
 }

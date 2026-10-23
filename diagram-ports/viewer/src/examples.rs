@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-gantt",
+        source: include_str!("../../fixtures/plantuml/gantt.puml"),
+    },
+    Example {
         name: "plantuml-timing",
         source: include_str!("../../fixtures/plantuml/timing.puml"),
     },
@@ -133,6 +137,26 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_native_gantt_example_with_aliases_bars_dependencies_and_milestones() {
+        // given
+        let name = "plantuml-gantt";
+        // when
+        let source = super::source(name).unwrap();
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "gantt");
+        for kind in ["gantt-bar", "gantt-milestone", "gantt-dependency"] {
+            assert!(output.svg.contains(kind));
+        }
+    }
     #[test]
     fn should_find_substantive_native_timing_example() {
         // given

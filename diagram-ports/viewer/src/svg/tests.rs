@@ -2,6 +2,89 @@ use super::*;
 
 #[cfg(target_os = "linux")]
 #[test]
+fn should_contain_actual_native_gantt_labels_and_calendar_ticks() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startgantt\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nProject starts 2028-02-28\n[**Long** draft Ω café\\nsecond row] as [A] lasts 3 days\n[Build package] as [B] lasts 2 days\n[B] starts at [A]'s end\n[Review checkpoint] happens at [B]'s end\n@endgantt"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-gantt-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut painted = 0;
+        // then
+        for element in xml.descendants().filter(|node| node.has_tag_name("g")) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    painted += 1;
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= -0.5
+                            && ink.top() >= -0.5
+                            && ink.right() <= tree.size().width() + 0.5
+                            && ink.bottom() <= tree.size().height() + 0.5,
+                        "{size}px Gantt ink outside canvas: {ink:?}"
+                    );
+                }
+            }
+        }
+        assert!(painted >= 12);
+        eprintln!(
+            "gantt {size}px actual native report: {:?}; paint runs={painted}",
+            native.report()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn should_contain_actual_native_timing_ribbon_labels_and_connection_captions() {
     use crate::{
         native_text::{NativeText, NativeTextResources},

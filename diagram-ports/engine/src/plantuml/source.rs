@@ -15,6 +15,7 @@ pub(super) enum Wrapper {
     Wbs,
     Json,
     Yaml,
+    Gantt,
 }
 
 pub(super) fn prepare_document(
@@ -32,13 +33,22 @@ pub(super) fn prepare_document(
         "@startwbs" => (Wrapper::Wbs, "@endwbs"),
         "@startjson" => (Wrapper::Json, "@endjson"),
         "@startyaml" => (Wrapper::Yaml, "@endyaml"),
+        "@startgantt" => (Wrapper::Gantt, "@endgantt"),
         _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
     };
     budget.charge(source.len())?;
     let mut state = 0;
     let mut lines = Vec::new();
+    let mut block_comment = false;
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.charge(raw.len() + 1)?;
+        let normalized;
+        let raw = if wrapper == Wrapper::Gantt {
+            normalized = strip_comments(raw, &mut block_comment, budget)?;
+            normalized.trim()
+        } else {
+            raw
+        };
         let trimmed = raw.trim();
         if state == 0 && trimmed == first {
             state = 1;
@@ -53,6 +63,9 @@ pub(super) fn prepare_document(
                 ));
             }
             budget.text(raw.len())?;
+            if wrapper == Wrapper::Gantt && raw.is_empty() {
+                continue;
+            }
             lines.push(Line {
                 number: offset + 1,
                 text: raw.to_owned(),
