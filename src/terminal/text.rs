@@ -1,6 +1,6 @@
 use alacritty_terminal::event::EventListener;
 use alacritty_terminal::grid::Dimensions;
-use alacritty_terminal::index::{Column, Line};
+use alacritty_terminal::index::{Column, Line, Point};
 use alacritty_terminal::term::Term;
 use alacritty_terminal::term::cell::Flags;
 use serde::Serialize;
@@ -43,33 +43,71 @@ pub fn screen_text<T: EventListener>(term: &Term<T>) -> ScreenText {
 /// The whole output, scrollback included, as text lines: rows a long line wrapped onto are joined again, and the
 /// blank rows below the output are left out. `last` keeps only that many lines from the end.
 pub fn output_text<T: EventListener>(term: &Term<T>, last: Option<usize>) -> Vec<String> {
+    let mut lines: Vec<String> = output_rows(term).into_iter().map(|row| row.text).collect();
+    let keep = last.map_or(lines.len(), |last| last.min(lines.len()));
+    lines.split_off(lines.len() - keep)
+}
+
+/// A line of the output, as [`output_text`] gives it, and the grid line its first row is on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutputRow {
+    pub first: i32,
+    pub text: String,
+}
+
+/// The lines of [`output_text`], each with the grid line it starts on.
+pub fn output_rows<T: EventListener>(term: &Term<T>) -> Vec<OutputRow> {
     let grid = term.grid();
-    let top = -(grid.history_size() as i32);
-    let bottom = term.screen_lines() as i32;
-    let mut lines = Vec::new();
+    let mut rows = Vec::new();
     let mut current = String::new();
-    for line in top..bottom {
-        let row = &grid[Line(line)];
-        let mut wrapped = false;
-        for column in 0..term.columns() {
-            let cell = &row[Column(column)];
-            wrapped = cell.flags.contains(Flags::WRAPLINE);
-            if cell.flags.intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER) {
-                continue;
-            }
-            current.push(cell.c);
-        }
-        if wrapped {
+    let top = -(grid.history_size() as i32);
+    let mut first = top;
+    for line in top..term.screen_lines() as i32 {
+        if push_row(term, Line(line), &mut current) {
             continue;
         }
         current.truncate(current.trim_end().len());
-        lines.push(std::mem::take(&mut current));
+        rows.push(OutputRow { first, text: std::mem::take(&mut current) });
+        first = line + 1;
     }
-    while lines.last().is_some_and(String::is_empty) {
-        lines.pop();
+    while rows.last().is_some_and(|row| row.text.is_empty()) {
+        rows.pop();
     }
-    let keep = last.map_or(lines.len(), |last| last.min(lines.len()));
-    lines.split_off(lines.len() - keep)
+    rows
+}
+
+/// Adds the characters of grid line `line` to `text`; whether the line wraps onto the next.
+fn push_row<T: EventListener>(term: &Term<T>, line: Line, text: &mut String) -> bool {
+    let row = &term.grid()[line];
+    let mut wrapped = false;
+    for column in 0..term.columns() {
+        let cell = &row[Column(column)];
+        wrapped = cell.flags.contains(Flags::WRAPLINE);
+        if cell.flags.intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER) {
+            continue;
+        }
+        text.push(cell.c);
+    }
+    wrapped
+}
+
+/// Where byte `byte` of `row`'s text is on the grid: past its end, the cell after its last character.
+pub fn output_point<T: EventListener>(term: &Term<T>, row: &OutputRow, byte: usize) -> Point {
+    let grid = term.grid();
+    let mut at = 0;
+    for line in row.first..term.screen_lines() as i32 {
+        for column in 0..term.columns() {
+            let cell = &grid[Line(line)][Column(column)];
+            if cell.flags.intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER) {
+                continue;
+            }
+            if at >= byte {
+                return Point::new(Line(line), Column(column));
+            }
+            at += cell.c.len_utf8();
+        }
+    }
+    Point::new(Line(term.screen_lines() as i32 - 1), term.last_column())
 }
 
 #[cfg(test)]
@@ -117,6 +155,52 @@ mod tests {
         let mut term = Term::new(Config { scrolling_history: 100, ..Config::default() }, &size, VoidListener);
         Processor::<StdSyncHandler>::new().advance(&mut term, bytes);
         output_text(&term, last)
+    }
+
+    fn term_of(bytes: &[u8]) -> Term<VoidListener> {
+        let size = GridSize { columns: 12, lines: 3, cell_width: 8, cell_height: 16 };
+        let mut term = Term::new(Config { scrolling_history: 100, ..Config::default() }, &size, VoidListener);
+        Processor::<StdSyncHandler>::new().advance(&mut term, bytes);
+        term
+    }
+
+    #[test]
+    fn should_give_each_output_line_its_first_row() {
+        // given
+        let term = term_of(b"abcdefghijklmnopq\r\nnext");
+
+        // when
+        let rows = output_rows(&term);
+
+        // then
+        let found: Vec<(i32, &str)> = rows.iter().map(|row| (row.first, row.text.as_str())).collect();
+        assert_eq!(found, [(0, "abcdefghijklmnopq"), (2, "next")]);
+    }
+
+    #[test]
+    fn should_map_a_match_on_a_wrapped_line_to_its_row() {
+        // given
+        let term = term_of(b"abcdefghijklmnopq\r\nnext");
+        let rows = output_rows(&term);
+
+        // when
+        let point = output_point(&term, &rows[0], 14);
+
+        // then
+        assert_eq!(point, Point::new(Line(1), Column(2)));
+    }
+
+    #[test]
+    fn should_count_a_wide_character_as_two_columns() {
+        // given
+        let term = term_of("日本x".as_bytes());
+        let rows = output_rows(&term);
+
+        // when
+        let point = output_point(&term, &rows[0], 6);
+
+        // then
+        assert_eq!(point, Point::new(Line(0), Column(4)));
     }
 
     #[test]

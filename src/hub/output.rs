@@ -92,7 +92,7 @@ mod tests {
         // then
         let found: Vec<(u64, u32, usize, Range<usize>)> = hits.iter().map(|hit| (hit.process.value(), hit.line, hit.from_bottom, hit.bytes.clone())).collect();
         assert_eq!(found, [(1, 2, 1, 3..6), (2, 1, 0, 0..3)]);
-        assert_eq!((hits[0].ranges.clone(), limited), (vec![3..6], false));
+        assert_eq!((hits[0].ranges.clone(), limited), (std::iter::once(3..6).collect::<Vec<_>>(), false));
     }
 
     #[test]

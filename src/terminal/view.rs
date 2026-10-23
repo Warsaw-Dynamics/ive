@@ -1,11 +1,14 @@
 use std::cell::Cell;
 use std::io;
+use std::ops::Range;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use alacritty_terminal::event::Event;
+use alacritty_terminal::Term;
+use alacritty_terminal::event::{Event, EventListener};
+use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::index::{Column, Line, Point as GridPoint, Side};
 use alacritty_terminal::selection::SelectionType;
 use alacritty_terminal::term::TermMode;
@@ -13,7 +16,7 @@ use alacritty_terminal::vte::ansi::CursorShape;
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    App, Bounds, BorderStyle, ClipboardItem, Context, CursorStyle, ExternalPaths, FocusHandle, Font, FontStyle, Hsla,
+    App, Bounds, BorderStyle, ClipboardItem, ContentMask, Context, CursorStyle, ExternalPaths, FocusHandle, Font, FontStyle, Hsla,
     KeyDownEvent, Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
     SharedString, Size,
     StrikethroughStyle, Task, TextRun, WeakEntity, UnderlineStyle, Window, canvas, div, fill, outline, point, prelude::*,
@@ -23,11 +26,11 @@ use gpui::{
 use super::colors::{ColorResolver, unpack};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
-use super::layout::{CursorMark, Frame, Run, Segment, Underline, layout};
+use super::layout::{CursorMark, Frame, Run, Segment, Underline, Window as GridWindow, columns_shift, layout, layout_window, top_showing};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::progress::Progress;
 use super::session::{GridSize, Session};
-use super::text::{ScreenText, output_text, screen_text};
+use super::text::{OutputRow, ScreenText, output_point, output_rows, output_text, screen_text};
 #[cfg(unix)]
 use super::hosted::HostedTerminals;
 #[cfg(unix)]
@@ -229,6 +232,18 @@ impl TerminalView {
 
     pub fn output_text(&self, last: Option<usize>) -> Vec<String> {
         self.session.with_term(|term| output_text(term, last))
+    }
+
+    pub fn output_rows(&self) -> Vec<OutputRow> {
+        self.session.with_term(|term| output_rows(term))
+    }
+
+    /// `rows` lines of the terminal as `at` says, laid out without touching what its tab shows.
+    pub fn snapshot(&self, at: &FrameAt, rows: usize, palette: &TerminalPalette) -> Snapshot {
+        self.session.with_term(|term| {
+            let (window, columns) = window_at(term, at, rows);
+            Snapshot { frame: Rc::new(layout_window(term, &window, palette)), columns }
+        })
     }
 
     /// Applies what the shell asked for: replies to its queries, clipboard, title, exit.
@@ -704,6 +719,58 @@ fn grid(session: Rc<Session>, pointer: Rc<Pointer>, metrics: CellMetrics, palett
         },
     )
     .size_full()
+}
+
+/// Where a snapshot of a terminal looks: its last lines, or around line `index` of its output, with `bytes` of
+/// that line marked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FrameAt {
+    Bottom,
+    Line { index: usize, bytes: Range<usize> },
+}
+
+/// Lines of a terminal laid out, and the columns of the match they mark.
+#[derive(Debug, Clone)]
+pub struct Snapshot {
+    pub frame: Rc<Frame>,
+    pub columns: Option<Range<usize>>,
+}
+
+/// The grid lines `at` shows, and the columns of its match; a line no longer in the output shows the bottom.
+fn window_at<T: EventListener>(term: &Term<T>, at: &FrameAt, rows: usize) -> (GridWindow, Option<Range<usize>>) {
+    let (history, screen) = (term.grid().history_size(), term.screen_lines());
+    let output = output_rows(term);
+    let found = match at {
+        FrameAt::Line { index, bytes } => output.get(*index).map(|row| (row, bytes)),
+        FrameAt::Bottom => None,
+    };
+    let Some((row, bytes)) = found else {
+        let last = output.last().map_or(0, |row| row.first);
+        let top = (last + 1 - rows as i32).min(screen as i32 - rows as i32).max(-(history as i32));
+        return (GridWindow { top, rows, mark: None }, None);
+    };
+    let start = output_point(term, row, bytes.start);
+    let last_char = row.text.get(..bytes.end).and_then(|text| text.char_indices().last()).map_or(bytes.start, |(at, _)| at.max(bytes.start));
+    let end = output_point(term, row, last_char);
+    let top = top_showing(start.line.0, rows, history, screen);
+    (GridWindow { top, rows, mark: Some((start, end)) }, Some(start.column.0..end.column.0.max(start.column.0) + 1))
+}
+
+/// Paints `snapshot` as the terminal draws, taking no input, scrolled sideways so its marked columns are in view.
+pub fn snapshot_element(snapshot: Snapshot, palette: TerminalPalette) -> impl IntoElement {
+    let Snapshot { frame, columns } = snapshot;
+    let painted = canvas(
+        |_, _, _| {},
+        move |bounds, (), window, cx| {
+            let metrics = CellMetrics::measure(window, cx);
+            let visible = (f32::from(bounds.size.width) / f32::from(metrics.cell_width)).floor() as usize;
+            let shift = columns.as_ref().map_or(0, |columns| columns_shift(columns, visible));
+            let origin = point(bounds.origin.x - metrics.cell_width * shift as f32, bounds.origin.y);
+            window.with_content_mask(Some(ContentMask { bounds }), |window| paint_frame(&frame, origin, metrics, palette.cursor, window, cx));
+        },
+    )
+    .size_full();
+    div().flex_1().min_h_0().overflow_hidden().bg(rgb(palette.background)).child(painted)
 }
 
 /// Cell size of the monospace font at the terminal's text size.
