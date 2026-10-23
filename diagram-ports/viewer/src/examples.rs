@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-timing",
+        source: include_str!("../../fixtures/plantuml/timing.puml"),
+    },
+    Example {
         name: "plantuml-constant-sequence",
         source: include_str!("../../fixtures/plantuml/constantsequence.puml"),
     },
@@ -129,6 +133,31 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_substantive_native_timing_example() {
+        // given
+        let name = "plantuml-timing";
+        // when
+        let source = super::source(name).unwrap();
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "timing");
+        for kind in [
+            "timing-robust",
+            "timing-concise",
+            "timing-constraint",
+            "timing-message",
+        ] {
+            assert!(output.svg.contains(kind));
+        }
+    }
     #[test]
     fn should_find_native_control_tree_and_data_examples() {
         // given

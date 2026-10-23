@@ -136,6 +136,8 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     let mut state = 0;
     let mut body = TextBody::None;
     let mut graph_grammar = false;
+    let mut timing_statement = None;
+    let mut timing_declaration = false;
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.checkpoint()?;
         let line = offset + 1;
@@ -174,13 +176,23 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
             state = 2;
             continue;
         }
-        if state != 1 || text.starts_with('@') {
+        if state != 1
+            || text.eq_ignore_ascii_case("@startuml")
+            || text.eq_ignore_ascii_case("@enduml")
+        {
             return Err(invalid(
                 line,
                 format!("expected one @startuml/@enduml block, found {text:?}"),
             ));
         }
         let statement = Line { number: line, text };
+        if statement.text.starts_with('@') && timing_statement.is_none() {
+            timing_statement = Some(lines.len());
+        }
+        timing_declaration |= matches!(
+            statement.text.split_whitespace().next(),
+            Some("robust" | "concise")
+        );
         graph_grammar |= graph_declaration(&statement);
         if !graph_grammar {
             body = text_body(&statement);
@@ -195,6 +207,17 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     }
     if state != 2 || lines.is_empty() {
         return Err(invalid(1, "expected a nonempty, complete @startuml block"));
+    }
+    // Raw note/action rows never grant or require timing syntax.
+    if timing_declaration {
+        return Ok(lines);
+    }
+    if let Some(index) = timing_statement {
+        let line = &lines[index];
+        return Err(invalid(
+            line.number,
+            format!("timing declaration required for {:?}", line.text),
+        ));
     }
     Ok(lines)
 }

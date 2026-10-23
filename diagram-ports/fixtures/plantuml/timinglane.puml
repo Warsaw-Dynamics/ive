@@ -1,0 +1,12 @@
+@startuml
+robust "Valve" as V
+concise "Control" as C
+@V
+0 is Closed
++5 is Open
++10 is Closed
+@C
+0 is Waiting
+5 is Running
+15 is Done
+@enduml

@@ -24,6 +24,8 @@ mod stategraph;
 mod style;
 mod svg;
 mod text;
+mod timing;
+mod timingscene;
 mod tree;
 mod treescene;
 mod uml;
@@ -79,6 +81,9 @@ pub(crate) fn render(
             let model = uml::parse(lines, context.budget)?;
             let family = model.family;
             (family, graph::layout(&model, &mut context)?)
+        } else if selection == Selection::Timing {
+            let model = timing::parse(lines, context.budget)?;
+            ("timing", timingscene::layout(&model, &mut context)?)
         } else {
             let model = sequence::parse(lines, context.budget)?;
             ("sequence", sequence::layout(&model, &mut context)?)
@@ -92,7 +97,7 @@ pub(crate) fn render(
             .into_string();
         budget.checkpoint()?;
         crate::svg::validate(&svg, &options.limits)?;
-        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, integer timing, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
 }
@@ -103,6 +108,7 @@ enum Selection {
     Uml,
     State,
     Activity,
+    Timing,
 }
 
 fn select(lines: &[source::Line]) -> Selection {
@@ -112,6 +118,9 @@ fn select(lines: &[source::Line]) -> Selection {
             continue;
         }
         let word = line.text.split_whitespace().next().unwrap_or("");
+        if matches!(word, "robust" | "concise") {
+            return Selection::Timing;
+        }
         if matches!(
             word,
             "class"

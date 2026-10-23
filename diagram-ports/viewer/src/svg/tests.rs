@@ -2,6 +2,107 @@ use super::*;
 
 #[cfg(target_os = "linux")]
 #[test]
+fn should_contain_actual_native_timing_ribbon_labels_and_connection_captions() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(metrics) => Some(HostTextMeasurement::Metrics(metrics)),
+                    MeasureReply::Length(width) => Some(HostTextMeasurement::Length(width)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nrobust \"Valve title\" as V\nconcise \"Controller title\" as C\n@0\nV is Closed\nC is \"Waiting Ω café\"\n@6\nV is Open\nC is \"Running state\"\n@15\nV is Closed\nC is Done\nV@6 <-> @+9 : measured interval\\nsecond row\nV@6 -> C@8 : confirm\\nmessage row\n@20\n@enduml"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-timing-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        // then
+        let mut painted = 0;
+        for element in xml.descendants().filter(|node| node.has_tag_name("g")) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let mut ribbon = None;
+            for child in group.children() {
+                match child {
+                    usvg::Node::Path(path)
+                        if element.attribute("data-kind") == Some("timing-concise") =>
+                    {
+                        ribbon = Some(path.abs_bounding_box())
+                    }
+                    usvg::Node::Text(text) => {
+                        painted += 1;
+                        let ink = text.abs_stroke_bounding_box();
+                        assert!(
+                            ink.left() >= -0.5
+                                && ink.top() >= -0.5
+                                && ink.right() <= tree.size().width() + 0.5
+                                && ink.bottom() <= tree.size().height() + 0.5,
+                            "{size}px native timing ink outside canvas: {ink:?}"
+                        );
+                        if let Some(border) = ribbon {
+                            assert!(
+                                ink.left() > border.left() + 1.
+                                    && ink.right() < border.right() - 1.
+                                    && ink.top() > border.top() + 1.
+                                    && ink.bottom() < border.bottom() - 1.,
+                                "{size}px native ribbon ink {ink:?} crosses {border:?}"
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        assert!(painted >= 15);
+        eprintln!(
+            "timing {size}px actual native report: {:?}; paint runs={painted}",
+            native.report()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
     use crate::{
         native_text::{NativeText, NativeTextResources},

@@ -40,6 +40,16 @@ test('should reject untranslated TIM runtime files', () => {
   }
 });
 
+test('should reject unselected timing waveform and resource implementation paths', () => {
+  // given
+  for (const path of ['net/sourceforge/plantuml/timingdiagram/command/CommandClock.java', 'net/sourceforge/plantuml/timingdiagram/PlayerAnalog.java', 'net/sourceforge/plantuml/timingdiagram/graphic/HexaShape.java']) {
+    const source = manifest();
+    source.sourceFiles[0].path = path;
+    // when / then
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should reject missing exact contributor credits despite colon spacing', () => {
   // given
   const source = manifest();
