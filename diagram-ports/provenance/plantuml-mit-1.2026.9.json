@@ -463,7 +463,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines122-185: physical newline/pipe/brace token termination, direct shielding of escaped pipe/braces. Native uses typed structural tokens and direct escapes without the source PUA collisions; quote characters never suppress structural delimiters.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -476,7 +478,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines130-164: source-ordered row/column placement and preceding-cell colspan extension. Native rejects orphan/cross-row spans and freezes positive spans instead of mutable unchecked last-cell merging.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -489,7 +493,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines120-159: inclusive span ownership translated to immutable zero-based cell coordinates and positive row/column lengths; only authored same-row colspans admitted.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -502,7 +508,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines292-350: nested widget factory dispatch precedence, particularly field then checkbox before button, followed by radio. Native standalone exact Salt wrapper only; no other family conversion.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -515,7 +523,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines130-183: admitted nested {/{+/{# grammar, one child per parent cell, closing-token terminator returned to parent. Other borders and tree/region requests explicitly rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -528,7 +538,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines125-176: separate cardinal-region token discovery used for explicit unsupported admission only; no border-region layout is claimed.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -541,7 +553,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines130-155: bracket button marker and explicit leading-link exclusion; exact source dispatch order retained.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -554,7 +568,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines130-144: enclosing double quotes select a field and retain its interior padding separately from trimmed painted content.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -567,7 +583,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines134-148: uppercase [X] prefix, including empty-label checkbox; never lower-x or button dispatch.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -580,7 +598,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines135-149: []/[ ] prefix and trimmed following checkbox caption.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -593,7 +613,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines134-148: uppercase (X) prefix and trimmed following selected-radio caption.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -606,7 +628,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines134-148: ()/( ) prefix and trimmed following unselected-radio caption.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -620,7 +644,9 @@
       ],
       "rust": [
         "engine/src/plantuml/salt.rs",
-        "engine/src/plantuml/saltscene.rs"
+        "engine/src/plantuml/saltscene.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines112-130: typed NONE/OUTSIDE/ALL borders admitted and drawn; horizontal/vertical/titled modes explicitly rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -698,7 +724,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines200-224: T/T-plus-valid-border first-token tree discovery used only for explicit unsupported admission; tree behavior not implemented.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -711,7 +739,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines125-166: {/ structured tab marker used only for explicit unsupported admission.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -724,7 +754,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines125-176: {* structured menu marker used only for explicit unsupported admission.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -737,7 +769,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines130-144: paired-caret dropdown marker used only for explicit unsupported admission; ordinary unpaired caret text remains literal.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -750,7 +784,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines125-156: << image-definition marker used only for explicit resource denial; no image/dictionary resolution.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -763,7 +799,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines127-148: <<word>> retrieval marker used only for explicit resource denial.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -776,7 +814,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines125-170: paired repeated --/==/~~/.. edge markers used only for explicit unsupported line-widget admission.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -789,7 +829,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/salt.rs"
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/parser/salt.rs",
+        "engine/src/plantuml/parser/grammar/salt.lalrpop"
       ],
       "behavior": "From lines127-168: {S/{S-/{SI marker used only for explicit unsupported admission.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"

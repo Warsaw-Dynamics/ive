@@ -78,6 +78,12 @@
       "grammarSha256": "d133584bcd6941016ed0d055bf07e29ec919fb74ef44ff9c15522c7e9b59396b"
     },
     {
+      "generated": "engine/src/plantuml/generated/salt.rs",
+      "generatedSha256": "96d2e88d2ad55d4dbc98dc425a9f4a812fdc92e10f10d7386c7e16ea18bea3d2",
+      "grammar": "engine/src/plantuml/parser/grammar/salt.lalrpop",
+      "grammarSha256": "bdf09607b889c1bc60e11aa67d2312d8aa28f72987dd28a83579915ab1444697"
+    },
+    {
       "generated": "engine/src/plantuml/generated/sequence.rs",
       "generatedSha256": "add5ecf772bb37ce05df4a68a8050a7785d1ff06f82a2c1ec390c213f2fc356e",
       "grammar": "engine/src/plantuml/parser/grammar/sequence.lalrpop",

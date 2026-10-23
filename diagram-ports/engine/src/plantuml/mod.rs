@@ -176,6 +176,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let salt_model = if wrapper == source::Wrapper::Salt {
+        Some(parser::salt::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -213,8 +218,10 @@ pub(crate) fn render(
             let model = nwdiag::parse(lines, context.budget)?;
             ("nwdiag", nwscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Salt {
-            let model = salt::parse(lines, context.budget)?;
-            ("salt", saltscene::layout(&model, &mut context)?)
+            let model = salt_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML Salt selection has no parsed model".into())
+            })?;
+            ("salt", saltscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Gantt {
             let model = gantt_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("Gantt selection has no parsed model".into())

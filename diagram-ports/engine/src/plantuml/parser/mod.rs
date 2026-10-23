@@ -14,6 +14,7 @@ pub(super) mod json;
 pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod preamble;
+pub(super) mod salt;
 pub(super) mod sequence;
 pub(super) mod state;
 pub(super) mod structured;
@@ -131,3 +132,8 @@ mod generated_hcl;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/yaml.rs"]
 mod generated_yaml;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/salt.rs"]
+mod generated_salt;

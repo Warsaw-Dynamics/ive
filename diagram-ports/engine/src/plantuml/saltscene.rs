@@ -378,8 +378,11 @@ mod tests {
 
     fn inspect(source: &str, verify: impl FnOnce(Salt, Vec<Measured>, Scene)) {
         let mut budget = Budget::new(&RenderOptions::default());
-        let (preamble, lines) = super::super::source::prepare_styled(source, &mut budget).unwrap();
-        let model = super::super::salt::parse(&lines, &mut budget).unwrap();
+        let document = super::super::preprocess::prepare(source, &mut budget).unwrap();
+        let mut prepared = super::super::parser::document::parse(&document, &mut budget).unwrap();
+        let (preamble, _) =
+            super::super::parser::preamble::parse(&mut prepared, &mut budget).unwrap();
+        let model = super::super::parser::salt::parse(prepared.body, &mut budget).unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget).with_fonts(preamble.fonts);
         let measured = measure(&model, &mut context).unwrap();
