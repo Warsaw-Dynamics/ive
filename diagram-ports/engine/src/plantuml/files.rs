@@ -1,11 +1,10 @@
 //! Ordered files/notes semantics translated from PlantUML MIT FEntry/FilesListing/FilesDiagram.
 //! Copyright 2009-2024 Arnaud Roques; MIT grant and source traces in provenance/.
 use super::{
-    budget::{Budget, bound, invalid, unsupported},
-    source::Line,
+    budget::{Budget, bound},
+    parser::{error::ParseFailure, outline::Arena},
 };
-use crate::RenderError;
-
+use std::ops::Range;
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Kind {
     Root,
@@ -25,146 +24,208 @@ pub(super) struct Files {
     pub entries: Vec<Entry>,
 }
 
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Files, RenderError> {
-    budget.item()?;
-    let mut model = Files {
-        entries: vec![Entry {
-            parent: 0,
-            depth: 0,
-            kind: Kind::Root,
-            name: String::new(),
-            children: Vec::new(),
-        }],
-    };
-    let mut anchor = 0;
-    let mut index = 0;
-    while let Some(line) = lines.get(index) {
-        budget.charge(line.text.len() + 1)?;
-        let text = line.text.as_str();
-        index += 1;
-        if text.trim().is_empty() {
-            continue;
-        }
-        if text == "<note>" {
-            budget.depth(model.entries[anchor].depth + 1)?;
-            budget.item()?;
-            let mut note = String::new();
-            let mut rows = 0;
-            let mut closed = false;
-            while let Some(row) = lines.get(index) {
-                index += 1;
-                budget.charge(row.text.len() + 1)?;
-                if row.text.trim() == "</note>" {
-                    closed = true;
-                    break;
-                }
-                bound(
-                    "label bytes",
-                    note.len()
-                        .saturating_add(row.text.len())
-                        .saturating_add(usize::from(rows > 0)),
-                    16 * 1024,
-                )?;
-                if rows > 0 {
-                    budget.text(1)?;
-                    note.push('\n');
-                }
-                budget.text(row.text.len())?;
-                note.push_str(&row.text);
-                rows += 1;
-            }
-            if !closed {
-                return Err(invalid(line.number, "unterminated files <note>"));
-            }
-            append(&mut model, (anchor, Kind::Note, note), budget)?;
-        } else if let Some(path) = text.strip_prefix('/') {
-            anchor = add_path(&mut model, (line.number, path), budget)?;
-        } else {
-            return Err(unsupported(line.number, text));
-        }
-    }
-    if model.entries.len() == 1 {
-        return Err(invalid(1, "files tree has no entries"));
-    }
-    Ok(model)
+pub(in crate::plantuml) struct Builder<'b> {
+    pub budget: &'b mut Budget,
+    arena: Arena,
+    model: Files,
+    anchor: usize,
+    parent: usize,
+    note: String,
+    note_rows: usize,
 }
-
-fn add_path(
+impl<'b> Builder<'b> {
+    #[cfg(test)]
+    pub fn with_test_model(budget: &'b mut Budget, arena: Arena, model: &mut Files) -> Self {
+        Self {
+            budget,
+            arena,
+            model: Files {
+                entries: std::mem::take(&mut model.entries),
+            },
+            anchor: 0,
+            parent: 0,
+            note: String::new(),
+            note_rows: 0,
+        }
+    }
+    #[cfg(test)]
+    pub fn restore_test_model(self, model: &mut Files) -> usize {
+        model.entries = self.model.entries;
+        self.anchor
+    }
+    pub fn new(budget: &'b mut Budget, arena: Arena) -> Result<Self, ParseFailure> {
+        budget.item().map_err(ParseFailure::terminal)?;
+        let mut builder = Self {
+            budget,
+            arena,
+            model: Files {
+                entries: Vec::new(),
+            },
+            anchor: 0,
+            parent: 0,
+            note: String::new(),
+            note_rows: 0,
+        };
+        builder.arena.push(
+            &mut builder.model.entries,
+            Entry {
+                parent: 0,
+                depth: 0,
+                kind: Kind::Root,
+                name: String::new(),
+                children: Vec::new(),
+            },
+            builder.budget,
+        )?;
+        Ok(builder)
+    }
+    pub fn begin_path(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)?;
+        self.parent = 0;
+        Ok(())
+    }
+    pub fn folder(&mut self, name: String) -> Result<(), ParseFailure> {
+        for &id in &self.model.entries[self.parent].children {
+            self.budget
+                .charge(name.len() + 1)
+                .map_err(ParseFailure::terminal)?;
+            let entry = &self.model.entries[id];
+            if entry.kind == Kind::Folder && entry.name == name {
+                self.parent = id;
+                return Ok(());
+            }
+        }
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(name.len())
+            .map_err(ParseFailure::terminal)?;
+        self.parent = self.append((self.parent, Kind::Folder, name))?;
+        Ok(())
+    }
+    pub fn file(&mut self, name: String) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(name.len())
+            .map_err(ParseFailure::terminal)?;
+        self.append((self.parent, Kind::File, name))?;
+        self.anchor = self.parent;
+        Ok(())
+    }
+    pub fn folder_only(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)?;
+        self.anchor = 0;
+        Ok(())
+    }
+    pub fn begin_note(&mut self) -> Result<(), ParseFailure> {
+        self.budget
+            .depth(self.model.entries[self.anchor].depth + 1)
+            .map_err(ParseFailure::terminal)?;
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.note.clear();
+        self.note_rows = 0;
+        Ok(())
+    }
+    pub fn note_row(&mut self, row: String) -> Result<(), ParseFailure> {
+        let separator = usize::from(self.note_rows > 0);
+        bound(
+            "label bytes",
+            self.note
+                .len()
+                .saturating_add(row.len())
+                .saturating_add(separator),
+            16 * 1024,
+        )
+        .map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(row.len() + separator)
+            .map_err(ParseFailure::terminal)?;
+        if self.note.len() + row.len() + separator > self.note.capacity() {
+            self.budget
+                .charge(self.note.len())
+                .map_err(ParseFailure::terminal)?;
+        }
+        if separator > 0 {
+            self.note.push('\n');
+        }
+        self.note.push_str(&row);
+        self.note_rows += 1;
+        Ok(())
+    }
+    pub fn finish_note(&mut self) -> Result<(), ParseFailure> {
+        let note = std::mem::take(&mut self.note);
+        self.append((self.anchor, Kind::Note, note))?;
+        Ok(())
+    }
+    fn append(&mut self, entry: (usize, Kind, String)) -> Result<usize, ParseFailure> {
+        let depth = self.model.entries[entry.0].depth + 1;
+        self.budget.depth(depth).map_err(ParseFailure::terminal)?;
+        let id = self.model.entries.len();
+        self.arena.push(
+            &mut self.model.entries,
+            Entry {
+                parent: entry.0,
+                depth,
+                kind: entry.1,
+                name: entry.2,
+                children: Vec::new(),
+            },
+            self.budget,
+        )?;
+        self.arena
+            .push(&mut self.model.entries[entry.0].children, id, self.budget)?;
+        Ok(id)
+    }
+    pub fn finish(self, span: Range<usize>) -> Result<Files, ParseFailure> {
+        self.budget.checkpoint().map_err(ParseFailure::terminal)?;
+        if self.model.entries.len() == 1 {
+            return Err(ParseFailure::syntax(span, "files tree has no entries"));
+        }
+        Ok(self.model)
+    }
+}
+#[cfg(test)]
+use super::source::Line;
+#[cfg(test)]
+pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Files, crate::RenderError> {
+    super::parser::outline::test_parse(lines, "files", budget, super::parser::files::parse)
+}
+#[cfg(test)]
+fn add_test_path(
     model: &mut Files,
     path: (usize, &str),
     budget: &mut Budget,
-) -> Result<usize, RenderError> {
-    let folder_only = path.1.ends_with('/');
-    let raw = if folder_only {
-        &path.1[..path.1.len() - 1]
-    } else {
-        path.1
-    };
-    if raw.is_empty() {
-        return Err(invalid(path.0, format!("empty files path {:?}", path.1)));
-    }
+) -> Result<usize, crate::RenderError> {
+    // Feed typed actions directly so the existing tests isolate semantic admission.
+    let folders = path.1.ends_with('/');
+    let raw = path.1.strip_suffix('/').unwrap_or(path.1);
     budget.charge(raw.len())?;
-    let count = raw.split('/').count();
-    budget.depth(count)?;
-    let mut parent = 0;
-    for (index, segment) in raw.split('/').enumerate() {
-        budget.charge(segment.len() + 1)?;
-        if segment.is_empty() {
-            return Err(invalid(
-                path.0,
-                format!("empty files component in {:?}", path.1),
-            ));
-        }
-        bound("label bytes", segment.len(), 16 * 1024)?;
-        let kind = if index + 1 == count && !folder_only {
-            Kind::File
-        } else {
-            Kind::Folder
-        };
-        let mut existing = None;
-        if kind == Kind::Folder {
-            for &child in &model.entries[parent].children {
-                budget.charge(segment.len() + 1)?;
-                let entry = &model.entries[child];
-                if entry.kind == Kind::Folder && entry.name == segment {
-                    existing = Some(child);
-                    break;
-                }
+    let components = raw.split('/').collect::<Vec<_>>();
+    budget.depth(components.len())?;
+    let mut builder = Builder::with_test_model(budget, Arena::for_test(), model);
+    let result = (|| {
+        builder.begin_path()?;
+        let count = components.len();
+        for (index, name) in components.into_iter().enumerate() {
+            builder
+                .budget
+                .charge(name.len() + 1)
+                .map_err(ParseFailure::terminal)?;
+            if folders || index + 1 < count {
+                builder.folder(name.into())?;
+            } else {
+                builder.file(name.into())?;
             }
         }
-        parent = if let Some(id) = existing {
-            id
-        } else {
-            budget.item()?;
-            budget.text(segment.len())?;
-            append(model, (parent, kind, segment.to_owned()), budget)?
-        };
-    }
-    Ok(if folder_only {
-        0
-    } else {
-        model.entries[parent].parent
-    })
+        if folders {
+            builder.folder_only()?;
+        }
+        Ok(())
+    })();
+    let anchor = builder.restore_test_model(model);
+    result
+        .map(|()| anchor)
+        .map_err(|error: ParseFailure| error.into_line(path.0))
 }
-
-fn append(
-    model: &mut Files,
-    entry: (usize, Kind, String),
-    budget: &mut Budget,
-) -> Result<usize, RenderError> {
-    budget.depth(model.entries[entry.0].depth + 1)?;
-    let id = model.entries.len();
-    model.entries.push(Entry {
-        parent: entry.0,
-        depth: model.entries[entry.0].depth + 1,
-        kind: entry.1,
-        name: entry.2,
-        children: Vec::new(),
-    });
-    model.entries[entry.0].children.push(id);
-    Ok(id)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,19 +272,19 @@ mod tests {
         };
         let mut budget = Budget::new(&options);
         // when
-        let deep = add_path(&mut files, (1, "a/b/c"), &mut budget);
+        let deep = add_test_path(&mut files, (1, "a/b/c"), &mut budget);
         // then
         assert!(deep.is_err());
         assert_eq!(files.entries.len(), 1);
         options.limits.layout_work = 20;
         let mut budget = Budget::new(&options);
-        assert!(add_path(&mut files, (1, &"a".repeat(100)), &mut budget).is_err());
+        assert!(add_test_path(&mut files, (1, &"a".repeat(100)), &mut budget).is_err());
         assert_eq!(files.entries.len(), 1);
         options.limits.layout_work = 5_000_000;
         options.limits.model_items = 1;
         let mut budget = Budget::new(&options);
         budget.item().unwrap();
-        assert!(add_path(&mut files, (1, "a"), &mut budget).is_err());
+        assert!(add_test_path(&mut files, (1, "a"), &mut budget).is_err());
         assert_eq!(files.entries.len(), 1);
     }
 
@@ -242,7 +303,7 @@ mod tests {
         options.limits.layout_work = 32;
         let mut budget = Budget::new(&options);
         // when
-        let result = add_path(&mut model, (41, "other/"), &mut budget);
+        let result = add_test_path(&mut model, (41, "other/"), &mut budget);
         // then
         assert!(result.is_err());
         assert_eq!(model.entries.len(), 41);

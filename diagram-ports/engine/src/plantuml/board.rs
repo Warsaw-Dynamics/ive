@@ -1,11 +1,10 @@
 //! Board stages/ancestry/DFS columns translated from authorized PlantUML MIT board sources.
 //! Copyright 2009-2024 Arnaud Roques; source hashes and MIT grant in provenance/.
 use super::{
-    budget::{Budget, bound, invalid, unsupported},
-    source::Line,
+    budget::{Budget, bound},
+    parser::{error::ParseFailure, outline::Arena},
 };
-use crate::RenderError;
-
+use std::ops::Range;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Parent {
     Root,
@@ -22,76 +21,93 @@ pub(super) struct Board {
     pub activities: Vec<usize>,
 }
 
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Board, RenderError> {
-    let mut model = Board {
-        cards: Vec::new(),
-        activities: Vec::new(),
-    };
-    let mut ancestors: Vec<usize> = Vec::new();
-    for line in lines {
-        budget.charge(line.text.len() + 1)?;
-        let text = line.text.trim();
-        if text.is_empty() {
-            continue;
+pub(in crate::plantuml) struct Builder<'b> {
+    pub budget: &'b mut Budget,
+    arena: Arena,
+    model: Board,
+    ancestors: Vec<usize>,
+}
+impl<'b> Builder<'b> {
+    pub fn new(budget: &'b mut Budget, arena: Arena) -> Self {
+        Self {
+            budget,
+            arena,
+            model: Board {
+                cards: Vec::new(),
+                activities: Vec::new(),
+            },
+            ancestors: Vec::new(),
         }
-        if super::parser::preamble::has_marker(text)
-            || matches!(
-                text.split_whitespace().next(),
-                Some("newpage" | "page" | "sprite" | "hide" | "show" | "scale" | "url")
-            )
-            || text.starts_with(['!', '@'])
-        {
-            return Err(unsupported(line.number, text));
-        }
-        let stage = text.bytes().take_while(|&ch| ch == b'+').count();
-        budget.depth(stage + 1)?;
-        let name = text[stage..].trim_start();
-        bound("label bytes", name.len(), 16 * 1024)?;
+    }
+    pub fn card(
+        &mut self,
+        stage: usize,
+        name: String,
+        span: Range<usize>,
+    ) -> Result<(), ParseFailure> {
+        self.budget
+            .depth(stage + 1)
+            .map_err(ParseFailure::terminal)?;
+        bound("label bytes", name.len(), 16 * 1024).map_err(ParseFailure::terminal)?;
         if name.is_empty() {
-            return Err(invalid(line.number, format!("empty board card {text:?}")));
+            return Err(ParseFailure::syntax(span, "empty board card"));
         }
         if stage == 0 {
-            ancestors.clear();
+            self.ancestors.clear();
         }
-        while let Some(&id) = ancestors.last() {
-            budget.charge(1)?;
-            if model.cards[id].stage < stage {
+        while let Some(&id) = self.ancestors.last() {
+            self.budget.charge(1).map_err(ParseFailure::terminal)?;
+            if self.model.cards[id].stage < stage {
                 break;
             }
-            ancestors.pop();
+            self.ancestors.pop();
         }
-        let parent = if stage == 0 {
-            Parent::Root
-        } else {
-            Parent::Node(*ancestors.last().ok_or_else(|| {
-                invalid(
-                    line.number,
-                    format!("board release requires an activity: {text:?}"),
-                )
-            })?)
-        };
-        budget.item()?;
-        budget.text(name.len())?;
-        let id = model.cards.len();
-        model.cards.push(Card {
-            parent,
-            stage,
-            name: name.into(),
-            children: Vec::new(),
-        });
+        let parent =
+            if stage == 0 {
+                Parent::Root
+            } else {
+                Parent::Node(*self.ancestors.last().ok_or_else(|| {
+                    ParseFailure::syntax(span, "board release requires an activity")
+                })?)
+            };
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(name.len())
+            .map_err(ParseFailure::terminal)?;
+        let id = self.model.cards.len();
+        self.arena.push(
+            &mut self.model.cards,
+            Card {
+                parent,
+                stage,
+                name,
+                children: Vec::new(),
+            },
+            self.budget,
+        )?;
         if let Parent::Node(parent) = parent {
-            model.cards[parent].children.push(id);
+            self.arena
+                .push(&mut self.model.cards[parent].children, id, self.budget)?;
         } else {
-            model.activities.push(id);
+            self.arena
+                .push(&mut self.model.activities, id, self.budget)?;
         }
-        ancestors.push(id);
+        self.arena.push(&mut self.ancestors, id, self.budget)
     }
-    if model.cards.is_empty() {
-        return Err(invalid(1, "board requires an activity"));
+    pub fn finish(self, span: Range<usize>) -> Result<Board, ParseFailure> {
+        self.budget.checkpoint().map_err(ParseFailure::terminal)?;
+        if self.model.cards.is_empty() {
+            return Err(ParseFailure::syntax(span, "board requires an activity"));
+        }
+        Ok(self.model)
     }
-    Ok(model)
 }
-
+#[cfg(test)]
+use super::source::Line;
+#[cfg(test)]
+pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Board, crate::RenderError> {
+    super::parser::outline::test_parse(lines, "board", budget, super::parser::board::parse)
+}
 #[cfg(test)]
 mod tests {
     use super::*;

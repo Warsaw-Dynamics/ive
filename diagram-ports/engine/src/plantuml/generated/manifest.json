@@ -12,6 +12,12 @@
   },
   "grammars": [
     {
+      "generated": "engine/src/plantuml/generated/board.rs",
+      "generatedSha256": "bbd732d9384e12db4faab021b965620d17dc46ae1875cb1ca0dd8bb718eafab1",
+      "grammar": "engine/src/plantuml/parser/grammar/board.lalrpop",
+      "grammarSha256": "2ab20d96ae954ca263b3f2d56edd4f877b55dfe6f159a301a75adeb4602ce7b2"
+    },
+    {
       "generated": "engine/src/plantuml/generated/definition.rs",
       "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
       "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
@@ -22,6 +28,12 @@
       "generatedSha256": "761b856999aacafae5a744ddaed56720ccf8bd412433d69572cefe20b16bb244",
       "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
       "grammarSha256": "b4538391acaee6c48cbbd0e938d3200ac169c8e6617a60a87b44c44286e73e4b"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/files.rs",
+      "generatedSha256": "54e8692400cd49a5b57718ec911a330e277957a6666037c752ac5d2d6b2ebdb3",
+      "grammar": "engine/src/plantuml/parser/grammar/files.lalrpop",
+      "grammarSha256": "06fe97a20acb5b3ab0aca6f456f5c4c613c7ee19d27d58f748b26804eec92200"
     },
     {
       "generated": "engine/src/plantuml/generated/header.rs",
@@ -46,6 +58,12 @@
       "generatedSha256": "ed52f0313911849eefa4c2290ed370fe0191bac2322a4bd6402069c2641d180f",
       "grammar": "engine/src/plantuml/parser/grammar/state.lalrpop",
       "grammarSha256": "276497c8cc77dafb56d958d1de4765e91c4fd3bdaf5eeca3863edbc3112cdbca"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/tree.rs",
+      "generatedSha256": "46efd9c392b300833e8fa021f7f5dbb691f30d0e04c8445f18819495175a04c3",
+      "grammar": "engine/src/plantuml/parser/grammar/tree.lalrpop",
+      "grammarSha256": "c47f9fbb39ed28311ebd348608f9de3693032fe13c68813e494b44bd29c6008a"
     }
   ],
   "schema": 1

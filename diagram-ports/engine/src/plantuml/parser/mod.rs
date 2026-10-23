@@ -1,14 +1,18 @@
 //! Original bounded parser infrastructure; semantic source traces remain in provenance.
+pub(super) mod board;
 pub(super) mod context;
 pub(super) mod definition;
 pub(super) mod document;
 pub(super) mod error;
+pub(super) mod files;
 pub(super) mod header;
+pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod preamble;
 pub(super) mod sequence;
 pub(super) mod state;
 pub(super) mod token;
+pub(super) mod tree;
 
 pub(super) use definition::parse_definition;
 
@@ -29,6 +33,19 @@ impl BodySource<'_> {
         }
     }
 }
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/tree.rs"]
+mod generated_tree;
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/files.rs"]
+mod generated_files;
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/board.rs"]
+mod generated_board;
 
 #[derive(Clone, Copy)]
 pub(super) struct SourceView<'s> {
