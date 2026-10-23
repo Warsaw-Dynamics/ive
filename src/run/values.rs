@@ -25,7 +25,7 @@ pub struct VarsDoc(toml::Table);
 
 impl VarsDoc {
     pub fn parse(text: &str) -> Result<Self, String> {
-        text.parse::<toml::Table>().map(Self).map_err(|error| format!("vars.toml: {}", error.message().trim_end()))
+        text.parse::<toml::Table>().map(Self).map_err(|error| format!("vars.toml:{}: {}", crate::toml_error::line_of(error.span(), text), error.message().trim_end()))
     }
 
     /// `name`'s value for the project whose main checkout is `project`: its `[repo]` table first, then the top level.
@@ -77,7 +77,7 @@ impl VarsFile {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
             Err(error) => return Err(format!("cannot read {}: {error}", self.path.display())),
         };
-        let mut doc: toml_edit::DocumentMut = text.parse().map_err(|error: toml_edit::TomlError| format!("vars.toml: {}", error.message()))?;
+        let mut doc: toml_edit::DocumentMut = text.parse().map_err(|error: toml_edit::TomlError| format!("{}:{}: {}", self.path.display(), crate::toml_error::line_of(error.span(), &text), error.message().trim_end()))?;
         change(&mut doc);
         if let Some(dir) = self.path.parent() {
             std::fs::create_dir_all(dir).map_err(|error| format!("cannot create {}: {error}", dir.display()))?;
@@ -301,6 +301,18 @@ mod tests {
     use super::*;
     use crate::run::file::parse;
     use crate::run::wallet::MemoryWallet;
+
+    #[test]
+    fn should_keep_line_of_vars_error() {
+        // given
+        let text = "a = \"1\"\n\nb = \n";
+
+        // when
+        let error = VarsDoc::parse(text).unwrap_err();
+
+        // then
+        assert!(error.starts_with("vars.toml:3: "), "{error}");
+    }
 
     const MISC: &str = r#"[vars.zoho_secret]
 description = "Zoho OAuth client secret"

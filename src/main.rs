@@ -61,6 +61,7 @@ mod tab_preview;
 mod tab_window;
 mod tabs;
 mod third_party;
+mod toml_error;
 mod trace;
 mod terminal;
 mod terminal_use;
