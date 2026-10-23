@@ -22,10 +22,10 @@ This is the visible master checklist for further work. The controller updates it
 | Standalone Rust workspace | `diagram-ports/` |
 | Latest integrated product checkpoint | `0f468eb` — Task17 tooling and final cleanup integrated across all21 generated parsers; central full gates/native checks pass |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | EBNF/regex, charts and ASCII Git in separate isolated worktrees |
+| Current implementers | EBNF/regex and ASCII Git in isolated worktrees; tested chart checkpoint awaits integration |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Complete and integrate EBNF/regex, charts and ASCII Git; continue wire/BPM/flow/standalone Creole/advanced state; broad review stays at the end |
+| Next implementation | Integrate tested charts, complete EBNF/regex and ASCII Git, then continue wire/BPM/flow/standalone Creole/advanced state; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -241,7 +241,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | --- | --- | --- |
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
 | 2 | 3K EBNF / regex — ACTIVE | Generated grammars and separate typed arenas now pass first wrapper/railroad controls; table admission, topology, bounds, source audit and strict checks pending |
-| 3 | 3L charts — ACTIVE | Generated grammar/typed chart scene pass first original bars, legend ordering and colored-series controls; geometry/bounds/source/strict checks pending |
+| 3 | 3L charts — TESTEDc840370 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; central integration/native pending |
 | 4 | 3M ASCII Git — ACTIVE | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
 | 5 | 3N wire | Indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
 | 6 | 3O legacy BPM | Genuine legacy events/branches/splits/merges and continuation, distinct from modern activity/BPMN |
