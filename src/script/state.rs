@@ -7,6 +7,7 @@ use gpui::{App, Global, KeyDownEvent, Keystroke};
 use super::keymap::{Action, Builtin, Keymap, MouseTrigger, Place, Scope};
 use super::log::ScriptLog;
 use super::{ScriptCommand, ScriptEvent};
+use crate::settings::ThemeChoice;
 
 /// Log lines `script_status` returns: enough for the last run, small enough for an agent to read.
 const STATUS_LOG_LINES: usize = 50;
@@ -25,6 +26,8 @@ pub struct ScriptState {
     load: LoadStatus,
     log: ScriptLog,
     commands: UnboundedSender<ScriptCommand>,
+    /// the user themes the last load found
+    themes: Vec<String>,
 }
 
 /// How long a menu condition may take before its item counts as hidden.
@@ -34,12 +37,13 @@ impl Global for ScriptState {}
 
 impl ScriptState {
     pub fn new(commands: UnboundedSender<ScriptCommand>, log: ScriptLog) -> Self {
-        Self { keymap: Keymap::empty(), load: LoadStatus::NoInit, log, commands }
+        Self { keymap: Keymap::empty(), load: LoadStatus::NoInit, log, commands, themes: Vec::new() }
     }
 
     pub fn apply(&mut self, event: ScriptEvent) {
         match event {
-            ScriptEvent::Loaded { keymap, has_init, .. } => {
+            ScriptEvent::Loaded { keymap, has_init, themes, .. } => {
+                self.themes = themes;
                 self.load = if has_init { LoadStatus::Loaded { bindings: keymap.len() } } else { LoadStatus::NoInit };
                 self.keymap = keymap;
             }
@@ -73,6 +77,15 @@ impl ScriptState {
 
     pub fn reload(&self) {
         let _ = self.commands.unbounded_send(ScriptCommand::Reload);
+    }
+
+    /// Loads the scripts again over `theme`.
+    pub fn use_theme(&self, theme: ThemeChoice) {
+        let _ = self.commands.unbounded_send(ScriptCommand::UseTheme(theme));
+    }
+
+    pub fn themes(&self) -> &[String] {
+        &self.themes
     }
 
     pub fn load(&self) -> &LoadStatus {
@@ -218,6 +231,25 @@ mod tests {
         assert_eq!(log.len(), 50);
         assert!(log[0].as_str().unwrap().ends_with("line 10"));
         assert!(log[49].as_str().unwrap().ends_with("line 59"));
+    }
+
+    #[test]
+    fn should_keep_theme_names_from_load() {
+        // given
+        let (_dir, mut state) = new_state();
+        let event = match loaded(send_binding("f5")) {
+            ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, has_init, .. } => {
+                let themes = vec!["a".to_owned(), "b".to_owned()];
+                ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, has_init, themes }
+            }
+            event => event,
+        };
+
+        // when
+        state.apply(event);
+
+        // then
+        assert_eq!(state.themes(), ["a", "b"]);
     }
 
     #[test]

@@ -2,7 +2,8 @@ use gpui::{Context, Window, prelude::*};
 
 use super::Workspace;
 use crate::editor::Tab;
-use crate::settings::{AutoUpdate, SettingsError, SettingsStore, ThemePreference};
+use crate::script::state::ScriptState;
+use crate::settings::{AutoUpdate, SettingsError, SettingsStore, ThemeChoice, ThemePreference};
 use crate::settings_page::{SettingsPage, SettingsView};
 use crate::theme;
 
@@ -23,6 +24,16 @@ impl Workspace {
             store.replace(settings)
         });
         theme::apply(window.appearance(), cx);
+        self.after_settings_change(saved, cx);
+    }
+
+    /// Draws with `theme` from the next script load on, which this asks for, and saves the choice.
+    pub fn set_user_theme(&mut self, theme: ThemeChoice, cx: &mut Context<Self>) {
+        let saved = cx.update_global::<SettingsStore, _>(|store, _| {
+            let settings = store.current().with_user_theme(theme.clone());
+            store.replace(settings)
+        });
+        cx.global::<ScriptState>().use_theme(theme);
         self.after_settings_change(saved, cx);
     }
 
