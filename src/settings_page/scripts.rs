@@ -8,10 +8,15 @@ use crate::script::engine::{INIT, IVE_RN_NAME};
 use crate::theme::Theme;
 use crate::workspace::Workspace;
 
-/// The Scripts page: where `init.rn` lives, and the files beside it to read: IVE's default bindings and theme, and the
-/// settings the other pages save.
+/// The Scripts page: which IVE runs the scripts (version, build time), where `init.rn` lives, and the files beside it
+/// to read: IVE's default bindings and theme, and the settings the other pages save.
 pub fn render(theme: Theme, cx: &mut Context<Workspace>) -> Div {
-    let page = div().flex().flex_col().gap(theme.sizes.settings.page_gap.px()).child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child("Scripts"));
+    let page = div()
+        .flex()
+        .flex_col()
+        .gap(theme.sizes.settings.page_gap.px())
+        .child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child("Scripts"))
+        .child(div().text_color(rgb(theme.muted)).child(crate::build_info::summary()));
     let Some(dir) = crate::script::default_dir() else {
         return page.child(div().text_color(rgb(theme.muted)).child("The OS reports no config folder, so only IVE's default bindings apply."));
     };
