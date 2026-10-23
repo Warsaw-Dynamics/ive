@@ -1,0 +1,9 @@
+@startbpm
+:Receive;
+new branch
+:Check;
+else
+:Retry;
+end branch
+:Archive;
+@endbpm

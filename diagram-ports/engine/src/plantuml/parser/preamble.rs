@@ -83,8 +83,10 @@ impl Lexer {
         let marker = has_marker(text);
         let family = if self.sheet {
             false
-        } else if matches!(wrapper, Wrapper::Ebnf | Wrapper::Regex | Wrapper::Hcl)
-            || keyed
+        } else if matches!(
+            wrapper,
+            Wrapper::Bpm | Wrapper::Ebnf | Wrapper::Regex | Wrapper::Hcl
+        ) || keyed
             || !marker
             || (wrapper == Wrapper::Chart && text.split_whitespace().next() == Some("legend"))
         {

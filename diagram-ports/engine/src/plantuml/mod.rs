@@ -8,6 +8,8 @@ mod activitytile;
 mod arrow;
 mod board;
 mod boardscene;
+mod bpm;
+mod bpmscene;
 mod budget;
 mod chart;
 mod chartscene;
@@ -208,6 +210,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let bpm_model = if wrapper == source::Wrapper::Bpm {
+        Some(parser::bpm::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -218,7 +225,9 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if let Some(model) = &ebnf_model {
+        let (family, scene) = if let Some(model) = &bpm_model {
+            ("bpm", bpmscene::layout(model, &mut context)?)
+        } else if let Some(model) = &ebnf_model {
             ("ebnf", railroad::layout(model, &mut context)?)
         } else if let Some(model) = &regex_model {
             ("regex", railroad::layout(model, &mut context)?)

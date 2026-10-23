@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-bpm",
+        source: include_str!("../../fixtures/plantuml/bpm.puml"),
+    },
+    Example {
         name: "plantuml-ebnf",
         source: include_str!("../../fixtures/plantuml/ebnf.puml"),
     },

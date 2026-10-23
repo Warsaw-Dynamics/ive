@@ -3930,6 +3930,133 @@
       ],
       "behavior": "Ordered symbolic scalar/range/escape class members; native validates descending ranges and escaped endpoints.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/BpmDiagram.java",
+      "sha256": "3140cd11a82a4706b6592691865eb0592a45181ca395bae1d706b638e0e3cbb8",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/bpm.rs",
+        "engine/src/plantuml/bpmscene.rs"
+      ],
+      "behavior": "Implicit start, ordered events, separate branch split/join and continuation edges. Native sparse composition replaces unbounded grid-cleaner passes; goto/resume/named merge remain rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/BpmBranch.java",
+      "sha256": "95639259a339b4075417142abe4eb7ab78762977c3fc99579bc75286f762d52f",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "Distinct entry and exit merge identities, first/later else arm transitions, final-arm join; single-arm and empty arms reject in the native subset.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/BpmElement.java",
+      "sha256": "8ddc900fe9d7b713534397642850a09aaa0227f4affc81a61207cbd3e70c0054",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/bpmscene.rs"
+      ],
+      "behavior": "START circle, MERGE diamond and DOCKED_EVENT plain measured box with directed side connectors; native metrics/orthogonal route geometry differs.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/BpmElementType.java",
+      "sha256": "1bfd5869d152126ed10b3018f44bde2dc204cbac246214cc46be751f67afce17",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "Typed Start/Event/Merge flow nodes; END has no admitted source command and is not invented.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/BpmDiagramFactory.java",
+      "sha256": "ad140b9a4b8218dda1bdda58eecc25c0924cba55a0f7ff2696b885f64db013c7",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/bpm.rs",
+        "engine/src/plantuml/parser/grammar/bpm.lalrpop"
+      ],
+      "behavior": "Legacy BPM command boundary, separate from modern activity/BPMN; native named merge/goto/resume reject explicitly.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/CommandDockedEvent.java",
+      "sha256": "f293927559ea6d744b3ccb1d7a919b6f21f3fc57f63a84e2fd4dafa3a465d179",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/bpm.rs",
+        "engine/src/plantuml/parser/grammar/bpm.lalrpop",
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "Colon label with final semicolon and whole-row ownership; interior semicolons/punctuation remain event label data.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/CommandNewBranch.java",
+      "sha256": "e3028cffae75372b7c5c83506d7a590ee03cf2e472c2643ac03a4ec787a53ee8",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/bpm.rs",
+        "engine/src/plantuml/parser/grammar/bpm.lalrpop",
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "New branch begins nested balanced structural branch with independently counted entry/exit synthetics.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/CommandElseBranch.java",
+      "sha256": "06f0bf6a9c23c1de3a488c6528ed17792c080462b063b88e52f785f872993edb",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/bpm.rs",
+        "engine/src/plantuml/parser/grammar/bpm.lalrpop",
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "Ordered else arms resume split entry without connecting alternative event tails to one another.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/bpm/CommandEndBranch.java",
+      "sha256": "736be0e130edea437af81ac71b4be45303558a570c37b2b34bf6b2b795552e6d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/bpm.rs",
+        "engine/src/plantuml/parser/grammar/bpm.lalrpop",
+        "engine/src/plantuml/bpm.rs"
+      ],
+      "behavior": "Balanced end branch connects the last live arm to its separate merge and resumes continuation.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4396,6 +4523,12 @@
       "sha256": "68b258c9db493a896f5f248717cfe1bc21e233cfffffcbbb3d4c52a6e77a9370",
       "origin": "Exact existing locally generated original MIT oracle /tmp/ive-plantuml-native-oracles/regex-branch-repeat.puml; retained verbatim source fixture.",
       "family": "regex"
+    },
+    {
+      "path": "fixtures/plantuml/bpm.puml",
+      "sha256": "d75839e3c0b6f86055f781fb5cf38f8c7dad3b27f40ec3e1ecb9b7ff5ae8c79e",
+      "origin": "Exact existing local MIT original oracle bpm-events-branch.puml; implicit start, two alternatives, separate join and continuation. Source bytes retained verbatim.",
+      "family": "bpm"
     }
   ],
   "oracle": {
@@ -4465,7 +4598,9 @@
     "engine/src/plantuml/chartscene.rs",
     "engine/src/plantuml/ebnf.rs",
     "engine/src/plantuml/railroad.rs",
-    "engine/src/plantuml/regex.rs"
+    "engine/src/plantuml/regex.rs",
+    "engine/src/plantuml/bpm.rs",
+    "engine/src/plantuml/bpmscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -4481,6 +4616,7 @@
     "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
     "Task3D2 adds raw-byte Direct/Expansion origins, immutable eager definitions and compact earlier-definition lineage IDs. Statement errors keep authoritative parser lines and bounded expansion-use context; late Creole errors identify label-local locations and bounded textual candidates (including inert duplicates), not falsely precise authored spans. Existing YAML nested-flow/quote diagnostics remain line1. Columns in known source spans are one-based UTF-8 bytes.",
     "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles.",
-    "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply."
+    "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply.",
+    "Task3O adds generated legacy BPM colon events and nested balanced branch/else/end syntax, typed immutable instruction/block arenas and explicit Start/Event/Merge flow nodes/owned edges. Native sparse branch composition replaces Java grid cleaners; no matching, modern activity alias, new dependency/runtime IO, reference expansion or synthetic END syntax. Single/empty-arm, named merge/goto/resume and other unverified commands reject."
   ]
 }

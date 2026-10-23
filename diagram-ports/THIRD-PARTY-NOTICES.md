@@ -1,5 +1,7 @@
 # Third-party notices
 
+Legacy BPM syntax, flow identities and start/event/merge semantics are translated from PlantUML MIT 1.2026.9, copyright 2009–2024 Arnaud Roques. Exact source/author lines, hashes, destinations and native geometry differences are recorded in provenance/plantuml-mit-1.2026.9.json; the complete MIT grant remains in provenance/LICENSE-PlantUML-MIT.txt. Native bounded branch composition replaces the original unchecked grid-cleaning loops.
+
 Native EBNF/regex railroad syntax and ETile composition include translated PlantUML MIT 1.2026.9 semantics, copyright 2009–2024 and 2009–2020 Arnaud Roques. Exact paths, copyright/author lines and hashes are recorded in provenance/plantuml-mit-1.2026.9.json; the complete MIT grant is retained in provenance/LICENSE-PlantUML-MIT.txt. Native orthogonal rail geometry differs from PlantUML curves; no matching engine or external renderer is used.
 
 ## PlantUML parser generation

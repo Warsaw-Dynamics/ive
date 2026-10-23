@@ -707,6 +707,101 @@
           ]
         }
       ]
+    },
+{
+      "path": "engine/src/plantuml/bpm.rs",
+      "groups": [
+        {
+          "role": "semantic",
+          "reason": "Immutable legacy BPM instructions and typed flow nodes/edges, synthetic split/join ownership and bounded arm lowering; no source parsing.",
+          "symbols": [
+            "ports#1",
+            "new#1",
+            "node#1",
+            "append#1",
+            "block#1",
+            "instruction#1",
+            "event#1",
+            "branch#1",
+            "edge#1",
+            "finish#1",
+            "lower#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "parse#1",
+            "should_lower_implicit_start_events_and_two_synthetic_branch_merges#1",
+            "should_keep_nested_instruction_arms_as_ids_and_distinct_owned_graph_edges#1",
+            "should_reject_empty_document_under_shared_nonempty_source_admission#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/bpmscene.rs",
+      "groups": [
+        {
+          "role": "layout",
+          "reason": "Measured sparse native left-to-right branch composition, finite node/port placement, owned bounded orthogonal edge routes and scene emission.",
+          "symbols": [
+            "reserve#1",
+            "filled#1",
+            "push#1",
+            "measure#1",
+            "positions#1",
+            "owner#1",
+            "layout#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "draw#1",
+            "rectangle#1",
+            "should_stack_ordered_arms_without_overlapping_events_and_keep_continue_to_the_right#1",
+            "should_route_nested_split_and_join_edges_outside_all_event_boxes_and_contain_labels#1",
+            "should_bound_layout_work_before_allocating_sparse_positions#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/parser/bpm.rs",
+      "groups": [
+        {
+          "role": "infrastructure",
+          "reason": "Checked aggregate token/model capacity and actual generated state/symbol/reduction/diagnostic resource admission.",
+          "symbols": [
+            "push#1",
+            "admit#1"
+          ]
+        },
+        {
+          "role": "generated-facade",
+          "reason": "Borrowed family tokens delivered to the real registered structural grammar and once-only authored origin mapping.",
+          "symbols": [
+            "parse#1"
+          ]
+        },
+        {
+          "role": "lexical",
+          "reason": "Raw event-label/final-semicolon lexemes and finite keyword/newline delivery with nesting/work admission; generated grammar owns recursive branch structure.",
+          "symbols": [
+            "lex#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "should_reject_arena_growth_before_allocation_and_measure_actual_payloads#1"
+          ]
+        }
+      ]
     }
   ]
 }

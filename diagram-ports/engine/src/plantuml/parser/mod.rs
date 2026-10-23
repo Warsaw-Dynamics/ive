@@ -1,6 +1,7 @@
 //! Original bounded parser infrastructure; semantic source traces remain in provenance.
 pub(super) mod activity;
 pub(super) mod board;
+pub(super) mod bpm;
 pub(super) mod chart;
 pub(super) mod chen;
 pub(super) mod context;
@@ -41,6 +42,11 @@ pub(super) struct BodySource<'s> {
     pub ownership: ownership::Ownership,
     pub adapters: usize,
 }
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/bpm.rs"]
+mod generated_bpm;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]

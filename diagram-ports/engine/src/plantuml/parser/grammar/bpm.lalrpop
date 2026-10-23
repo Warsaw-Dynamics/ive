@@ -1,0 +1,20 @@
+grammar<'s>(builder: &mut crate::plantuml::bpm::Builder<'_>);
+use crate::plantuml::parser::{bpm::Token,error::ParseFailure};
+pub Document: usize = <Block>;
+Block: usize = <l:@L> <items:Instructions> <r:@R> =>? builder.block(l..r,items).map_err(|error|lalrpop_util::ParseError::User{error});
+Instructions: Vec<usize> = {
+    => Vec::new(),
+    <items:Instructions> <id:Instruction> =>? builder.append(items,id).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Instruction: usize = {
+    <l:@L> ":" <text:Label> ";" "newline" <r:@R> =>? builder.event(l..r,text).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "new" "branch" "newline" <arms:Arms> "end" "branch" "newline" <r:@R> =>? builder.branch(l..r,arms).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Label: &'s str = {=> "",<value:"label">=>value};
+Arms: Vec<usize> = {
+    <block:Block> =>? builder.append(Vec::new(),block).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <arms:Arms> "else" "newline" <block:Block> =>? builder.append(arms,block).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+extern { type Location=usize; type Error=ParseFailure;
+ enum Token<'s> {"new"=>Token::New,"branch"=>Token::Branch,"else"=>Token::Else,"end"=>Token::End,":"=>Token::Colon,";"=>Token::Semi,"label"=>Token::Label(<&'s str>),"newline"=>Token::Newline}
+}

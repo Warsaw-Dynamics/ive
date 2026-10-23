@@ -121,7 +121,8 @@ impl Ownership {
                 self.wrapper = wrapper;
                 self.mode = match wrapper {
                     Wrapper::Uml => Mode::Uml,
-                    Wrapper::Ebnf
+                    Wrapper::Bpm
+                    | Wrapper::Ebnf
                     | Wrapper::Regex
                     | Wrapper::Json
                     | Wrapper::Yaml
@@ -240,6 +241,7 @@ fn classify(command: &str) -> Kind {
     for (name, wrapper) in [
         ("chart", Wrapper::Chart),
         ("mindmap", Wrapper::Mindmap),
+        ("bpm", Wrapper::Bpm),
         ("ebnf", Wrapper::Ebnf),
         ("regex", Wrapper::Regex),
         ("wbs", Wrapper::Wbs),
