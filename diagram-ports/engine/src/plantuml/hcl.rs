@@ -45,8 +45,18 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Document, Ren
     let mut blocks: Vec<Block> = Vec::new();
     while parser.peek()?.is_some() {
         parser.budget.item()?;
+        let header_line = parser.line;
         let mut name = String::new();
         while parser.peek()? != Some('{') {
+            if parser.line != header_line {
+                return Err(invalid(
+                    header_line,
+                    format!(
+                        "HCL block header {name:?} crosses a physical line before '{{'; next token is at line {}",
+                        parser.line
+                    ),
+                ));
+            }
             let quoted = parser.peek()? == Some('"');
             let word = parser.string()?;
             let extra = word.len() + usize::from(quoted) * 2 + usize::from(!name.is_empty());

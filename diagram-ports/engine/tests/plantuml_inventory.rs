@@ -486,3 +486,75 @@ fn should_preserve_significant_file_component_spaces_without_normalization() {
     assert_eq!(names(&output, "files-file"), [" a ", "x "]);
     assert!(render(&source("packetdiag", "*: X"), &options()).is_err());
 }
+
+#[test]
+fn should_reject_hcl_title_statement_before_a_separate_block() {
+    // given
+    let input = source("hcl", "title Unsupported chrome\nservice { x = 1 }");
+    // when
+    let error = render(&input, &options()).unwrap_err().to_string();
+    // then
+    assert!(error.contains("line 2, column 1"), "{error}");
+    assert!(error.contains("title Unsupported chrome"), "{error}");
+    assert!(error.contains("block header"), "{error}");
+}
+
+#[test]
+fn should_reject_hcl_style_statement_before_a_separate_block() {
+    // given
+    let input = source("hcl", "skinparam defaultFontSize 96\nservice { x = 1 }");
+    // when
+    let error = render(&input, &options()).unwrap_err().to_string();
+    // then
+    assert!(error.contains("line 2, column 1"), "{error}");
+    assert!(error.contains("skinparam defaultFontSize 96"), "{error}");
+    assert!(error.contains("block header"), "{error}");
+}
+
+#[test]
+fn should_reject_hcl_combined_prefix_statements_without_lowering_them_away() {
+    // given
+    let input = source(
+        "hcl",
+        "title Unsupported chrome\nskinparam defaultFontSize 96\nservice { x = 1 }",
+    );
+    // when
+    let error = render(&input, &options()).unwrap_err().to_string();
+    // then
+    assert!(error.contains("line 2, column 1"), "{error}");
+    assert!(error.contains("title Unsupported chrome"), "{error}");
+    assert!(error.contains("physical line"), "{error}");
+}
+
+#[test]
+fn should_reject_hcl_header_token_continuation_after_any_complete_block() {
+    // given
+    for header in [
+        "title Unsupported chrome",
+        "ordinary incomplete header",
+        "service billing",
+    ] {
+        let input = source(
+            "hcl",
+            &format!("first {{ x = 1 }}\n{header}\nnext {{ y = 2 }}"),
+        );
+        // when
+        let error = render(&input, &options()).unwrap_err().to_string();
+        // then
+        assert!(error.contains("line 3, column 1"), "{error}");
+        assert!(error.contains(header), "{error}");
+    }
+}
+
+#[test]
+fn should_keep_hcl_command_names_split_opening_braces_and_nested_value_newlines() {
+    // given
+    let body = "title \"named block\"\n{\nx =\n\"one\"\nnested =\n{\ny =\n\"two\"\n}\nitems =\n[\n\"north\",\n{ z = \"three\" }\n]\n}\nfooter\n# comment before the opening brace\n{\ny = 2\n}";
+    // when
+    let output = svg("hcl", body);
+    // then
+    assert!(output.contains("title &quot;named block&quot;"));
+    assert!(output.contains("footer"));
+    assert_eq!(names(&output, "data-row-string"), ["x", "y", "0", "z", "y"]);
+    assert_eq!(names(&output, "data-link").len(), 5);
+}
