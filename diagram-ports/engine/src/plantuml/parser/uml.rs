@@ -404,6 +404,11 @@ impl Lexer<'_> {
             self.budget
                 .charge(ch.len_utf8())
                 .map_err(ParseFailure::terminal)?;
+            bound("label bytes", index - 1, 16 * 1024).map_err(ParseFailure::terminal)?;
+            if ch != '"' || escaped {
+                bound("label bytes", index - 1 + ch.len_utf8(), 16 * 1024)
+                    .map_err(ParseFailure::terminal)?;
+            }
             bound("label bytes", value.len() + ch.len_utf8(), 16 * 1024 + 1)
                 .map_err(ParseFailure::terminal)?;
             if value.len() + ch.len_utf8() + 1 > value.capacity() {
@@ -915,6 +920,115 @@ mod tests {
                 ),
                 "checkpoint {checkpoint}: {result:?}"
             );
+        }
+    }
+
+    #[test]
+    fn should_bound_escaped_uml_quoted_tokens_by_raw_bytes() {
+        // given
+        let mut accepted_over_limit = Vec::new();
+        for count in [8192, 8193] {
+            let raw = "\\\"".repeat(count);
+            let decoded = "\"".repeat(count);
+            for (context, body) in [
+                ("declaration", format!("class \"{raw}\" as A")),
+                ("endpoint", format!("class A\nA --> \"{raw}\"")),
+                ("left role", format!("class A\nclass B\nA \"{raw}\" --> B")),
+                ("right role", format!("class A\nclass B\nA --> \"{raw}\" B")),
+            ] {
+                // when
+                let result = model(&body);
+                // then
+                match result {
+                    Ok(result) if count == 8192 => {
+                        let actual = match context {
+                            "declaration" => &result.entities[0].label,
+                            "endpoint" => &result.entities[1].alias,
+                            "left role" => &result.relations[0].left,
+                            _ => &result.relations[0].right,
+                        };
+                        assert_eq!(actual, &decoded, "{context}");
+                    }
+                    Ok(_) => accepted_over_limit.push(context),
+                    Err(error) if count == 8193 => assert!(
+                        matches!(error, RenderError::Backend(_))
+                            && error.to_string().contains("label bytes"),
+                        "{context}: {error}"
+                    ),
+                    Err(error) => panic!("rejected {context} at the raw boundary: {error}"),
+                }
+            }
+        }
+        assert!(
+            accepted_over_limit.is_empty(),
+            "accepted 16,386 raw interior bytes in {accepted_over_limit:?}"
+        );
+    }
+
+    #[test]
+    fn should_preserve_uml_quote_utf8_escape_and_eof_boundaries() {
+        // given
+        for (raw, expected) in [
+            (
+                format!("\"{}\"", r#"\n\\\~\""#),
+                Ok("\\n\\\\\\~\"".to_owned()),
+            ),
+            (format!("\"{}\"", "é".repeat(8192)), Ok("é".repeat(8192))),
+            (format!("\"{}\"", "a".repeat(16384)), Ok("a".repeat(16384))),
+            (
+                format!("\"{}", "\\\"".repeat(8192)),
+                Err("unterminated quoted identifier"),
+            ),
+            (
+                format!("\"{}", "a".repeat(16384)),
+                Err("unterminated quoted identifier"),
+            ),
+            (
+                format!("\"{}\\", "a".repeat(16383)),
+                Err("unterminated quoted identifier"),
+            ),
+            (format!("\"{}", "a".repeat(16385)), Err("label bytes")),
+            (format!("\"{}a\"", "é".repeat(8192)), Err("label bytes")),
+            ("\"\\q\"".into(), Err("quoted escape")),
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            let row = super::super::ownership::Ownership::default()
+                .classify(&raw, &mut budget)
+                .unwrap();
+            let mut lexer = Lexer {
+                tokens: Vec::new(),
+                budget: &mut budget,
+                members: false,
+            };
+            // when
+            let result = lexer.quoted(&row, (0, 0));
+            // then
+            match expected {
+                Ok(expected) => {
+                    let (name, used) = result.unwrap();
+                    assert_eq!(name.text, expected);
+                    assert!(name.quoted);
+                    assert_eq!(used, raw.len());
+                }
+                Err(detail) => {
+                    let error = result.unwrap_err();
+                    assert!(format!("{error:?}").contains(detail), "{error:?}");
+                    match detail {
+                        "unterminated quoted identifier" => assert!(matches!(
+                            error.kind,
+                            super::super::error::FailureKind::Syntax(_)
+                        )),
+                        "quoted escape" => assert!(matches!(
+                            error.kind,
+                            super::super::error::FailureKind::Unsupported(_)
+                        )),
+                        _ => assert!(matches!(
+                            error.kind,
+                            super::super::error::FailureKind::Terminal(RenderError::Backend(_))
+                        )),
+                    }
+                }
+            }
         }
     }
 }
