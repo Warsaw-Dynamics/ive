@@ -43,12 +43,14 @@ enum LabelMode {
     Tree,
     Data,
     Flow,
+    Document,
 }
 impl LabelMode {
     fn family(self) -> &'static str {
         match self {
             Self::Display => "sans-serif",
             Self::Flow => "serif",
+            Self::Document => "serif",
             Self::Tree | Self::Data => "Arial, Liberation Sans, DejaVu Sans, Noto Sans, sans-serif",
         }
     }
@@ -111,6 +113,11 @@ impl<'a> Context<'a> {
             self.base(Role::Element, LabelMode::Flow),
             LabelMode::Flow,
         )
+    }
+    pub fn document_label(&mut self, text: &str) -> Result<Label, RenderError> {
+        let mut base = self.base(Role::Element, LabelMode::Document);
+        base.font.color = super::style::Color(0);
+        self.measure_label(text, base, LabelMode::Document)
     }
     pub fn tree_label(&mut self, text: &str) -> Result<Label, RenderError> {
         self.measure_label(

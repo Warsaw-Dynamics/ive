@@ -66,6 +66,10 @@ pub const PLANTUML_EXAMPLES: &[Example] = &[
         source: include_str!("../../fixtures/plantuml/flowcursor.puml"),
     },
     Example {
+        name: "plantuml-creole",
+        source: include_str!("../../fixtures/plantuml/creoledoc.puml"),
+    },
+    Example {
         name: "plantuml-bpm",
         source: include_str!("../../fixtures/plantuml/bpm.puml"),
     },
@@ -368,6 +372,41 @@ mod tests {
         for kind in ["gantt-bar", "gantt-milestone", "gantt-dependency"] {
             assert!(output.svg.contains(kind));
         }
+    }
+
+    #[test]
+    fn should_find_native_creole_document_with_styled_paragraphs_and_a_blank_line() {
+        // given
+        let source = super::source("plantuml-creole").unwrap();
+        // when
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        // then
+        assert_eq!(output.family, "creole");
+        assert_eq!(
+            xml.descendants()
+                .filter(|node| node.attribute("data-kind") == Some("creole-paragraph"))
+                .count(),
+            2
+        );
+        assert_eq!(
+            xml.descendants()
+                .filter(|node| node.attribute("data-kind") == Some("creole-blank"))
+                .count(),
+            1
+        );
+        assert!(
+            output.svg.contains("Invoice")
+                && output.svg.contains("Paid")
+                && output.svg.contains("Plain Ω &lt;literal&gt;")
+        );
     }
 
     #[test]

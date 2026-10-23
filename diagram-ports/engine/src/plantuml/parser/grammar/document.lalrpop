@@ -3,6 +3,8 @@ grammar(budget: &mut crate::plantuml::budget::Budget);
 use crate::plantuml::{parser::{document::{Token, Bounds, finish}, error::ParseFailure}, source::Wrapper};
 pub Document: Bounds = {
     "startflow" <start:@R> <contents:Contents> <end:@L> "endflow" =>? finish(Wrapper::Flow,start..end,contents,budget).map_err(|error|lalrpop_util::ParseError::User{error}),
+
+    "startcreole" <start:@R> <contents:Contents> <end:@L> "endcreole" =>? finish(Wrapper::Creole, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "startbpm" <start:@R> <contents:Contents> <end:@L> "endbpm" =>? finish(Wrapper::Bpm,start..end,contents,budget).map_err(|error|lalrpop_util::ParseError::User{error}),
     "startebnf" <start:@R> <contents:Contents> <end:@L> "endebnf" =>? finish(Wrapper::Ebnf, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "startregex" <start:@R> <contents:Contents> <end:@L> "endregex" =>? finish(Wrapper::Regex, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
@@ -36,6 +38,9 @@ extern {
     enum Token {
         "startflow" => Token::StartFlow,
         "endflow" => Token::EndFlow,
+
+        "startcreole" => Token::StartCreole,
+        "endcreole" => Token::EndCreole,
         "startbpm" => Token::StartBpm,
         "endbpm" => Token::EndBpm,
         "startebnf" => Token::StartEbnf,

@@ -4397,6 +4397,40 @@
       ],
       "behavior": "Only MY_RED #A80036 and MY_YELLOW #FEFECE constants used for native flow line/circle/fill; no named-color/assets import.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/legacy/PSystemCreole.java",
+      "sha256": "097d09be780a10cb0164d99f209a4c85d01dcbf91d5d2fa0ca53ff3d93aa9d01",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/creoledoc.rs",
+        "engine/src/plantuml/parser/creoledoc.rs",
+        "engine/src/plantuml/parser/grammar/creoledoc.lalrpop",
+        "engine/src/plantuml/creoledocscene.rs",
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Standalone raw physical-line collection and default serif14 black FULL styled text without automatic wrapping; generated native paragraph structure and measured composition, not original pixel geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/legacy/PSystemCreoleFactory.java",
+      "sha256": "3598121fb8c91ba6f3e923411b8d347157297ce417ccb94e801585a635b8291b",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/creoledoc.rs",
+        "engine/src/plantuml/parser/creoledoc.rs",
+        "engine/src/plantuml/parser/grammar/creoledoc.lalrpop",
+        "engine/src/plantuml/creoledocscene.rs",
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Standalone raw physical-line collection and default serif14 black FULL styled text without automatic wrapping; generated native paragraph structure and measured composition, not original pixel geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4950,6 +4984,16 @@
       "sha256": "5ed35d8bff255d30e93259faf76729c6a69239e58984160269dfdaaf05fa1955",
       "origin": "Fresh independently authored bounded original MIT probe: explicit west link keeps last, next south creation stays under B. Genuine non-error SVG bac86befdbf6857958df9d63f9e9b00f547b0dc9a777922c26b06b4129b5a352; initial injected-font error was retained separately and is not an oracle success.",
       "family": "flow"
+    },
+    {
+      "path": "fixtures/plantuml/creoledoc.puml",
+      "sha256": "4aed0a199bb069ca12f1f6f4e6d33a5a1008c43c5fcee19c8f8db61af1e6f92e",
+      "origin": "/tmp/ive-task3q-original.puml (exact original-verified bytes)",
+      "originalEvidence": {
+        "svgSha256": "6cd59d98e5f1392b6b9b1270583118b32a8e7404da9abaebb52c73f51cc92f15",
+        "record": "/tmp/ive-task3q-original.json",
+        "observed": "serif14 black, bold700/italic/underline/strike, visible blank line, literal unknown angles; no automatic wrapping"
+      }
     }
   ],
   "oracle": {
@@ -5027,7 +5071,9 @@
     "engine/src/plantuml/wire.rs",
     "engine/src/plantuml/wirescene.rs",
     "engine/src/plantuml/flow.rs",
-    "engine/src/plantuml/flowscene.rs"
+    "engine/src/plantuml/flowscene.rs",
+    "engine/src/plantuml/creoledoc.rs",
+    "engine/src/plantuml/creoledocscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -5046,6 +5092,7 @@
     "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply.",
     "Task3O adds generated legacy BPM colon events and nested balanced branch/else/end syntax, typed immutable instruction/block arenas and explicit Start/Event/Merge flow nodes/owned edges. Native sparse branch composition replaces Java grid cleaners; no matching, modern activity alias, new dependency/runtime IO, reference expansion or synthetic END syntax. Single/empty-arm, named merge/goto/resume and other unverified commands reject.",
     "Native Git history uses generated raw row/cell/commit/comment syntax, bounded sparse typed ancestry and original measured circle/lane geometry; no SmetanaForGit source or runtime git/JVM is used. The frozen parser baseline selects its original recorded43 paths while all later family fixtures remain provenance-audited.",
-    "Task3P adds a generated directional flow grammar, immutable tile/cell/path ownership and dedicated bounded sparse measured cardinal layout. No DAG rewrite, no cursor move on explicit link. Rejects collision east-shifts, self/obstructed/unrouteable links, unknown/duplicate IDs and unverified commands; preserves source root-direction ignore/default south. Flow-only Display.create literal-backslash mode retains style syntax and serif14 measure/paint; old family text semantics unchanged. Red lines/yellow boxes/7-pixel destination circles have disclosed native outline/stroke/spacing differences."
+    "Task3P adds a generated directional flow grammar, immutable tile/cell/path ownership and dedicated bounded sparse measured cardinal layout. No DAG rewrite, no cursor move on explicit link. Rejects collision east-shifts, self/obstructed/unrouteable links, unknown/duplicate IDs and unverified commands; preserves source root-direction ignore/default south. Flow-only Display.create literal-backslash mode retains style syntax and serif14 measure/paint; old family text semantics unchanged. Red lines/yellow boxes/7-pixel destination circles have disclosed native outline/stroke/spacing differences.",
+    "Standalone Creole uses generated physical-line/paragraph productions and the existing generated paired-style run parser once per bounded paragraph. Native measured blank paragraphs reserve the greatest measured document line box; no original pixel/baseline/whitespace/URL-italic equivalence is claimed. Code/tables/lists/HTML/resources/embedded diagrams remain explicit rejections."
   ]
 }

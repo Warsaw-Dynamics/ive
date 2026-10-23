@@ -6,6 +6,7 @@ pub(super) mod chart;
 pub(super) mod chen;
 pub(super) mod context;
 pub(super) mod creole;
+pub(super) mod creoledoc;
 pub(super) mod definition;
 pub(super) mod document;
 pub(super) mod ebnf;
@@ -55,6 +56,11 @@ mod generated_flow;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/bpm.rs"]
 mod generated_bpm;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/creoledoc.rs"]
+mod generated_creoledoc;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]
