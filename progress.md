@@ -11,7 +11,7 @@ This is the visible master checklist for further work. The controller updates it
 - Mermaid and the standalone native pgui viewer are implemented and independently reviewed.
 - Native PlantUML checkpoints through timing, Gantt, Salt, nwdiag and files/packetdiag/board/HCL are independently approved.
 - Owner now requires LALRPOP to replace current PlantUML ad-hoc parsers, not merely a pilot for future families. This rewrite is the next implementation priority; models/layouts/viewer and regression evidence are preserved.
-- Chen/ArchiMate and the lexical prerequisite are independently approved. LALRPOP Tasks1–4,7,9 are fully approved and integrated: six of17 migration stages. UML/activity review and JSON/HCL WIP are saved for resumption.
+- Chen/ArchiMate and the lexical prerequisite are implemented. LALRPOP Tasks1–16 have tested integrated routes for all current structural syntax; Task17 final cleanup is tested in an isolated branch and awaits integration. Broad review follows the remaining port work.
 - Full Mermaid/PlantUML compatibility is **not complete**. Remaining family increments, advanced state work, final corpus/documentation and whole-branch review are still required.
 - Current estimate (2026-10-23): Task17 parser cleanup plus final checks/review about 2–4 more hours if no new blocker appears; remaining planned family increments and final evidence about 1–2 additional working days. These are estimates, not a claim of complete upstream syntax or pixel parity.
 - Main IVE product code is unchanged. Work is isolated in a separate Rust workspace/worktree; IVE markdown integration is a later project.
@@ -20,12 +20,12 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `da590bc` — tested packetdiag added to Creole and all other migrated parser families; root full/baseline/native checks pass |
+| Latest integrated product checkpoint | `0f468eb` — Task17 tooling and final cleanup integrated across all21 generated parsers; central full gates/native checks pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Task17 tested cleanup checkpoint awaits central integration; next native-family briefs are prepared |
+| Current implementers | No parser implementation writer; central Task17 integration is stable and root final verification is in progress |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate tested Task17 removal/tooling, run final parser gates/native/baseline and one broad review, then resume remaining native family queue |
+| Next implementation | Run final parser gates/native/baseline, then resume remaining native family queue; broad review stays at the end of the port |
 | Latest independent controller checks | At `da590bc`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build, native packetdiag and styled Creole graph captures plus empty-PATH/no-display exports pass; zero fallbacks and no surviving viewer. Agent combined strict Clippy/fmt, private generator21 and 220 MIT/43 fixture/43 module audit pass. Prior batches covered Salt/nwdiag, timing/Gantt/YAML, class/activity/Chen/JSON/HCL native captures/exports. Earlier `0c5177e` completed all16 gates. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -192,7 +192,7 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 14 | nwdiag/contextual server-name repair | INTEGRATEDe4ace61 from testeddc29c48 —489 combined focused tests, strict Clippy/fmt, private generator19 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 15 | Packetdiag | INTEGRATEDda590bc from testeda08bf48 —593 combined focused tests, strict Clippy/fmt, private generator21 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 16 | Creole nesting | INTEGRATEDa796711 from testedd398ee6 —577 combined focused tests, strict Clippy/fmt, private generator20 and source audit; root full/baseline/native checks pass at laterda590bc head; broad review deferred |
-| 17 | Legacy-syntax removal/inventory/integration review | TESTEDf714769 after toolingdd7c26f —593 focused parser/public tests, Node25, generator5, dependency audit5, strict checks, private reproduction21/source220+43+43/closure67 pass; Line adapters removed,21 grammars/zero pending syntax; central integration pending |
+| 17 | Legacy-syntax removal/inventory/integration review | INTEGRATED0f468eb from testedf714769/toolingdd7c26f —593 focused parser/public tests, Node25, generator5, dependency audit5, strict checks, private reproduction21/source220+43+43/closure67 pass; Line adapters removed,21 grammars/zero pending syntax; root final gates/native pending |
 
 Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generated definitions, wrappers, shared ownership, typed headers, origin/body spans and preamble/style/skinparam/region grammar are active. That checkpoint passed544 Rust+seven faults/all16 gates,18Node,generator3/notice5/67-package audit/four reproducible outputs and unchanged43-fixture baseline SHA a14d47f73af4f7c78c67dc746ac5c51eb96d89e54db1b52425cc1b8e08fafafe. Empty-value errors are typed; repeated500 sheets pass with/without definitions and identical SVGs. Actual styled/constants20/22/12/14 and font6/14/96 each8 native,all zero fallback, are inspected/hash-verified; exports/cleanup pass. The table above tracks subsequent cutover reviews and pending combined verification.
 
@@ -233,7 +233,7 @@ Parser directive: replace all current PlantUML ad-hoc syntax with real LALRPOP p
 
 ## Remaining implementation queue — in order
 
-Every increment requires source inspection/provenance, meaningful TDD, typed semantics and geometry, bounds/cancellation tests, a real viewer example/capture, controller verification and independent SPEC/QUALITY review.
+Every increment requires source inspection/provenance, meaningful TDD, typed semantics and geometry, bounds/cancellation tests, a real viewer example/capture and controller verification. Broad independent review follows the assembled port under the owner's current direction.
 
 | Order | Task | Remaining deliverable |
 | --- | --- | --- |
