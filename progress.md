@@ -20,12 +20,12 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `eb4c5b7` — Flow and standalone Creole joined Git/Wire/BPM/charts/railroad; Creole paint spacing fixed; authenticated import/fresh-oracle and native-corpus developer tools integrated; focused combined Rust/Node, source/generator and unchanged43 baseline checks pass; final full gate pending |
+| Latest integrated product checkpoint | `d915af2` — Flow and standalone Creole joined Git/Wire/BPM/charts/railroad; Creole paint spacing and corpus deadline fixed; authenticated import/fresh-oracle and native-corpus developer tools integrated; focused combined Rust/Node, source/generator and unchanged43 baseline checks pass; final full gate pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Advanced state and native-corpus deadline correction in isolated worktrees |
+| Current implementers | Advanced state in an isolated worktree; final evidence/documentation queued |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Complete advanced state and native-corpus deadline correction, then final corpus/evidence/documentation; broad review stays at the end |
+| Next implementation | Complete advanced state, then final corpus/evidence/documentation; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -249,7 +249,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 7 | 3P directional flow — INTEGRATED8ebb34e | Combined828 Rust+seven worker faults,30 Node, strict/generator/source/closure,28 parsers and unchanged43 baseline pass; native Flow/cursor3/3 zero-fallback captures and empty-PATH exports pass |
 | 8 | 3Q standalone Creole — INTEGRATED465b9c8; PAINT FIXeb4c5b7 | Combined595 focused Rust+13 viewer+30 Node, strict/generator/source/closure,29 parsers and unchanged43 baseline pass. Real capture exposed serif measurement/paint mismatch; scoped correction passed568 focused+three actual glyph tests+30 Node/strict/source audits. Root release recapture native7/zero fallback and empty-PATH SVG passes, styled runs visibly separated |
 | 9 | 3B2 advanced state — ACTIVE | Fresh isolated implementation from 465b9c8: concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
-| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import/fresh-oracle tooling integrated0f9d1c0; native corpus export/closure driver integrated0e8d847. Source audits pass; private driver73 Node and actual two-case smoke pass. Central first all-tools run exposed a reproducible aggregate-deadline edge; scoped fix active. Coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
+| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import/fresh-oracle tooling integrated0f9d1c0; native corpus export/closure driver integrated0e8d847. Aggregate deadline edge reproduced4/20 then fixedd915af2 with deterministic regression and20/20 repeat probes; central74/74 Node pass. Source audits and91-fixture native export rehearsal pass. Coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
 
 Existing inventory briefs/source-semantic research are prepared and read; the parser migration is complete. Do not restart completed source research or redispatch prior model/render work. New family briefs require LALRPOP and current generated interfaces; broad review is deferred to the end.
 
