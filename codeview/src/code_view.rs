@@ -46,7 +46,7 @@ struct State {
     language: Option<Language>,
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
-    /// a bar above the text: "deleted on disk"
+    /// a bar above the text: "deleted on disk: <path>"
     notice: Option<SharedString>,
     /// set once the background parse finished; plain text until then
     syntax: Option<Syntax>,
@@ -139,8 +139,8 @@ impl CodeView {
     }
 
     /// The file was removed or renamed away; the text stays until it comes back.
-    pub fn mark_deleted(&mut self, cx: &mut Context<Self>) {
-        self.state.mark_deleted();
+    pub fn mark_deleted(&mut self, path: &str, cx: &mut Context<Self>) {
+        self.state.mark_deleted(path);
         cx.notify();
     }
 
@@ -433,8 +433,8 @@ impl State {
         self.highlights = HighlightCache::default();
     }
 
-    fn mark_deleted(&mut self) {
-        self.notice = Some("deleted on disk".into());
+    fn mark_deleted(&mut self, path: &str) {
+        self.notice = Some(format!("deleted on disk: {path}").into());
     }
 
     /// `interact` adds the mouse handling to the text area.
@@ -783,7 +783,7 @@ mod tests {
     }
 
     #[test]
-    fn should_show_new_text_and_say_when_it_is_deleted() {
+    fn should_show_new_text_and_name_deleted_path() {
         // given
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("notes.md");
@@ -795,10 +795,10 @@ mod tests {
         editor.replace_source(Arc::new(Document::open(&path).unwrap()), None);
         let lines = editor.source.line_count();
         fs::remove_file(&path).unwrap();
-        editor.mark_deleted();
+        editor.mark_deleted("/p/notes.md");
 
         // then
-        assert_eq!((lines, editor.notice.as_ref().map(SharedString::as_ref)), (4, Some("deleted on disk")));
+        assert_eq!((lines, editor.notice.as_ref().map(SharedString::as_ref)), (4, Some("deleted on disk: /p/notes.md")));
         assert_eq!(editor.source.line_count(), 4, "the text stays");
     }
 

@@ -658,7 +658,7 @@ impl EditedFile {
             }
             (Reread::Gone, Shows::File) => {
                 self.answer(Cast::Open(viewed(&self.base)), cx);
-                self.answer(Cast::MarkDeleted, cx);
+                self.answer(Cast::MarkDeleted(self.path.display().to_string()), cx);
             }
             (Reread::Gone, Shows::DiffSide) => {
                 self.answer(Cast::SetEditable(Editable::No), cx);
