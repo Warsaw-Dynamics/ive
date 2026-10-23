@@ -102,14 +102,22 @@ fn signal_of(_status: ExitStatus) -> Option<i32> {
     None
 }
 
-#[cfg(not(unix))]
+/// A signal by name and number, as `SIGSEGV (11)`; `signal 77` for one without a common name.
 pub fn signal_name(signal: i32) -> String {
-    format!("signal {signal}")
+    match signal_short_name(signal) {
+        Some(name) => format!("{name} ({signal})"),
+        None => format!("signal {signal}"),
+    }
 }
 
-/// A signal by name and number, as `SIGSEGV (11)`; `signal 77` for one without a common name.
+#[cfg(not(unix))]
+pub fn signal_short_name(_signal: i32) -> Option<&'static str> {
+    None
+}
+
+/// A common signal's name, as `SIGKILL`.
 #[cfg(unix)]
-pub fn signal_name(signal: i32) -> String {
+pub fn signal_short_name(signal: i32) -> Option<&'static str> {
     let names = [
         (libc::SIGHUP, "SIGHUP"), (libc::SIGINT, "SIGINT"), (libc::SIGQUIT, "SIGQUIT"), (libc::SIGILL, "SIGILL"),
         (libc::SIGTRAP, "SIGTRAP"), (libc::SIGABRT, "SIGABRT"), (libc::SIGBUS, "SIGBUS"), (libc::SIGFPE, "SIGFPE"),
@@ -117,10 +125,7 @@ pub fn signal_name(signal: i32) -> String {
         (libc::SIGPIPE, "SIGPIPE"), (libc::SIGALRM, "SIGALRM"), (libc::SIGTERM, "SIGTERM"), (libc::SIGXCPU, "SIGXCPU"),
         (libc::SIGXFSZ, "SIGXFSZ"), (libc::SIGSYS, "SIGSYS"),
     ];
-    match names.iter().find(|(number, _)| *number == signal) {
-        Some((_, name)) => format!("{name} ({signal})"),
-        None => format!("signal {signal}"),
-    }
+    names.iter().find(|(number, _)| *number == signal).map(|(_, name)| *name)
 }
 
 #[cfg(test)]
