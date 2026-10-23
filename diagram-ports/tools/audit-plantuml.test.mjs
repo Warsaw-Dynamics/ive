@@ -14,7 +14,7 @@ test('should accept the exact authorized source and module inventory', () => {
 
 test('should reject source escape and restricted implementation paths before reads', () => {
   // given
-  for (const path of ['../plantuml/Other.java', 'net/sourceforge/plantuml/../../Other.java', 'net/sourceforge/plantuml/smetana/Layout.java', 'net/sourceforge/plantuml/statediagram/smetana/Layout.java', 'net/sourceforge/plantuml/activitydiagram3/elk/Layout.java']) {
+  for (const path of ['../plantuml/Other.java', 'net/sourceforge/plantuml/../../Other.java', 'net/sourceforge/plantuml/smetana/Layout.java', 'net/sourceforge/plantuml/statediagram/smetana/Layout.java', 'net/sourceforge/plantuml/activitydiagram3/elk/Layout.java', 'net/sourceforge/plantuml/style/StyleLoader.java', 'net/sourceforge/plantuml/style/parser/OtherParser.java']) {
     const source = manifest();
     source.sourceFiles[0].path = path;
     // when / then

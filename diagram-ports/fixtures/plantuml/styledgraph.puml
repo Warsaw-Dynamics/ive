@@ -1,0 +1,42 @@
+@startuml
+<style>
+root {
+FontName "Liberation Sans"
+FontColor #17324d
+}
+element {
+FontSize 18
+}
+document {
+BackGroundColor #f6f8fc
+title {
+FontSize 26
+FontColor #2244aa
+}
+footer {
+FontStyle italic
+}
+}
+</style>
+left header Shared font measurement and explicit owned geometry
+title **Domain** //model//
+legend __Static__ members and --retired-- relationships
+right footer Native subset; no external resources
+package "**Commerce**" as P {
+package "//Accounts//" as Q {
+abstract class "Account" as A {
+{static} **instances**
+{abstract} debit()
+owner : String
+}
+class "**Premium**" as B {
+__level__ : Number
+}
+B --|> A
+}
+class Ledger {
+entries : Number
+}
+A "1" --> "__many__" Ledger : --old records--
+}
+@enduml

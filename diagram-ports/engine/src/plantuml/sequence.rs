@@ -94,7 +94,7 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Sequence, Ren
             return Err(invalid(line.number, "empty command"));
         }
         if tokens[0].text == "note" {
-            let label = collect_note(lines, &mut index, label)?;
+            let label = collect_note((lines, &mut index), label, budget)?;
             parser.note((line.number, &tokens), &label, budget)?;
         } else {
             parser.command(line, &tokens, label, budget)?;
@@ -113,18 +113,27 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Sequence, Ren
     Ok(parser.model)
 }
 
-fn collect_note(lines: &[Line], index: &mut usize, single: &str) -> Result<String, RenderError> {
+fn collect_note(
+    input: (&[Line], &mut usize),
+    single: &str,
+    budget: &mut Budget,
+) -> Result<String, RenderError> {
+    let (lines, index) = input;
+    let mut body = String::new();
     if lexer::split_label(&lines[*index]).0 != lines[*index].text {
-        return Ok(single.into());
+        super::text::append_label(&mut body, single, budget)?;
+        return Ok(body);
     }
     let start = *index;
-    let mut body = Vec::new();
     while *index + 1 < lines.len() {
         *index += 1;
         if lines[*index].text == "end note" {
-            return Ok(body.join("\n"));
+            return Ok(body);
         }
-        body.push(lines[*index].text.as_str());
+        if *index > start + 1 {
+            super::text::append_label(&mut body, "\n", budget)?;
+        }
+        super::text::append_label(&mut body, &lines[*index].text, budget)?;
     }
     Err(invalid(lines[start].number, "unterminated note"))
 }
@@ -404,7 +413,28 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
     let (rows, bottom) = allocate_rows(model, (&heads, &labels), context.budget)?;
     draw_lanes(model, &heads, &xs, &rows, bottom, &mut scene, context)?;
     draw_events(model, &labels, &xs, &rows, &mut scene, context)?;
+    // Closing an activation determines its extent, not its foreground paint order.
+    let count = scene.elements.len();
+    context
+        .budget
+        .charge(count.saturating_mul(count.ilog2() as usize + 1))?;
+    scene.elements.sort_by(|left, right| {
+        let a = paint_layer(left);
+        let b = paint_layer(right);
+        a.0.cmp(&b.0).then_with(|| a.1.total_cmp(&b.1))
+    });
     Ok(scene)
+}
+
+fn paint_layer(element: &Element) -> (u8, f64) {
+    match element.kind {
+        "lifeline" => (0, 0.),
+        "activation" => match element.shapes.first() {
+            Some(Shape::Rect(rect, _, _)) => (1, rect.y),
+            _ => (1, 0.),
+        },
+        _ => (2, 0.),
+    }
 }
 
 fn allocate_rows(
@@ -724,6 +754,38 @@ mod tests {
                 (top.min(a), bottom.max(b))
             },
         )
+    }
+
+    #[test]
+    fn should_paint_activations_between_lifelines_and_event_foreground() {
+        // given
+        let source = "@startuml\nparticipant A\nparticipant B\nactivate B\nactivate B\nnote over B : __visible__\nB -> A : **reply**\ndeactivate B\ndeactivate B\n@enduml";
+        // when
+        let scene = draw(source);
+        let positions = |kind| {
+            scene
+                .elements
+                .iter()
+                .enumerate()
+                .filter_map(move |(i, e)| (e.kind == kind).then_some(i))
+                .collect::<Vec<_>>()
+        };
+        let activations = positions("activation");
+        // then
+        assert!(
+            positions("lifeline")
+                .into_iter()
+                .all(|i| i < activations[0])
+        );
+        assert!(
+            positions("note")
+                .into_iter()
+                .chain(positions("message"))
+                .all(|i| i > activations[1])
+        );
+        let outer = occupied(&scene.elements[activations[0]]);
+        let inner = occupied(&scene.elements[activations[1]]);
+        assert!(outer.0 < inner.0 && outer.1 > inner.1);
     }
 
     #[test]

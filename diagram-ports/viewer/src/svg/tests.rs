@@ -2,6 +2,189 @@ use super::*;
 
 #[cfg(target_os = "linux")]
 #[test]
+fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for body in [
+        "participant \"  spaced   Ω  \" as A\nparticipant \"**Heavy** //slanted//\" as B\nA -> B : **request //nested//**\nactivate B\nnote over B : __underline__ --strike--\nB -> A : reply\ndeactivate B",
+        "package \"**Outer**\" as P {\npackage \"//Inner//\" as Q {\nclass \"  spaced   Ω  \" as A {\n{static} **bold //both//**\n{abstract} method()\n}\n}\nclass B\nA --> \"__many__\" B : --relation--\n}",
+    ] {
+        let source = format!(
+            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize 24\nskinparam defaultFontColor #123456\nleft header Native measured header with deliberate width\ntitle **Styled** //document//\nlegend __Legend__ --cut--\nright footer Footer\n{body}\n@enduml"
+        );
+        let native = resources.start_render();
+        let config = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-style-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut pending = vec![tree.root()];
+        let mut texts = Vec::new();
+        let mut decorated = [false; 4];
+        // then
+        while let Some(group) = pending.pop() {
+            for node in group.children() {
+                match node {
+                    usvg::Node::Group(group) => pending.push(group),
+                    usvg::Node::Text(text) => {
+                        let painted = text.abs_stroke_bounding_box();
+                        assert!(
+                            painted.left() >= -0.5
+                                && painted.top() >= -0.5
+                                && painted.right() <= tree.size().width() + 0.5
+                                && painted.bottom() <= tree.size().height() + 0.5,
+                            "paint outside canvas: {painted:?}"
+                        );
+                        for chunk in text.chunks() {
+                            texts.push(chunk.text().to_string());
+                            for span in chunk.spans() {
+                                decorated[0] |= span.font().weight() == 700;
+                                decorated[1] |= span.font().style() == usvg::FontStyle::Italic;
+                                decorated[2] |= span.decoration().underline().is_some();
+                                decorated[3] |= span.decoration().line_through().is_some();
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for text in xml
+            .descendants()
+            .filter(|n| n.has_tag_name("text"))
+            .filter_map(|n| n.text())
+            .filter(|text| !text.trim().is_empty())
+        {
+            assert!(
+                texts.iter().any(|paint| paint == text),
+                "measured XML text {text:?} changed in actual shaping: {texts:?}"
+            );
+        }
+        assert!(texts.iter().any(|text| text == "  spaced   Ω  "));
+        assert_eq!(
+            decorated, [true; 4],
+            "missing actual shaped font/decorations"
+        );
+        if let Some(activation) = xml
+            .descendants()
+            .find(|n| n.attribute("data-kind") == Some("activation"))
+        {
+            let note = xml
+                .descendants()
+                .find(|n| n.attribute("data-kind") == Some("note"))
+                .unwrap();
+            let activation = tree
+                .node_by_id(activation.attribute("id").unwrap())
+                .unwrap()
+                .abs_bounding_box();
+            let note = tree
+                .node_by_id(note.attribute("id").unwrap())
+                .unwrap()
+                .abs_bounding_box();
+            let x = (activation.left() + activation.right()) / 2.;
+            let y = note.top() + 3.;
+            assert!(
+                x > note.left()
+                    && x < note.right()
+                    && y > activation.top()
+                    && y < activation.bottom()
+            );
+            let mut pixels = resvg::tiny_skia::Pixmap::new(
+                tree.size().width().ceil() as u32,
+                tree.size().height().ceil() as u32,
+            )
+            .unwrap();
+            resvg::render(&tree, usvg::Transform::identity(), &mut pixels.as_mut());
+            let pixel = pixels.pixel(x as u32, y as u32).unwrap();
+            assert_eq!(
+                [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                [238, 242, 255, 255],
+                "activation overpainted note background"
+            );
+        }
+        for node in xml.descendants().filter(|n| {
+            n.has_tag_name("g")
+                && matches!(
+                    n.attribute("data-kind"),
+                    Some("class" | "package" | "participant" | "note")
+                )
+        }) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(node.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let Some(border) = group.children().iter().find_map(|n| {
+                if let usvg::Node::Path(p) = n {
+                    Some(p.abs_bounding_box())
+                } else {
+                    None
+                }
+            }) else {
+                continue;
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= border.left() - 1.
+                            && ink.right() <= border.right() + 1.
+                            && ink.top() >= border.top() - 1.
+                            && ink.bottom() <= border.bottom() + 1.,
+                        "styled node text {ink:?} escapes its own border {border:?}"
+                    );
+                }
+            }
+        }
+        eprintln!(
+            "styled {} actual native report: {:?}; paint runs={}",
+            output.family,
+            native.report(),
+            texts.len()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn should_contain_actual_native_tree_and_data_text_within_owning_boxes() {
     use crate::{
         native_text::{NativeText, NativeTextResources},
@@ -33,6 +216,8 @@ fn should_contain_actual_native_tree_and_data_text_within_owning_boxes() {
     let fonts = Arc::new(gpui::TextSystem::new(platform.text_system()));
     let resources = NativeTextResources::new(fonts);
     for source in [
+        "@startjson\ntitle Styled data\n<style>\nelement {\nFontName Liberation Sans\nFontSize 24\nFontStyle bold\n}\n</style>\n{\"short\":\"**literal**\",\"labels\":[\"wide data value with spaces\",\"Unicode Ω café\"]}\n@endjson",
+        "@startmindmap\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize 24\ntitle Styled tree\n* **Root**\n** //A very long tree label//\n*** __Unicode Ω café__\n@endmindmap",
         "@startjson\n{\"short\":\"x\",\"labels\":[\"it's <literal> & Ω\",\"https://example.test/a:b # text\",\"長い日本語 Ω café 😀\"]}\n@endjson",
         "@startyaml\nnotes: |\n  &literal *literal !customtag\n  quoted: text\nnext: value\n@endyaml",
         "@startmindmap\n* Root\n** A very long ordinary tree label\n*** Unicode Ω café\n@endmindmap",

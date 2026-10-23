@@ -403,11 +403,9 @@ mod tests {
             transitions: vec![],
         };
         let label = Label {
-            font_family: "sans-serif",
-            lines: vec![],
+            lines: Vec::new().into(),
             width: 0.,
             height: 0.,
-            line_height: 18.,
         };
         let nodes = vec![BoxNode {
             id: 0,

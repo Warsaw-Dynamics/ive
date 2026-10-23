@@ -217,7 +217,11 @@ fn build_graph(
 
 fn relation_space(labels: &RelationLabels, direction: Direction) -> (f64, f64) {
     let sizes = [&labels.middle, &labels.left, &labels.right].map(|label| {
-        if label.lines.iter().all(String::is_empty) {
+        if label
+            .lines
+            .iter()
+            .all(|line| line.runs.iter().all(|run| run.run.text.is_empty()))
+        {
             (0., 0.)
         } else {
             (label.width, label.height)
@@ -311,7 +315,11 @@ fn draw_nodes(
             ));
         }
         for (label, decoration) in &nodes[id].members {
-            if label.lines.iter().all(String::is_empty) {
+            if label
+                .lines
+                .iter()
+                .all(|line| line.runs.iter().all(|run| run.run.text.is_empty()))
+            {
                 element.shapes.push(Shape::Line(
                     vec![
                         Point::new(rect.x, y + 4.),
@@ -395,7 +403,11 @@ fn draw_edges(
             (first, near_first, &labels[id].left, relation.from),
             (last, near_last, &labels[id].right, relation.to),
         ] {
-            if label.lines.iter().any(|line| !line.is_empty()) {
+            if label
+                .lines
+                .iter()
+                .any(|line| line.runs.iter().any(|run| !run.run.text.is_empty()))
+            {
                 let rect = endpoint_label_box((point, neighbor), label, bounds(graph, owner)?);
                 element.shapes.push(Shape::Rect(rect, 0., Paint::Paper));
                 element.shapes.push(text_at(rect, label.clone()));
@@ -577,11 +589,9 @@ mod tests {
             height: 100.,
         };
         let label = Label {
-            font_family: "sans-serif",
-            lines: vec!["wide role".into()],
+            lines: Vec::new().into(),
             width: 160.,
             height: 20.,
-            line_height: 20.,
         };
         // when
         let rect = endpoint_label_box(

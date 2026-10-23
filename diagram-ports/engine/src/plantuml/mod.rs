@@ -7,6 +7,8 @@ mod activity;
 mod activitytile;
 mod arrow;
 mod budget;
+mod chrome;
+mod creole;
 mod data;
 mod datascene;
 mod graph;
@@ -17,6 +19,7 @@ mod shapes;
 mod source;
 mod state;
 mod stategraph;
+mod style;
 mod svg;
 mod text;
 mod tree;
@@ -36,61 +39,44 @@ pub(crate) fn render(
     let mut budget = budget::Budget::new(options);
     budget.checkpoint()?;
     let (wrapper, lines) = source::prepare_document(source, &mut budget)?;
+    let preamble = style::prepare(&lines, wrapper, &mut budget)?;
+    let lines = &lines[preamble.start..];
     let session = RenderEnvironment::deterministic()
         .without_math_renderer()
         .with_resource_policy(policy)
         .with_text_measurement_policy(options.text_measurement.clone())
         .begin_session_with_control(budget.control.clone())
         .map_err(|e| RenderError::Backend(e.to_string()))?;
-    let selection = select(&lines);
+    let selection = select(lines);
+    let mut context = text::Context::new(&session, &mut budget).with_fonts(preamble.fonts.clone());
     let (family, scene) = if wrapper == source::Wrapper::Mindmap {
-        let model = tree::parse_mindmap(&lines, &mut budget)?;
-        (
-            "mindmap",
-            treescene::mindmap(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        let model = tree::parse_mindmap(lines, context.budget)?;
+        ("mindmap", treescene::mindmap(&model, &mut context)?)
     } else if wrapper == source::Wrapper::Wbs {
-        let model = tree::parse_wbs(&lines, &mut budget)?;
-        (
-            "wbs",
-            treescene::wbs(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        let model = tree::parse_wbs(lines, context.budget)?;
+        ("wbs", treescene::wbs(&model, &mut context)?)
     } else if matches!(wrapper, source::Wrapper::Json | source::Wrapper::Yaml) {
         let (family, model) = if wrapper == source::Wrapper::Json {
-            ("json", data::parse_json(&lines, &mut budget)?)
+            ("json", data::parse_json(lines, context.budget)?)
         } else {
-            ("yaml", yaml::parse(&lines, &mut budget)?)
+            ("yaml", yaml::parse(lines, context.budget)?)
         };
-        (
-            family,
-            datascene::layout(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        (family, datascene::layout(&model, &mut context)?)
     } else if selection == Selection::Activity {
-        let model = activity::parse(&lines, &mut budget)?;
-        (
-            "activity",
-            activitytile::layout(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        let model = activity::parse(lines, context.budget)?;
+        ("activity", activitytile::layout(&model, &mut context)?)
     } else if selection == Selection::State {
-        let model = state::parse(&lines, &mut budget)?;
-        (
-            "state",
-            stategraph::layout(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        let model = state::parse(lines, context.budget)?;
+        ("state", stategraph::layout(&model, &mut context)?)
     } else if selection == Selection::Uml {
-        let model = uml::parse(&lines, &mut budget)?;
+        let model = uml::parse(lines, context.budget)?;
         let family = model.family;
-        (
-            family,
-            graph::layout(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        (family, graph::layout(&model, &mut context)?)
     } else {
-        let model = sequence::parse(&lines, &mut budget)?;
-        (
-            "sequence",
-            sequence::layout(&model, &mut text::Context::new(&session, &mut budget))?,
-        )
+        let model = sequence::parse(lines, context.budget)?;
+        ("sequence", sequence::layout(&model, &mut context)?)
     };
+    let scene = chrome::compose(scene, &preamble, &mut context)?;
     let raw = svg::serialize(&scene, &mut budget)?;
     let svg = merman::svg::SvgPipeline::resvg_safe()
         .with_postprocessor(resources::ResourceAdmission::new(budget.control.clone()))

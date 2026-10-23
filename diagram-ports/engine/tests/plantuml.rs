@@ -41,7 +41,7 @@ fn should_reject_substantive_suffixes_and_validate_every_endpoint_branch() {
 fn should_reject_rich_text_variants_in_every_label_bearing_path() {
     // given
     for markup in [
-        "<s>strike</s>",
+        "<s:red>strike</s>",
         "<STRIKE:red>x</STRIKE>",
         "<DEL>x</DEL>",
         "<U:blue>x</U>",
@@ -50,7 +50,7 @@ fn should_reject_rich_text_variants_in_every_label_bearing_path() {
         "<FONT:serif>x</FONT>",
         "<sup>x</sup>",
         "<sub>x</sub>",
-        "--strike--",
+        "~~wave~~",
         "\"\"mono\"\"",
         "<color red>x</color>",
     ] {
@@ -74,8 +74,8 @@ fn should_reject_rich_text_variants_in_every_label_bearing_path() {
 fn should_reject_url_adjacent_markup_in_every_label_bearing_path() {
     // given
     for markup in [
-        "<s>strike</s>",
-        "<b>bold</b>",
+        "<s:red>strike</s>",
+        "<b:red>bold</b>",
         "<STRIKE:red>x</STRIKE>",
         "<DEL>x</DEL>",
         "<FoNt:serif>x</FoNt>",
@@ -85,9 +85,9 @@ fn should_reject_url_adjacent_markup_in_every_label_bearing_path() {
         "<&icon>",
         "<math>x</math>",
         "[[target]]",
-        "**bold**",
-        "__underline__",
-        "--strike--",
+        "**<img:asset>**",
+        "__[[target]]__",
+        "--<math>x</math>--",
         "~~wave~~",
     ] {
         let label = format!("https://example.test/{markup}");
@@ -659,7 +659,7 @@ fn should_reject_implicit_names_containing_unimplemented_syntax() {
         "A -> B! : invalid",
         "A -> B #red",
         "A -> B : <color:red>styled</color>",
-        "A -> B : **bold**",
+        "A -> B : **<img:asset>**",
         "class A\nA --> B::port",
         "class A\nA --> B <<stereotype>>",
         "!if false\n!include secret\n!endif",
@@ -717,8 +717,8 @@ fn should_observe_cancellation_after_a_host_measurement() {
 fn should_reject_label_markup_without_corrupting_literal_angle_text() {
     // given
     let unsupported = [
-        "//italic//",
-        "<u>underline</u>",
+        "//<img:asset>//",
+        "<u:blue>underline</u>",
         "<back:red>paint</back>",
         "[[https://example.test link]]",
         "<$icon>",

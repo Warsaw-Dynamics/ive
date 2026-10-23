@@ -58,6 +58,14 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-styled-sequence",
+        source: include_str!("../../fixtures/plantuml/styledsequence.puml"),
+    },
+    Example {
+        name: "plantuml-styled-graph",
+        source: include_str!("../../fixtures/plantuml/styledgraph.puml"),
+    },
+    Example {
         name: "plantuml-mindmap",
         source: include_str!("../../fixtures/plantuml/mindmap.puml"),
     },
@@ -117,6 +125,8 @@ mod tests {
     fn should_find_native_control_tree_and_data_examples() {
         // given
         for (name, family) in [
+            ("plantuml-styled-sequence", "sequence"),
+            ("plantuml-styled-graph", "class"),
             ("plantuml-state", "state"),
             ("plantuml-activity", "activity"),
             ("plantuml-mindmap", "mindmap"),

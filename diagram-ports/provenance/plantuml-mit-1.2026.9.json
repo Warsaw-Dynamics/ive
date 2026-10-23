@@ -292,9 +292,11 @@
       "path": "net/sourceforge/plantuml/jsondiagram/JsonDiagramFactory.java",
       "sha256": "22ae9ae1f4101aa029c6198011181e57cd552371a35f8840313d9729e1530c53",
       "rust": [
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/mod.rs"
       ],
-      "behavior": "JSON-only raw payload boundary; column-zero hash comment extension explicitly outside admitted strict subset.",
+      "behavior": "JSON-only raw payload boundary; column-zero hash comment extension explicitly outside admitted strict subset. Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1316,10 +1318,15 @@
       "path": "net/sourceforge/plantuml/klimt/font/FontStyle.java",
       "sha256": "7b6fb79f8a28e95cb42d64bd6d3c73e92f6a6d665e895992cf04b1d65093da28",
       "rust": [
-        "engine/src/plantuml/text.rs"
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/svg.rs"
       ],
-      "behavior": "Case/alias-aware rejection of unsupported HTML-style font decorations.",
+      "behavior": "Case/alias-aware rejection of unsupported HTML-style font decorations. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
       "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
       ],
@@ -1329,10 +1336,15 @@
       "path": "net/sourceforge/plantuml/klimt/creole/legacy/CommandCreoleBuilder.java",
       "sha256": "236a6b30a4c3b65cbb79ffb2b3d0fa8f3509407ed127a08ec79abf20b88cf8e0",
       "rust": [
-        "engine/src/plantuml/text.rs"
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/svg.rs"
       ],
-      "behavior": "Registered unsupported Creole command vocabulary; no command silently lowered to literal text.",
+      "behavior": "Registered unsupported Creole command vocabulary; no command silently lowered to literal text. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
       "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
       ],
@@ -1355,10 +1367,15 @@
       "path": "net/sourceforge/plantuml/klimt/creole/command/CommandCreoleStyle.java",
       "sha256": "014c7f897d8b192767933be8fddc333c7ed96141b64f1b5633a70f13dd6c6da9",
       "rust": [
-        "engine/src/plantuml/text.rs"
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/svg.rs"
       ],
-      "behavior": "Paired Creole delimiter recognition and legacy style-to-end-of-line rejection.",
+      "behavior": "Paired Creole delimiter recognition and legacy style-to-end-of-line rejection. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
       "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
       ],
@@ -1407,10 +1424,263 @@
       "path": "net/sourceforge/plantuml/utils/CharHidder.java",
       "sha256": "accd201736dca2bef239b3b86bb9bb1ccd85f1632c310d972a58df632c38e276",
       "rust": [
-        "engine/src/plantuml/text.rs"
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/svg.rs"
       ],
-      "behavior": "Literal tilde escapes and backslash-tilde decoding before native measurement/painting.",
+      "behavior": "Literal tilde escapes and backslash-tilde decoding before native measurement/painting. Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
       "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/CommandTitle.java",
+      "sha256": "98f79ba3e6032bf689c4aa0c481d902c6a6d60721d42a62fe15a4215530b5246",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/CommandLegend.java",
+      "sha256": "d7db02ee08f9c736a92b8220cdf47dee993fda09774d6f0b6e6b3c56064dd4bc",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/CommandHeader.java",
+      "sha256": "f19a73844bc50966b47d2d4f4808e512c497500cae0b42f734b1b3081862122e",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/CommandFooter.java",
+      "sha256": "582704ef20242ba7f79e04ac619dd70a403380e62545343c97e9b8eeb6c028e3",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/command/CommandSkinParam.java",
+      "sha256": "477ba349a5cc2259c843ddfa31c06344b60f305714b3a6f286d15912064d69ae",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/TitledDiagram.java",
+      "sha256": "ac6ef70a87c9e7af5fa69340659b85e6f9cd2459ed3a57f9189a59cad3b7371e",
+      "rust": [
+        "engine/src/plantuml/chrome.rs",
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: replacement of document regions including alignment; header/title above complete diagram, legend/footer below; native measured composition with original spacing, not upstream geometry.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/core/DiagramChromeFactory.java",
+      "sha256": "8c81c5c8e12baabc1902797a5bb6cdcb7a7a79a6da7531782ad04938a40c2b28",
+      "rust": [
+        "engine/src/plantuml/chrome.rs",
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: replacement of document regions including alignment; header/title above complete diagram, legend/footer below; native measured composition with original spacing, not upstream geometry.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/style/FromSkinparamToStyle.java",
+      "sha256": "291a7ce954e6cdd357c8c64f04ca629a0866123c695f3e80301f4bf265f95235",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/style/parser/RawStyleParser.java",
+      "sha256": "16f0691b8e0b1ed5cd46ad97f308f16c8820159b759c61faca9d09ce0280cf01",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/style/value/Specificity.java",
+      "sha256": "0a0a2bfc88886e51821377605705eb1f065cdae3bf03ff1b0fe3cf5934542bfe",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/style/value/ValueImpl.java",
+      "sha256": "a5765e750c82c653cbb8095347ee97f4b0a37b124851b7bbcec7bc5d7ec8fdc5",
+      "rust": [
+        "engine/src/plantuml/style.rs"
+      ],
+      "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/Display.java",
+      "sha256": "7322037fe78634321b6e2592a8c03a6ff0fc0f0ab2aba422a6db730d16605ef8",
+      "rust": [
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/svg.rs"
+      ],
+      "behavior": "Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/creole/legacy/StripeSimple.java",
+      "sha256": "6b8894ef3c7e9c10f275a886ac4a4e1716efc2b663c04bb9af35d9cf24ee5ecb",
+      "rust": [
+        "engine/src/plantuml/creole.rs",
+        "engine/src/plantuml/text.rs",
+        "engine/src/plantuml/svg.rs"
+      ],
+      "behavior": "Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/jsondiagram/StyleExtractor.java",
+      "sha256": "1a7ca4dc5d70f901e16f7ecac0af48f1cd327f736e504b70bee225887aa1a03f",
+      "rust": [
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/mod.rs"
+      ],
+      "behavior": "Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/YamlDiagramFactory.java",
+      "sha256": "49763c6ca543425f31c63255265f0f35ba7010719bb0c62b8f15dd623ad32824",
+      "rust": [
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/mod.rs"
+      ],
+      "behavior": "Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
       ],
@@ -1418,23 +1688,92 @@
     }
   ],
   "fixtures": [
-    { "path": "fixtures/plantuml/mindmap.puml", "sha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c", "oracleName": "mindmap-hierarchy", "originalFamily": "mindmap", "expectedLabels": ["Release", "Tests", "Unit", "Delivery", "Package"] },
-    { "path": "fixtures/plantuml/wbs.puml", "sha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae", "oracleName": "wbs-hierarchy", "originalFamily": "wbs", "expectedLabels": ["Migration", "Design", "Schema", "Rollout", "Monitor"] },
-    { "path": "fixtures/plantuml/json.puml", "sha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626", "oracleName": "json-nested", "originalFamily": "json", "expectedLabels": ["service", "name", "Billing", "ports", "8080", "8443", "enabled"] },
-    { "path": "fixtures/plantuml/yaml.puml", "sha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb", "oracleName": "yaml-nested", "originalFamily": "yaml", "expectedLabels": ["service", "name", "Billing", "replicas", "2", "zones", "north", "south"] },
+    {
+      "path": "fixtures/plantuml/mindmap.puml",
+      "sha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c",
+      "oracleName": "mindmap-hierarchy",
+      "originalFamily": "mindmap",
+      "expectedLabels": [
+        "Release",
+        "Tests",
+        "Unit",
+        "Delivery",
+        "Package"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/wbs.puml",
+      "sha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae",
+      "oracleName": "wbs-hierarchy",
+      "originalFamily": "wbs",
+      "expectedLabels": [
+        "Migration",
+        "Design",
+        "Schema",
+        "Rollout",
+        "Monitor"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/json.puml",
+      "sha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626",
+      "oracleName": "json-nested",
+      "originalFamily": "json",
+      "expectedLabels": [
+        "service",
+        "name",
+        "Billing",
+        "ports",
+        "8080",
+        "8443",
+        "enabled"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/yaml.puml",
+      "sha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb",
+      "oracleName": "yaml-nested",
+      "originalFamily": "yaml",
+      "expectedLabels": [
+        "service",
+        "name",
+        "Billing",
+        "replicas",
+        "2",
+        "zones",
+        "north",
+        "south"
+      ]
+    },
     {
       "path": "fixtures/plantuml/state.puml",
       "sha256": "081bdcec241cbc1b3cb035cfe0d7e42dcee2efa45813e0de058c0df8533b24bf",
       "oracleName": "nested-state",
       "originalFamily": "state",
-      "expectedLabels": ["Fulfilment", "Queued", "Packed", "Sealed", "Checked", "pack", "inspect"]
+      "expectedLabels": [
+        "Fulfilment",
+        "Queued",
+        "Packed",
+        "Sealed",
+        "Checked",
+        "pack",
+        "inspect"
+      ]
     },
     {
       "path": "fixtures/plantuml/activity.puml",
       "sha256": "5f2ccae11dc644b2227663247a92936b17fe6d0b8f280e4a7d9aa813579d2979",
       "oracleName": "activity-branch-merge",
       "originalFamily": "activity",
-      "expectedLabels": ["Read request", "Valid?", "yes", "Persist", "no", "Reject", "Reply"]
+      "expectedLabels": [
+        "Read request",
+        "Valid?",
+        "yes",
+        "Persist",
+        "no",
+        "Reject",
+        "Reply"
+      ]
     },
     {
       "path": "fixtures/plantuml/sequence.puml",
@@ -1506,6 +1845,28 @@
         "Pay invoice",
         "includes"
       ]
+    },
+    {
+      "path": "fixtures/plantuml/styledsequence.puml",
+      "sha256": "040c0952cc2b8a6fdb8400adc6594e2dee838205efeb3505e444a05943f7fbde",
+      "origin": "Independently authored Task3D native syntax/paint fixture, not imported upstream example or geometry oracle.",
+      "expectedLabels": [
+        "Checkout",
+        "Browser",
+        "Service",
+        "Accepted"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/styledgraph.puml",
+      "sha256": "577722087f3e47b9964d8ccb420f9fd2b64e67c3dce55ec193e94eff31819ca7",
+      "origin": "Independently authored Task3D native syntax/paint fixture, not imported upstream example or geometry oracle.",
+      "expectedLabels": [
+        "Domain",
+        "Commerce",
+        "Accounts",
+        "Ledger"
+      ]
     }
   ],
   "oracle": {
@@ -1548,7 +1909,10 @@
     "engine/src/plantuml/sequence.rs",
     "engine/src/plantuml/uml.rs",
     "engine/src/plantuml/graph.rs",
-    "engine/src/plantuml/shapes.rs"
+    "engine/src/plantuml/shapes.rs",
+    "engine/src/plantuml/style.rs",
+    "engine/src/plantuml/creole.rs",
+    "engine/src/plantuml/chrome.rs"
   ],
   "implementationNotes": [
     "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",
@@ -1559,6 +1923,7 @@
     "Dagre layout from separately audited dugong0.9.2, not PlantUML Graphviz/Smetana/ELK code.",
     "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",
     "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
-    "Actual statement-line locations and column1; precise token spans are not yet implemented."
+    "Actual statement-line locations and column1; precise token spans are not yet implemented.",
+    "Task3D is a bounded shared-style and measured-run checkpoint, not full Task6 or PlantUML parity. Every preprocessor directive remains denied; data label contents stay literal. Single-line chrome only; mixed skinparam/style, multiline chrome/skinparam blocks, external resources and unimplemented markup fail. Baselines remain font-size/4.5 approximations. Authored style fixtures are new native validation sources, not upstream corpus or original geometry oracles."
   ]
 }

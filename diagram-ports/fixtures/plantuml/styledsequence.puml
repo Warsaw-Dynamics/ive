@@ -1,0 +1,24 @@
+@startuml
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize 18
+skinparam defaultFontColor #123456
+skinparam BackgroundColor #f6f8fc
+skinparam titleFontSize 26
+left header Native measured text and document regions
+title **Checkout** //conversation//\nMeasured styled runs
+legend __Confirmed__ and --superseded-- messages
+right footer Safe in-memory native rendering
+participant "**Browser**" as B
+participant "//Service//" as S
+group **Checkout**
+B -> S : Submit **basket //securely//**
+activate S
+note over S
+Check __stock__
+
+  preserve   spaces
+end note
+S --> B : <b>Accepted</b>
+deactivate S
+end
+@enduml

@@ -86,6 +86,7 @@ impl Element {
 }
 
 pub(super) struct Scene {
+    pub background: super::style::Color,
     pub elements: Vec<Element>,
     pub min_x: f64,
     pub min_y: f64,
@@ -95,6 +96,7 @@ pub(super) struct Scene {
 impl Scene {
     pub fn new() -> Self {
         Self {
+            background: super::style::Color(0xffffff),
             elements: Vec::new(),
             min_x: 0.,
             min_y: 0.,

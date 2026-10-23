@@ -149,7 +149,7 @@ fn classify(line: &Line, budget: &mut Budget) -> Result<YamlLine, RenderError> {
     })
 }
 
-fn find_unquoted(text: &str, wanted: char) -> Option<usize> {
+pub(super) fn find_unquoted(text: &str, wanted: char) -> Option<usize> {
     let mut quote = '\0';
     for (offset, ch) in text.char_indices() {
         if quote != '\0' {

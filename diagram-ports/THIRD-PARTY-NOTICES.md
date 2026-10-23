@@ -14,6 +14,8 @@ Some authorized generated MIT-edition files retain historical upstream GPL comme
 
 The standalone diagram workspace includes the Rust crates below. Each selected licence text follows with its crates. Embedded translated-source and fixture notices follow in the second part.
 
+The shared style/text checkpoint additionally translates the selected MIT document command, skinparam migration, plain selector precedence, Creole and data-prefix extraction semantics listed in the same manifest. All newly selected files credit `(C) Copyright 2009-2024, Arnaud Roques` and `Original Author:  Arnaud Roques`; the complete retained MIT grant above applies. The two `styledsequence.puml` and `styledgraph.puml` fixtures are independently authored native validation examples, not imported assets or original-renderer geometry oracles. No stylesheet, font, theme, color table, icon or resource-loading implementation is imported.
+
 Rust dependency section generated with `cargo about generate --config ../about.toml ../tools/third-party-notices.hbs --offline --locked` from the standalone Cargo.lock. Regenerate after dependency changes.
 
 ## Licences

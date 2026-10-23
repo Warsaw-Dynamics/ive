@@ -1,6 +1,6 @@
 use super::{
     budget::{Budget, bound},
-    scene::{Decoration, Scene, Shape},
+    scene::{Scene, Shape},
 };
 use crate::RenderError;
 
@@ -11,7 +11,7 @@ pub(super) fn serialize(scene: &Scene, budget: &mut Budget) -> Result<String, Re
     };
     let width = scene.width - scene.min_x;
     let height = scene.height - scene.min_y;
-    writer.add(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"{} {} {width} {height}\"><rect x=\"{}\" y=\"{}\" width=\"{width}\" height=\"{height}\" fill=\"white\"/>", scene.min_x, scene.min_y, scene.min_x, scene.min_y))?;
+    writer.add(&format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"{} {} {width} {height}\"><rect x=\"{}\" y=\"{}\" width=\"{width}\" height=\"{height}\" fill=\"{}\"/>", scene.min_x, scene.min_y, scene.min_x, scene.min_y, scene.background.svg()))?;
     for element in &scene.elements {
         budget.charge(1)?;
         writer.add("<g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\"")?;
@@ -104,15 +104,39 @@ impl Writer {
                 self.points(points)?;
                 self.add("\"/>")
             }
-            Shape::Text(p, label, decoration) => {
-                for (i, line) in label.lines.iter().enumerate() {
-                    self.add(&format!("<text x=\"{}\" y=\"{}\" fill=\"#172033\" stroke=\"none\" font-family=\"{}\" font-size=\"14\" text-decoration=\"{}\" font-style=\"{}\" xml:space=\"preserve\">", p.x, p.y + label.line_height * (i+1) as f64 - 14./4.5, label.font_family, match decoration { Decoration::Underlined => "underline", _ => "none" }, match decoration { Decoration::Italic => "italic", _ => "normal" }))?;
-                    self.escaped(line)?;
-                    self.add("</text>")?;
+            Shape::Text(p, label, _) => {
+                let mut y = p.y;
+                for line in label.lines.iter() {
+                    let mut x = p.x;
+                    for measured in &line.runs {
+                        self.run(measured, x, y + line.baseline)?;
+                        x += measured.advance;
+                    }
+                    y += line.height;
                 }
                 Ok(())
             }
         }
+    }
+    fn run(
+        &mut self,
+        measured: &super::text::MeasuredRun,
+        x: f64,
+        y: f64,
+    ) -> Result<(), RenderError> {
+        let run = &measured.run;
+        let font = &run.style.font;
+        let decoration = match (run.style.underline, run.style.strike) {
+            (true, true) => "underline line-through",
+            (true, false) => "underline",
+            (false, true) => "line-through",
+            _ => "none",
+        };
+        self.add(&format!("<text x=\"{x}\" y=\"{y}\" fill=\"{}\" stroke=\"none\" font-size=\"{}\" font-weight=\"{}\" text-decoration=\"{decoration}\" font-style=\"{}\" xml:space=\"preserve\"", font.color.svg(), font.size, font.weight, if font.italic { "italic" } else { "normal" }))?;
+        self.attribute("font-family", &font.family)?;
+        self.add(">")?;
+        self.escaped(&run.text)?;
+        self.add("</text>")
     }
     fn points(&mut self, points: &[super::scene::Point]) -> Result<(), RenderError> {
         for p in points {

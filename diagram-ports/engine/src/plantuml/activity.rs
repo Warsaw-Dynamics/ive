@@ -127,8 +127,7 @@ impl<'a> Parser<'a, '_> {
         loop {
             let closing = part.trim_end().strip_suffix(';');
             let text = closing.unwrap_or(part);
-            self.budget.text(text.len())?;
-            value.push_str(text);
+            super::text::append_label(&mut value, text, self.budget)?;
             if closing.is_some() {
                 return Ok(Instruction::Action(keep(
                     &value,
@@ -140,8 +139,7 @@ impl<'a> Parser<'a, '_> {
                 .lines
                 .get(self.index)
                 .ok_or_else(|| invalid(first.number, "unterminated activity action"))?;
-            self.budget.text(1)?;
-            value.push('\n');
+            super::text::append_label(&mut value, "\n", self.budget)?;
             part = &next.text;
             self.index += 1;
         }
@@ -478,8 +476,26 @@ mod tests {
         let result = parse(&lines, &mut budget);
         // then
         assert!(
-            result.is_ok(),
-            "bounded source parser rescanned the accumulated body: {result:?}"
+            matches!(result, Err(RenderError::Backend(ref message)) if message == "PlantUML label bytes value 16385 exceeds limit 16384"),
+            "{result:?}"
         );
+        assert!(budget.work < source.len() * 4);
+    }
+
+    #[test]
+    fn should_parse_below_cap_multiline_actions_and_check_cancellation() {
+        // given
+        let source = format!("@startuml\n:\n{};\nstop\n@enduml", " \n".repeat(4_000));
+        let options = crate::RenderOptions::default();
+        let mut budget = Budget::new(&options);
+        let lines = super::super::source::prepare(&source, &mut budget).unwrap();
+        // when
+        let result = parse(&lines, &mut budget);
+        options.control.cancel();
+        let cancelled = parse(&lines, &mut budget);
+        // then
+        assert!(result.is_ok(), "{result:?}");
+        assert!(budget.work < source.len() * 8);
+        assert!(matches!(cancelled, Err(RenderError::Cancelled(_))));
     }
 }

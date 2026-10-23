@@ -54,10 +54,17 @@ fn quoted(rest: &str, line: usize) -> Result<(String, bool, usize), RenderError>
     let mut out = String::new();
     let mut escaped = false;
     for (i, ch) in rest.char_indices().skip(1) {
+        super::budget::bound("label bytes", i - 1, 16 * 1024)?;
+        if ch != '"' || escaped {
+            super::budget::bound("label bytes", i - 1 + ch.len_utf8(), 16 * 1024)?;
+        }
         if escaped {
             match ch {
-                'n' => out.push('\n'),
-                '"' | '\\' => out.push(ch),
+                'n' | '\\' | '~' => {
+                    out.push('\\');
+                    out.push(ch);
+                }
+                '"' => out.push(ch),
                 _ => return Err(unsupported(line, &format!("quoted escape \\{ch}"))),
             }
             escaped = false;
