@@ -368,6 +368,13 @@ errors with file and line, how many bindings it made, and the latest log lines (
         Ok(self.ask(Request::ScriptStatus).await)
     }
 
+    #[tool(description = "Failures that happened away from any tab (a terminal that could not be re-attached, edits not \
+saved, a git action that failed): the notices shown at the bottom right, newest first, each with its time and text, \
+and the path of ive.log, which keeps every one of them.")]
+    async fn notices(&self) -> Result<CallToolResult, ErrorData> {
+        Ok(self.ask(Request::Notices).await)
+    }
+
     #[tool(description = "List open projects with their checkouts (path, label, branch, changes, ahead, behind; hidden: a worktree the user hid \
 from the tree and the hub) and \
 processes (id for show_process, tab id when a tab shows it, kind terminal, claude-code or run, title, checkout; a run \

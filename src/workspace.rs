@@ -942,6 +942,7 @@ impl Render for Workspace {
             .flex_col()
             .size_full()
             .child(content.flex_1().min_h_0())
+            .children(crate::notices::render(cx))
             .children(quit_prompt)
             .child(updates::activity_watcher(cx.entity().downgrade()))
             .track_focus(&self.focus_handle)

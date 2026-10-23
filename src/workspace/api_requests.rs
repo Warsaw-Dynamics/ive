@@ -167,6 +167,7 @@ impl Workspace {
             Request::ListTabs => Ok(self.tab_list()),
             Request::ActiveTab => Ok(self.active_tab()),
             Request::ScriptStatus => Ok(script_status_json(cx.global::<ScriptState>())),
+            Request::Notices => Ok(cx.global::<crate::notices::Notices>().json()),
             Request::SendToActive { text } => self.send_to_active(&text).map(|()| json!("ok")),
             Request::ListProjects => Ok(self.project_list()),
             Request::OpenFile { path } => self.open_file(&path, window, cx).map(|id| json!({ "tab": id.value() })),
