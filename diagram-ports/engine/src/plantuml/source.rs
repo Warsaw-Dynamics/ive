@@ -17,6 +17,7 @@ pub(super) enum Wrapper {
     Yaml,
     Gantt,
     Salt,
+    Nwdiag,
 }
 
 pub(super) fn prepare_document(
@@ -36,6 +37,7 @@ pub(super) fn prepare_document(
         "@startyaml" => (Wrapper::Yaml, "@endyaml"),
         "@startgantt" => (Wrapper::Gantt, "@endgantt"),
         "@startsalt" => (Wrapper::Salt, "@endsalt"),
+        "@startnwdiag" => (Wrapper::Nwdiag, "@endnwdiag"),
         _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
     };
     budget.charge(source.len())?;
@@ -45,7 +47,7 @@ pub(super) fn prepare_document(
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.charge(raw.len() + 1)?;
         let normalized;
-        let raw = if wrapper == Wrapper::Gantt {
+        let raw = if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag) {
             normalized = strip_comments(raw, &mut block_comment, budget)?;
             normalized.trim()
         } else {
@@ -65,7 +67,7 @@ pub(super) fn prepare_document(
                 ));
             }
             budget.text(raw.len())?;
-            if wrapper == Wrapper::Gantt && raw.is_empty() {
+            if matches!(wrapper, Wrapper::Gantt | Wrapper::Nwdiag) && raw.is_empty() {
                 continue;
             }
             lines.push(Line {
@@ -78,6 +80,12 @@ pub(super) fn prepare_document(
                 "expected exactly one complete PlantUML block",
             ));
         }
+    }
+    if wrapper == Wrapper::Nwdiag && block_comment {
+        return Err(invalid(
+            source.lines().count(),
+            "unterminated nwdiag block comment",
+        ));
     }
     if state != 2 || lines.iter().all(|line| line.text.trim().is_empty()) {
         return Err(invalid(

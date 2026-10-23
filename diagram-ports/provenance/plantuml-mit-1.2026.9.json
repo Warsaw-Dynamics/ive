@@ -10,6 +10,140 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandNwDiagInit.java",
+      "sha256": "be20e6c6da17e4c718ae5a1a1a64e7665389310786f6b74021a2855656c43706",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines132-136: explicit nwdiag opener; native deliberately requires one balanced canonical nwdiag block.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandNetwork.java",
+      "sha256": "7323ee5f7dfdbf0631d2d0f7c9dc63d71751f42dd356bdefd6295a418734d0a2",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines132-139: named network identifier letters/numbers/hyphen/dot/underscore. Native rejects unnamed/duplicate networks and nesting.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandElement.java",
+      "sha256": "07c6cb2cca0561310b4cd44ee831fed956ccca28d76b40cf97b6dbdbbce9bc23",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines135-147: global server name and optional bracket properties/semicolon. Native consumes the complete property grammar rather than regex-find skipping.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandProperty.java",
+      "sha256": "b34c3498e23ae09cf2a6ae4069af19016c10cb9ac66800c4763244847bfe34de",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines134-152: container address/description/color/width syntax. Native accepts quoted strings or single unquoted atoms; spaces require quotes. Only painted values admitted.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandGroup.java",
+      "sha256": "25e518baabd86c42a380856577c205101ae73657dfb2b5bc9a6b479efa21fed1",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines132-139: simple group identifiers (letters/numbers/underscore); native requires explicit names and rejects nested/empty groups.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/CommandEndSomething.java",
+      "sha256": "5c6d851d89f02d3f1bbd4c65e6985cb95950d8ee0f4b0caacfecd565d0b947e6",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs"
+      ],
+      "behavior": "From lines132-147: closing-brace command. Native rejects unmatched extra closes or missing braces rather than accepting an empty stack.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/NwDiagram.java",
+      "sha256": "de4367425d36699de08115ede130808ee1fe637dd94b8480043616797629a33f",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/nwscene.rs"
+      ],
+      "behavior": "From lines197-245,307-375,459-491,507-526: global server reuse, independent network memberships, per-declaration networks, group ownership and active-network groups. Native rejects standalone/hidden networks, links, duplicate network names and top-level group references to undeclared servers; fully consumes property lists. Sparse layout and crossing gaps are original native geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/core/NServer.java",
+      "sha256": "a232a289fbea788b26eb68bea4e64c9b88a4e5e85a8533e6d1c0cf840eb6b29d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/nwscene.rs"
+      ],
+      "behavior": "From lines142-149,211-250,256-286: one global name/display, interface address per network, nonempty repeat replacement/empty preservation, server description/color, comma-space line splitting and rectangle default. Shapes remain explicit unsupported. Native typed #RRGGBB fills only, no asset/symbol infrastructure.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/core/Network.java",
+      "sha256": "52d9a6594ff93701478aef5a87e888d4f492b34b453083533723a527e3d2c4ac",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/nwscene.rs"
+      ],
+      "behavior": "From lines156-202: distinct bus display and own address, typed color and width=full; native member-width buses versus actual full column span. Native geometry is original.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/nwdiag/core/NwGroup.java",
+      "sha256": "cf1f9cebb55c353442b7c8822a8b4587423ea12142fefd8bda947b2c3efa9bf0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/nwscene.rs"
+      ],
+      "behavior": "From lines150-245: group member identity independent of network membership; color fill, measured enclosure/header only from description. Native contiguous grouped columns and reserved header/cable gutters are original geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/salt/DataSourceImpl.java",
       "sha256": "b5f72cd4e5593b51d8508734d0500f3ea728cf2d41f4a5dc32c96c9867ae45f7",
       "copyrights": [
@@ -1831,7 +1965,7 @@
       "rust": [
         "engine/src/plantuml/source.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2509,6 +2643,55 @@
   ],
   "fixtures": [
     {
+      "path": "fixtures/plantuml/nwdiagbase.puml",
+      "sha256": "7bff741790360b248374d315934527d8169e7181427efd4af341892a810951f3",
+      "origin": "/tmp/ive-plantuml-native-oracles/nwdiag-network.puml",
+      "originalFamily": "nwdiag",
+      "expectedLabels": [
+        "edge",
+        "10.4.0.0/24",
+        "gateway",
+        "portal"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/nwdiagshared.puml",
+      "sha256": "4938d58ff6cb66f0750a492cf46c21c907bcb5d5ac19c8b95c2cf27136749a2e",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/nwdiag-shared-group.puml",
+      "originalFamily": "nwdiag",
+      "expectedLabels": [
+        "Edge router",
+        "Storage zone",
+        "198.51.100.1",
+        "10.23.0.1"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/nwdiagrepeated.puml",
+      "sha256": "fa3d9eef9458fda3701b8f6196922baefbb878e42a7ee35643b0b9aac6359bbe",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/nwdiag-repeat-membership.puml",
+      "originalFamily": "nwdiag",
+      "expectedLabels": [
+        "router",
+        "198.51.100.2",
+        "10.23.0.1"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/nwdiag.puml",
+      "sha256": "b3245713091fdb2296c7280e0de275694484c65a32e96fb8a3052eb676d8b6cc",
+      "origin": "Independently authored native Task3H viewer example, no original pixel/geometry claim.",
+      "originalFamily": "nwdiag",
+      "expectedLabels": [
+        "Edge router",
+        "Web service",
+        "Office client",
+        "Storage zone",
+        "Data store",
+        "Backup"
+      ]
+    },
+    {
       "path": "fixtures/plantuml/saltbase.puml",
       "sha256": "0fba629e3bf1d9ee00505dc3ed39a9d6cdc6b585b62c5301aabb44dae1a91e41",
       "origin": "/tmp/ive-plantuml-native-oracles/salt-form.puml",
@@ -2797,6 +2980,8 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/nwdiag.rs",
+    "engine/src/plantuml/nwscene.rs",
     "engine/src/plantuml/salt.rs",
     "engine/src/plantuml/saltscene.rs",
     "engine/src/plantuml/gantt.rs",
@@ -2831,6 +3016,7 @@
     "engine/src/plantuml/chrome.rs"
   ],
   "implementationNotes": [
+    "Task3H adds stable network/server/group identities and sparse per-network interface memberships, measured horizontal buses and one global server box. Dedicated ordered cable lanes, charged sparse crossing sweeps with actual bus gaps, contiguous group columns and label/header reservations replace dense network-by-server grids. Unsupported shapes/hidden networks/links/colors/widths fail explicitly. Canonical balanced body, #RRGGBB fills and full bus width are admitted; whole grammar consumed. Native row/column geometry differs from upstream and is not pixel parity.",
     "Task3F adds a dedicated deterministic day-only Gantt model and measured date axis/bar/diamond scene. ISO dates are explicit and bounded; all seven days are open. Dependency dates are captured in source order with conservative freeze-after-reference admission, not a final reactive DAG. Native sparse calendar ticks and routes differ from upstream geometry; milestone references do not invent drawn arrows. No new runtime IO, ambient dates, dependencies or assets.",
     "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",
     "Strict ordered duplicate-preserving JSON and narrow preflighted PlantUML YAML string semantics. Data labels remain literal and do not enter UML rich-text/newline normalization. New tree/data labels measure and emit the same explicit Arial/Liberation Sans/DejaVu Sans/Noto Sans/sans-serif chain. EclipseSource minimal-json MIT notice retained.",

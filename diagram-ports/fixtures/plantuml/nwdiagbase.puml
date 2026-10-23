@@ -1,0 +1,9 @@
+@startnwdiag
+nwdiag {
+  network edge {
+    address = "10.4.0.0/24";
+    gateway [address = "10.4.0.1"];
+    portal [address = "10.4.0.8"];
+  }
+}
+@endnwdiag

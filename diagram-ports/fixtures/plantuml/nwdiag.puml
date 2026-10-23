@@ -1,0 +1,36 @@
+@startnwdiag
+!define ROUTER **Edge router**
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize 18
+skinparam defaultFontColor #24334A
+title Shared servers across network buses
+footer Native nwdiag: interface addresses, crossing gaps and a storage group
+nwdiag {
+network edge {
+address = "198.51.100.0/24";
+color = "#708090";
+width = full;
+router [address = "198.51.100.1", description = "ROUTER"];
+web [address = "198.51.100.20", description = "Web service"];
+}
+network office {
+address = "172.20.0.0/24";
+width = full;
+web [address = "172.20.0.20"];
+client [address = "172.20.0.50", description = "Office client"];
+}
+network storage {
+address = "10.23.0.0/24";
+width = full;
+router [address = "10.23.0.1"];
+store [address = "10.23.0.40", description = "Data store"];
+backup [address = "10.23.0.41", description = "Backup"];
+}
+group storage_zone {
+description = "Storage zone";
+color = "#CCEEFF";
+store;
+backup;
+}
+}
+@endnwdiag

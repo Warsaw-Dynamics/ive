@@ -85,6 +85,7 @@ impl Processor<'_> {
                             | "@startyaml"
                             | "@startgantt"
                             | "@startsalt"
+                            | "@startnwdiag"
                     ))
             {
                 inside = true;
@@ -100,6 +101,7 @@ impl Processor<'_> {
                             | "@endyaml"
                             | "@endgantt"
                             | "@endsalt"
+                            | "@endnwdiag"
                     ))
             {
                 inside = false;

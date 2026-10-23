@@ -30,15 +30,17 @@ pub(super) enum Paint {
     Container,
     Ink,
     None,
+    Color(super::style::Color),
 }
 impl Paint {
-    pub fn value(self) -> &'static str {
+    pub fn value(self) -> String {
         match self {
-            Self::Paper => "#ffffff",
-            Self::Node => "#eef2ff",
-            Self::Container => "#f8fafc",
-            Self::Ink => "#334155",
-            Self::None => "none",
+            Self::Paper => "#ffffff".into(),
+            Self::Node => "#eef2ff".into(),
+            Self::Container => "#f8fafc".into(),
+            Self::Ink => "#334155".into(),
+            Self::None => "none".into(),
+            Self::Color(color) => color.svg(),
         }
     }
 }

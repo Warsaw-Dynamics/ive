@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-nwdiag",
+        source: include_str!("../../fixtures/plantuml/nwdiag.puml"),
+    },
+    Example {
         name: "plantuml-salt",
         source: include_str!("../../fixtures/plantuml/salt.puml"),
     },
@@ -141,6 +145,36 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_native_nwdiag_example_with_shared_router_and_three_buses() {
+        // given
+        let name = "plantuml-nwdiag";
+        // when
+        let source = super::source(name).unwrap();
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "nwdiag");
+        assert_eq!(
+            output.svg.matches("data-kind=\"nwdiag-network\"").count(),
+            3
+        );
+        assert_eq!(output.svg.matches("data-kind=\"nwdiag-server\"").count(), 5);
+        assert_eq!(
+            output
+                .svg
+                .matches("data-kind=\"nwdiag-membership\"")
+                .count(),
+            7
+        );
+        assert!(output.svg.contains("Storage zone"));
+    }
     #[test]
     fn should_find_native_salt_example_with_nested_controls_and_spans() {
         // given

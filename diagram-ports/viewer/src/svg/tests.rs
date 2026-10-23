@@ -2,6 +2,113 @@ use super::*;
 
 #[cfg(target_os = "linux")]
 #[test]
+fn should_contain_actual_native_nwdiag_labels_inside_servers_groups_and_canvas() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startnwdiag\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nnwdiag {{\nnetwork n {{\ndescription=\"Edge network\";\naddress=\"198.51.100.0/24\";\nr [description=\"**Router Ω café**\\nsecond row\",address=\"198.51.100.1\"];\ns [description=\"Store\"];\n}}\nnetwork core {{\nr [address=\"10.23.0.1\"];\n}}\ngroup g {{\ndescription=\"Storage zone\\nmeasured header\";\ns;\n}}\n}}\n@endnwdiag"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-nwdiag-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut painted = 0;
+        // then
+        for element in xml
+            .descendants()
+            .filter(|n| n.attribute("data-kind").is_some())
+        {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let enclosure = if matches!(
+                element.attribute("data-kind"),
+                Some("nwdiag-server" | "nwdiag-group")
+            ) {
+                group.children().iter().find_map(|n| match n {
+                    usvg::Node::Path(path) => Some(path.abs_bounding_box()),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    painted += 1;
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= -0.5
+                            && ink.top() >= -0.5
+                            && ink.right() <= tree.size().width() + 0.5
+                            && ink.bottom() <= tree.size().height() + 0.5,
+                        "{size}px canvas ink {ink:?}"
+                    );
+                    if let Some(bounds) = enclosure {
+                        assert!(
+                            ink.left() >= bounds.left() - 0.5
+                                && ink.right() <= bounds.right() + 0.5
+                                && ink.top() >= bounds.top() - 0.5
+                                && ink.bottom() <= bounds.bottom() + 0.5,
+                            "{size}px {} ink {ink:?} enclosure {bounds:?}",
+                            element.attribute("data-kind").unwrap()
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(painted, 10);
+        eprintln!(
+            "nwdiag {size}px actual native report: {:?}; paint runs={painted}",
+            output.measurement
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn should_contain_actual_native_salt_labels_inside_buttons_fields_and_canvas() {
     use crate::{
         native_text::{NativeText, NativeTextResources},
