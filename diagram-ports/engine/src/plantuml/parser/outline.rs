@@ -19,8 +19,18 @@ impl<T> Lexer<'_, T> {
         context::push(&mut self.tokens, (span.start, token, span.end), self.budget)
     }
 
-    pub fn copy(&mut self, value: &str) -> Result<String, ParseFailure> {
+    pub fn copy_label(&mut self, value: &str) -> Result<String, ParseFailure> {
         bound("label bytes", value.len(), 16 * 1024).map_err(ParseFailure::terminal)?;
+        self.copy_syntax(value)
+    }
+
+    pub fn copy_syntax(&mut self, value: &str) -> Result<String, ParseFailure> {
+        bound(
+            "outline syntax bytes",
+            value.len(),
+            self.budget.limits.source_bytes,
+        )
+        .map_err(ParseFailure::terminal)?;
         self.literals = self.literals.saturating_add(value.len());
         bound(
             "outline syntax literal bytes",
@@ -235,6 +245,58 @@ pub(in crate::plantuml) fn test_parse<T>(
 mod tests {
     use super::*;
     use crate::RenderOptions;
+    #[test]
+    fn should_copy_long_syntax_with_source_literal_and_work_admission() {
+        // given
+        let value = "a".repeat(16_385);
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.limits.source_bytes = value.len();
+        let mut lexer = Lexer::<()> {
+            tokens: Vec::new(),
+            budget: &mut budget,
+            literals: 0,
+        };
+        // when
+        let copied = lexer.copy_syntax(&value).unwrap();
+        // then
+        assert_eq!(copied, value);
+        assert_eq!(lexer.copy_syntax(&value).unwrap(), value);
+        assert!(
+            format!("{:?}", lexer.copy_syntax(&value).unwrap_err())
+                .contains("syntax literal bytes")
+        );
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.limits.source_bytes = value.len() - 1;
+        let mut lexer = Lexer::<()> {
+            tokens: Vec::new(),
+            budget: &mut budget,
+            literals: 0,
+        };
+        assert!(format!("{:?}", lexer.copy_syntax(&value).unwrap_err()).contains("syntax bytes"));
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.limits.layout_work = 4;
+        let mut lexer = Lexer::<()> {
+            tokens: Vec::new(),
+            budget: &mut budget,
+            literals: 0,
+        };
+        assert!(format!("{:?}", lexer.copy_syntax(&value).unwrap_err()).contains("work units"));
+        let mut budget = Budget::new(&RenderOptions::default());
+        budget.control.cancel_after_checkpoints(3);
+        let mut lexer = Lexer::<()> {
+            tokens: Vec::new(),
+            budget: &mut budget,
+            literals: 0,
+        };
+        assert!(matches!(
+            lexer.copy_syntax(&value),
+            Err(ParseFailure {
+                kind: super::super::error::FailureKind::Terminal(RenderError::Cancelled(_)),
+                ..
+            })
+        ));
+    }
+
     #[test]
     fn should_admit_actual_generated_stacks_and_arenas_before_allocation() {
         // given

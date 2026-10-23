@@ -37,6 +37,40 @@ fn should_use_independent_mindmap_side_stacks_and_stack_new_roots() {
 }
 
 #[test]
+fn should_keep_long_root_prefixes_and_aliases_distinct_from_display_labels() {
+    // given
+    let prefix = "*".repeat(16_385);
+    let alias = "a".repeat(16_385);
+    let cases = [
+        ("mindmap", format!("{prefix} Root")),
+        ("wbs", format!("{prefix} Root")),
+        ("wbs", format!("*({alias}) Root")),
+        ("wbs", format!("* \"Root\" as {alias}")),
+    ];
+    // when
+    let outputs = cases
+        .iter()
+        .map(|(family, body)| checked(family, body))
+        .collect::<Vec<_>>();
+    // then
+    for output in outputs {
+        assert!(output.contains("Root"));
+    }
+    let label = "x".repeat(16_385);
+    for (family, body) in [
+        ("mindmap", format!("* {label}")),
+        ("wbs", format!("* \"{label}\" as code")),
+    ] {
+        let source = format!("@start{family}\n{body}\n@end{family}");
+        let error = render(&source, &options()).unwrap_err();
+        assert!(
+            matches!(error, diagram_engine::RenderError::Backend(ref message) if message == "PlantUML label bytes value 16385 exceeds limit 16384"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
 fn should_normalize_mindmap_first_child_depth_without_guessing_visual_indent() {
     // given
     let body = "*** Root\n*** Child\n***** Grandchild\nleft side\n*** Left child";

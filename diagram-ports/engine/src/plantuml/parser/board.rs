@@ -71,7 +71,7 @@ fn row_tokens(row: &Row, base: usize, lexer: &mut Lexer<'_, Token>) -> Result<()
         stage += 1;
     }
     let name = text[stage..].trim_start();
-    let value = lexer.copy(name)?;
+    let value = lexer.copy_label(name)?;
     lexer.push(
         Token::Label(value),
         row.span(base, start + text.len() - name.len()..start + text.len()),

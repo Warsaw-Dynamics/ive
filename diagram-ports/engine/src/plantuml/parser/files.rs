@@ -58,7 +58,7 @@ fn row_tokens(
             *note = false;
             lexer.push(Token::EndNote, row.span(base, 0..raw.len()))?;
         } else {
-            let value = lexer.copy(raw)?;
+            let value = lexer.copy_label(raw)?;
             return lexer.push(Token::Raw(value), row.span(base, 0..raw.len()));
         }
     } else if raw.trim().is_empty() {
@@ -99,7 +99,7 @@ fn path_tokens(row: &Row, base: usize, lexer: &mut Lexer<'_, Token>) -> Result<(
             .map_err(ParseFailure::terminal)?;
         if ch == '/' {
             if index > start {
-                let value = lexer.copy(&raw[start..index])?;
+                let value = lexer.copy_label(&raw[start..index])?;
                 lexer.push(Token::Component(value), row.span(base, start..index))?;
             }
             lexer.push(Token::Slash, row.span(base, index..index + 1))?;
@@ -107,7 +107,7 @@ fn path_tokens(row: &Row, base: usize, lexer: &mut Lexer<'_, Token>) -> Result<(
         }
     }
     if start < raw.len() {
-        let value = lexer.copy(&raw[start..])?;
+        let value = lexer.copy_label(&raw[start..])?;
         lexer.push(Token::Component(value), row.span(base, start..raw.len()))?;
     }
     Ok(())

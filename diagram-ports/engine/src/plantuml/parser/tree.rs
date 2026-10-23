@@ -216,7 +216,7 @@ fn prefix(
             "tree command or crosslink",
         ));
     }
-    let value = lexer.copy(&raw[..end])?;
+    let value = lexer.copy_syntax(&raw[..end])?;
     lexer.push(Token::Prefix(value), row.span(base, 0..end))?;
     Ok(end)
 }
@@ -230,7 +230,7 @@ fn tail(
     let raw = row.text.as_str();
     if matches!(family, Family::Mindmap) {
         if cursor == 1 && raw.starts_with('0') {
-            let value = lexer.copy(raw[cursor..].trim_start())?;
+            let value = lexer.copy_label(raw[cursor..].trim_start())?;
             return lexer.push(Token::Label(value), row.span(base, cursor..raw.len()));
         }
         if raw[cursor..].starts_with('[') {
@@ -249,7 +249,7 @@ fn tail(
                 "mindmap multiline command variant",
             ));
         }
-        let value = lexer.copy(raw[cursor..].trim_start())?;
+        let value = lexer.copy_label(raw[cursor..].trim_start())?;
         return lexer.push(Token::Label(value), row.span(base, cursor..raw.len()));
     }
     while let Some(ch) = raw[cursor..]
@@ -269,7 +269,7 @@ fn tail(
         lexer.push(Token::Open, row.span(base, cursor..cursor + 1))?;
         cursor += 1;
         let count = scan(&raw[cursor..], ')', lexer.budget)?;
-        let value = lexer.copy(&raw[cursor..cursor + count])?;
+        let value = lexer.copy_syntax(&raw[cursor..cursor + count])?;
         lexer.push(Token::Alias(value), row.span(base, cursor..cursor + count))?;
         cursor += count;
         if raw[cursor..].starts_with(')') {
@@ -297,7 +297,7 @@ fn tail(
     let label = &raw[cursor..];
     if let Some(quoted) = label.strip_prefix('"') {
         if let Some((display, code)) = quoted.rsplit_once("\" as ") {
-            let value = lexer.copy(display)?;
+            let value = lexer.copy_label(display)?;
             lexer.push(
                 Token::Quoted(value),
                 row.span(base, cursor..cursor + display.len() + 2),
@@ -306,17 +306,17 @@ fn tail(
                 Token::As,
                 row.span(base, cursor + display.len() + 2..cursor + display.len() + 6),
             )?;
-            let value = lexer.copy(code)?;
+            let value = lexer.copy_syntax(code)?;
             lexer.push(
                 Token::Alias(value),
                 row.span(base, raw.len() - code.len()..raw.len()),
             )?;
             return Ok(());
         }
-        let value = lexer.copy(quoted)?;
+        let value = lexer.copy_label(quoted)?;
         return lexer.push(Token::Quoted(value), row.span(base, cursor..raw.len()));
     }
-    let value = lexer.copy(label)?;
+    let value = lexer.copy_label(label)?;
     lexer.push(Token::Label(value), row.span(base, cursor..raw.len()))
 }
 fn scan(text: &str, delimiter: char, budget: &mut Budget) -> Result<usize, ParseFailure> {
@@ -340,6 +340,83 @@ mod tests {
             tree::{Parent, Side},
         },
     };
+    #[test]
+    fn should_preserve_long_normalized_root_prefixes() {
+        for wrapper in ["mindmap", "wbs"] {
+            // given
+            let mut budget = Budget::new(&RenderOptions::default());
+            let source = format!(
+                "@start{wrapper}\n{} Root\n@end{wrapper}",
+                "*".repeat(16_385)
+            );
+            let document = preprocess::prepare(&source, &mut budget).unwrap();
+            let mut prepared = parser::document::parse(&document, &mut budget).unwrap();
+            parser::preamble::parse(&mut prepared, &mut budget).unwrap();
+            // when
+            let nodes = if wrapper == "mindmap" {
+                parse_mindmap(prepared.body, &mut budget).unwrap().nodes
+            } else {
+                parse_wbs(prepared.body, &mut budget).unwrap().nodes
+            };
+            // then
+            assert_eq!(nodes.len(), 1);
+            assert_eq!(nodes[0].depth, 0);
+            assert_eq!(nodes[0].parent, Parent::Root);
+            assert_eq!(nodes[0].label, "Root");
+        }
+    }
+
+    #[test]
+    fn should_preserve_long_parenthesized_and_quoted_label_aliases() {
+        // given
+        let alias = "a".repeat(16_385);
+        // when
+        let results = [format!("*({alias}) Root"), format!("* \"Root\" as {alias}")].map(|row| {
+            let mut budget = Budget::new(&RenderOptions::default());
+            let source = format!("@startwbs\n{row}\n@endwbs");
+            let document = preprocess::prepare(&source, &mut budget).unwrap();
+            let mut prepared = parser::document::parse(&document, &mut budget).unwrap();
+            parser::preamble::parse(&mut prepared, &mut budget).unwrap();
+            parse_wbs(prepared.body, &mut budget).map(|model| model.nodes)
+        });
+        // then
+        assert!(results.iter().all(Result::is_ok), "{results:?}");
+        for nodes in results {
+            let nodes = nodes.unwrap();
+            assert_eq!(nodes[0].alias, alias);
+            assert_eq!(nodes[0].label, "Root");
+            assert_eq!(nodes[0].parent, Parent::Root);
+        }
+    }
+
+    #[test]
+    fn should_keep_oversized_display_labels_rejected() {
+        let label = "x".repeat(16_385);
+        for (wrapper, row) in [
+            ("mindmap", format!("* {label}")),
+            ("wbs", format!("* {label}")),
+            ("wbs", format!("* \"{label}\" as code")),
+        ] {
+            // given
+            let mut budget = Budget::new(&RenderOptions::default());
+            let source = format!("@start{wrapper}\n{row}\n@end{wrapper}");
+            let document = preprocess::prepare(&source, &mut budget).unwrap();
+            let mut prepared = parser::document::parse(&document, &mut budget).unwrap();
+            parser::preamble::parse(&mut prepared, &mut budget).unwrap();
+            // when
+            let error = if wrapper == "mindmap" {
+                parse_mindmap(prepared.body, &mut budget).err().unwrap()
+            } else {
+                parse_wbs(prepared.body, &mut budget).err().unwrap()
+            };
+            // then
+            assert!(
+                matches!(error, RenderError::Backend(ref message) if message == "PlantUML label bytes value 16385 exceeds limit 16384"),
+                "{error}"
+            );
+        }
+    }
+
     #[test]
     fn should_generate_independent_mindmap_sides() {
         // given
