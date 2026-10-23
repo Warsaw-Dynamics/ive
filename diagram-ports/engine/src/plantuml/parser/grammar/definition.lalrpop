@@ -18,5 +18,6 @@ extern {
         "gap" => Token::Gap,
         "name" => Token::Name(<&'s str>),
         "literal" => Token::Literal(<&'s str>),
+        "punctuation" => Token::Punctuation(<char>),
     }
 }

@@ -8,6 +8,7 @@ PlantUML parser migration currently replaces supported same-line literal `!defin
 CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- generate
 CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- check
 python3 tools/audit-plantuml-generator.py check
+python3 -B tools/audit-plantuml-generator.test.py
 node tools/parser-baseline.mjs check
 ```
 

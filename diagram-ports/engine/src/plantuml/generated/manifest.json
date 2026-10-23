@@ -13,9 +13,9 @@
   "grammars": [
     {
       "generated": "engine/src/plantuml/generated/definition.rs",
-      "generatedSha256": "75a318633db530274e2ed5f9bbda3375e5576ba8c16c0e2eb159f95bf31f4dad",
+      "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
       "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
-      "grammarSha256": "195ce557452cd076a1233959a840fbe8b385ef6463fed2f8224b14cc1b3a48d5"
+      "grammarSha256": "0983da93c3f2a0d4920102036e4409abcf8078b0c9f4faf26e9808e7f54fb675"
     }
   ],
   "schema": 1

@@ -37,6 +37,38 @@ fn should_keep_quotes_and_mutual_looking_values_literal() {
 }
 
 #[test]
+fn should_preserve_leading_carriage_return_definition_indentation() {
+    // given
+    for indentation in [" ", "\r", "\r\t\u{2003}"] {
+        let source =
+            format!("@startuml\n{indentation}!define WHO World\nAlice -> Bob : WHO\n@enduml\n");
+        // when
+        let text = labels(&source);
+        // then
+        assert!(text.contains(&"World".into()), "{indentation:?}: {text:?}");
+    }
+}
+
+#[test]
+fn should_reject_malformed_definition_headers_without_registering_partial_values() {
+    // given
+    for declaration in [
+        "!define !define WHO World",
+        "!define WHO!define World",
+        "!define WHO(value) World",
+    ] {
+        let source = format!("@startuml\n{declaration}\nAlice -> Bob : WHO\n@enduml\n");
+        // when
+        let result = render(&source, &options());
+        // then
+        assert!(
+            result.is_err(),
+            "{declaration:?} registered a partial definition"
+        );
+    }
+}
+
+#[test]
 fn should_expand_case_sensitive_boundaries_inside_quotes_and_after_backslash_n() {
     // given
     let source = "@startuml\n!define X Ready\nparticipant \"X\" as A\nA -> B : X X1 aX X_a x (X)\\nX\n@enduml";

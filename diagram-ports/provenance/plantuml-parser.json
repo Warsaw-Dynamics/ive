@@ -17,5 +17,7 @@
   "generator": "tools/plantuml-grammar-gen/Cargo.toml",
   "generationInventory": "engine/src/plantuml/generated/manifest.json",
   "developmentClosure": "provenance/plantuml-generator-dependencies.json",
-  "developmentNotices": "provenance/LICENSE-PlantUML-Generator-Dependencies.md"
+  "developmentNotices": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+  "supplementaryDevelopmentNotices": "provenance/LICENSE-PlantUML-Generator-Supplement.md",
+  "developmentNoticeCoverage": "provenance/plantuml-generator-notice-coverage.json"
 }

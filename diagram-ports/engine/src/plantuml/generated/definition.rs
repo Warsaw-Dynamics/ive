@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.23.2"
-// sha3: 4c729f5bc76c740531ac2a53c2a52cd9946339227bae2264420dc10993942d12
+// sha3: 9c679017f32ef6b9667dbc9013b68c614579348a1e4cd2493d16bf112dd498de
 // features: 
 use crate::plantuml::parser::{context::Context, definition::DefinitionSyntax, error::ParseFailure, token::Token};
 #[allow(unused_extern_crates)]
@@ -26,27 +26,28 @@ mod __parse__Definition {
      {
         Variant0(Token<'s>),
         Variant1(&'s str),
-        Variant2(usize),
-        Variant3(DefinitionSyntax<'s>),
+        Variant2(char),
+        Variant3(usize),
+        Variant4(DefinitionSyntax<'s>),
     }
     const __ACTION: &[i8] = &[
         // State 0
-        3, 0, 0, 0,
+        3, 0, 0, 0, 0,
         // State 1
-        0, 0, 0, 0,
+        0, 0, 0, 0, 0,
         // State 2
-        0, 4, 0, 0,
+        0, 4, 0, 0, 0,
         // State 3
-        0, 0, 5, 0,
+        0, 0, 5, 0, 0,
         // State 4
-        0, 6, 0, 0,
+        0, 6, 0, 0, 0,
         // State 5
-        0, 0, 0, 7,
+        0, 0, 0, 7, 0,
         // State 6
-        0, 0, 0, 0,
+        0, 0, 0, 0, 0,
     ];
     fn __action(state: i8, integer: usize) -> i8 {
-        __ACTION[(state as usize) * 4 + integer]
+        __ACTION[(state as usize) * 5 + integer]
     }
     const __EOF_ACTION: &[i8] = &[
         // State 0
@@ -76,6 +77,7 @@ mod __parse__Definition {
         r###""gap""###,
         r###""name""###,
         r###""literal""###,
+        r###""punctuation""###,
     ];
     fn __expected_tokens(__state: i8) -> alloc::vec::Vec<alloc::string::String> {
         __TERMINAL.iter().enumerate().filter_map(|(index, terminal)| {
@@ -148,7 +150,7 @@ mod __parse__Definition {
 
         #[inline]
         fn error_action(&self, state: i8) -> i8 {
-            __action(state, 4 - 1)
+            __action(state, 5 - 1)
         }
 
         #[inline]
@@ -220,6 +222,7 @@ mod __parse__Definition {
             Token::Gap if true => Some(1),
             Token::Name(_) if true => Some(2),
             Token::Literal(_) if true => Some(3),
+            Token::Punctuation(_) if true => Some(4),
             _ => None,
         }
     }
@@ -235,6 +238,10 @@ mod __parse__Definition {
             0 | 1 => __Symbol::Variant0(__token),
             2 | 3 => match __token {
                 Token::Name(__tok0) | Token::Literal(__tok0) if true => __Symbol::Variant1(__tok0),
+                _ => unreachable!(),
+            },
+            4 => match __token {
+                Token::Punctuation(__tok0) if true => __Symbol::Variant2(__tok0),
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -377,12 +384,12 @@ mod __parse__Definition {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
-                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
+                __symbols.push((__start, __Symbol::Variant4(__nt), __end));
                 (5, 2)
             }
             3 => {
                 // __Definition = Definition => ActionFn(0);
-                let __sym0 = __pop_Variant3(__symbols);
+                let __sym0 = __pop_Variant4(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action0::<>(context, __sym0);
@@ -401,14 +408,14 @@ mod __parse__Definition {
     fn __symbol_type_mismatch() -> ! {
         panic!("symbol type mismatch")
     }
-    fn __pop_Variant3<
+    fn __pop_Variant4<
       's,
     >(
         __symbols: &mut alloc::vec::Vec<(usize,__Symbol<'s>,usize)>
     ) -> (usize, DefinitionSyntax<'s>, usize)
      {
         match __symbols.pop() {
-            Some((__l, __Symbol::Variant3(__v), __r)) => (__l, __v, __r),
+            Some((__l, __Symbol::Variant4(__v), __r)) => (__l, __v, __r),
             _ => __symbol_type_mismatch()
         }
     }
@@ -427,10 +434,21 @@ mod __parse__Definition {
       's,
     >(
         __symbols: &mut alloc::vec::Vec<(usize,__Symbol<'s>,usize)>
-    ) -> (usize, usize, usize)
+    ) -> (usize, char, usize)
      {
         match __symbols.pop() {
             Some((__l, __Symbol::Variant2(__v), __r)) => (__l, __v, __r),
+            _ => __symbol_type_mismatch()
+        }
+    }
+    fn __pop_Variant3<
+      's,
+    >(
+        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<'s>,usize)>
+    ) -> (usize, usize, usize)
+     {
+        match __symbols.pop() {
+            Some((__l, __Symbol::Variant3(__v), __r)) => (__l, __v, __r),
             _ => __symbol_type_mismatch()
         }
     }
@@ -458,7 +476,7 @@ mod __parse__Definition {
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
         let __nt = super::__action3::<>(context, &__start, &__end);
-        __symbols.push((__start, __Symbol::Variant2(__nt), __end));
+        __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 0)
     }
     fn __reduce1<
@@ -474,7 +492,7 @@ mod __parse__Definition {
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
         let __nt = super::__action2::<>(context, &__start, &__end);
-        __symbols.push((__start, __Symbol::Variant2(__nt), __end));
+        __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 1)
     }
 }

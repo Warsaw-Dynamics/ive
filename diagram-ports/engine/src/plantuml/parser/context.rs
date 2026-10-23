@@ -65,7 +65,6 @@ impl Context<'_> {
 }
 
 pub(super) struct Admission {
-    pub tokens: usize,
     pub shifts: usize,
     pub reductions: usize,
     pub stack_slots: usize,
@@ -74,18 +73,20 @@ pub(super) struct Admission {
 }
 
 pub(super) const DEFINITION_ADMISSION: Admission = Admission {
-    tokens: 5,
     shifts: 5,
     reductions: 2,
     stack_slots: 16,
-    // Four expected terminals; simulated lookahead copies at most six states.
-    diagnostic_slots: 6 + 4 + 4,
-    diagnostic_work: 4 * (6 + 2),
+    // Five expected terminals; simulated lookahead copies at most six states.
+    diagnostic_slots: 6 + 8 + 5,
+    diagnostic_work: 5 * (6 + 2),
 };
 
 impl Admission {
-    pub fn admit(&self, count: usize, budget: &mut Budget) -> Result<(), crate::RenderError> {
-        bound("definition parser tokens", count, self.tokens)?;
+    pub fn admit(
+        &self,
+        token_capacity: usize,
+        budget: &mut Budget,
+    ) -> Result<(), crate::RenderError> {
         bound(
             "definition parser stack slots",
             self.stack_slots + self.diagnostic_slots,
@@ -93,15 +94,16 @@ impl Admission {
         )?;
         // The fixed generated symbol enum is no larger than the sum of its
         // syntax/token payloads plus a tag. Include triples, state copies,
-        // expected strings and the separately retained five-token buffer.
+        // expected strings and the actual separately retained token capacity.
         let symbol_bytes = std::mem::size_of::<DefinitionSyntax<'_>>()
             + std::mem::size_of::<super::token::Token<'_>>()
             + 3 * std::mem::size_of::<usize>();
         let retained_bytes = 8 * symbol_bytes
             + 8
             + 6
-            + 4 * (std::mem::size_of::<String>() + 16)
-            + 5 * std::mem::size_of::<super::token::Spanned<'_>>();
+            + 8 * std::mem::size_of::<String>()
+            + 5 * 16
+            + token_capacity * std::mem::size_of::<super::token::Spanned<'_>>();
         bound(
             "definition parser retained bytes",
             retained_bytes,

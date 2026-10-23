@@ -38,7 +38,7 @@ pub(in crate::plantuml) fn parse_definition<'s>(
     let tokens = lex(view, budget).map_err(|error| error.into_authored(authored))?;
     // Actual generated table: five shifts, two EOF reductions, no recovery.
     // Include runtime vector growth, fixed allocation and expected-token simulation.
-    super::context::DEFINITION_ADMISSION.admit(tokens.len(), budget)?;
+    super::context::DEFINITION_ADMISSION.admit(tokens.capacity(), budget)?;
     let iterator = CheckedTokens::new(tokens, budget.control.clone());
     let mut context = Context { budget, authored };
     super::generated_definition::DefinitionParser::new()
@@ -61,6 +61,12 @@ fn failure(
             view.byte_base + view.text.len()..view.byte_base + view.text.len(),
             "definition requires a same-line nonempty literal",
         ),
+        ParseError::UnrecognizedToken {
+            token: (start, super::token::Token::Punctuation('('), end),
+            expected,
+        } if expected.iter().any(|token| token == "\"gap\"") => {
+            ParseFailure::unsupported(start..end, "parameterized definition")
+        }
         ParseError::UnrecognizedToken {
             token: (start, _, end),
             ..
@@ -113,6 +119,49 @@ mod tests {
                 column: 13
             }
         );
+    }
+
+    #[test]
+    fn should_let_generated_syntax_reject_malformed_header_structure() {
+        // given
+        use super::super::{
+            SourceView,
+            context::Context,
+            token::{CheckedTokens, lex},
+        };
+        for raw in [
+            "!defineWHO World",
+            "!define !define WHO World",
+            "WHO !define World",
+            "!define WHO!define World",
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            let tokens = lex(
+                SourceView {
+                    text: raw,
+                    byte_base: 0,
+                },
+                &mut budget,
+            )
+            .unwrap();
+            super::super::context::DEFINITION_ADMISSION
+                .admit(tokens.capacity(), &mut budget)
+                .unwrap();
+            let iterator = CheckedTokens::new(tokens, budget.control.clone());
+            let mut context = Context {
+                budget: &mut budget,
+                authored: span(raw),
+            };
+            // when
+            let error = super::super::generated_definition::DefinitionParser::new()
+                .parse(&mut context, iterator)
+                .unwrap_err();
+            // then
+            assert!(
+                matches!(error, lalrpop_util::ParseError::UnrecognizedToken { .. }),
+                "{raw:?}: {error:?}"
+            );
+        }
     }
 
     #[test]
@@ -339,7 +388,7 @@ mod tests {
         )
         .unwrap();
         super::super::context::DEFINITION_ADMISSION
-            .admit(tokens.len(), &mut budget)
+            .admit(tokens.capacity(), &mut budget)
             .unwrap();
         budget.control.cancel_after_checkpoints(2);
         let iterator = CheckedTokens::new(tokens, budget.control.clone());
@@ -383,7 +432,7 @@ mod tests {
             )
             .unwrap();
             super::super::context::DEFINITION_ADMISSION
-                .admit(tokens.len(), &mut budget)
+                .admit(tokens.capacity(), &mut budget)
                 .unwrap();
             budget
                 .control
