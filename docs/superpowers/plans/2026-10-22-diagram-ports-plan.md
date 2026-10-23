@@ -12,7 +12,11 @@
 
 ## Owner-directed parser amendment — 2026-10-23
 
-The owner explicitly requires LALRPOP for PlantUML and rewriting the current ad-hoc parsers. Execute `docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md`, designed in `docs/superpowers/specs/2026-10-23-plantuml-lalrpop-design.md`, before remaining PlantUML-family breadth. Preserve already verified models/layouts/viewer and all safety/source constraints; historical parser implementation choices below do not override this direction. The canonical orchestration checklist is `/mnt/data/Projects/ive/progress.md`.
+The owner explicitly requires LALRPOP for PlantUML and rewriting the current ad-hoc parsers. The migration in `docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md` is complete: 29 checked-in generated grammars route current structural syntax, with no legacy structural fallback. Preserve already verified models/layouts/viewer and all safety/source constraints; historical parser implementation choices below do not override this direction. The canonical orchestration checklist is [progress.md](../../../progress.md) in the separate `diagram-ports` worktree.
+
+## Final standalone checkpoint — 2026-10-23
+
+The defined standalone viewer and native corpus are implemented at product checkpoint `3478bbd`. The final gates, 95-source original/native comparison, 72 Linux viewer captures, bounded compatibility matrix and two scoped independent final reviews are recorded in [COVERAGE.md](../../../diagram-ports/COVERAGE.md), the [durable evidence index](../../../diagram-ports/evidence/README.md) and [progress.md](../../../progress.md). Neither review found a concrete Blocker or Important issue. The task checkboxes below describe the original work plan and are retained as historical instructions, not an unexecuted queue. Full upstream syntax/pixel parity and IVE Markdown integration remain outside this standalone checkpoint.
 
 ## Global Constraints
 

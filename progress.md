@@ -6,26 +6,26 @@ This is the visible master checklist for further work. The controller updates it
 
 ## Current status
 
-- Execution resumed at the owner's request. Current method: implement a grammar stage, run focused tests, fix failures, and repeat. Broad independent review is deferred until the assembled port is ready. The handoff remains a record of the previous checkpoint.
+- The owner's implement → focused tests → fix/repeat loop has finished for the defined standalone port. Two scoped independent final reviews are complete; neither found a concrete Blocker or Important product/evidence issue.
 
 - Mermaid and the standalone native pgui viewer are implemented and independently reviewed.
 - Native PlantUML checkpoints through timing, Gantt, Salt, nwdiag and files/packetdiag/board/HCL are independently approved.
 - Owner required LALRPOP to replace current PlantUML ad-hoc parsers. All17 migration stages are now integrated, with current structural syntax routed through generated parsers and obsolete line adapters removed.
-- Chen/ArchiMate and the lexical prerequisite are implemented. Broad review follows the remaining port work.
-- Full Mermaid/PlantUML compatibility is **not complete**. All planned native family increments and the narrow state admission correction are integrated; durable final evidence/coverage and whole-branch review remain.
-- Current estimate (2026-10-23 evening): the defined standalone port could reach final handoff within several hours to one working day if the final review finds no blocker. This is an estimate, not a claim of complete upstream syntax or pixel parity.
+- Chen/ArchiMate and the lexical prerequisite are implemented and included in final validation.
+- Full Mermaid/PlantUML compatibility is **not complete**. All planned native family increments and the narrow state admission correction are integrated; final verification and scoped independent review passed. Evidence archive closeout and handoff are in progress.
+- Delivery estimate: the defined standalone port is implemented and tested now; local handoff follows the final archive/tracker check in this session. Complete upstream syntax or pixel parity is not claimed.
 - Main IVE product code is unchanged. Work is isolated in a separate Rust workspace/worktree; IVE markdown integration is a later project.
 
 | Item | Current value |
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `3478bbd` — advanced state, bounded COVERAGE/README and durable historical evidence archive joined the native families/tooling; narrow state admission correction integrated. Fresh full core/audit and final95-source corpus pass; durable current evidence/coverage completion and final review pending |
-| Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Final COVERAGE/README and durable current evidence in isolated worktrees; chronological Rulings draft; whole-branch review next |
+| Latest integrated product checkpoint | `3478bbd` — all planned native families, generated PlantUML parsers and narrow state admission correction. Fresh full gates, final95-source corpus,72-frame gallery and scoped independent reviews pass; later commits add docs/evidence only. |
+| Final product review | At `ffd44a5`, independent product/parser/viewer review found no concrete Blocker or Important issue; evidence/provenance review likewise found none. Reports are being archived. |
+| Current implementers | Final chronological Rulings/review archive closeout in an isolated worktree; controller owns this tracker and local handoff. |
 | Architecture preparation | Complete; historical builder-check artifact is a 23-byte placeholder, explicitly labeled in the durable archive |
-| Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate final coverage/current evidence and Rulings handoff, then whole-branch independent review and fix any concrete finding |
+| Pending reviews | None for the defined standalone handoff; two final scoped reviews completed with no Important/Blocker finding. Their scope does not establish full upstream parity. |
+| Next implementation | Complete archive/tracker closeout, then hand off the local worktree and explicit coverage limits. IVE Markdown integration and upstream parity remain later work. |
 | Last complete controller gate | At final family head `3478bbd`:858 ordinary workspace Rust tests+seven actual worker faults, required all-targets859+seven, strict Clippy/fmt/release/cargo deny, generator tests/strict/fmt/deny,75 full tooling Node tests,29 reproducible parsers,293 MIT/58 fixture/58 native module/67 dependency/656 Merman audits and unchanged43 baseline all pass. Release viewer SHA `0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d`. |
 | PlantUML provenance inventory | Current root audit passes293 selected MIT source/JAR matches,58 fixtures,58 native modules; older220/43/43 count belongs to the migration checkpoint |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -252,9 +252,9 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 7 | 3P directional flow — INTEGRATED8ebb34e | Combined828 Rust+seven worker faults,30 Node, strict/generator/source/closure,28 parsers and unchanged43 baseline pass; native Flow/cursor3/3 zero-fallback captures and empty-PATH exports pass |
 | 8 | 3Q standalone Creole — INTEGRATED465b9c8; PAINT FIXeb4c5b7 | Combined595 focused Rust+13 viewer+30 Node, strict/generator/source/closure,29 parsers and unchanged43 baseline pass. Real capture exposed serif measurement/paint mismatch; scoped correction passed568 focused+three actual glyph tests+30 Node/strict/source audits. Root release recapture native7/zero fallback and empty-PATH SVG passes, styled runs visibly separated |
 | 9 | 3B2 advanced state — INTEGRATED95908d1; FIX3478bbd | Combined717 focused Rust+14 viewer+75 Node, strict/generator29/closure67/source293/58/58/Merman656 and frozen43 baseline pass. Root inspected concurrent/history/pseudostate native9/zero-fallback capture. Unquoted `state history*` admission fixed with focused RED/GREEN while quoted identity/stereotype stay positive; full final gates and95-source corpus pass |
-| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import/fresh-oracle/native corpus driver/deadline fix, bounded COVERAGE/README and 114-payload historical archive integrated. Fresh full core/audit/all-targets and95-source original/native/repeat corpus pass; final72-frame gallery and two visible error captures pass. Durable current evidence and COVERAGE refresh, chronological Rulings, whole-branch independent review and handoff remain |
+| 10 | 4B final evidence/tooling/docs — CLOSEOUT | Authenticated import/fresh-oracle/native corpus driver/deadline fix, bounded COVERAGE/README,114-payload historical archive and17-payload current addendum integrated. Full gates,95-source corpus,72-frame gallery and two visible error captures pass. Two scoped independent final reviews found no Important/Blocker. Chronological Rulings/review archive and local handoff are closing. |
 
-Existing inventory briefs/source-semantic research are prepared and read; the parser migration is complete. Do not restart completed source research or redispatch prior model/render work. New family briefs require LALRPOP and current generated interfaces; broad review is deferred to the end.
+Existing inventory briefs/source-semantic research are prepared and read; the parser migration and planned standalone implementation are complete. Do not restart completed source research or redispatch prior model/render work. New family work requires LALRPOP and current generated interfaces.
 
 ## Known review follow-ups
 
@@ -262,25 +262,25 @@ Existing inventory briefs/source-semantic research are prepared and read; the pa
 - [x] Gantt: reject an unterminated block comment attached after `@endgantt`. Generated document cutover92c9520 resolves it with all-wrapper EOF and closed-comment controls; independently reviewed.
 - [x] Nwdiag: title-with-spaces/tab contextual server names corrected in Task14 generated parser; genuine late chrome still rejects.
 - [x] Chen: entity/relationship alias endpoints and spaced/compact composite attributes corrected in Task6 generated parser with exact scoped ownership tests.
-- [ ] Triage existing coarse source columns, YAML nested-flow line1/missing-close diagnostics and large parser/layout units without unrelated rewrites.
-- [ ] Record inherited vendored Atomic deprecation; do not silently alter the audited vendor baseline just to hide it.
+- [x] Triage existing coarse source columns, YAML nested-flow line1/missing-close diagnostics and large parser/layout units without unrelated rewrites; record them as residuals in COVERAGE.
+- [x] Record inherited vendored Atomic deprecation in COVERAGE; preserve the audited vendor baseline.
 - [x] Migration Task17: baseline driver now reports actual exporter defaults, with a drift contract; immutable43 outputs remain unchanged.
 - [x] Migration Task17: generator takes an explicit validated root; same-binary two-checkout/wrong-root regressions pass.
-- [ ] Final validation-noise triage: development test-support exposes a second inherited Merman Atomic deprecation. Preserve vendor audit policy. Review: `/tmp/ive-plantuml-lalrpop-core-review.md`.
-- [ ] Final verification evidence: retain the Task4 500ms action-test timing sensitivity (one concurrent-build failure, serial controls/full workspace pass). Keep its assertion/deadline unchanged and record verification workload ordering.
+- [x] Record development test-support's second inherited Merman Atomic deprecation in COVERAGE and preserve vendor audit policy. Review: `/tmp/ive-plantuml-lalrpop-core-review.md`.
+- [x] Record Task4's 500ms action-test load sensitivity, concurrent-build failure and serial passing controls/full workspace in COVERAGE; preserve its assertion/deadline.
 
 ## Final evidence, audits and handoff still required
 
-- [ ] Build a fresh coherent original/native corpus with source/SVG hashes, tool versions, configs, labels/topology/geometry and honest nondeterminism. Do not reuse the historically overwritten oracle manifest as final proof.
-- [ ] Fix developer oracle output-directory handling so explicit fresh output paths are respected and existing artifacts remain untouched.
-- [ ] Harden Merman import initialization to compare extracted files with authenticated archive members before recording a baseline; add mismatch/tamper tests without regenerating/loosening existing hashes.
-- [ ] Produce durable `COVERAGE.md` and structured corpus results distinguishing syntax admission, semantics, geometry and actual pixel comparisons.
-- [ ] Update README, analyses, survey, parent/native plan state and source/license notices to final reality, including the rejected candidate and all deliberate deviations.
-- [ ] Archive completed implementation reports/final verdicts and update this file's links before deleting only controller-owned ignored SDD files; preserve this master checklist.
-- [ ] Fresh final tests, Clippy/fmt/release, license/feature/source audits, headless empty-PATH exports, negative cases, both-language native captures and no surviving test processes.
-- [ ] Fresh most-capable whole-branch review; one scoped fix wave/re-review and explicit adjudication of remaining findings.
+- [x] Build a fresh coherent original/native corpus with source/SVG hashes, tool versions, configs, selected labels/topology/geometry and honest nondeterminism. Do not reuse the historically overwritten oracle manifest as final proof.
+- [x] Fix developer oracle output-directory handling so explicit fresh output paths are respected and existing artifacts remain untouched.
+- [x] Harden Merman import initialization to compare extracted files with authenticated archive members before recording a baseline; add mismatch/tamper tests without regenerating/loosening existing hashes.
+- [x] Produce durable `COVERAGE.md` and structured corpus results distinguishing syntax admission, semantics, geometry and actual pixel comparisons.
+- [x] Update README, analyses, survey, parent/native plan state and source/license notices to final standalone reality, including the rejected candidate and deliberate deviations. Historical plan task boxes remain as original instructions; the final checkpoint is linked from the plan.
+- [ ] Archive final independent review reports and chronological rulings; update this file's links. Preserve the master checklist and durable SDD evidence.
+- [x] Fresh final tests, Clippy/fmt/release, license/feature/source audits, headless empty-PATH exports, negative cases, both-language native captures and no surviving test processes.
+- [x] Fresh scoped independent whole-branch product and evidence reviews found no concrete Blocker or Important issue; no fix wave was required. Scope limits are recorded in the reports.
 - [ ] Keep local branch/worktree/commits; no unrequested merge/push/publication. Read finishing workflow and provide launch/coverage/evidence handoff.
-- [ ] Preserve all recorded controller rulings (currently twelve: ten parent, one parallel acceleration, one review deferral), chronologically with cost-if-wrong, in final handoff.
+- [ ] Preserve all recorded controller rulings (twelve: ten parent, one parallel acceleration, one review deferral), chronologically with cost-if-wrong, in final handoff archive.
 
 ## Compatibility work not completed by family admission
 

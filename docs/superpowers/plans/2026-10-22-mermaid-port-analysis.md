@@ -2,6 +2,8 @@
 
 Date: 2026-10-22. Research and design only; no engine implementation is included here.
 
+Final project status (2026-10-23): the selected native Mermaid baseline is Merman 0.9.2 with four audited patches, 37 admitted variants and explicit residuals in [COVERAGE.md](../../../diagram-ports/COVERAGE.md). This analysis remains a historical reference rather than a claim of full 12.2 parity.
+
 This document covers handoff items 1–6. The companion combined plan owns the full existing-Rust survey and runtime-alternative comparison. The owner's subsequent direction is to try a full port, Mermaid first and PlantUML second, in a separate Rust project with a standalone pgui viewer first. Other dependencies are allowed subject to the licence policy. The small profiles below are intermediate verification milestones, not a replacement for that full-port objective. Existing native work, especially Merman, should be evaluated before writing another implementation.
 
 ## Evidence and size conventions

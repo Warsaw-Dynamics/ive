@@ -7,6 +7,8 @@ licensed dependencies are allowed after provenance and licence review. Keep the 
 GPUI-independent; put pgui font/drawing integration at the viewer boundary. Initial syntax slices are milestones,
 not a reduction of the full-port objective. This document changes no product code.
 
+Final project status (2026-10-23): the standalone backend translated authorized MIT 1.2026.9 material, with 29 checked-in LALRPOP grammars, 58 PlantUML fixtures and bounded native family subsets. The candidate `puml` was rejected on source-lineage grounds. See [COVERAGE.md](../../../diagram-ports/COVERAGE.md) for actual behavior, verification and residuals; this earlier analysis is historical.
+
 All PlantUML inspection was confined to `/mnt/data/Projects/plantuml-mit/src`. No GPL PlantUML repository or
 other edition was consulted. Paths below, unless qualified, are relative to that tree; `p/` abbreviates
 `net/sourceforge/plantuml/`. `p/version/CompilationInfo.java:93` identifies version `1.2026.9`, commit `18d0aae`.

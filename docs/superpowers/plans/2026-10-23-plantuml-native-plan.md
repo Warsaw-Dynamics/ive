@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-22-diagram-ports-implementation-design.md`, its original handoff, and `docs/superpowers/plans/2026-10-22-plantuml-port-analysis.md`. The controller's later source restriction supersedes the former candidate-evaluation suggestion.
 
+Final standalone checkpoint (2026-10-23): the planned native increments and 29 checked-in LALRPOP grammars are integrated through product `3478bbd`; final gates, 95-source corpus, 72 viewer captures and two scoped independent reviews completed. See [COVERAGE.md](../../../diagram-ports/COVERAGE.md), [evidence](../../../diagram-ports/evidence/README.md) and [progress.md](../../../progress.md) for exact claims and remaining full-port gaps. Stage instructions and checkboxes below remain historical records.
+
 ## Global constraints and present evidence
 
 - Translation source is exclusively `/mnt/data/Projects/plantuml-mit/src`, authorized MIT-edition 1.2026.9. No GPL repository or other edition was inspected. No rejected PlantUML candidate source was inspected or imported.
