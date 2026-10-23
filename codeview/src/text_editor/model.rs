@@ -312,6 +312,13 @@ impl EditorModel {
         self.anchor = None;
     }
 
+    /// Selects `bytes` of stored line `line`, the caret at their end.
+    pub fn select_in_line(&mut self, line: usize, bytes: Range<usize>) {
+        let line = line.min(self.line_count() - 1);
+        self.set_caret(Position::new(line, self.column_at_byte(line, bytes.start)), Selecting::Move);
+        self.set_caret(Position::new(line, self.column_at_byte(line, bytes.end)), Selecting::Extend);
+    }
+
     pub fn select_all(&mut self) {
         self.place_caret(Position::default(), Selecting::Move);
         self.place_caret(self.end(), Selecting::Extend);
@@ -730,6 +737,18 @@ mod tests {
     /// The text as the editor shows it: lines joined by LF.
     fn text(model: &EditorModel) -> String {
         (0..model.line_count()).map(|line| model.line(line)).collect::<Vec<_>>().join("\n")
+    }
+
+    #[test]
+    fn should_select_bytes_of_a_line() {
+        // given
+        let mut model = model("one\nzażółć two\n");
+
+        // when
+        model.select_in_line(1, 11..14);
+
+        // then
+        assert_eq!(model.selection(), Some(Position::new(1, 7)..Position::new(1, 10)));
     }
 
     #[test]

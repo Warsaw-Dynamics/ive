@@ -155,6 +155,13 @@ impl TextEditor {
         cx.notify();
     }
 
+    /// Selects `bytes` of line `line` (from 1, clamped) and scrolls them into view.
+    pub fn reveal_range(&mut self, line: usize, bytes: Range<usize>, cx: &mut Context<Self>) {
+        self.model.select_in_line(line.saturating_sub(1), bytes);
+        self.reveal_caret = true;
+        cx.notify();
+    }
+
     /// Replaces the text after a reload: the history, the colours and the change markers are dropped (the markers'
     /// base stays), the caret stays where it still fits.
     pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {

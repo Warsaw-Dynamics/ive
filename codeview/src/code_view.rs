@@ -59,6 +59,8 @@ struct State {
     placed: Rc<Cell<Option<Placed>>>,
     /// the line `file:42` went to (from 0), drawn marked until the next press
     marked: Option<usize>,
+    /// file bytes to scroll sideways into view once the viewport's width is known
+    pending_reveal: Cell<Option<Range<usize>>>,
 }
 
 /// The view's top-left corner in the window and its font metrics, as last painted.
@@ -96,6 +98,12 @@ impl CodeView {
     /// Scrolls line `line` (from 1; past the end, the last) a third of the way down the view and marks it.
     pub fn reveal_line(&mut self, line: usize, cx: &mut Context<Self>) {
         self.state.reveal_line(line);
+        cx.notify();
+    }
+
+    /// Reveals line `line` (from 1) as `reveal_line` does, selects `bytes` of it and scrolls sideways to them.
+    pub fn reveal_range(&mut self, line: usize, bytes: Range<usize>, cx: &mut Context<Self>) {
+        self.state.reveal_range(line, bytes);
         cx.notify();
     }
 
@@ -202,6 +210,7 @@ impl State {
             dragging: false,
             placed: Rc::default(),
             marked: None,
+            pending_reveal: Cell::new(None),
         }
     }
 
@@ -219,6 +228,37 @@ impl State {
         let top = (index as f64 - self.scroll.viewport_lines() / 3.).max(0.).floor();
         self.scroll.set_position(ScrollPosition { top_line: top, left: 0. });
         self.marked = Some(index);
+    }
+
+    /// As `reveal_line`, keeping the sideways scroll, and selects `bytes` of the line; the next frame scrolls
+    /// sideways to them.
+    fn reveal_range(&mut self, line: usize, bytes: Range<usize>) {
+        let left = self.scroll.left();
+        self.reveal_line(line);
+        self.scroll.set_position(ScrollPosition { left, ..self.scroll.position() });
+        let start = self.source.line_start(self.marked.unwrap_or(0)) as usize;
+        let range = start + bytes.start..start + bytes.end;
+        self.selection = Some(TextSelection::of(range.clone()));
+        self.pending_reveal.set(Some(range));
+    }
+
+    /// Scrolls sideways to the range `reveal_range` left, once the viewport's width is known.
+    fn apply_pending_reveal(&self, char_width: f64) {
+        let Some(range) = self.pending_reveal.take() else {
+            return;
+        };
+        if self.scroll.viewport_width() <= 0. {
+            self.pending_reveal.set(Some(range));
+            return;
+        }
+        let index = self.marked.unwrap_or(0);
+        let Some(line) = self.source.lines(index..index + 1).into_iter().next() else {
+            return;
+        };
+        let margin = char_width * f64::from(DRAG_MARGIN_CHARS);
+        // the end first, so a range wider than the view shows its start
+        self.scroll.reveal_x(char_width * line.column_of(range.end) as f64, margin);
+        self.scroll.reveal_x(char_width * line.column_of(range.start) as f64, margin);
     }
 
     /// Scrolls to the last line, where a log's newest lines are.
@@ -318,6 +358,8 @@ impl State {
         self.language = language;
         self.notice = None;
         self.selection = None;
+        self.marked = None;
+        self.pending_reveal.set(None);
         self.dragging = false;
         self.forget_syntax();
     }
@@ -351,6 +393,7 @@ impl State {
         self.highlights.start_frame();
         let widest_chars = lines.iter().map(|line| line.text.chars().count()).max().unwrap_or(0);
         self.scroll.set_content_width(metrics.text_width(widest_chars));
+        self.apply_pending_reveal(f64::from(f32::from(metrics.char_width)));
         let shift = px(self.scroll.left() as f32);
         let rows: Vec<Div> = lines
             .iter()
@@ -696,6 +739,68 @@ mod tests {
         let top = editor.scroll_position().top_line;
         assert_eq!(editor.marked_line(), Some(42));
         assert!(top <= 41. && 41. < top + editor.scroll.viewport_lines(), "top {top}");
+    }
+
+    #[test]
+    fn should_select_the_range_and_mark_its_line() {
+        // given
+        let (_dir, mut editor) = editor_for("a.txt", b"one\ntwo\nthree four\n");
+
+        // when
+        editor.reveal_range(3, 6..10);
+
+        // then
+        let start = editor.source.line_start(2) as usize;
+        assert_eq!((editor.marked_line(), editor.selection), (Some(3), Some(TextSelection::of(start + 6..start + 10))));
+    }
+
+    #[test]
+    fn should_scroll_sideways_to_a_range_past_the_view() {
+        // given
+        let line = format!("{}needle\n", "x".repeat(300));
+        let (_dir, mut editor) = editor_for("a.txt", line.as_bytes());
+        editor.scroll.set_viewport(10., 200.);
+        editor.scroll.set_content_width(10. * 320.);
+
+        // when
+        editor.reveal_range(1, 300..306);
+        editor.apply_pending_reveal(10.);
+
+        // then
+        let left = editor.scroll.left();
+        assert!(left <= 3000. && 3060. <= left + 200., "left {left}");
+    }
+
+    #[test]
+    fn should_scroll_sideways_once_the_view_is_measured() {
+        // given
+        let line = format!("{}needle\n", "x".repeat(300));
+        let (_dir, mut editor) = editor_for("a.txt", line.as_bytes());
+        editor.reveal_range(1, 300..306);
+        editor.apply_pending_reveal(10.);
+        let before = editor.scroll.left();
+
+        // when
+        editor.scroll.set_viewport(10., 200.);
+        editor.scroll.set_content_width(10. * 320.);
+        editor.apply_pending_reveal(10.);
+
+        // then
+        assert_eq!(before, 0.);
+        assert!(editor.scroll.left() > 0.);
+    }
+
+    #[test]
+    fn should_forget_the_mark_on_a_new_source() {
+        // given
+        let (_dir, mut editor) = editor_for("a.txt", b"one\ntwo\n");
+        editor.reveal_line(2);
+
+        // when
+        editor.replace_source(Arc::new(crate::document::TextSource::new("other\n")), None);
+
+        // then
+        assert_eq!(editor.marked_line(), None);
     }
 
     #[test]
