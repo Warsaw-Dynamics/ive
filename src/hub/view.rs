@@ -158,17 +158,24 @@ fn query_row(id: TabId, hub: &HubTab, drawn: &Drawn, theme: Theme, cx: &mut Cont
         .children(switches.into_iter().flatten())
 }
 
-/// The `:…` scope picker and the Excluded switch.
-fn search_switches(id: TabId, hub: &HubTab, theme: Theme, cx: &mut Context<Workspace>) -> [Stateful<Div>; 2] {
+/// The `:…` scope picker, the Excluded switch and, for a contents search, what it covers.
+fn search_switches(id: TabId, hub: &HubTab, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
     let picker = target("hub-scope-picker".to_owned(), cx.listener(move |workspace, _event, window, cx| workspace.hub_typed(id, ":".to_owned(), window, cx)), cx);
     let excluded = target("hub-excluded".to_owned(), cx.listener(move |workspace, _event, window, cx| {
         workspace.hub_action(id, crate::script::keymap::Builtin::HubToggleExcluded, window, cx);
     }), cx);
     let switch_colour = if hub.state.excluded { theme.accent } else { theme.muted };
-    [
+    let mut switches = vec![
         chip_box("hub-scope-picker", ":…", false, theme).on_click(picker),
         chip_box("hub-excluded", "Excluded", hub.state.excluded, theme).text_color(rgb(switch_colour)).on_click(excluded),
-    ]
+    ];
+    if mode(&hub.state) == Mode::Content {
+        let search_in = target("hub-search-in".to_owned(), cx.listener(move |workspace, _event, window, cx| {
+            workspace.hub_action(id, crate::script::keymap::Builtin::HubCycleSearchIn, window, cx);
+        }), cx);
+        switches.push(chip_box("hub-search-in", hub.state.search_in.label(), false, theme).on_click(search_in));
+    }
+    switches
 }
 
 fn scope_chip(id: TabId, label: &str, scope: &HubScope, shown: bool, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {

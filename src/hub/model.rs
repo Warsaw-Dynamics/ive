@@ -76,12 +76,12 @@ impl SearchIn {
         matches!(self, Self::All | Self::Output)
     }
 
-    /// As the key strip names it.
+    /// As its chip and the key strip name it.
     pub fn label(self) -> &'static str {
         match self {
-            Self::All => "files + output",
-            Self::Files => "files only",
-            Self::Output => "output only",
+            Self::All => "Files + output",
+            Self::Files => "Files only",
+            Self::Output => "Output only",
         }
     }
 }

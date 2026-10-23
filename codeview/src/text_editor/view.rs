@@ -599,7 +599,9 @@ impl TextEditor {
         let rows = first..(first + self.scroll.viewport_lines().ceil() as usize + 1).min(self.model.line_count());
         let widest = (rows.start.min(rows.end)..rows.end).map(|line| self.model.line(line).chars().count()).max().unwrap_or(0);
         self.scroll.set_content_width(metrics.text_width(widest));
-        if std::mem::take(&mut self.reveal_caret) {
+        // a tab just opened has no width before its first layout: the caret is revealed in the next frame
+        if self.reveal_caret && self.scroll.viewport_width() > 0. {
+            self.reveal_caret = false;
             self.scroll.reveal_x(char_width * self.model.caret().column as f64, char_width * CARET_MARGIN_CHARS);
         }
         let first_column = (self.scroll.left() / char_width).floor() as usize;
