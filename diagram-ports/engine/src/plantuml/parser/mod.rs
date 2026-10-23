@@ -6,12 +6,14 @@ pub(super) mod definition;
 pub(super) mod document;
 pub(super) mod error;
 pub(super) mod files;
+pub(super) mod gantt;
 pub(super) mod header;
 pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod preamble;
 pub(super) mod sequence;
 pub(super) mod state;
+pub(super) mod timing;
 pub(super) mod token;
 pub(super) mod tree;
 pub(super) mod uml;
@@ -89,6 +91,16 @@ mod generated_state;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/uml.rs"]
 mod generated_uml;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/timing.rs"]
+mod generated_timing;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/gantt.rs"]
+mod generated_gantt;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]

@@ -1,12 +1,15 @@
-//! Timing grammar/cursors translated from the authorized MIT timingdiagram sources.
-//! Copyright 2009-2024 Arnaud Roques; exact traces in the provenance manifest.
+//! Preserved timing model and typed cursor/reference semantics.
 use super::{
-    budget::{Budget, bound, invalid, unsupported},
-    source::Line,
+    budget::Budget,
+    parser::{
+        context,
+        error::ParseFailure,
+        timing::{Command, Site, Target, Time, TimeChoice, fail},
+    },
 };
+#[cfg(test)]
 use crate::RenderError;
 use std::collections::{BTreeMap, BTreeSet};
-
 pub(super) const TIME_LIMIT: i64 = 1_000_000_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,6 +59,7 @@ pub(super) struct Timing {
     pub constraints: Vec<Constraint>,
     pub messages: Vec<Message>,
 }
+
 #[derive(Clone, Copy)]
 enum Cursor<T> {
     Unset,
@@ -74,136 +78,123 @@ struct TrackBuilder {
     states: BTreeMap<String, usize>,
     changes: BTreeMap<i64, usize>,
 }
-struct Parser<'a> {
+pub(super) struct Builder<'b> {
+    pub budget: &'b mut Budget,
     tracks: Vec<TrackBuilder>,
     registry: BTreeMap<String, usize>,
     marks: BTreeSet<i64>,
     constraints: Vec<Constraint>,
     messages: Vec<Message>,
+    constraint_sites: Vec<Site>,
+    message_sites: Vec<Site>,
     player: Cursor<usize>,
     time: Cursor<i64>,
-    budget: &'a mut Budget,
 }
-
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Timing, RenderError> {
-    budget.depth(1)?;
-    let mut parser = Parser {
-        tracks: Vec::new(),
-        registry: BTreeMap::new(),
-        marks: BTreeSet::new(),
-        constraints: Vec::new(),
-        messages: Vec::new(),
-        player: Cursor::Unset,
-        time: Cursor::Unset,
-        budget,
-    };
-    for line in lines {
-        parser
-            .budget
-            .charge(line.text.len().saturating_mul(8) + 1)?;
-        parser.statement(line)?;
+impl<'b> Builder<'b> {
+    pub fn retained_bytes(items: usize) -> usize {
+        let vectors = std::mem::size_of::<TrackBuilder>()
+            + std::mem::size_of::<Track>()
+            + std::mem::size_of::<Change>()
+            + std::mem::size_of::<Constraint>()
+            + std::mem::size_of::<Message>()
+            + 2 * std::mem::size_of::<Site>()
+            + std::mem::size_of::<String>();
+        let tree_node = 12
+            * (std::mem::size_of::<(String, usize)>()
+                + std::mem::size_of::<(i64, usize)>()
+                + std::mem::size_of::<i64>()
+                + 3 * std::mem::size_of::<usize>());
+        items.saturating_mul(3 * vectors + tree_node)
     }
-    parser.finish()
-}
-
-impl Parser<'_> {
-    fn statement(&mut self, line: &Line) -> Result<(), RenderError> {
-        let text = line.text.as_str();
-        if let Some(rest) = word_suffix(text, "robust") {
-            return self.declare(rest, TrackKind::Robust, line);
+    pub fn tick(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(Into::into)
+    }
+    pub fn new(budget: &'b mut Budget) -> Self {
+        Self {
+            budget,
+            tracks: Vec::new(),
+            registry: BTreeMap::new(),
+            marks: BTreeSet::new(),
+            constraints: Vec::new(),
+            messages: Vec::new(),
+            constraint_sites: Vec::new(),
+            message_sites: Vec::new(),
+            player: Cursor::Unset,
+            time: Cursor::Unset,
         }
-        if let Some(rest) = word_suffix(text, "concise") {
-            return self.declare(rest, TrackKind::Concise, line);
-        }
-        if let Some((left, rest)) = text.split_once(char::is_whitespace)
-            && let Some(right) = word_suffix(rest.trim_start(), "is")
-        {
-            return self.change(left, right, line);
-        }
-        let (head, _) = split_caption(text);
-        if let Some(index) = head.find("<->") {
-            return self.constraint(&text[..index], &text[index + 3..], line);
-        }
-        if let Some(index) = head.find("->") {
-            return self.message(&text[..index], &text[index + 2..], line);
-        }
-        if let Some(rest) = text.strip_prefix('@') {
-            if is_code(rest) {
-                self.player = Cursor::Selected(self.player_id(rest, line)?);
-                return Ok(());
+    }
+    pub fn apply(&mut self, command: Command, site: Site) -> Result<(), ParseFailure> {
+        self.budget.charge(1)?;
+        match command {
+            Command::Declare(kind, code, display) => self.declare((code, display), kind, &site),
+            Command::Player(code) => {
+                self.player = Cursor::Selected(self.player_id(&code, &site)?);
+                Ok(())
             }
-            let time = parse_time(rest, self.time.value(), line)?;
-            return self.select_time(time);
+            Command::Mark(time) => {
+                let value = time.resolve(self.time.value(), &site)?;
+                self.select_time(value)
+            }
+            Command::Change(target, state) => self.change(target, state, &site),
+            Command::Constraint(code, start, end, label) => {
+                self.constraint((code, start, end, label), site)
+            }
+            Command::Message(from, to, label) => self.message((from, to, label), site),
         }
-        Err(unsupported(
-            line.number,
-            &format!("timing statement {}", line.text),
-        ))
     }
-    fn declare(&mut self, rest: &str, kind: TrackKind, line: &Line) -> Result<(), RenderError> {
-        let (display, code) = if rest.starts_with('"') {
-            let (display, suffix) = quoted(rest, line)?;
-            (
-                display,
-                word_suffix(suffix.trim_start(), "as").unwrap_or(""),
-            )
-        } else {
-            (rest, rest)
-        };
-        if display.is_empty() || !is_code(code) {
-            return Err(unsupported(
-                line.number,
-                &format!("timing track declaration {}", line.text),
-            ));
-        }
+    fn declare(
+        &mut self,
+        names: (String, String),
+        kind: TrackKind,
+        site: &Site,
+    ) -> Result<(), ParseFailure> {
+        let (code, display) = names;
         self.budget
             .charge(search_cost(self.registry.len()).saturating_mul(code.len() + 1))?;
-        if self.registry.contains_key(code) {
-            return Err(unsupported(
-                line.number,
-                &format!("duplicate timing track {}", line.text),
+        if self.registry.contains_key(&code) {
+            return Err(ParseFailure::unsupported(
+                site.span.clone(),
+                "duplicate timing track",
             ));
         }
         self.budget.item()?;
         self.budget
             .text(code.len().saturating_mul(2) + display.len())?;
-        bound("label bytes", display.len(), 16 * 1024)?;
         let id = self.tracks.len();
-        self.registry.insert(code.into(), id);
-        self.tracks.push(TrackBuilder {
-            track: Track {
-                code: code.into(),
-                display: display.into(),
-                kind,
-                states: Vec::new(),
-                initial: Initial::Absent,
-                changes: Vec::new(),
+        self.registry.insert(code.clone(), id);
+        context::push(
+            &mut self.tracks,
+            TrackBuilder {
+                track: Track {
+                    code,
+                    display,
+                    kind,
+                    states: Vec::new(),
+                    initial: Initial::Absent,
+                    changes: Vec::new(),
+                },
+                states: BTreeMap::new(),
+                changes: BTreeMap::new(),
             },
-            states: BTreeMap::new(),
-            changes: BTreeMap::new(),
-        });
+            self.budget,
+        )?;
         self.player = Cursor::Selected(id);
         Ok(())
     }
-    fn player_id(&mut self, code: &str, line: &Line) -> Result<usize, RenderError> {
+    fn player_id(&mut self, code: &str, site: &Site) -> Result<usize, ParseFailure> {
         self.budget
             .charge(search_cost(self.registry.len()).saturating_mul(code.len() + 1))?;
-        self.registry.get(code).copied().ok_or_else(|| {
-            invalid(
-                line.number,
-                format!("unknown timing track {code:?} in {:?}", line.text),
-            )
-        })
+        self.registry
+            .get(code)
+            .copied()
+            .ok_or_else(|| fail(site, "unknown timing track"))
     }
-    fn current_player(&self, line: &Line) -> Result<usize, RenderError> {
-        self.player.value().ok_or_else(|| {
-            invalid(
-                line.number,
-                format!("no selected timing track for {:?}", line.text),
-            )
-        })
+    fn current_player(&self, site: &Site) -> Result<usize, ParseFailure> {
+        self.player
+            .value()
+            .ok_or_else(|| fail(site, "no selected timing track"))
     }
-    fn select_time(&mut self, time: i64) -> Result<(), RenderError> {
+    fn select_time(&mut self, time: i64) -> Result<(), ParseFailure> {
         self.budget.charge(search_cost(self.marks.len()))?;
         if !self.marks.contains(&time) {
             self.budget.item()?;
@@ -212,26 +203,23 @@ impl Parser<'_> {
         self.time = Cursor::Selected(time);
         Ok(())
     }
-    fn change(&mut self, left: &str, right: &str, line: &Line) -> Result<(), RenderError> {
-        let state = state_atom(right, line)?;
-        let track = if is_code(left) {
-            self.player_id(left, line)?
-        } else {
-            let track = self.current_player(line)?;
-            let time = parse_time(left, self.time.value(), line)?;
-            self.select_time(time)?;
-            track
+    fn change(&mut self, target: Target, state: String, site: &Site) -> Result<(), ParseFailure> {
+        let track = match target {
+            Target::Player(code) => self.player_id(&code, site)?,
+            Target::Time(time) => {
+                let track = self.current_player(site)?;
+                let time = time.resolve(self.time.value(), site)?;
+                self.select_time(time)?;
+                track
+            }
         };
         self.budget
             .charge(search_cost(self.tracks[track].changes.len()))?;
-        // Retain losing labels for the shared strict markup/resource validation.
         let id = self.intern_state(track, state)?;
-        if let Some(time) = self.time.value()
-            && self.tracks[track].changes.contains_key(&time)
-        {
-            return Ok(());
-        }
         if let Some(time) = self.time.value() {
+            if self.tracks[track].changes.contains_key(&time) {
+                return Ok(());
+            }
             self.budget.item()?;
             self.tracks[track].changes.insert(time, id);
         } else {
@@ -239,101 +227,100 @@ impl Parser<'_> {
         }
         Ok(())
     }
-    fn intern_state(&mut self, track: usize, state: &str) -> Result<usize, RenderError> {
+    fn intern_state(&mut self, track: usize, state: String) -> Result<usize, ParseFailure> {
         self.budget
             .charge(search_cost(self.tracks[track].states.len()).saturating_mul(state.len() + 1))?;
-        if let Some(id) = self.tracks[track].states.get(state) {
+        if let Some(id) = self.tracks[track].states.get(&state) {
             return Ok(*id);
         }
         self.budget.item()?;
         self.budget.text(state.len().saturating_mul(2))?;
         let id = self.tracks[track].track.states.len();
-        self.tracks[track].states.insert(state.into(), id);
-        self.tracks[track].track.states.push(state.into());
+        self.tracks[track].states.insert(state.clone(), id);
+        context::push(&mut self.tracks[track].track.states, state, self.budget)?;
         Ok(id)
     }
-    fn constraint(&mut self, left: &str, right: &str, line: &Line) -> Result<(), RenderError> {
-        let (code, start) = left.trim().split_once('@').ok_or_else(|| {
-            invalid(
-                line.number,
-                format!("timing constraint requires @time: {:?}", line.text),
-            )
-        })?;
+    fn constraint(
+        &mut self,
+        value: (String, Time, Time, String),
+        site: Site,
+    ) -> Result<(), ParseFailure> {
+        let (code, start, end, label) = value;
         let track = if code.is_empty() {
-            self.current_player(line)?
+            self.current_player(&site)?
         } else {
-            self.player_id(code, line)?
+            self.player_id(&code, &site)?
         };
-        let start = parse_time(start, self.time.value(), line)?;
-        let (end, label) = split_caption(right);
-        let end = end.strip_prefix('@').ok_or_else(|| {
-            invalid(
-                line.number,
-                format!("timing constraint requires @time: {:?}", line.text),
-            )
-        })?;
-        let end = parse_time(end, Some(start), line)?;
+        let start = start.resolve(self.time.value(), &site)?;
+        let end = end.resolve(Some(start), &site)?;
         if start >= end {
-            return Err(invalid(
-                line.number,
-                format!(
-                    "timing constraint requires increasing endpoints: {:?}",
-                    line.text
-                ),
+            return Err(fail(
+                &site,
+                "timing constraint requires increasing endpoints",
             ));
         }
         self.budget.item()?;
         self.budget.text(label.len())?;
-        self.constraints.push(Constraint {
-            track,
-            start,
-            end,
-            label: label.into(),
-            line: line.number,
-        });
-        Ok(())
+        context::push(
+            &mut self.constraints,
+            Constraint {
+                track,
+                start,
+                end,
+                label,
+                line: site.line,
+            },
+            self.budget,
+        )?;
+        context::push(&mut self.constraint_sites, site, self.budget)
     }
-    fn endpoint(&mut self, raw: &str, line: &Line) -> Result<Endpoint, RenderError> {
-        let (code, time) = raw
-            .trim()
-            .split_once('@')
-            .map_or((raw.trim(), None), |(code, time)| (code, Some(time)));
-        let track = self.player_id(code, line)?;
-        let time = match time {
-            Some(time) => parse_time(time, self.time.value(), line)?,
-            None => self.time.value().ok_or_else(|| {
-                invalid(
-                    line.number,
-                    format!("timing message has no selected time: {:?}", line.text),
-                )
-            })?,
+    fn endpoint(
+        &mut self,
+        value: (String, TimeChoice),
+        site: &Site,
+    ) -> Result<Endpoint, ParseFailure> {
+        let track = self.player_id(&value.0, site)?;
+        let time = match value.1 {
+            TimeChoice::Current => self
+                .time
+                .value()
+                .ok_or_else(|| fail(site, "timing message has no selected time"))?,
+            TimeChoice::Explicit(time) => time.resolve(self.time.value(), site)?,
         };
         Ok(Endpoint { track, time })
     }
-    fn message(&mut self, left: &str, right: &str, line: &Line) -> Result<(), RenderError> {
-        let (right, label) = split_caption(right);
-        let from = self.endpoint(left, line)?;
-        let to = self.endpoint(right, line)?;
+    fn message(
+        &mut self,
+        value: ((String, TimeChoice), (String, TimeChoice), String),
+        site: Site,
+    ) -> Result<(), ParseFailure> {
+        let (from, to, label) = value;
+        let from = self.endpoint(from, &site)?;
+        let to = self.endpoint(to, &site)?;
         if from.track == to.track {
-            return Err(unsupported(
-                line.number,
-                &format!("same-track timing message {}", line.text),
+            return Err(ParseFailure::unsupported(
+                site.span.clone(),
+                "same-track timing message",
             ));
         }
         self.budget.item()?;
         self.budget.text(label.len())?;
-        self.messages.push(Message {
-            from,
-            to,
-            label: label.into(),
-            line: line.number,
-        });
-        Ok(())
+        context::push(
+            &mut self.messages,
+            Message {
+                from,
+                to,
+                label,
+                line: site.line,
+            },
+            self.budget,
+        )?;
+        context::push(&mut self.message_sites, site, self.budget)
     }
-    fn finish(self) -> Result<Timing, RenderError> {
+    pub fn finish(self, site: Site) -> Result<Timing, ParseFailure> {
         if self.tracks.is_empty() || self.marks.is_empty() {
-            return Err(invalid(
-                1,
+            return Err(fail(
+                &site,
                 "timing requires declared tracks and an explicit numeric time mark",
             ));
         }
@@ -347,53 +334,47 @@ impl Parser<'_> {
                 .map(|(time, state)| Change { time, state })
                 .collect();
             if track.initial == Initial::Absent && track.changes.is_empty() {
-                return Err(invalid(
-                    1,
-                    format!("timing track {:?} has no state", track.code),
-                ));
+                return Err(fail(&site, "timing track has no state"));
             }
-            tracks.push(track);
+            context::push(&mut tracks, track, self.budget)?;
         }
         self.budget.charge(self.marks.len())?;
-        let model = Timing {
-            tracks,
-            marks: self.marks.into_iter().collect(),
-            constraints: self.constraints,
-            messages: self.messages,
-        };
-        model.validate(self.budget)?;
-        Ok(model)
-    }
-}
-
-impl Timing {
-    fn validate(&self, budget: &mut Budget) -> Result<(), RenderError> {
-        let min = self.marks[0];
-        let max = *self.marks.last().unwrap();
-        for constraint in &self.constraints {
-            budget.charge(1)?;
-            check_range(constraint.start, (min, max), constraint.line)?;
-            check_range(constraint.end, (min, max), constraint.line)?;
+        let marks: Vec<_> = self.marks.into_iter().collect();
+        for (constraint, site) in self.constraints.iter().zip(&self.constraint_sites) {
+            let site = Site {
+                span: site.span.clone(),
+                line: constraint.line,
+            };
+            self.budget.charge(1)?;
+            if constraint.start < marks[0] || constraint.end > *marks.last().unwrap() {
+                return Err(fail(&site, "timing endpoint outside explicit axis"));
+            }
         }
-        for message in &self.messages {
+        for (message, site) in self.messages.iter().zip(&self.message_sites) {
+            let site = Site {
+                span: site.span.clone(),
+                line: message.line,
+            };
             for endpoint in [message.from, message.to] {
-                budget.charge(search_cost(self.tracks[endpoint.track].changes.len()))?;
-                check_range(endpoint.time, (min, max), message.line)?;
-                if self.tracks[endpoint.track]
-                    .state_at(endpoint.time)
-                    .is_none()
+                self.budget
+                    .charge(search_cost(tracks[endpoint.track].changes.len()))?;
+                if endpoint.time < marks[0]
+                    || endpoint.time > *marks.last().unwrap()
+                    || tracks[endpoint.track].state_at(endpoint.time).is_none()
                 {
-                    return Err(invalid(
-                        message.line,
-                        format!(
-                            "timing message endpoint {}@{} has no signal",
-                            self.tracks[endpoint.track].code, endpoint.time
-                        ),
+                    return Err(fail(
+                        &site,
+                        "timing message endpoint outside explicit axis or has no signal",
                     ));
                 }
             }
         }
-        Ok(())
+        Ok(Timing {
+            tracks,
+            marks,
+            constraints: self.constraints,
+            messages: self.messages,
+        })
     }
 }
 impl Track {
@@ -409,134 +390,17 @@ impl Track {
         }
     }
 }
-fn check_range(time: i64, range: (i64, i64), line: usize) -> Result<(), RenderError> {
-    if (range.0..=range.1).contains(&time) {
-        return Ok(());
-    }
-    Err(invalid(
-        line,
-        format!(
-            "timing endpoint {time} outside explicit axis {}..{}",
-            range.0, range.1
-        ),
-    ))
-}
+
 pub(super) fn search_cost(len: usize) -> usize {
     len.checked_ilog2().unwrap_or(0) as usize + 1
 }
-fn is_code(code: &str) -> bool {
-    let mut chars = code.chars();
-    chars
-        .next()
-        .is_some_and(|ch| ch.is_alphabetic() || ch == '_')
-        && chars.all(|ch| ch.is_alphanumeric() || matches!(ch, '_' | '.'))
+#[cfg(test)]
+pub(super) fn parse(
+    lines: &[super::source::Line],
+    budget: &mut Budget,
+) -> Result<Timing, RenderError> {
+    super::parser::timing::parse_test(lines, budget)
 }
-fn parse_time(raw: &str, base: Option<i64>, line: &Line) -> Result<i64, RenderError> {
-    let (relative, number) = raw
-        .strip_prefix('+')
-        .map_or((false, raw), |number| (true, number));
-    let digits = number.strip_prefix('-').unwrap_or(number);
-    if raw.len() > 12 || digits.is_empty() || !digits.bytes().all(|ch| ch.is_ascii_digit()) {
-        return Err(unsupported(
-            line.number,
-            &format!(
-                "timing requires exact integer times in -{TIME_LIMIT}..{TIME_LIMIT}: {}",
-                line.text
-            ),
-        ));
-    }
-    let value = number
-        .parse::<i64>()
-        .map_err(|_| invalid(line.number, format!("invalid timing integer {raw:?}")))?;
-    if !(-TIME_LIMIT..=TIME_LIMIT).contains(&value) {
-        return Err(invalid(
-            line.number,
-            format!(
-                "timing integer {raw:?} exceeds -{TIME_LIMIT}..{TIME_LIMIT} in {:?}",
-                line.text
-            ),
-        ));
-    }
-    let value = if relative {
-        base.unwrap_or(0).checked_add(value)
-    } else {
-        Some(value)
-    };
-    match value {
-        Some(value) if (-TIME_LIMIT..=TIME_LIMIT).contains(&value) => Ok(value),
-        _ => Err(invalid(
-            line.number,
-            format!(
-                "timing integer {raw:?} exceeds -{TIME_LIMIT}..{TIME_LIMIT} in {:?}",
-                line.text
-            ),
-        )),
-    }
-}
-fn quoted<'a>(raw: &'a str, line: &Line) -> Result<(&'a str, &'a str), RenderError> {
-    let bytes = raw.as_bytes();
-    let mut index = 1;
-    while index < bytes.len() {
-        if bytes[index] == b'\\' {
-            index += 2;
-            continue;
-        }
-        if bytes[index] == b'"' {
-            return Ok((&raw[1..index], &raw[index + 1..]));
-        }
-        index += 1;
-    }
-    Err(invalid(
-        line.number,
-        format!("unterminated timing string in {:?}", line.text),
-    ))
-}
-fn state_atom<'a>(raw: &'a str, line: &Line) -> Result<&'a str, RenderError> {
-    bound("label bytes", raw.len(), 16 * 1024)?;
-    let state = if raw.starts_with('"') {
-        let (value, suffix) = quoted(raw, line)?;
-        if !suffix.trim().is_empty() {
-            return Err(unsupported(
-                line.number,
-                &format!("timing state suffix {}", line.text),
-            ));
-        }
-        value
-    } else {
-        let mut chars = raw.chars();
-        if !chars
-            .next()
-            .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | '-'))
-            || !chars.all(|ch| ch.is_alphanumeric() || matches!(ch, '_' | '-' | '.'))
-        {
-            return Err(unsupported(
-                line.number,
-                &format!("timing state {}", line.text),
-            ));
-        }
-        raw
-    };
-    if state.is_empty() || state.starts_with('{') {
-        return Err(unsupported(
-            line.number,
-            &format!("timing special/empty state {}", line.text),
-        ));
-    }
-    Ok(state)
-}
-fn split_caption(raw: &str) -> (&str, &str) {
-    raw.split_once(':')
-        .map_or((raw.trim(), ""), |(head, label)| {
-            (head.trim(), label.trim())
-        })
-}
-
-fn word_suffix<'a>(text: &'a str, word: &str) -> Option<&'a str> {
-    text.strip_prefix(word)
-        .filter(|suffix| suffix.starts_with(char::is_whitespace))
-        .map(str::trim)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

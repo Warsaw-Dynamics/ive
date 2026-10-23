@@ -16,6 +16,12 @@ pub(in crate::plantuml) struct ParseFailure {
     pub kind: FailureKind,
 }
 
+impl From<RenderError> for ParseFailure {
+    fn from(error: RenderError) -> Self {
+        Self::terminal(error)
+    }
+}
+
 impl ParseFailure {
     pub fn syntax(span: Range<usize>, detail: &'static str) -> Self {
         Self {
@@ -129,5 +135,31 @@ pub(super) fn generated_failure<T>(
         | ParseError::ExtraToken {
             token: (start, _, end),
         } => ParseFailure::syntax(start..end, detail),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_preserve_render_error_category_and_location_in_terminal_conversion() {
+        // given
+        for error in [
+            RenderError::Backend("PlantUML model items value 2 exceeds limit 1".into()),
+            RenderError::Cancelled("operation cancelled".into()),
+            RenderError::InvalidSource("PlantUML at line 7, column 3: located primitive".into()),
+        ] {
+            let expected = error.to_string();
+            let category = std::mem::discriminant(&error);
+            let mut budget = crate::plantuml::budget::Budget::new(&crate::RenderOptions::default());
+            // when
+            let failure = ParseFailure::from(error);
+            assert!(matches!(failure.kind, FailureKind::Terminal(_)));
+            let actual = failure.into_document(&crate::plantuml::origin::EMPTY, &mut budget);
+            // then
+            assert_eq!(std::mem::discriminant(&actual), category);
+            assert_eq!(actual.to_string(), expected);
+        }
     }
 }
