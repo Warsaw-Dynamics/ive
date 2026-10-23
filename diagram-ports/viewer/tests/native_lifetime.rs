@@ -63,6 +63,8 @@ fn should_measure_plantuml_in_native_worker_and_release_each_cache() {
     // given
     let (_fonts, resources) = resources();
     for source in [
+        include_str!("../../fixtures/plantuml/constantsequence.puml"),
+        include_str!("../../fixtures/plantuml/constantgraph.puml"),
         include_str!("../../fixtures/plantuml/styledsequence.puml"),
         include_str!("../../fixtures/plantuml/styledgraph.puml"),
         include_str!("../../fixtures/plantuml/sequence.puml"),

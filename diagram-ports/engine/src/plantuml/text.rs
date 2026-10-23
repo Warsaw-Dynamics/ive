@@ -34,6 +34,7 @@ pub(super) struct Context<'a> {
     fonts: [Font; 5],
     cache: HashMap<(String, RunStyle, LabelMode), Label>,
     calls: usize,
+    origins: &'a super::origin::Document,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -59,10 +60,15 @@ impl<'a> Context<'a> {
             fonts: Preamble::default().fonts,
             cache: HashMap::new(),
             calls: 0,
+            origins: &super::origin::EMPTY,
         }
     }
     pub fn with_fonts(mut self, fonts: [Font; 5]) -> Self {
         self.fonts = fonts;
+        self
+    }
+    pub fn with_origins(mut self, origins: &'a super::origin::Document) -> Self {
+        self.origins = origins;
         self
     }
     pub fn label(&mut self, text: &str) -> Result<Label, RenderError> {
@@ -127,7 +133,8 @@ impl<'a> Context<'a> {
         let parsed = if mode == LabelMode::Data {
             self.literal_lines(text, &base)?
         } else {
-            creole::parse(text, base.clone(), self.budget)?
+            creole::parse(text, base.clone(), self.budget)
+                .map_err(|error| self.origins.label_error(text, error, self.budget))?
         };
         let mut lines = Vec::new();
         let mut width: f64 = 0.;

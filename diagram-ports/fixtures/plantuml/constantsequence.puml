@@ -1,0 +1,28 @@
+@startuml
+!define FIRST SECOND
+!define SECOND Ready
+!define NEXT SECOND now
+!define CLIENT "**Browser**"
+!define HEADING **Eager** literal constants
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize 18
+skinparam titleFontSize 25
+skinparam BackgroundColor #f6f8fc
+title HEADING
+left header Frozen values; inserted text is never rescanned
+legend FIRST | SECOND | NEXT
+right footer Native in-memory subset
+participant CLIENT as B
+participant "//Service//" as S
+group NEXT
+B -> S : FIRST | SECOND
+activate S
+note over S
+  NEXT
+
+  preserve   spaces
+end note
+S --> B : **SECOND**
+deactivate S
+end
+@enduml

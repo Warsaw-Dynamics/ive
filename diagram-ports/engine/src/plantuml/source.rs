@@ -73,7 +73,7 @@ pub(super) fn prepare_document(
     Ok((wrapper, lines))
 }
 
-fn reject_active_preprocessor(raw: &str, line: usize) -> Result<(), RenderError> {
+pub(super) fn reject_active_preprocessor(raw: &str, line: usize) -> Result<(), RenderError> {
     let Some(command) = raw.trim_start().strip_prefix('!') else {
         return Ok(());
     };
@@ -194,23 +194,7 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
             ));
         }
         let statement = Line { number: line, text };
-        graph_grammar |= !super::has_identifier_arrow(&statement)
-            && matches!(
-                statement.text.split_whitespace().next().unwrap_or(""),
-                "class"
-                    | "abstract"
-                    | "interface"
-                    | "enum"
-                    | "annotation"
-                    | "object"
-                    | "state"
-                    | "component"
-                    | "node"
-                    | "rectangle"
-                    | "package"
-                    | "namespace"
-                    | "usecase"
-            );
+        graph_grammar |= graph_declaration(&statement);
         if !graph_grammar {
             body = text_body(&statement);
         }
@@ -229,13 +213,13 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum TextBody {
+pub(super) enum TextBody {
     None,
     Action,
     Note,
 }
 
-fn text_body(line: &Line) -> TextBody {
+pub(super) fn text_body(line: &Line) -> TextBody {
     if line.text.starts_with(':') && !line.text.ends_with(';') {
         return TextBody::Action;
     }
@@ -249,7 +233,31 @@ fn text_body(line: &Line) -> TextBody {
     TextBody::None
 }
 
-fn strip_comments(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, RenderError> {
+pub(super) fn graph_declaration(line: &Line) -> bool {
+    !super::has_identifier_arrow(line)
+        && matches!(
+            line.text.split_whitespace().next().unwrap_or(""),
+            "class"
+                | "abstract"
+                | "interface"
+                | "enum"
+                | "annotation"
+                | "object"
+                | "state"
+                | "component"
+                | "node"
+                | "rectangle"
+                | "package"
+                | "namespace"
+                | "usecase"
+        )
+}
+
+pub(super) fn strip_comments(
+    raw: &str,
+    block: &mut bool,
+    budget: &mut Budget,
+) -> Result<String, RenderError> {
     let mut out = String::new();
     let mut rest = raw;
     let mut quoted = false;

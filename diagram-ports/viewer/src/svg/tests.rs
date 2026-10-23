@@ -35,6 +35,14 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
     for (size, body) in [
         (
             24,
+            "!define SPACED \"  spaced   Ω  \"\n!define FIRST SECOND\n!define SECOND Ready\nparticipant SPACED as A\nparticipant \"**Service**\" as B\ngroup FIRST | SECOND\nA -> B : FIRST | SECOND\nend",
+        ),
+        (
+            24,
+            "!define SPACED \"  spaced   Ω  \"\n!define FIRST SECOND\n!define SECOND Ready\npackage Outer {\nclass SPACED as A {\nFIRST | SECOND\n}\nclass B\nA --> B : FIRST | SECOND\n}",
+        ),
+        (
+            24,
             "participant \"  spaced   Ω  \" as A\nparticipant \"**Heavy** //slanted//\" as B\nA -> B : **request //nested//**\nactivate B\nnote over B : __underline__ --strike--\nB -> A : reply\ndeactivate B",
         ),
         (
@@ -114,6 +122,10 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
             );
         }
         assert!(texts.iter().any(|text| text == "  spaced   Ω  "));
+        if body.contains("!define FIRST") {
+            assert!(texts.iter().any(|text| text == "SECOND | Ready"));
+            assert!(texts.iter().all(|text| !text.contains("FIRST")));
+        }
         assert_eq!(
             decorated, [true; 4],
             "missing actual shaped font/decorations"

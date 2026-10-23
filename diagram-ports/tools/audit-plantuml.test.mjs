@@ -30,6 +30,16 @@ test('should reject a different edition or artifact identity', () => {
   assert.throws(() => validateManifest(source), /unauthorized PlantUML/);
 });
 
+test('should reject untranslated TIM runtime files', () => {
+  // given
+  for (const path of ['net/sourceforge/plantuml/tim/TMemoryGlobal.java', 'net/sourceforge/plantuml/tim/FunctionsSet.java', 'net/sourceforge/plantuml/tim/EaterLegacyDefine.java']) {
+    const source = manifest();
+    source.sourceFiles[0].path = path;
+    // when / then
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should reject missing exact contributor credits despite colon spacing', () => {
   // given
   const source = manifest();

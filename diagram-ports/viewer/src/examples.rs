@@ -58,6 +58,14 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-constant-sequence",
+        source: include_str!("../../fixtures/plantuml/constantsequence.puml"),
+    },
+    Example {
+        name: "plantuml-constant-graph",
+        source: include_str!("../../fixtures/plantuml/constantgraph.puml"),
+    },
+    Example {
         name: "plantuml-styled-sequence",
         source: include_str!("../../fixtures/plantuml/styledsequence.puml"),
     },
@@ -164,5 +172,24 @@ mod tests {
             diagram_engine::render(source, &options).unwrap().family,
             "sequence"
         );
+    }
+    #[test]
+    fn should_find_eager_constant_sequence_and_class_document_examples() {
+        // given
+        for name in ["plantuml-constant-sequence", "plantuml-constant-graph"] {
+            // when
+            let input = super::source(name).unwrap();
+            // then
+            let output = diagram_engine::render(
+                input,
+                &diagram_engine::RenderOptions {
+                    language: diagram_engine::Language::PlantUml,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert!(output.svg.contains("Ready"));
+            assert!(input.contains("!define"));
+        }
     }
 }

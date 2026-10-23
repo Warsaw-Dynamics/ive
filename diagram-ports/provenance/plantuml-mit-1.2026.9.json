@@ -10,6 +10,30 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/tim/EaterAffectationDefine.java",
+      "sha256": "001009a5bd744874e72233f839523eea054c07459621a137e68ab7062afb84db",
+      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "behavior": "Lines120-133: eagerly expand prior values in the same-line literal, retain authored quote characters, then freeze. Native restricts names to ASCII1-64 bytes, literals16KiB, immutable preamble definitions; no scope mutation or TIM evaluation.",
+      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/tim/TContext.java",
+      "sha256": "b914f5053b91d59c2b9578f663d531823e59f34615657fadd3562a11f529fc5d",
+      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "behavior": "Lines458-520, only the variable/ordinary-character branches: scan original input left-to-right, append a frozen value, advance original cursor without rescanning inserted text. Functions, procedures, evaluation, includes, ambient services and all other context machinery are not translated.",
+      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/tim/VariableManager.java",
+      "sha256": "a9ec4da9f0ed946f97e81daa54b4a67a747b39561739c170a827237166476a36",
+      "rust": ["engine/src/plantuml/preprocess.rs"],
+      "behavior": "Lines131-155 scalar append/cursor contract and216-236 case-sensitive boundaries/backslash-n exception. Native rejects ## adjacent to a matched constant, admits no JSON indexing, and explicitly rejects non-ASCII adjacency to a known ASCII constant instead of claiming Java Unicode/UTF16 category equivalence.",
+      "copyrights": ["* (C) Copyright 2009-2024, Arnaud Roques", "* Original Author:  Arnaud Roques"],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/mindmap/CommandMindMapPlus.java",
       "sha256": "d4b6070d5a2d0e1b74f95956106b306d8ef1bd25858c5b77894e2c749cce5a9f",
       "rust": [
@@ -429,9 +453,10 @@
       "path": "net/sourceforge/plantuml/text/TLineType.java",
       "sha256": "e2d8f4d06627210fc6148df329bc9d18663b53c5647927f4e456271431eaac84",
       "rust": [
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/preprocess.rs"
       ],
-      "behavior": "Reject active leading preprocessor directives in all new raw payload wrappers, including literal YAML blocks; quoted/inert payload substrings stay text. No directive execution.",
+      "behavior": "Reject active leading preprocessor directives in raw payload wrappers, including literal YAML blocks; quoted/inert payload substrings stay text. Lines132-147/240-247 distinguish admitted no-argument !define from denied function forms. Lines344-365 justify exact ASCII boundary subset and deliberate rejection of ambiguous adjacent non-ASCII characters. No general directive execution.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1689,6 +1714,18 @@
   ],
   "fixtures": [
     {
+      "path": "fixtures/plantuml/constantsequence.puml",
+      "sha256": "9971b56f9b1073641dfdb5776bdb53e0dbc51f30d985d00ae5b35aaaff9dddff",
+      "origin": "Independently authored Task3D2 native eager-constant/paint example; not copied upstream or an original geometry oracle.",
+      "expectedLabels": ["SECOND", "Ready", "Ready now", "Browser"]
+    },
+    {
+      "path": "fixtures/plantuml/constantgraph.puml",
+      "sha256": "f796db25708f84943ca5d7c01f19acc2d41f67f8a2c4eb94468f1b0c3b4f5215",
+      "origin": "Independently authored Task3D2 native eager-constant/class/document example; not copied upstream or an original geometry oracle.",
+      "expectedLabels": ["Ready", "Account", "balance", "confirmed Ready"]
+    },
+    {
       "path": "fixtures/plantuml/mindmap.puml",
       "sha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c",
       "oracleName": "mindmap-hierarchy",
@@ -1889,6 +1926,8 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/preprocess.rs",
+    "engine/src/plantuml/origin.rs",
     "engine/src/plantuml/tree.rs",
     "engine/src/plantuml/treescene.rs",
     "engine/src/plantuml/data.rs",
@@ -1923,7 +1962,7 @@
     "Dagre layout from separately audited dugong0.9.2, not PlantUML Graphviz/Smetana/ELK code.",
     "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",
     "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
-    "Actual statement-line locations and column1; precise token spans are not yet implemented.",
-    "Task3D is a bounded shared-style and measured-run checkpoint, not full Task6 or PlantUML parity. Every preprocessor directive remains denied; data label contents stay literal. Single-line chrome only; mixed skinparam/style, multiline chrome/skinparam blocks, external resources and unimplemented markup fail. Baselines remain font-size/4.5 approximations. Authored style fixtures are new native validation sources, not upstream corpus or original geometry oracles."
+    "Task3D2 adds raw-byte Direct/Expansion origins, immutable eager definitions and compact earlier-definition lineage IDs. Statement errors keep authoritative parser lines and bounded expansion-use context; late Creole errors identify label-local locations and bounded textual candidates (including inert duplicates), not falsely precise authored spans. Existing YAML nested-flow/quote diagnostics remain line1. Columns in known source spans are one-based UTF-8 bytes.",
+    "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles."
   ]
 }
