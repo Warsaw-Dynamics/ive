@@ -1,5 +1,11 @@
 # Third-party notices
 
+## Adapted pgui SVG font policy
+
+`viewer/src/svg_fonts.rs` adapts the installed-font selection, missing generic-family repair, Unicode Emoji_Presentation test and platform emoji fallback order from `crates/gpui/src/svg_renderer.rs` in [Warsaw-Dynamics/pgui](https://github.com/Warsaw-Dynamics/pgui) at exact revision `f5d5fa2f8f07b0be68442e694d22ed6064609e73`. Original file SHA-256: `fb12dae87c0cd4c5f5a1fbbd2f9548d52fde9440c21e3d576dfeb0233eda88a6`. Copyright 2022 - 2025 Zed Industries, Inc.; Apache License 2.0. The full original copyright/grant and Apache licence text are retained in the gpui dependency section below and apply to this adapted source too.
+
+Changes: specialize the original asset policy to the standalone viewer's empty asset source (no bundled fonts), share the system font database directly, and extract the resolver for the private same-tree display adapter. The adapter uses pgui's public `swap_rgba_pa_to_bgra` conversion and `RenderImage` API; no font files or upstream text-layout implementation were copied. Direct exact usvg0.46.0, resvg0.46.0, regex1.13.1, ttf-parser0.25.1 and svgtypes0.16.1 dependencies reuse the already licensed locked closure; no package/version is added.
+
 ## Native PlantUML translation
 
 The native sequence/class/object/description checkpoint derives its grammar and behavioral subset exclusively from the authorized PlantUML MIT edition 1.2026.9 source artifact. Copyright 2009-2024 Arnaud Roques; selected declaration/link files additionally credit contributions by Hisashi Miyashita. The complete original generated MIT grant and distribution notice is retained in [provenance/LICENSE-PlantUML-MIT.txt](provenance/LICENSE-PlantUML-MIT.txt), incorporated here by reference. Exact unmodified source-file hashes, Rust destinations and translated behavior are recorded in [provenance/plantuml-mit-1.2026.9.json](provenance/plantuml-mit-1.2026.9.json).

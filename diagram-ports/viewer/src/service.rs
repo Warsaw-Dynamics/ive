@@ -2,11 +2,12 @@ use crate::{
     cli::Input,
     examples,
     native_text::NativeTextResources,
+    svg::DisplaySvg,
     viewport::{self, Viewport, Zoom},
     worker::{self, Job, Measurement, Metadata},
 };
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
-use gpui::{DevicePixels, ParsedSvg, RenderImage, SvgRenderer, SvgSize, TextSystem, size};
+use gpui::{RenderImage, TextSystem};
 use std::{
     sync::{
         Arc, Condvar, Mutex,
@@ -27,6 +28,7 @@ pub struct Ready {
     pub image: Arc<RenderImage>,
     pub logical_size: (f32, f32),
     pub metadata: Metadata,
+    pub display_note: String,
 }
 pub struct Response {
     pub generation: u64,
@@ -52,10 +54,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn start(
-        renderer: SvgRenderer,
-        text: Arc<TextSystem>,
-    ) -> (Self, UnboundedReceiver<Response>) {
+    pub fn start(text: Arc<TextSystem>) -> (Self, UnboundedReceiver<Response>) {
         let queue = Arc::new((
             Mutex::new(Queue {
                 pending: Pending::Idle,
@@ -65,7 +64,7 @@ impl Service {
         ));
         let (sender, receiver) = unbounded();
         let worker_queue = queue.clone();
-        let thread = std::thread::spawn(move || work(worker_queue, sender, renderer, text));
+        let thread = std::thread::spawn(move || work(worker_queue, sender, text));
         (
             Self {
                 queue,
@@ -109,8 +108,7 @@ enum Cache {
     Parsed {
         source: String,
         language: String,
-        svg: Box<ParsedSvg>,
-        dimensions: (f32, f32),
+        svg: Box<DisplaySvg>,
         metadata: Metadata,
     },
 }
@@ -118,7 +116,6 @@ enum Cache {
 fn work(
     queue: Arc<(Mutex<Queue>, Condvar)>,
     sender: UnboundedSender<Response>,
-    renderer: SvgRenderer,
     text: Arc<TextSystem>,
 ) {
     let text = NativeTextResources::new(text);
@@ -133,7 +130,6 @@ fn work(
                 &request,
                 source,
                 RenderContext {
-                    renderer: &renderer,
                     text: &text,
                     cancelled,
                     cache: &mut cache,
@@ -171,7 +167,6 @@ fn next(queue: &Arc<(Mutex<Queue>, Condvar)>) -> Option<(Request, Arc<AtomicBool
 }
 
 struct RenderContext<'a> {
-    renderer: &'a SvgRenderer,
     text: &'a NativeTextResources,
     cancelled: Arc<AtomicBool>,
     cache: &'a mut Cache,
@@ -191,35 +186,25 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
             ..Job::headless("")
         };
         let output = worker::run(&executable, job)?;
-        let dimensions = dimensions(&output.svg)?;
-        let svg = context
-            .renderer
-            .parse_svg(output.svg.as_bytes())
-            .map_err(|error| format!("cannot parse diagram SVG for display: {error}"))?;
+        let svg = DisplaySvg::parse(&output.svg, &context.cancelled)?;
         let mut metadata = output.metadata;
         metadata.diagnostics.extend(native.report());
+        metadata.diagnostics.extend(svg.diagnostic());
         *context.cache = Cache::Parsed {
             source: source.into(),
             language: request.language.clone(),
             svg: Box::new(svg),
-            dimensions,
             metadata,
         };
     }
     if context.cancelled.load(Ordering::Acquire) {
         return Err("diagram rendering cancelled".into());
     }
-    let Cache::Parsed {
-        svg,
-        dimensions,
-        metadata,
-        ..
-    } = context.cache
-    else {
+    let Cache::Parsed { svg, metadata, .. } = context.cache else {
         return Err("diagram cache is empty".into());
     };
     let layout = viewport::layout(
-        *dimensions,
+        svg.dimensions(),
         Viewport {
             size: (
                 request.viewport.0 / request.scale,
@@ -229,44 +214,11 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
         },
         request.zoom,
     )?;
-    let (width, height) = layout.raster_size;
-    let image = context
-        .renderer
-        .render_parsed(
-            svg,
-            SvgSize::ExactSize(size(
-                DevicePixels(width as i32),
-                DevicePixels(height as i32),
-            )),
-        )
-        .map_err(|error| format!("cannot rasterize diagram SVG: {error}"))?;
+    let image = svg.render(layout.raster_size, &context.cancelled)?;
     Ok(Ready {
         image,
         logical_size: layout.logical_size,
         metadata: metadata.clone(),
+        display_note: svg.diagnostic().unwrap_or_default(),
     })
-}
-
-fn dimensions(svg: &str) -> Result<(f32, f32), String> {
-    let document = roxmltree::Document::parse(svg)
-        .map_err(|error| format!("invalid diagram SVG dimensions: {error}"))?;
-    let root = document.root_element();
-    let numeric = |name| {
-        root.attribute(name)
-            .and_then(|value| value.trim_end_matches("px").parse::<f32>().ok())
-    };
-    if let (Some(width), Some(height)) = (numeric("width"), numeric("height")) {
-        return Ok((width, height));
-    }
-    let viewbox: Vec<f32> = root
-        .attribute("viewBox")
-        .unwrap_or("")
-        .split(|character: char| character.is_whitespace() || character == ',')
-        .filter(|part| !part.is_empty())
-        .filter_map(|part| part.parse().ok())
-        .collect();
-    match viewbox.as_slice() {
-        [_, _, width, height] => Ok((*width, *height)),
-        _ => Err("diagram SVG has no finite width/height or viewBox".into()),
-    }
 }

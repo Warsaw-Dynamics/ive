@@ -122,7 +122,7 @@ impl Viewer {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let (service, mut responses) = Service::start(cx.svg_renderer(), cx.text_system().clone());
+        let (service, mut responses) = Service::start(cx.text_system().clone());
         let mut viewer = Self {
             input,
             language: settings.language,
@@ -197,6 +197,9 @@ impl Viewer {
                         ready.metadata.host_calls,
                         ready.metadata.fallback_calls
                     );
+                    if let Some(note) = ready.display_note.lines().next() {
+                        eprintln!("diagram-viewer: {note}");
+                    }
                     State::Ready(ready)
                 }
                 Err(error) => {
@@ -510,6 +513,10 @@ impl Viewer {
     }
 
     fn status(&self) -> impl IntoElement {
+        let display_note = match &self.state {
+            State::Ready(ready) => ready.display_note.clone(),
+            _ => String::new(),
+        };
         let status = match &self.state {
             State::Rendering => "Rendering in isolated worker…".into(),
             State::Failed(error) => format!("Error · {error}"),
@@ -526,16 +533,19 @@ impl Viewer {
             .id("status")
             .role(Role::Status)
             .aria_label(status.clone())
-            .h(px(36.))
+            .min_h(px(36.))
+            .py_2()
             .flex_none()
             .flex()
-            .items_center()
+            .flex_col()
+            .justify_center()
             .px_4()
             .text_xs()
             .text_color(rgb(0xa8b7ca))
             .border_t_1()
             .border_color(rgb(0x303747))
             .child(status)
+            .children(display_note.lines().map(str::to_owned))
     }
 }
 

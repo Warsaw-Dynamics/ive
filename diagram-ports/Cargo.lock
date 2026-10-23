@@ -1235,10 +1235,15 @@ dependencies = [
  "gpui_platform",
  "image",
  "libc",
+ "regex",
+ "resvg",
  "roxmltree 0.21.1",
  "serde",
  "serde_json",
+ "svgtypes",
  "tempfile",
+ "ttf-parser",
+ "usvg",
 ]
 
 [[package]]
