@@ -266,11 +266,11 @@ mod tests {
         assert_eq!(decision, Decision::Done(KeyOutcome::Command(Command::ToggleLayout)));
     }
 
-    /// A diff panel showing one added line, as a diff tab opens it.
+    /// A diff panel showing one line added to a file, as a diff tab opens it.
     fn opened_diff(cx: &mut TestAppContext) -> Entity<Panel> {
-        let line = DiffLine { kind: LineKind::Added, old: None, new: Some(1), text: "a".to_owned() };
-        let hunk = Hunk { header: "@@ -0,0 +1 @@".to_owned(), lines: vec![line] };
-        let file = FileDiff { path: GitPath::from_bytes(b"a.rs"), old_path: None, mark: Mark::Added, body: DiffBody::Text { hunks: vec![hunk], cut: None } };
+        let line = DiffLine { kind: LineKind::Added, old: None, new: Some(2), text: "a".to_owned() };
+        let hunk = Hunk { header: "@@ -1,0 +2 @@".to_owned(), lines: vec![line] };
+        let file = FileDiff { path: GitPath::from_bytes(b"a.rs"), old_path: None, mark: Mark::Modified, body: DiffBody::Text { hunks: vec![hunk], cut: None } };
         cx.update(|cx| diff_panel(vec![file], Headers::Hidden, cx))
     }
 

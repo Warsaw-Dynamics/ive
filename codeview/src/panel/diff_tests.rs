@@ -212,6 +212,24 @@ fn should_report_a_toggled_layout_and_restore_a_tabs_own_without_reporting_it(cx
     assert_eq!((told.borrow().toggled.clone(), told.borrow().state_changes), (vec![DiffLayout::SideBySide], 2));
 }
 
+#[gpui::test]
+fn should_show_an_added_file_inline_and_offer_no_layout_to_switch_to(cx: &mut TestAppContext) {
+    // given
+    let (panel, _asked, cx) = window(cx);
+    let added = FileDiff { mark: Mark::Added, ..file("a.rs", vec![line(LineKind::Added, None, Some(1), "a")]) };
+    show(&panel, DiffInput { files: vec![added], headers: Headers::Hidden, layout: DiffLayout::SideBySide, editable: Editable::No }, cx);
+    let told = told_by(&panel, cx);
+
+    // when
+    panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleLayout), cx));
+    cx.run_until_parked();
+
+    // then
+    let shown = panel.read_with(cx, |panel, cx| (panel.diff_layout(cx), panel.state().layout));
+    assert_eq!(shown, (None, Some(DiffLayout::SideBySide)));
+    assert!(told.borrow().toggled.is_empty());
+}
+
 /// What the panel's view puts on the clipboard.
 fn clipboard(cx: &mut VisualTestContext) -> Rc<RefCell<Vec<String>>> {
     let copied: Rc<RefCell<Vec<String>>> = Rc::default();

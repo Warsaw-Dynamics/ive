@@ -68,7 +68,10 @@ pub enum DiffEvent {
 
 pub struct DiffView {
     files: Vec<FileDiff>,
+    /// `layout` is the one shown: [`DiffLayout::Inline`] for one-sided files, else [`Self::picked`]
     shape: Shape,
+    /// the layout the user picked
+    picked: DiffLayout,
     collapsed: HashSet<usize>,
     rows: Vec<DiffRow>,
     /// digits of the largest line number, for the gutter
@@ -140,6 +143,7 @@ impl DiffView {
         let scrollbars = ScrollState::for_list(&list);
         Self {
             files: Vec::new(),
+            picked: shape.layout,
             shape,
             collapsed: HashSet::new(),
             rows: Vec::new(),
@@ -179,6 +183,7 @@ impl DiffView {
         };
         self.texts.forget_changed(&self.files, &files);
         self.files = files;
+        self.shape.layout = self.shown_layout();
         self.measure_numbers();
         self.rebuild();
         cx.notify();
@@ -197,12 +202,31 @@ impl DiffView {
         !self.files.is_empty()
     }
 
+    /// The layout picked; one-sided files show inline whatever it is.
     pub fn layout(&self) -> DiffLayout {
-        self.shape.layout
+        self.picked
+    }
+
+    /// Every file is added or deleted (see [`Mark::is_one_sided`]): the layout picked does not show.
+    pub fn is_one_sided(&self) -> bool {
+        self.has_files() && self.files.iter().all(|file| file.mark.is_one_sided())
+    }
+
+    fn shown_layout(&self) -> DiffLayout {
+        if self.is_one_sided() {
+            return DiffLayout::Inline;
+        }
+        self.picked
+    }
+
+    /// Picks `layout`; see [`Self::layout`].
+    pub fn set_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
+        self.picked = layout;
+        self.show_layout(self.shown_layout(), cx);
     }
 
     /// Lays the files out as `layout`, with the line at the top staying at the top.
-    pub fn set_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
+    fn show_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
         if layout == self.shape.layout {
             return;
         }
@@ -215,7 +239,10 @@ impl DiffView {
     }
 
     fn toggle_layout(&mut self, cx: &mut Context<Self>) {
-        let layout = match self.shape.layout {
+        if self.is_one_sided() {
+            return;
+        }
+        let layout = match self.picked {
             DiffLayout::Inline => DiffLayout::SideBySide,
             DiffLayout::SideBySide => DiffLayout::Inline,
         };
@@ -850,7 +877,7 @@ fn follow_mouse(into: Rc<Cell<Option<Bounds<Pixels>>>>, view: gpui::Entity<DiffV
                 window.handle_input(&focus, ElementInputHandler::new(bounds, view.clone()), cx);
             }
             window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
-                if phase == DispatchPhase::Capture && view.read(cx).layout() == DiffLayout::SideBySide {
+                if phase == DispatchPhase::Capture && view.read(cx).shape.layout == DiffLayout::SideBySide {
                     view.update(cx, |view, cx| view.on_window_wheel(event, window, cx));
                 }
             });

@@ -201,9 +201,10 @@ impl Panel {
         }
     }
 
-    /// The diff's layout; `None` outside Diff mode.
+    /// The diff's layout; `None` outside Diff mode, or when its files are all added or deleted and show inline.
     pub fn diff_layout(&self, cx: &App) -> Option<DiffLayout> {
         match &self.body {
+            Body::Diff(diff) if diff.read(cx).is_one_sided() => None,
             Body::Diff(diff) => Some(diff.read(cx).layout()),
             Body::Empty | Body::View(_) | Body::Edit(_) => None,
         }
