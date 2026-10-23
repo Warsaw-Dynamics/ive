@@ -1,0 +1,146 @@
+{
+  "sourceJarSha256": "88e30e43639555a6963c270bc6245906b81e8cc65140645f416795d0e0bc71c3",
+  "sourceFilesHashedAndByteCompared": 65,
+  "allSourceJarEntriesMatch": true,
+  "oracleJarSha256": "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd",
+  "probeDirectory": "/tmp/ive-plantuml-specialized-probes.Kf1afs",
+  "originalCases": 12,
+  "intendedCases": 11,
+  "labelOnlyDiscoveryCases": 1,
+  "validation": "xmllint --nonet --noout; exact source/SVG SHA256; finite positive viewBox; shape counts; expected labels; external href/foreignObject rejection",
+  "nativeImplementationOrParityClaim": false,
+  "results": [
+    {
+      "name": "timing-dual",
+      "sourceSha256": "9fe1b95191e7741ab35c4c5cb3246c4acc00a3afc4b65dfc559dceb1442b0f54",
+      "svgSha256": "42fae6ae5c4d5a720b196a3ded6e4494c22f16c880305141c91b6e7d80f33d1e",
+      "xmlValid": true,
+      "viewBox": "0 0 1138 183",
+      "shapeCount": 67,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "timing-lane-mode",
+      "sourceSha256": "f8f6daea3aa5830de880da7a96bf82bc3fb080e3077d93545ae5194444bff097",
+      "svgSha256": "524ba8979a44c54bbcc1fefc79c94bfef2a55f5fb197d6eafffdfb455d8fda6c",
+      "xmlValid": true,
+      "viewBox": "0 0 288 174",
+      "shapeCount": 28,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "gantt-alias-milestones",
+      "sourceSha256": "652c8648afbf5814d01c6fde36e24c19924d51c2ab1422ea67800ec42ae6a0fe",
+      "svgSha256": "34cf19b0bc3c694a4c359c3ddf90e5b2c6a29c1321a80efce09610bdbb71005b",
+      "xmlValid": true,
+      "viewBox": "0 0 328 146",
+      "shapeCount": 24,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "gantt-date-leap",
+      "sourceSha256": "c2438204d02f7a3a3a9653bc973ad749170f0b667ebc0a804fa5b8568d6b0128",
+      "svgSha256": "8382e757ed293cacdc26452be9ee08f54d89e13a523360efcd386ce4501ef650",
+      "xmlValid": true,
+      "viewBox": "0 0 276 129",
+      "shapeCount": 21,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "salt-widgets-span",
+      "sourceSha256": "515f278740900fe267eaae4ea2531c8b625f752972e872c60afc8d5c4f01343b",
+      "svgSha256": "71eaceb6ab48e502dcf09b572f58681a7940881260997a6d3036673b3bcb3286",
+      "xmlValid": true,
+      "viewBox": "0 0 233 106",
+      "shapeCount": 33,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "salt-literal-delimiters",
+      "sourceSha256": "fa5e09a31c612c743b0986c1e87188195d370ff3781b2341314330fb2b7d4c47",
+      "svgSha256": "756f8622f04cd1b63a8910462d130725c6ecb83451e3034a5a16115c6a159d41",
+      "xmlValid": true,
+      "viewBox": "0 0 140 58",
+      "shapeCount": 12,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "salt-border-layout",
+      "sourceSha256": "ab9232ba0b94effa8316fae9a3e949ebeb7e7cbade82321b4343eb19fdaa3939",
+      "svgSha256": "42b03a6400b893ef1b7bb50b40fe144ebc6a604d709d185f786b9d6669695f1a",
+      "xmlValid": true,
+      "viewBox": "0 0 175 115",
+      "shapeCount": 13,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "label-only-not-border-layout"
+    },
+    {
+      "name": "salt-border-tokens",
+      "sourceSha256": "df96fea505643234c3da4bd196004acb9091c0abb94a0300e84c7dec8cf91bb5",
+      "svgSha256": "069e81af73e104c3a226ddb26f69eb1bcd8d19c75724634373a538ef4e66f59a",
+      "xmlValid": true,
+      "viewBox": "0 0 147 109",
+      "shapeCount": 16,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "timing-labels-decimal",
+      "sourceSha256": "0ca21b2f00bd3019e36754ec93fc6f822f47bd9bcd0fc46fd02b3f26ef1b4f47",
+      "svgSha256": "5eae5abad20f88b4ca50fcbd803d96cfc5520d1b711e75759b17f22b0102e286",
+      "xmlValid": true,
+      "viewBox": "0 0 510 138",
+      "shapeCount": 32,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "timing-named-mark",
+      "sourceSha256": "9853b63a18a6fc5d7dcb196d7fa34a618612ffbf266f51a1c7662c5456118dbe",
+      "svgSha256": "bef60e67b7e84e1ad5c60ce81ac5c7d67838732a271a59bcc6b4d6f5cb2ab34b",
+      "xmlValid": true,
+      "viewBox": "0 0 230 118",
+      "shapeCount": 20,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "nwdiag-shared-group",
+      "sourceSha256": "4938d58ff6cb66f0750a492cf46c21c907bcb5d5ac19c8b95c2cf27136749a2e",
+      "svgSha256": "807c1651ac298fd17f2f236840544d0ca9b8f7b7ec4f0e42697cae8db5a4275f",
+      "xmlValid": true,
+      "viewBox": "0 0 306 296",
+      "shapeCount": 10,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    },
+    {
+      "name": "nwdiag-repeat-membership",
+      "sourceSha256": "fa3d9eef9458fda3701b8f6196922baefbb878e42a7ee35643b0b9aac6359bbe",
+      "svgSha256": "11a7e5893541272ecb8e48e8dfc620c8d4d31c0e7f1fdaafe370088d23fb52ac",
+      "xmlValid": true,
+      "viewBox": "0 0 127 195",
+      "shapeCount": 5,
+      "externalReferences": false,
+      "missingExpectedLabels": [],
+      "classification": "intended-original-semantic-example"
+    }
+  ]
+}
