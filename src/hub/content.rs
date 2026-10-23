@@ -137,6 +137,8 @@ pub struct ContentHit {
     pub text: String,
     /// the matches, as byte ranges of `text`
     pub ranges: Vec<Range<usize>>,
+    /// the first match, as bytes of the whole line
+    pub bytes: Range<usize>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -245,8 +247,9 @@ fn search_file(path: &Path, regex: &Regex) -> Vec<ContentHit> {
         let line = line.strip_suffix('\r').unwrap_or(line);
         let ranges: Vec<Range<usize>> = regex.find_iter(line).map(|found| found.range()).filter(|range| !range.is_empty()).collect();
         if let Some(first) = ranges.first().cloned() {
+            let bytes = first.clone();
             let (text, ranges) = shown(line, first, ranges);
-            hits.push(ContentHit { path: path.to_path_buf(), line: u32::try_from(index + 1).unwrap_or(u32::MAX), text, ranges });
+            hits.push(ContentHit { path: path.to_path_buf(), line: u32::try_from(index + 1).unwrap_or(u32::MAX), text, ranges, bytes });
         }
         // one past the limit tells the search it was cut
         if hits.len() > MAX_MATCHES {
@@ -493,6 +496,21 @@ mod tests {
         let hit = &found.hits[0];
         assert!(hit.text.chars().count() <= SHOWN_CHARS, "{}", hit.text.len());
         assert_eq!(&hit.text[hit.ranges[0].clone()], "menu");
+    }
+
+    #[test]
+    fn should_keep_the_match_bytes_of_the_whole_line() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("long.txt"), format!("{}needle{}\n", "a".repeat(420), "b".repeat(80))).unwrap();
+
+        // when
+        let found = found(&[root(dir.path())], &query("needle"), Ignored::Skipped);
+
+        // then
+        let hit = &found.hits[0];
+        assert_eq!(hit.bytes, 420..426);
+        assert!(hit.text.len() < 506, "{}", hit.text.len());
     }
 
     #[test]

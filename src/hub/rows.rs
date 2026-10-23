@@ -151,7 +151,7 @@ pub fn content_list(state: &HubState, found: Option<&ContentFound>, locate: &dyn
 }
 
 fn hit_row(hit: &ContentHit, located: Located) -> Row {
-    let mut item = Item::new(Target::Hit { path: hit.path.clone(), line: hit.line }, format!("{}:{}", located.path, hit.line), icons::file_icon(&located.path));
+    let mut item = Item::new(Target::Hit { path: hit.path.clone(), line: hit.line, bytes: hit.bytes.clone() }, format!("{}:{}", located.path, hit.line), icons::file_icon(&located.path));
     item.detail = hit.text.clone();
     item.place = located.place;
     item.project = located.project;
@@ -484,7 +484,7 @@ mod tests {
     fn should_say_why_a_regex_does_not_compile() {
         // given
         let state = HubState { content: true, matching: Matching::Regex, query: "foo(".to_owned(), ..HubState::default() };
-        let old = ContentFound { hits: vec![ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect() }], files: 1, done: true, ..ContentFound::default() };
+        let old = ContentFound { hits: vec![ContentHit { path: PathBuf::from("/a"), line: 1, text: "foo".to_owned(), ranges: std::iter::once(0..3).collect(), bytes: 0..3 }], files: 1, done: true, ..ContentFound::default() };
 
         // when
         let list = content_list(&state, Some(&old), &nowhere);

@@ -399,7 +399,7 @@ impl Workspace {
             Target::Action(_) | Target::Scope(_) | Target::Branch { .. } => message(format!("{} · {}", item.title, item.detail)),
             Target::NewTerminal(checkout) => self.new_terminal_preview(checkout),
             Target::NewWorktreeTerminal { project, branch, remote } => self.new_worktree_preview(project, branch, remote.as_deref()),
-            Target::Hit { path, line } => text(path.clone(), usize::try_from(*line).ok()),
+            Target::Hit { path, line, .. } => text(path.clone(), usize::try_from(*line).ok()),
         }
     }
 
@@ -1044,7 +1044,7 @@ impl Workspace {
             }
             // the hub adds the worktree first (`add_worktree_from_hub`)
             Target::NewWorktreeTerminal { .. } => {}
-            Target::Hit { path, line } => self.open_document_at(&path, usize::try_from(line).ok(), window, cx),
+            Target::Hit { path, line, .. } => self.open_document_at(&path, usize::try_from(line).ok(), window, cx),
         }
     }
 
