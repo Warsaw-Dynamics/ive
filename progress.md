@@ -239,8 +239,8 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | Order | Task | Remaining deliverable |
 | --- | --- | --- |
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
-| 2 | 3K EBNF / regex — ACTIVE | Family-specific ASTs with shared railroad geometry; actual sequence/choice/optional/repeat rails, no regex execution or grammar expansion |
-| 3 | 3L charts — ACTIVE | Numeric axes, categorical bars/lines, zero/negative baselines, legends and bounded ticks |
+| 2 | 3K EBNF / regex — ACTIVE | Generated grammars and separate typed arenas now pass first wrapper/railroad controls; table admission, topology, bounds, source audit and strict checks pending |
+| 3 | 3L charts — ACTIVE | Generated grammar/typed chart scene pass first original bars, legend ordering and colored-series controls; geometry/bounds/source/strict checks pending |
 | 4 | 3M ASCII Git — ACTIVE | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
 | 5 | 3N wire | Indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
 | 6 | 3O legacy BPM | Genuine legacy events/branches/splits/merges and continuation, distinct from modern activity/BPMN |
