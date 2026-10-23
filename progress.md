@@ -20,7 +20,7 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `d3baf26` — EBNF/regex joined charts and prior families; 761 ordinary Rust tests+seven worker faults and source/generator checks pass; railroad native/baseline checks pending |
+| Latest integrated product checkpoint | `d3baf26` — EBNF/regex joined charts and prior families; 761 ordinary Rust tests+seven worker faults, source/generator checks and railroad native captures pass; baseline selector repair pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
 | Current implementers | ASCII Git and wire in isolated worktrees; EBNF/regex integrated, BPM next |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
@@ -240,7 +240,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | Order | Task | Remaining deliverable |
 | --- | --- | --- |
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
-| 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; native/baseline pending |
+| 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; baseline selector repair pending |
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
 | 4 | 3M ASCII Git — ACTIVE | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
 | 5 | 3N wire — ACTIVE | Isolated implementation from chart head; indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
