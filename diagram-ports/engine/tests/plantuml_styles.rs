@@ -55,6 +55,63 @@ fn source(body: &str) -> String {
 }
 
 #[test]
+fn should_use_measured_frame_kind_and_multiline_caption_extents() {
+    // given
+    for size in [18, 96] {
+        let (config, calls) = recorded();
+        let input = source(&format!(
+            "skinparam defaultFontSize {size}\nparticipant A\ngroup **Caption**\\n//Second//\ncritical X\nA -> A : inside\nend\nend"
+        ));
+        // when
+        let output = render(&input, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        // then
+        assert!(
+            calls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|q| q.text == "critical" && q.size == size as f64)
+        );
+        for frame in xml
+            .descendants()
+            .filter(|n| n.attribute("data-kind") == Some("frame"))
+        {
+            let rect = frame.children().find(|n| n.has_tag_name("rect")).unwrap();
+            let number =
+                |n: roxmltree::Node<'_, '_>, key| n.attribute(key).unwrap().parse::<f64>().unwrap();
+            let mut rows = frame
+                .children()
+                .filter(|n| n.has_tag_name("text"))
+                .map(|n| {
+                    let y = number(n, "y");
+                    let height = size as f64 * 1.2 + 4.;
+                    let top = y - height + size as f64 / 4.5;
+                    let x = number(n, "x");
+                    let width = n.text().unwrap().chars().count() as f64 * size as f64;
+                    assert!(
+                        top > number(rect, "y")
+                            && top + height < number(rect, "y") + number(rect, "height")
+                    );
+                    assert!(
+                        x > number(rect, "x")
+                            && x + width < number(rect, "x") + number(rect, "width")
+                    );
+                    (top, top + height)
+                })
+                .collect::<Vec<_>>();
+            rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+            for pair in rows.windows(2) {
+                assert!(
+                    pair[0].1 <= pair[1].0 + 0.001,
+                    "{size}px measured header rows overlap: {pair:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn should_measure_and_paint_identical_nested_runs_with_composable_base_styles() {
     // given
     let (options, calls) = recorded();

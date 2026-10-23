@@ -32,12 +32,26 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
     let platform = gpui_platform::current_platform(true);
     let resources =
         NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
-    for body in [
-        "participant \"  spaced   Ω  \" as A\nparticipant \"**Heavy** //slanted//\" as B\nA -> B : **request //nested//**\nactivate B\nnote over B : __underline__ --strike--\nB -> A : reply\ndeactivate B",
-        "package \"**Outer**\" as P {\npackage \"//Inner//\" as Q {\nclass \"  spaced   Ω  \" as A {\n{static} **bold //both//**\n{abstract} method()\n}\n}\nclass B\nA --> \"__many__\" B : --relation--\n}",
+    for (size, body) in [
+        (
+            24,
+            "participant \"  spaced   Ω  \" as A\nparticipant \"**Heavy** //slanted//\" as B\nA -> B : **request //nested//**\nactivate B\nnote over B : __underline__ --strike--\nB -> A : reply\ndeactivate B",
+        ),
+        (
+            24,
+            "package \"**Outer**\" as P {\npackage \"//Inner//\" as Q {\nclass \"  spaced   Ω  \" as A {\n{static} **bold //both//**\n{abstract} method()\n}\n}\nclass B\nA --> \"__many__\" B : --relation--\n}",
+        ),
+        (
+            18,
+            "participant \"  spaced   Ω  \" as A\ngroup **Wide caption**\\n//Second row//\ncritical __X__\nA -> A : --inside--\nend\nend",
+        ),
+        (
+            96,
+            "participant \"  spaced   Ω  \" as A\ngroup **Wide caption**\\n//Second row//\ncritical __X__\nA -> A : --inside--\nend\nend",
+        ),
     ] {
         let source = format!(
-            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize 24\nskinparam defaultFontColor #123456\nleft header Native measured header with deliberate width\ntitle **Styled** //document//\nlegend __Legend__ --cut--\nright footer Footer\n{body}\n@enduml"
+            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nskinparam defaultFontColor #123456\nleft header Native measured header with deliberate width\ntitle **Styled** //document//\nlegend __Legend__ --cut--\nright footer Footer\n{body}\n@enduml"
         );
         let native = resources.start_render();
         let config = RenderOptions {
@@ -141,11 +155,12 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
                 "activation overpainted note background"
             );
         }
+        let mut frame_paint = Vec::new();
         for node in xml.descendants().filter(|n| {
             n.has_tag_name("g")
                 && matches!(
                     n.attribute("data-kind"),
-                    Some("class" | "package" | "participant" | "note")
+                    Some("class" | "package" | "participant" | "note" | "frame")
                 )
         }) {
             let Some(usvg::Node::Group(group)) = tree.node_by_id(node.attribute("id").unwrap())
@@ -161,6 +176,7 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
             }) else {
                 continue;
             };
+            let mut frame_ink = Vec::new();
             for child in group.children() {
                 if let usvg::Node::Text(text) = child {
                     let ink = text.abs_stroke_bounding_box();
@@ -170,6 +186,40 @@ fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
                             && ink.top() >= border.top() - 1.
                             && ink.bottom() <= border.bottom() + 1.,
                         "styled node text {ink:?} escapes its own border {border:?}"
+                    );
+                    if node.attribute("data-kind") == Some("frame") {
+                        assert!(
+                            ink.top() > border.top() + 1.
+                                && ink.bottom() < border.bottom() - 1.
+                                && ink.left() > border.left() + 1.
+                                && ink.right() < border.right() - 1.,
+                            "{size}px frame ink touches border"
+                        );
+                        frame_ink.push(ink);
+                    }
+                }
+            }
+            frame_ink.sort_by(|a, b| a.top().total_cmp(&b.top()));
+            for pair in frame_ink.windows(2) {
+                assert!(
+                    pair[0].bottom() < pair[1].top(),
+                    "{size}px actual frame kind/caption ink overlaps: {pair:?}"
+                );
+            }
+            if !frame_ink.is_empty() {
+                frame_paint.push((border, frame_ink));
+            }
+        }
+        for (_, ink) in &frame_paint {
+            for text in ink {
+                for (border, _) in &frame_paint {
+                    let crosses_x = text.left() < border.right() && text.right() > border.left();
+                    assert!(
+                        !crosses_x
+                            || [border.top(), border.bottom()]
+                                .iter()
+                                .all(|y| *y < text.top() - 1. || *y > text.bottom() + 1.),
+                        "{size}px nested frame border crosses header ink"
                     );
                 }
             }

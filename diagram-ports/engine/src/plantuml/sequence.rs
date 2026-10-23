@@ -387,6 +387,21 @@ impl Parser {
     }
 }
 
+const FRAME_GAP: f64 = 8.;
+
+struct EventLabel {
+    caption: Label,
+    kind: Label,
+}
+impl EventLabel {
+    fn width(&self) -> f64 {
+        self.caption.width.max(self.kind.width)
+    }
+    fn header_height(&self) -> f64 {
+        self.kind.height + self.caption.height + FRAME_GAP * 3.
+    }
+}
+
 pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scene, RenderError> {
     let heads = model
         .participants
@@ -396,12 +411,21 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
     let labels = model
         .events
         .iter()
-        .map(|event| context.label(event_label(event)))
+        .map(|event| {
+            let kind = match event {
+                Event::Open { kind, .. } => kind.as_str(),
+                _ => "",
+            };
+            Ok(EventLabel {
+                caption: context.label(event_label(event))?,
+                kind: context.label(kind)?,
+            })
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let widest = heads
         .iter()
-        .chain(&labels)
         .map(|label| label.width)
+        .chain(labels.iter().map(EventLabel::width))
         .fold(80., f64::max);
     let step = widest + 110.;
     context.budget.charge(model.events.len())?;
@@ -439,7 +463,7 @@ fn paint_layer(element: &Element) -> (u8, f64) {
 
 fn allocate_rows(
     model: &Sequence,
-    labels: (&[Label], &[Label]),
+    labels: (&[Label], &[EventLabel]),
     budget: &mut Budget,
 ) -> Result<(Vec<f64>, f64), RenderError> {
     let (heads, events) = labels;
@@ -469,11 +493,12 @@ fn head_height(kind: ParticipantKind, label: &Label) -> f64 {
         }
 }
 
-fn event_extents(event: &Event, label: &Label, heads: &[Label]) -> (f64, f64) {
+fn event_extents(event: &Event, measured: &EventLabel, heads: &[Label]) -> (f64, f64) {
+    let label = &measured.caption;
     match event {
         Event::Message { from, to, .. } => (label.height + 4., if from == to { 24. } else { 8. }),
         Event::Note { .. } => (label.height / 2., label.height / 2. + 16.),
-        Event::Open { .. } => (40., (label.height - 20.).max(0.)),
+        Event::Open { .. } => (0., measured.header_height()),
         Event::Else(_) => (0., label.height + 5.),
         Event::Close => (0., 16.),
         Event::Create(id) => (0., head_height(ParticipantKind::Participant, &heads[*id])),
@@ -572,7 +597,7 @@ fn draw_lanes(
 
 fn draw_events(
     model: &Sequence,
-    labels: &[Label],
+    labels: &[EventLabel],
     xs: &[f64],
     rows: &[f64],
     scene: &mut Scene,
@@ -581,7 +606,7 @@ fn draw_events(
     let mut frames: Vec<(usize, String)> = Vec::new();
     context.budget.charge(model.events.len())?;
     let maximum_depth = frame_depth(model);
-    let frame_margin = labels.iter().map(|label| label.width).fold(80., f64::max) + 60.;
+    let frame_margin = labels.iter().map(EventLabel::width).fold(80., f64::max) + 60.;
     let mut activations: Vec<Vec<f64>> = (0..xs.len()).map(|_| Vec::new()).collect();
     for (index, event) in model.events.iter().enumerate() {
         let y = rows[index];
@@ -605,8 +630,11 @@ fn draw_events(
                 };
                 element.shapes = arrow::draw(points, *arrow);
                 element.shapes.push(Shape::Text(
-                    Point::new(xs[*from].min(xs[*to]) + 10., y - labels[index].height - 4.),
-                    labels[index].clone(),
+                    Point::new(
+                        xs[*from].min(xs[*to]) + 10.,
+                        y - labels[index].caption.height - 4.,
+                    ),
+                    labels[index].caption.clone(),
                     Decoration::Plain,
                 ));
             }
@@ -615,7 +643,7 @@ fn draw_events(
             } => {
                 element.kind = "note";
                 element.owner = format!("p{participant}");
-                let width = labels[index].width + 24.;
+                let width = labels[index].caption.width + 24.;
                 let x = match side {
                     Side::Left => xs[*participant] - width - 24.,
                     Side::Right => xs[*participant] + 24.,
@@ -623,12 +651,14 @@ fn draw_events(
                 };
                 let rect = Rect {
                     x,
-                    y: y - labels[index].height / 2.,
+                    y: y - labels[index].caption.height / 2.,
                     width,
-                    height: labels[index].height + 16.,
+                    height: labels[index].caption.height + 16.,
                 };
                 element.shapes = super::shapes::node(rect, "note");
-                element.shapes.push(text_at(rect, labels[index].clone()));
+                element
+                    .shapes
+                    .push(text_at(rect, labels[index].caption.clone()));
             }
             Event::Open { kind, .. } => {
                 frames.push((index, kind.clone()));
@@ -646,7 +676,7 @@ fn draw_events(
                 ));
                 element.shapes.push(Shape::Text(
                     Point::new(xs[0] - 50., y + 5.),
-                    labels[index].clone(),
+                    labels[index].caption.clone(),
                     Decoration::Plain,
                 ));
             }
@@ -657,24 +687,29 @@ fn draw_events(
                 element.kind = "frame";
                 element.name = kind.clone();
                 let padding = (maximum_depth - frames.len()) as f64 * 8.;
+                let x = xs[0] - frame_margin - padding;
+                let top = rows[start];
                 element.shapes.push(Shape::Rect(
                     Rect {
-                        x: xs[0] - frame_margin - padding,
-                        y: rows[start] - 24.,
+                        x,
+                        y: top,
                         width: xs[xs.len() - 1] - xs[0] + frame_margin * 2. + padding * 2.,
-                        height: y - rows[start] + 40.,
+                        height: y - top + 16.,
                     },
                     0.,
                     Paint::None,
                 ));
                 element.shapes.push(Shape::Text(
-                    Point::new(xs[0] - 55., rows[start] - 20.),
-                    labels[start].clone(),
+                    Point::new(x + FRAME_GAP, top + FRAME_GAP),
+                    labels[start].kind.clone(),
                     Decoration::Plain,
                 ));
                 element.shapes.push(Shape::Text(
-                    Point::new(xs[0] - 55., rows[start] - 40.),
-                    context.label(&kind)?,
+                    Point::new(
+                        x + FRAME_GAP,
+                        top + FRAME_GAP * 2. + labels[start].kind.height,
+                    ),
+                    labels[start].caption.clone(),
                     Decoration::Plain,
                 ));
             }
@@ -732,9 +767,16 @@ mod tests {
     fn draw(source: &str) -> Scene {
         let mut budget = Budget::new(&RenderOptions::default());
         let lines = super::super::source::prepare(source, &mut budget).unwrap();
-        let model = parse(&lines, &mut budget).unwrap();
+        let preamble =
+            super::super::style::prepare(&lines, super::super::source::Wrapper::Uml, &mut budget)
+                .unwrap();
+        let model = parse(&lines[preamble.start..], &mut budget).unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
-        layout(&model, &mut Context::new(&session, &mut budget)).unwrap()
+        layout(
+            &model,
+            &mut Context::new(&session, &mut budget).with_fonts(preamble.fonts),
+        )
+        .unwrap()
     }
 
     fn occupied(element: &Element) -> (f64, f64) {
@@ -754,6 +796,78 @@ mod tests {
                 (top.min(a), bottom.max(b))
             },
         )
+    }
+
+    #[test]
+    fn should_reserve_measured_nested_frame_headers_at_small_and_large_fonts() {
+        // given
+        for size in [18, 96] {
+            let source = format!(
+                "@startuml\nskinparam defaultFontSize {size}\nparticipant A\ngroup **Long wide caption**\\n//Second row//\ncritical __Nested__\nA -> A : inside\nend\nend\nA -> A : after\n@enduml"
+            );
+            // when
+            let scene = draw(&source);
+            let frames = scene
+                .elements
+                .iter()
+                .filter(|e| e.kind == "frame")
+                .collect::<Vec<_>>();
+            // then
+            assert_eq!(frames.len(), 2);
+            for frame in &frames {
+                let Shape::Rect(border, _, _) = frame.shapes[0] else {
+                    panic!("frame border missing")
+                };
+                let mut labels = frame
+                    .shapes
+                    .iter()
+                    .filter_map(|shape| match shape {
+                        Shape::Text(point, label, _) => Some((point, label)),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                labels.sort_by(|a, b| a.0.y.total_cmp(&b.0.y));
+                assert_eq!(labels.len(), 2);
+                for (point, label) in &labels {
+                    assert!(
+                        point.y > border.y && point.y + label.height < border.y + border.height,
+                        "{size}px frame text crosses horizontal border"
+                    );
+                    assert!(
+                        point.x > border.x && point.x + label.width < border.x + border.width,
+                        "{size}px frame text crosses vertical border"
+                    );
+                }
+                assert!(
+                    labels[0].0.y + labels[0].1.height < labels[1].0.y,
+                    "{size}px kind and caption overlap"
+                );
+            }
+            let inner = occupied(frames[0]);
+            let outer = occupied(frames[1]);
+            assert!(outer.0 < inner.0 && outer.1 > inner.1);
+            let header_bottom = |frame: &Element| {
+                frame
+                    .shapes
+                    .iter()
+                    .filter_map(|shape| match shape {
+                        Shape::Text(point, label, _) => Some(point.y + label.height),
+                        _ => None,
+                    })
+                    .fold(0., f64::max)
+            };
+            assert!(
+                header_bottom(frames[1]) < inner.0,
+                "nested frame crosses outer header"
+            );
+            let messages = scene
+                .elements
+                .iter()
+                .filter(|e| e.kind == "message")
+                .collect::<Vec<_>>();
+            assert!(header_bottom(frames[0]) < occupied(messages[0]).0);
+            assert!(outer.1 < occupied(messages[1]).0);
+        }
     }
 
     #[test]
