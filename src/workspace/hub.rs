@@ -17,7 +17,9 @@ use crate::hub::rows::{List, Located, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use codeview::diff::Headers;
-use codeview::panel::Cast;
+use codeview::document::Document;
+use codeview::panel::{Cast, Content, Panel};
+use codeview::syntax::Language;
 use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
@@ -25,7 +27,7 @@ use crate::git::repo::GitError;
 use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
-use crate::hub::preview::{PROCESS_PREVIEW_LINES, read_text};
+use crate::hub::preview::{PROCESS_PREVIEW_LINES, Reveal, reveal_cast};
 use crate::hub::view::{Drawn, HubTab, Preview, escape_does, render_hub};
 use crate::run::file::ConfigKind;
 use crate::hub::{corpus::Corpus, key_label};
@@ -53,7 +55,7 @@ const NEW_TERMINAL_PLACEHOLDER: &str = "New terminal in… type a project, workt
 /// What the selected row's preview needs.
 enum Wanted {
     Ready(Preview),
-    Text { title: String, path: PathBuf, line: Option<usize> },
+    File { title: String, path: PathBuf, reveal: Reveal },
     Diff { title: String, dir: PathBuf, path: String },
 }
 
@@ -62,7 +64,7 @@ impl Wanted {
     fn key(&self) -> String {
         match self {
             Self::Ready(_) => "ready".to_owned(),
-            Self::Text { path, line, .. } => format!("text:{}:{line:?}", path.display()),
+            Self::File { path, reveal, .. } => format!("file:{}:{reveal:?}", path.display()),
             Self::Diff { dir, path, .. } => format!("diff:{}:{path}", dir.display()),
         }
     }
@@ -70,7 +72,7 @@ impl Wanted {
 
 /// A preview read off the UI thread.
 enum Loaded {
-    Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
+    File { title: String, document: Document, reveal: Reveal },
     Diff { title: String, dir: PathBuf, diff: FileDiff },
     Message(String),
 }
@@ -373,7 +375,8 @@ impl Workspace {
             };
             Some(checkout.join(relative))
         };
-        let text = |path: PathBuf, line: Option<usize>| Wanted::Text { title: path.display().to_string(), path, line };
+        let file = |path: PathBuf, reveal: Reveal| Wanted::File { title: path.display().to_string(), path, reveal };
+        let text = |path: PathBuf, line: Option<usize>| file(path, Reveal::of_line(line));
         let message = |message: String| Wanted::Ready(Preview::Message(message));
         match &item.target {
             Target::File { path, .. } => in_checkout(path).map_or_else(|| message(item.title.clone()), |path| text(path, *line)),
@@ -399,7 +402,7 @@ impl Workspace {
             Target::Action(_) | Target::Scope(_) | Target::Branch { .. } => message(format!("{} · {}", item.title, item.detail)),
             Target::NewTerminal(checkout) => self.new_terminal_preview(checkout),
             Target::NewWorktreeTerminal { project, branch, remote } => self.new_worktree_preview(project, branch, remote.as_deref()),
-            Target::Hit { path, line, .. } => text(path.clone(), usize::try_from(*line).ok()),
+            Target::Hit { path, line, bytes } => file(path.clone(), Reveal::Range { line: *line as usize, bytes: bytes.clone() }),
         }
     }
 
@@ -548,10 +551,10 @@ impl Workspace {
                 hub.preview_task = None;
                 return;
             }
-            Wanted::Text { title, path, line } => cx.background_executor().spawn(async move {
-                match read_text(&path, line.and_then(|line| u32::try_from(line).ok())) {
-                    Ok((first, lines)) => Loaded::Text { title, first, lines, line },
-                    Err(error) => Loaded::Message(error),
+            Wanted::File { title, path, reveal } => cx.background_executor().spawn(async move {
+                match Document::open(&path) {
+                    Ok(document) => Loaded::File { title, document, reveal },
+                    Err(error) => Loaded::Message(format!("cannot read {}: {error}", path.display())),
                 }
             }),
             Wanted::Diff { title, dir, path } => cx.background_executor().spawn(async move {
@@ -573,7 +576,7 @@ impl Workspace {
 
     fn hub_preview_loaded(&mut self, id: TabId, key: Option<String>, loaded: Loaded, cx: &mut Context<Self>) {
         let preview = match loaded {
-            Loaded::Text { title, first, lines, line } => Preview::Text { title, first, lines, line },
+            Loaded::File { title, document, reveal } => Preview::File { title, panel: file_panel(document, &reveal, cx) },
             Loaded::Message(message) => Preview::Message(message),
             Loaded::Diff { title, dir, diff } => {
                 let origin = DiffOrigin { dir, sides: Sides::Uncommitted };
@@ -1019,7 +1022,7 @@ impl Workspace {
             Target::Process(id) => self.show_process(id, window, cx),
             Target::File { path, .. } | Target::Change { path, .. } => {
                 if let Some(checkout) = checkout {
-                    self.open_document_at(&checkout.path.join(path), line, window, cx);
+                    self.open_document_at(&checkout.path.join(path), Reveal::of_line(line), window, cx);
                 }
             }
             Target::Scratch(scratch) => {
@@ -1044,21 +1047,21 @@ impl Workspace {
             }
             // the hub adds the worktree first (`add_worktree_from_hub`)
             Target::NewWorktreeTerminal { .. } => {}
-            Target::Hit { path, line, .. } => self.open_document_at(&path, usize::try_from(line).ok(), window, cx),
+            Target::Hit { path, line, bytes } => self.open_document_at(&path, Reveal::Range { line: line as usize, bytes }, window, cx),
         }
     }
 
-    /// Shows the file's tab, opening it when needed, at `line` (from 1) marked.
-    pub(crate) fn open_document_at(&mut self, path: &Path, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
+    /// Shows the file's tab, opening it when needed, scrolled as `reveal` says.
+    pub(crate) fn open_document_at(&mut self, path: &Path, reveal: Reveal, window: &mut Window, cx: &mut Context<Self>) {
         self.open_document(path, window, cx);
-        if let (Some(line), Some(shown)) = (line, self.tabs.active_id()) {
-            self.cast_to_document_tab(shown, Cast::RevealLine(line), cx);
+        if let (Some(cast), Some(shown)) = (reveal_cast(&reveal), self.tabs.active_id()) {
+            self.cast_to_document_tab(shown, cast, cx);
         }
     }
 
     fn reopen(&mut self, saved: &SavedTab, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
         match saved {
-            SavedTab::File { path, .. } => self.open_document_at(path, line, window, cx),
+            SavedTab::File { path, .. } => self.open_document_at(path, Reveal::of_line(line), window, cx),
             SavedTab::Settings { .. } => self.open_settings(window, cx),
             SavedTab::Hub => {
                 self.open_hub(None, window, cx);
@@ -1274,6 +1277,21 @@ fn child_index(list: &List, row: usize) -> usize {
 /// `untitled-<n>`, the first `n` from 1 no scratch has.
 fn free_scratch_name(existing: &[String]) -> String {
     (1..).map(|number| format!("untitled-{number}")).find(|name| !existing.contains(name)).unwrap_or_default()
+}
+
+/// A read-only, unfocusable view of `document`, coloured as its name says, scrolled as `reveal` says.
+fn file_panel(document: Document, reveal: &Reveal, cx: &mut App) -> gpui::Entity<Panel> {
+    let panel = cx.new(|cx| Panel::new(cx).unselectable());
+    serve(&panel, document.path().display().to_string(), cx);
+    let language = Language::for_path(document.path(), document.bytes());
+    let cast = reveal_cast(reveal);
+    panel.update(cx, |panel, cx| {
+        panel.handle(Cast::Open(Content::Lines { source: Arc::new(document), language, edit: None }), cx);
+        if let Some(cast) = cast {
+            panel.handle(cast, cx);
+        }
+    });
+    panel
 }
 
 #[cfg(test)]

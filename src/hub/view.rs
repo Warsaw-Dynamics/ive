@@ -64,8 +64,8 @@ pub struct HubTab {
 pub enum Preview {
     None,
     Loading,
-    /// a file's lines from `first` (from 1), `line` marked
-    Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
+    /// a file in the editor's view, read-only
+    File { title: String, panel: Entity<Panel> },
     Diff { title: String, panel: Entity<Panel> },
     /// a process's last lines, a run configuration's command, a worktree's summary
     Lines { title: String, lines: Vec<String>, mono: bool },
@@ -226,20 +226,7 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
             let body = if *is_mono { body.font_family(mono) } else { body };
             pane.child(title(name)).child(body.children(lines.iter().map(|line| div().whitespace_nowrap().child(line.clone()))))
         }
-        Preview::Text { title: name, first, lines, line } => {
-            let width = (first + lines.len()).to_string().len();
-            let rows = lines.iter().enumerate().map(|(offset, text)| {
-                let number = first + offset;
-                let row = div()
-                    .flex()
-                    .gap_2()
-                    .whitespace_nowrap()
-                    .child(div().flex_none().text_color(rgb(theme.muted)).child(format!("{number:>width$}")))
-                    .child(text.clone());
-                if Some(number) == *line { row.bg(rgb(theme.hover)) } else { row }
-            });
-            pane.child(title(name)).child(div().flex().flex_col().px_3().font_family(mono).text_xs().overflow_hidden().children(rows))
-        }
+        Preview::File { title: name, panel } => pane.child(title(name)).child(div().flex().flex_1().min_h_0().child(panel.clone())),
     }
 }
 
