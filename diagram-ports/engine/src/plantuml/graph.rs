@@ -492,8 +492,7 @@ mod tests {
 
     fn draw(source: &str) -> Scene {
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines = super::super::source::prepare(source, &mut budget).unwrap();
-        let model = super::super::uml::parse(&lines, &mut budget).unwrap();
+        let model = parse_model(source, &mut budget);
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         layout(&model, &mut Context::new(&session, &mut budget)).unwrap()
     }
@@ -619,8 +618,17 @@ mod tests {
     }
 
     fn model(budget: &mut Budget) -> Uml {
-        let lines = super::super::source::prepare("@startuml\npackage P {\nclass A\nclass B\nA --> B\nB --> A\nA --> A\nA --> B : second\n}\nclass Alone\n@enduml", budget).unwrap();
-        super::super::uml::parse(&lines, budget).unwrap()
+        parse_model(
+            "@startuml\npackage P {\nclass A\nclass B\nA --> B\nB --> A\nA --> A\nA --> B : second\n}\nclass Alone\n@enduml",
+            budget,
+        )
+    }
+
+    fn parse_model(source: &str, budget: &mut Budget) -> Uml {
+        let document = super::super::preprocess::prepare(source, budget).unwrap();
+        let mut parsed = super::super::parser::document::parse(&document, budget).unwrap();
+        super::super::parser::preamble::parse(&mut parsed, budget).unwrap();
+        super::super::parser::uml::parse(parsed.body, budget).unwrap()
     }
 
     #[test]

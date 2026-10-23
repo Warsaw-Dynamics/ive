@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, and complete sequence declarations/messages/arrows/notes/nested frames/lifecycle with preserved Sequence model/layout and structured expanded-byte failures. Other family grammars and Creole remain pending.",
+  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, and complete sequence declarations/messages/arrows/notes/nested frames/lifecycle with preserved Sequence model/layout and structured expanded-byte failures. Complete class/object/description/ArchiMate declarations, members, groups, names, aliases and relations now use generated syntax; other family grammars and Creole remain pending.",
   "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, and sequence participant/message/note/frame/lifecycle semantics are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
   "authoredFiles": [
     "engine/src/plantuml/parser/context.rs",
@@ -12,12 +12,14 @@
     "engine/src/plantuml/parser/grammar/header.lalrpop",
     "engine/src/plantuml/parser/grammar/preamble.lalrpop",
     "engine/src/plantuml/parser/grammar/sequence.lalrpop",
+    "engine/src/plantuml/parser/grammar/uml.lalrpop",
     "engine/src/plantuml/parser/header.rs",
     "engine/src/plantuml/parser/mod.rs",
     "engine/src/plantuml/parser/ownership.rs",
     "engine/src/plantuml/parser/preamble.rs",
     "engine/src/plantuml/parser/sequence.rs",
-    "engine/src/plantuml/parser/token.rs"
+    "engine/src/plantuml/parser/token.rs",
+    "engine/src/plantuml/parser/uml.rs"
   ],
   "generatedFiles": [
     "engine/src/plantuml/generated/definition.rs",
@@ -25,7 +27,8 @@
     "engine/src/plantuml/generated/header.rs",
     "engine/src/plantuml/generated/manifest.json",
     "engine/src/plantuml/generated/preamble.rs",
-    "engine/src/plantuml/generated/sequence.rs"
+    "engine/src/plantuml/generated/sequence.rs",
+    "engine/src/plantuml/generated/uml.rs"
   ],
   "generator": "tools/plantuml-grammar-gen/Cargo.toml",
   "generationInventory": "engine/src/plantuml/generated/manifest.json",

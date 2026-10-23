@@ -1,13 +1,11 @@
 //! PlantUML MIT 1.2026.9: class/object/description command grammars and scoped entity semantics.
-use super::{
-    arrow::{self, Arrow},
-    budget::{Budget, invalid, unsupported},
-    lexer::{self, Token},
-    scene::Decoration,
-    source::Line,
-    text::validate_label,
+use super::parser::{
+    context,
+    error::ParseFailure,
+    uml::{Declaration, Link},
 };
-use crate::RenderError;
+use super::{arrow::Arrow, budget::Budget, scene::Decoration};
+use std::ops::Range;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Kind {
@@ -48,7 +46,7 @@ impl Kind {
             Self::Note => "note",
         }
     }
-    fn members(self) -> bool {
+    pub fn members(self) -> bool {
         matches!(
             self,
             Self::Class
@@ -65,7 +63,7 @@ pub(super) enum Parent {
     Root,
     Node(usize),
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(super) enum Member {
     Text(String, Decoration),
     Separator,
@@ -107,430 +105,303 @@ pub(super) struct Uml {
     pub relations: Vec<Relation>,
     pub direction: Direction,
 }
+
 struct PendingRelation {
     scope: Parent,
-    line: usize,
-    from: String,
-    to: String,
-    arrow: Arrow,
-    label: String,
-    left: String,
-    right: String,
+    span: Range<usize>,
+    link: Link,
 }
-enum Body {
-    Outside,
-    Members(usize),
-}
-struct Parser {
+pub(super) struct Builder<'b> {
+    pub budget: &'b mut Budget,
     model: Uml,
     groups: Vec<usize>,
-    body: Body,
+    member: usize,
     pending: Vec<PendingRelation>,
 }
-
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Uml, RenderError> {
-    let mut parser = Parser {
-        model: Uml {
-            family: "description",
-            entities: Vec::new(),
-            relations: Vec::new(),
-            direction: Direction::Down,
-        },
-        groups: Vec::new(),
-        body: Body::Outside,
-        pending: Vec::new(),
-    };
-    for line in lines {
-        budget.charge(1)?;
-        parser.line(line, budget)?;
+impl<'b> Builder<'b> {
+    pub fn retained_bytes(items: usize) -> usize {
+        items.saturating_mul(3).saturating_mul(
+            std::mem::size_of::<Entity>()
+                + std::mem::size_of::<Member>()
+                + std::mem::size_of::<Relation>()
+                + std::mem::size_of::<PendingRelation>()
+                + std::mem::size_of::<usize>(),
+        )
     }
-    if !parser.groups.is_empty() || matches!(parser.body, Body::Members(_)) {
-        return Err(invalid(
-            lines.last().unwrap().number,
-            "unclosed entity or package",
-        ));
-    }
-    parser.resolve(budget)?;
-    if parser.model.entities.is_empty() {
-        return Err(invalid(1, "UML graph has no entities"));
-    }
-    Ok(parser.model)
-}
-
-fn kind(word: &str) -> Option<Kind> {
-    Some(match word {
-        "class" => Kind::Class,
-        "interface" => Kind::Interface,
-        "enum" => Kind::Enum,
-        "annotation" => Kind::Annotation,
-        "object" => Kind::Object,
-        "package" => Kind::Package,
-        "namespace" => Kind::Namespace,
-        "component" => Kind::Component,
-        "node" => Kind::Node,
-        "database" => Kind::Database,
-        "actor" => Kind::Actor,
-        "usecase" => Kind::Usecase,
-        "rectangle" => Kind::Rectangle,
-        "archimate" => Kind::Archimate,
-        "note" => Kind::Note,
-        _ => return None,
-    })
-}
-
-impl Parser {
-    fn scope(&self) -> &str {
-        self.groups
-            .last()
-            .map_or("", |id| self.model.entities[*id].key.as_str())
-    }
-    fn line(&mut self, line: &Line, budget: &mut Budget) -> Result<(), RenderError> {
-        if let Body::Members(id) = self.body {
-            return self.member(id, line, budget);
-        }
-        if line.text == "}" {
-            self.groups
-                .pop()
-                .ok_or_else(|| invalid(line.number, "closing brace without group"))?;
-            return Ok(());
-        }
-        if line.text == "left to right direction" {
-            self.model.direction = Direction::Right;
-            return Ok(());
-        }
-        if line.text == "top to bottom direction" {
-            self.model.direction = Direction::Down;
-            return Ok(());
-        }
-        let (head, label) = lexer::split_label(line);
-        let tokens = lexer::tokens(
-            &Line {
-                number: line.number,
-                text: head.into(),
-            },
+    pub fn new(budget: &'b mut Budget) -> Self {
+        Self {
             budget,
-        )?;
-        if tokens
-            .iter()
-            .any(|token| !token.quoted && lexer::arrow_at(&token.text).is_some())
-        {
-            return self.relation(line, &tokens, label, budget);
+            model: Uml {
+                family: "description",
+                entities: Vec::new(),
+                relations: Vec::new(),
+                direction: Direction::Down,
+            },
+            groups: Vec::new(),
+            member: 0,
+            pending: Vec::new(),
         }
-        if let Some(first) = tokens.first()
-            && (kind(&first.text).is_some() || first.text == "abstract")
-        {
-            if head != line.text {
-                return Err(unsupported(line.number, "declaration colon suffix"));
-            }
-            return self.declare(line, &tokens, budget);
-        }
-        self.relation(line, &tokens, label, budget)
     }
 
-    fn declare(
-        &mut self,
-        line: &Line,
-        tokens: &[Token],
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let (entity_kind, start) = if tokens[0].text == "abstract" {
-            if tokens.get(1).is_none_or(|t| t.text != "class") {
-                return Err(unsupported(line.number, &line.text));
-            }
-            (Kind::Abstract, 2)
-        } else {
-            (kind(&tokens[0].text).unwrap(), 1)
+    pub fn tick(&mut self) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)
+    }
+
+    pub fn direct(&mut self, direction: Direction) -> Result<(), ParseFailure> {
+        self.tick()?;
+        self.model.direction = direction;
+        Ok(())
+    }
+
+    pub fn declare(&mut self, declaration: Declaration) -> Result<usize, ParseFailure> {
+        self.tick()?;
+        let Declaration {
+            kind,
+            alias,
+            label,
+            fill,
+            span,
+        } = declaration;
+        self.budget
+            .charge(self.model.entities.len().saturating_mul(2))
+            .map_err(ParseFailure::terminal)?;
+        let is_description = |kind: Kind| {
+            matches!(
+                kind,
+                Kind::Component
+                    | Kind::Node
+                    | Kind::Database
+                    | Kind::Actor
+                    | Kind::Usecase
+                    | Kind::Rectangle
+                    | Kind::Archimate
+            )
         };
-        let (start, fill) = if entity_kind == Kind::Archimate {
-            let color = tokens
-                .get(start)
-                .ok_or_else(|| invalid(line.number, "archimate requires a color and name"))?;
-            if color.quoted {
-                return Err(unsupported(line.number, &line.text));
-            }
-            let fill = match color.text.to_ascii_lowercase().as_str() {
-                "#lightblue" => super::style::Color(0xadd8e6),
-                "#lightgreen" => super::style::Color(0x90ee90),
-                _ => super::style::color(&color.text, line.number)?,
-            };
-            (start + 1, Fill::Authored(fill))
-        } else {
-            (start, Fill::Default)
-        };
-        let open = tokens.last().is_some_and(|t| t.text == "{" && !t.quoted);
-        if entity_kind == Kind::Archimate && open {
-            return Err(unsupported(line.number, &line.text));
-        }
-        let end = tokens.len() - usize::from(open);
-        if entity_kind == Kind::Note
-            && (open
-                || tokens.len() != 4
-                || !tokens[1].quoted
-                || tokens[2].text != "as"
-                || tokens[3].quoted)
+        if (kind.members()
+            && self
+                .model
+                .entities
+                .iter()
+                .any(|entity| is_description(entity.kind)))
+            || (is_description(kind)
+                && self
+                    .model
+                    .entities
+                    .iter()
+                    .any(|entity| entity.kind.members()))
         {
-            return Err(unsupported(
-                line.number,
-                "graph notes require note \"text\" as alias",
-            ));
-        }
-        let (alias, label) = lexer::name(&tokens[start..end], line.number)?;
-        if entity_kind == Kind::Archimate {
-            lexer::validate_identifier(&alias, line.number)?;
-        }
-        let is_uml = entity_kind.members();
-        budget.charge(self.model.entities.len().saturating_mul(2))?;
-        let is_description = matches!(
-            entity_kind,
-            Kind::Component
-                | Kind::Node
-                | Kind::Database
-                | Kind::Actor
-                | Kind::Usecase
-                | Kind::Rectangle
-                | Kind::Archimate
-        );
-        if (is_uml
-            && self.model.entities.iter().any(|e| {
-                matches!(
-                    e.kind,
-                    Kind::Component
-                        | Kind::Node
-                        | Kind::Database
-                        | Kind::Actor
-                        | Kind::Usecase
-                        | Kind::Rectangle
-                        | Kind::Archimate
-                )
-            }))
-            || (is_description && self.model.entities.iter().any(|e| e.kind.members()))
-        {
-            return Err(unsupported(
-                line.number,
+            return Err(ParseFailure::unsupported(
+                span,
                 "mixed class/description declarations require allowmixing",
             ));
         }
-        validate_label(&label, line.number)?;
-        if alias.contains("::") || alias.contains(['<', '>', '#', '$']) {
-            return Err(unsupported(line.number, &alias));
-        }
-        let scope = self.scope();
-        budget.text(scope.len() + alias.len() + 1)?;
+        let scope = self
+            .groups
+            .last()
+            .map_or("", |id| self.model.entities[*id].key.as_str());
+        self.budget
+            .text(scope.len() + alias.len() + 1)
+            .map_err(ParseFailure::terminal)?;
         let key = if scope.is_empty() {
             alias.clone()
         } else {
             format!("{scope}.{alias}")
         };
-        if self.model.entities.iter().any(|e| e.key == key) {
-            return Err(invalid(
-                line.number,
+        if self.model.entities.iter().any(|entity| entity.key == key) {
+            self.budget
+                .text(key.len().saturating_mul(4).saturating_add(128))
+                .map_err(ParseFailure::terminal)?;
+            return Err(ParseFailure::owned_syntax(
+                span,
                 format!("duplicate entity alias {key:?}"),
             ));
         }
-        budget.item()?;
+        self.budget.item().map_err(ParseFailure::terminal)?;
         let id = self.model.entities.len();
-        let container = open && !entity_kind.members();
-        let parent = self
-            .groups
-            .last()
-            .map_or(Parent::Root, |id| Parent::Node(*id));
-        self.model.entities.push(Entity {
-            key,
-            alias,
-            label,
-            kind: entity_kind,
-            parent,
-            members: Vec::new(),
-            container,
-            fill,
-        });
-        if entity_kind.members() {
-            self.model.family = if entity_kind == Kind::Object && self.model.family != "class" {
+        context::push(
+            &mut self.model.entities,
+            Entity {
+                key,
+                alias,
+                label,
+                kind,
+                parent: self
+                    .groups
+                    .last()
+                    .map_or(Parent::Root, |id| Parent::Node(*id)),
+                members: Vec::new(),
+                container: false,
+                fill,
+            },
+            self.budget,
+        )?;
+        if kind.members() {
+            self.model.family = if kind == Kind::Object && self.model.family != "class" {
                 "object"
             } else {
                 "class"
             };
         }
-        if open {
-            budget.depth(self.groups.len() + 1)?;
-            if entity_kind.members() {
-                self.body = Body::Members(id);
-            } else {
-                self.groups.push(id);
-            }
-        }
-        Ok(())
+        Ok(id)
     }
 
-    fn member(&mut self, id: usize, line: &Line, budget: &mut Budget) -> Result<(), RenderError> {
-        if line.text == "}" {
-            self.body = Body::Outside;
-            return Ok(());
-        }
-        let plain = line
-            .text
-            .strip_prefix("{static}")
-            .or_else(|| line.text.strip_prefix("{abstract}"))
-            .unwrap_or(&line.text);
-        if plain.contains(['{', '}']) {
-            return Err(unsupported(line.number, &line.text));
-        }
-        if !matches!(line.text.as_str(), "--" | ".." | "==" | "__") {
-            validate_label(&line.text, line.number)?;
-        }
-        budget.item()?;
-        let member = if matches!(line.text.as_str(), "--" | ".." | "==" | "__") {
-            Member::Separator
-        } else if let Some(text) = line.text.strip_prefix("{static}") {
-            Member::Text(text.trim().into(), Decoration::Underlined)
-        } else if let Some(text) = line.text.strip_prefix("{abstract}") {
-            Member::Text(text.trim().into(), Decoration::Italic)
+    pub fn open(&mut self, declaration: Declaration) -> Result<(), ParseFailure> {
+        self.budget
+            .depth(self.groups.len() + 1)
+            .map_err(ParseFailure::terminal)?;
+        let id = self.declare(declaration)?;
+        if self.model.entities[id].kind.members() {
+            self.member = id;
         } else {
-            Member::Text(line.text.clone(), Decoration::Plain)
-        };
-        self.model.entities[id].members.push(member);
-        Ok(())
-    }
-
-    fn relation(
-        &mut self,
-        line: &Line,
-        tokens: &[Token],
-        label: &str,
-        budget: &mut Budget,
-    ) -> Result<(), RenderError> {
-        let index = tokens
-            .iter()
-            .position(|t| !t.quoted && lexer::arrow_at(&t.text).is_some())
-            .ok_or_else(|| unsupported(line.number, &line.text))?;
-        let (from, left) = endpoint(&tokens[..index], line.number)?;
-        let (to, right) = endpoint_right(&tokens[index + 1..], line.number)?;
-        let arrow = arrow::parse(&tokens[index].text, line.number)?;
-        for value in [label, &left, &right] {
-            validate_label(value, line.number)?;
+            self.model.entities[id].container = true;
+            context::push(&mut self.groups, id, self.budget)?;
         }
-        budget.item()?;
-        self.pending.push(PendingRelation {
-            scope: self
-                .groups
-                .last()
-                .map_or(Parent::Root, |id| Parent::Node(*id)),
-            line: line.number,
-            from,
-            to,
-            arrow,
-            label: label.into(),
-            left,
-            right,
-        });
         Ok(())
     }
 
-    fn resolve(&mut self, budget: &mut Budget) -> Result<(), RenderError> {
+    pub fn close(&mut self) -> Result<(), ParseFailure> {
+        self.tick()?;
+        self.groups.pop();
+        Ok(())
+    }
+
+    pub fn append(&mut self, member: Member) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        context::push(
+            &mut self.model.entities[self.member].members,
+            member,
+            self.budget,
+        )?;
+        Ok(())
+    }
+
+    pub fn relate(&mut self, link: Link, span: Range<usize>) -> Result<(), ParseFailure> {
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        context::push(
+            &mut self.pending,
+            PendingRelation {
+                scope: self
+                    .groups
+                    .last()
+                    .map_or(Parent::Root, |id| Parent::Node(*id)),
+                span,
+                link,
+            },
+            self.budget,
+        )?;
+        Ok(())
+    }
+
+    pub fn finish(mut self, span: Range<usize>) -> Result<Uml, ParseFailure> {
         for relation in std::mem::take(&mut self.pending) {
-            budget.charge(self.model.entities.len().saturating_mul(6))?;
-            let from = self.resolve_name(&relation.from, &relation, budget)?;
-            let to = self.resolve_name(&relation.to, &relation, budget)?;
+            self.budget
+                .charge(self.model.entities.len().saturating_mul(6))
+                .map_err(ParseFailure::terminal)?;
+            let from = self.resolve_name(&relation.link.from, &relation)?;
+            let to = self.resolve_name(&relation.link.to, &relation)?;
             if self.model.entities[from].container || self.model.entities[to].container {
-                return Err(unsupported(
-                    relation.line,
+                return Err(ParseFailure::unsupported(
+                    relation.span,
                     "relations to container boundaries",
                 ));
             }
-            self.model.relations.push(Relation {
-                from,
-                to,
-                arrow: relation.arrow,
-                label: relation.label,
-                left: relation.left,
-                right: relation.right,
-            });
+            context::push(
+                &mut self.model.relations,
+                Relation {
+                    from,
+                    to,
+                    arrow: relation.link.arrow,
+                    label: relation.link.label,
+                    left: relation.link.left,
+                    right: relation.link.right,
+                },
+                self.budget,
+            )?;
         }
-        Ok(())
+        if self.model.entities.is_empty() {
+            return Err(ParseFailure::syntax(span, "UML graph has no entities"));
+        }
+        Ok(self.model)
     }
 
     fn resolve_name(
         &mut self,
         name: &str,
         relation: &PendingRelation,
-        budget: &mut Budget,
-    ) -> Result<usize, RenderError> {
+    ) -> Result<usize, ParseFailure> {
+        self.tick()?;
         let scope = match relation.scope {
             Parent::Root => "",
             Parent::Node(id) => self.model.entities[id].key.as_str(),
         };
-        budget.text(scope.len() + name.len() + 1)?;
+        self.budget
+            .text(scope.len() + name.len() + 1)
+            .map_err(ParseFailure::terminal)?;
         let scoped = if scope.is_empty() {
             name.into()
         } else {
             format!("{scope}.{name}")
         };
-        if let Some(id) = self.model.entities.iter().position(|e| e.key == scoped) {
+        if let Some(id) = self
+            .model
+            .entities
+            .iter()
+            .position(|entity| entity.key == scoped)
+        {
             return Ok(id);
         }
-        if let Some(id) = self.model.entities.iter().position(|e| e.key == name) {
+        if let Some(id) = self
+            .model
+            .entities
+            .iter()
+            .position(|entity| entity.key == name)
+        {
             return Ok(id);
         }
-        let matches: Vec<_> = self
+        let mut matches = self
             .model
             .entities
             .iter()
             .enumerate()
-            .filter(|(_, e)| e.alias == name)
-            .map(|(i, _)| i)
-            .collect();
-        if matches.len() == 1 {
-            return Ok(matches[0]);
-        }
-        if matches.len() > 1 {
-            return Err(invalid(
-                relation.line,
+            .filter(|(_, entity)| entity.alias == name);
+        let first = matches.next().map(|(id, _)| id);
+        if matches.next().is_some() {
+            self.budget
+                .text(name.len().saturating_mul(4).saturating_add(128))
+                .map_err(ParseFailure::terminal)?;
+            return Err(ParseFailure::owned_syntax(
+                relation.span.clone(),
                 format!("ambiguous entity {name:?}; use its namespace"),
             ));
         }
+        if let Some(id) = first {
+            return Ok(id);
+        }
         if self.model.family == "description" {
-            return Err(invalid(
-                relation.line,
+            self.budget
+                .text(name.len().saturating_mul(4).saturating_add(128))
+                .map_err(ParseFailure::terminal)?;
+            return Err(ParseFailure::owned_syntax(
+                relation.span.clone(),
                 format!("undeclared description entity {name:?}"),
             ));
         }
-        budget.item()?;
+        self.budget.item().map_err(ParseFailure::terminal)?;
         let id = self.model.entities.len();
-        self.model.entities.push(Entity {
-            key: scoped,
-            alias: name.into(),
-            label: name.into(),
-            kind: Kind::Class,
-            parent: relation.scope,
-            members: Vec::new(),
-            container: false,
-            fill: Fill::Default,
-        });
+        context::push(
+            &mut self.model.entities,
+            Entity {
+                key: scoped,
+                alias: name.into(),
+                label: name.into(),
+                kind: Kind::Class,
+                parent: relation.scope,
+                members: Vec::new(),
+                container: false,
+                fill: Fill::Default,
+            },
+            self.budget,
+        )?;
         Ok(id)
-    }
-}
-
-fn endpoint(tokens: &[Token], line: usize) -> Result<(String, String), RenderError> {
-    if let Some(token) = tokens.first() {
-        lexer::validate_name(token, line)?;
-    }
-    match tokens {
-        [name] => Ok((name.text.clone(), String::new())),
-        [name, multiplicity] if multiplicity.quoted => {
-            Ok((name.text.clone(), multiplicity.text.clone()))
-        }
-        _ => Err(unsupported(
-            line,
-            "relation endpoint, port or direction constraint",
-        )),
-    }
-}
-fn endpoint_right(tokens: &[Token], line: usize) -> Result<(String, String), RenderError> {
-    match tokens {
-        [multiplicity, name] if multiplicity.quoted => {
-            lexer::validate_name(name, line)?;
-            Ok((name.text.clone(), multiplicity.text.clone()))
-        }
-        _ => endpoint(tokens, line),
     }
 }

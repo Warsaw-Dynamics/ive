@@ -2321,7 +2321,9 @@
       "path": "net/sourceforge/plantuml/command/NameAndCodeParser.java",
       "sha256": "edd811deef01b0a3de1be2c048875c918dfeb5a7a6ee4d4f6b08bc829be4bff8",
       "rust": [
-        "engine/src/plantuml/lexer.rs"
+        "engine/src/plantuml/lexer.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Quoted display/alias and qualified identifier grammar subset.",
       "copyrights": [
@@ -2425,7 +2427,9 @@
       "path": "net/sourceforge/plantuml/classdiagram/ClassDiagramFactory.java",
       "sha256": "e8e4972b923ca7cbaf2eb2b2761fbdb2cf06c2c49c0ffd46af4007566960179e",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Class/object command-family admission and member body context.",
       "copyrights": [
@@ -2438,7 +2442,9 @@
       "path": "net/sourceforge/plantuml/classdiagram/command/CommandCreateClass.java",
       "sha256": "e4e44fa2ab8f54d79f9e9d5a6b6183997901c05a8b966985e5c50aca1c3aeec7",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Class/interface/enum/annotation/abstract declaration and alias subset; rich decorations rejected.",
       "copyrights": [
@@ -2451,7 +2457,9 @@
       "path": "net/sourceforge/plantuml/classdiagram/command/CommandCreateClassMultilines.java",
       "sha256": "40f63e24e749d95966947961a6e988140b9a542289aa3da7732f5f31cc19f7a1",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Ordered member compartments and explicit static/abstract flags subset.",
       "copyrights": [
@@ -2465,7 +2473,9 @@
       "sha256": "a6236c4f5843c31567743832a41fa95c9d1165edbdfaaea14b2aae0786d7e260",
       "rust": [
         "engine/src/plantuml/uml.rs",
-        "engine/src/plantuml/arrow.rs"
+        "engine/src/plantuml/arrow.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Typed relation ends, labels and quoted multiplicity subset; ports/constraints/roles syntax rejected.",
       "copyrights": [
@@ -2479,7 +2489,9 @@
       "path": "net/sourceforge/plantuml/objectdiagram/command/CommandCreateEntityObject.java",
       "sha256": "c3547be863eaafcf1cbf1f20277081190036a25e966357a502b9ba61d3ef04f9",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Object identity/display declaration subset.",
       "copyrights": [
@@ -2492,7 +2504,9 @@
       "path": "net/sourceforge/plantuml/objectdiagram/command/CommandCreateEntityObjectMultilines.java",
       "sha256": "4c522783c4ea088b5dfe2af08165bfda0e0937ec27f31127e265a45cda1fd1ab",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Ordered object slot body subset.",
       "copyrights": [
@@ -2505,7 +2519,9 @@
       "path": "net/sourceforge/plantuml/descdiagram/DescriptionDiagramFactory.java",
       "sha256": "18ff38a4f03d7b396cad21f9fc0464280a54f682c195cc2a3df79acb710a14df",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Description-family shared component/deployment/usecase vocabulary. Lines207-209 register ArchiMate description commands; only the icon-free single-line command is admitted. ArchiMate remains DESCRIPTION, without a separate wrapper/family.",
       "copyrights": [
@@ -2519,7 +2535,9 @@
       "sha256": "cd668ca6376603d82cb58fd9a47d0dcb18ef2a73ac1c9acf344b8f03372b2e0a",
       "rust": [
         "engine/src/plantuml/uml.rs",
-        "engine/src/plantuml/shapes.rs"
+        "engine/src/plantuml/shapes.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Explicit actor/usecase/component/database/node/rectangle declarations; original native symbol geometry.",
       "copyrights": [
@@ -2533,7 +2551,9 @@
       "path": "net/sourceforge/plantuml/descdiagram/command/CommandPackageWithUSymbol.java",
       "sha256": "e62abf9de33ff07bb335439996e3fcfe04a03e3987b7d5e6011b8f14741abc9c",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Nested package/deployment ownership subset.",
       "copyrights": [
@@ -2547,7 +2567,9 @@
       "sha256": "b79ba21eaba2488472e6dafe40c4d8402aed11cf51dd822464bdff47150bdaad",
       "rust": [
         "engine/src/plantuml/uml.rs",
-        "engine/src/plantuml/arrow.rs"
+        "engine/src/plantuml/arrow.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Description relation grammar subset and extremity meaning.",
       "copyrights": [
@@ -2562,7 +2584,9 @@
       "sha256": "7dfae6720705bb480a2fbc474901576934cbd6f692f6d9b1c6fbd0b24db733b6",
       "rust": [
         "engine/src/plantuml/uml.rs",
-        "engine/src/plantuml/shapes.rs"
+        "engine/src/plantuml/shapes.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Named single-line graph notes with escaped newlines and explicit authored relations.",
       "copyrights": [
@@ -2589,7 +2613,9 @@
       "path": "net/sourceforge/plantuml/cucadiagram/Member.java",
       "sha256": "86a1cd2cf7d608d3d3c568be6e0d8f84a4817391ac247b9bd010ef93ea20603d",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Prefix static/abstract member modifiers, preserved visibility text; no field/method regrouping.",
       "copyrights": [
@@ -3123,7 +3149,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Icon-free DESCRIPTION declaration, authored fill and display/alias; every icon position, package and multiline rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3165,7 +3193,9 @@
       ],
       "rust": [
         "engine/src/plantuml/uml.rs",
-        "engine/src/plantuml/graph.rs"
+        "engine/src/plantuml/graph.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "ARCHIMATE is USymbolRectangle(SName.archimate); no icons or invented layers.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3191,7 +3221,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/uml.rs",
+        "engine/src/plantuml/parser/grammar/uml.lalrpop"
       ],
       "behavior": "Only LightBlue=ADD8E6 and LightGreen=90EE90 constants; no other table, trie algorithm or assets.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
