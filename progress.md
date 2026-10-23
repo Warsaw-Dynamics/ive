@@ -30,6 +30,7 @@ This is the visible master checklist for further work. The controller updates it
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
 | Latest native compatibility captures | Final17-family matrix `/tmp/ive-parser-final-*.png` remains verified. Git/wire captures native4/7, zero fallback. Flow and Flow-cursor captures `/tmp/ive-native-flow-creole-{flow,flow-cursor}.png` native3/3, zero fallback, visually inspected; empty-PATH SVG exports2650/2861 bytes. Corrected Creole capture `/tmp/ive-native-flow-creole-creoledoc.png` native7/zero fallback, SVG2712 bytes, visually inspected with separated bold/italic and underline/strike runs. No viewer survivor. |
+| Current native corpus rehearsal | At pre-state head `eb4c5b7` plus tooling/progress, developer driver exported all91 current fixtures (37 Mermaid,54 PlantUML):91 rendered, zero failed, write-once manifest closure check passes; `/tmp/ive-native-corpus-prestate-20261023a/admission.json` SHA `b8e6d131d2745470927edc0852bd2b0b6ee238a05eb28889db40ea26e2855a32`; no viewer survivor. This is a native-export rehearsal, not final original/semantic/geometry/pixel evidence. |
 
 ## Completed work
 
