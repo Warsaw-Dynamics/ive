@@ -102,6 +102,10 @@ pub fn init(config) {
         #{ key: "v", mods: "SECONDARY", action: act::PasteFrom("Clipboard"), scope: "editor" },
         #{ key: "z", mods: "SECONDARY", action: act::Undo, scope: "editor" },
         #{ key: "z", mods: "SECONDARY|SHIFT", action: act::Redo, scope: "editor" },
+        // the find box over a file or diff; F3 (or, on macOS, Cmd+G) steps from anywhere in it
+        #{ key: "f", mods: "SECONDARY", action: act::Find, scope: "editor" },
+        #{ key: "F3", action: act::FindNext, scope: "editor" },
+        #{ key: "F3", mods: "SHIFT", action: act::FindPrevious, scope: "editor" },
 
         // the hub (Ctrl+Shift+E): its query keeps typing, arrows left/right, Home/End and the clipboard
         #{ key: "DownArrow", action: act::HubDown, scope: "hub" },
@@ -129,6 +133,7 @@ pub fn init(config) {
         // a contents search: regex, whole words
         #{ key: "r", mods: "ALT", action: act::HubToggleRegex, scope: "hub" },
         #{ key: "w", mods: "ALT", action: act::HubToggleWholeWord, scope: "hub" },
+        #{ key: "p", mods: "ALT", action: act::HubCycleSearchIn, scope: "hub" },
         #{ key: find_in_files.key, mods: find_in_files.mods, action: act::HubToggleContent, scope: "hub" },
         // Ctrl+Shift+E again: only the changed files
         #{ key: "e", mods: "SECONDARY|SHIFT", action: act::HubToggleChanged, scope: "hub" },
@@ -138,6 +143,10 @@ pub fn init(config) {
     // Alt+1 … Alt+9 open the numbered rows
     for row in 1..10 {
         config.keys.push(#{ key: `${row}`, mods: "ALT", action: act::HubOpenRow(row), scope: "hub" });
+    }
+    if ive::os() == "macos" {
+        config.keys.push(#{ key: "g", mods: "CMD", action: act::FindNext, scope: "editor" });
+        config.keys.push(#{ key: "g", mods: "CMD|SHIFT", action: act::FindPrevious, scope: "editor" });
     }
 
     config.mouse_bindings = [

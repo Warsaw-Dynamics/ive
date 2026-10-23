@@ -1,10 +1,12 @@
 //! What the hub lists, as plain data the workspace gathers each time the list is drawn: no gpui, so the model is
 //! tested alone.
 
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::output::OutputHit;
 use super::files::Class;
 use crate::git::types::Mark;
 use crate::process::ProcessId;
@@ -76,8 +78,10 @@ pub enum Target {
     Scope(HubScope),
     /// a line of the tab shown before the hub
     Line(u32),
-    /// a contents search's line: an absolute path, and its line from 1
-    Hit { path: PathBuf, line: u32 },
+    /// a contents search's line: an absolute path, its line from 1, and its first match's bytes in that line
+    Hit { path: PathBuf, line: u32, bytes: Range<usize> },
+    /// a contents search's line of a process's output
+    Output(Box<OutputHit>),
 }
 
 /// The `>` list.

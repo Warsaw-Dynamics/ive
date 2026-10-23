@@ -5,6 +5,8 @@ pub mod data;
 mod editing;
 mod patch;
 pub mod rows;
+mod finding;
+mod searched;
 pub mod selection;
 pub mod side_by_side;
 mod split;
@@ -23,6 +25,7 @@ use gpui::{
 };
 
 use crate::code_view::HighlightCache;
+use crate::find::marks::{FindMarks, Mark as FindMark};
 use crate::colors::ResolvedScheme;
 use crate::document::Source;
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
@@ -30,7 +33,7 @@ use crate::panel::{DiffLayout, ParseJob, ParseTarget, TextPurpose, TextsRequest}
 use crate::icons;
 use crate::position::ScrollPosition;
 use crate::scrollbar::{
-    Axis, ListScroll, OffsetScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar, wheel_axes, widest_row,
+    Axis, ListScroll, OffsetScroll, ScrollState, Scrollable, horizontal_scrollbar, vertical_scrollbar_with_ticks, wheel_axes, widest_row,
 };
 use crate::style::{DiffSizes, ViewStyle};
 pub use data::{Cut, DiffBody, DiffLine, FILE_LINE_LIMIT, FileDiff, GitPath, Hunk, LineKind, MAX_FILE_BYTES, Mark, VIEW_LINE_LIMIT};
@@ -64,11 +67,16 @@ pub enum DiffEvent {
     LayoutToggled(DiffLayout),
     /// the edited new side changed
     Edited,
+    /// another side of a side-by-side diff is searched now
+    SearchedChanged,
 }
 
 pub struct DiffView {
     files: Vec<FileDiff>,
+    /// `layout` is the one shown: [`DiffLayout::Inline`] for one-sided files, else [`Self::picked`]
     shape: Shape,
+    /// the layout the user picked
+    picked: DiffLayout,
     collapsed: HashSet<usize>,
     rows: Vec<DiffRow>,
     /// digits of the largest line number, for the gutter
@@ -102,6 +110,22 @@ pub struct DiffView {
     focused: bool,
     /// the caret moved: the next frame scrolls it into view
     reveal_caret: bool,
+    /// changes with what the find box searches: the files, the layout, the side
+    find_revision: u64,
+    /// the lines searched as of `find_revision`, built when first asked for
+    searched: std::cell::RefCell<Option<(u64, Rc<searched::Searched>)>>,
+    /// the find box's matches, while it is open
+    find_marks: Option<FindMarks>,
+    /// the row of each searched line, for the scrollbar's ticks, as of the searched text and the rows it was built for
+    tick_rows: std::cell::RefCell<Option<(TickRowsKey, Rc<Vec<usize>>)>>,
+}
+
+/// What the rows of the searched lines depend on: the searched text, and the rows (collapsing changes them).
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct TickRowsKey {
+    revision: u64,
+    rows: usize,
+    collapsed: usize,
 }
 
 /// What a left-button drag selects, or moves.
@@ -140,6 +164,7 @@ impl DiffView {
         let scrollbars = ScrollState::for_list(&list);
         Self {
             files: Vec::new(),
+            picked: shape.layout,
             shape,
             collapsed: HashSet::new(),
             rows: Vec::new(),
@@ -161,6 +186,10 @@ impl DiffView {
             pressed: Pressed::Rows,
             focused: false,
             reveal_caret: false,
+            find_revision: 0,
+            searched: std::cell::RefCell::default(),
+            find_marks: None,
+            tick_rows: std::cell::RefCell::default(),
         }
     }
 
@@ -179,8 +208,10 @@ impl DiffView {
         };
         self.texts.forget_changed(&self.files, &files);
         self.files = files;
+        self.shape.layout = self.shown_layout();
         self.measure_numbers();
         self.rebuild();
+        self.find_revision += 1;
         cx.notify();
     }
 
@@ -197,12 +228,31 @@ impl DiffView {
         !self.files.is_empty()
     }
 
+    /// The layout picked; one-sided files show inline whatever it is.
     pub fn layout(&self) -> DiffLayout {
-        self.shape.layout
+        self.picked
+    }
+
+    /// Every file is added or deleted (see [`Mark::is_one_sided`]): the layout picked does not show.
+    pub fn is_one_sided(&self) -> bool {
+        self.has_files() && self.files.iter().all(|file| file.mark.is_one_sided())
+    }
+
+    fn shown_layout(&self) -> DiffLayout {
+        if self.is_one_sided() {
+            return DiffLayout::Inline;
+        }
+        self.picked
+    }
+
+    /// Picks `layout`; see [`Self::layout`].
+    pub fn set_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
+        self.picked = layout;
+        self.show_layout(self.shown_layout(), cx);
     }
 
     /// Lays the files out as `layout`, with the line at the top staying at the top.
-    pub fn set_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
+    fn show_layout(&mut self, layout: DiffLayout, cx: &mut Context<Self>) {
         if layout == self.shape.layout {
             return;
         }
@@ -210,12 +260,16 @@ impl DiffView {
         let shown = self.rows.get(top as usize).cloned();
         self.shape.layout = layout;
         self.rebuild();
+        self.find_revision += 1;
         let row = shown.and_then(|shown| self.rows.iter().position(|row| row.meets(&shown))).unwrap_or(0);
         self.restore_scroll(ScrollPosition { top_line: row as f64 + top.fract(), left: 0. }, cx);
     }
 
     fn toggle_layout(&mut self, cx: &mut Context<Self>) {
-        let layout = match self.shape.layout {
+        if self.is_one_sided() {
+            return;
+        }
+        let layout = match self.picked {
             DiffLayout::Inline => DiffLayout::SideBySide,
             DiffLayout::SideBySide => DiffLayout::Inline,
         };
@@ -427,7 +481,9 @@ impl DiffView {
 
     pub(crate) fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
+        let side = self.side;
         self.pick_side(event);
+        self.searched_side_changed(side, cx);
         self.dragging = true;
         if self.press_text(event) {
             self.selection = None;
@@ -660,12 +716,15 @@ impl DiffView {
         let CodeRow { index, line, text } = code;
         let marks = self.edit_marks(line);
         let selected = self.selection.and_then(|selection| selection.columns_on(index, line.text.chars().count())).or(marks.selected.clone());
+        let found = self.find_columns_at(index, Side::New, &line.text);
         let text = div()
             .relative()
             .h_full()
             .flex()
             .items_center()
+            .children(self.find_bars(&found, FindMark::Match, theme))
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
+            .children(self.find_bars(&found, FindMark::Current, theme))
             .child(text)
             .children(self.caret_bar(&marks, theme));
         tinted(row, line.kind, theme)
@@ -696,6 +755,7 @@ impl DiffView {
             Side::New => self.edit_marks(line),
         };
         let selected = selection.and_then(|selection| selection.columns_on(cell.index, line.text.chars().count())).or(marks.selected.clone());
+        let found = self.find_columns_at(cell.index, cell.side, &line.text);
         let text = div()
             .absolute()
             .top_0()
@@ -703,7 +763,9 @@ impl DiffView {
             .left(-px(self.panels.offset.scrolled() as f32))
             .flex()
             .items_center()
+            .children(self.find_bars(&found, FindMark::Match, theme))
             .children(selected.map(|columns| self.selection_bar(columns, theme)))
+            .children(self.find_bars(&found, FindMark::Current, theme))
             .child(self.styled_text(line, self.cell_colours(cell.index, cell.side), cx))
             .children(self.caret_bar(&marks, theme));
         tinted(panel, line.kind, theme)
@@ -724,13 +786,17 @@ impl DiffView {
 
     /// The selection's background behind `columns` of a line; glyphs of the monospace font sit on the column grid.
     fn selection_bar(&self, columns: Range<usize>, theme: &ViewStyle) -> Div {
-        div()
-            .absolute()
-            .top_0()
-            .h_full()
-            .left(self.char_width * columns.start as f32)
-            .w(self.char_width * columns.len() as f32)
-            .bg(rgb(theme.selected))
+        self.columns_bar(columns, rgb(theme.selected))
+    }
+
+    fn columns_bar(&self, columns: Range<usize>, colour: gpui::Rgba) -> Div {
+        div().absolute().top_0().h_full().left(self.char_width * columns.start as f32).w(self.char_width * columns.len() as f32).bg(colour)
+    }
+
+    /// The find box's matches of kind `mark` among `found`, as backgrounds.
+    fn find_bars(&self, found: &[(Range<usize>, FindMark)], mark: FindMark, theme: &ViewStyle) -> Vec<Div> {
+        let colour = rgba(if mark == FindMark::Current { theme.find_current } else { theme.find_match });
+        found.iter().filter(|(_, kind)| *kind == mark).map(|(columns, _)| self.columns_bar(columns.clone(), colour)).collect()
     }
 
     /// The edited text's caret on a row, at its display column.
@@ -850,7 +916,7 @@ fn follow_mouse(into: Rc<Cell<Option<Bounds<Pixels>>>>, view: gpui::Entity<DiffV
                 window.handle_input(&focus, ElementInputHandler::new(bounds, view.clone()), cx);
             }
             window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
-                if phase == DispatchPhase::Capture && view.read(cx).layout() == DiffLayout::SideBySide {
+                if phase == DispatchPhase::Capture && view.read(cx).shape.layout == DiffLayout::SideBySide {
                     view.update(cx, |view, cx| view.on_window_wheel(event, window, cx));
                 }
             });
@@ -900,7 +966,7 @@ impl Render for DiffView {
             .child(follow_mouse(self.bounds.clone(), cx.entity()))
             .child(self.render_list(&theme, cx))
             .children(self.render_divider(&theme, cx))
-            .child(vertical_scrollbar(&self.scrollbars, &theme))
+            .child(vertical_scrollbar_with_ticks(&self.scrollbars, &theme, self.find_ticks()))
             .children(self.horizontal_scrollbars(&theme))
     }
 }

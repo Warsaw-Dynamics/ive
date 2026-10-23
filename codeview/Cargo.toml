@@ -16,6 +16,7 @@ gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "291caf391d1
 # line diffs for the change markers (histogram); Apache-2.0
 imara-diff = "=0.2.0"
 memchr = "2.8"
+regex = "1.13.1"
 memmap2 = "0.9.11"
 serde = { version = "1", features = ["derive"] }
 streaming-iterator = "0.1"

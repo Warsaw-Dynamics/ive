@@ -89,6 +89,11 @@ pub enum Mark {
 }
 
 impl Mark {
+    /// The file is on one side only, added or deleted: side by side would leave a panel empty.
+    pub fn is_one_sided(self) -> bool {
+        matches!(self, Self::Added | Self::Untracked | Self::Deleted)
+    }
+
     pub fn letter(self) -> &'static str {
         match self {
             Self::Modified => "M",

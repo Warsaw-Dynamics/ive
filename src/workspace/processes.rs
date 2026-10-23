@@ -164,7 +164,15 @@ impl Workspace {
             Some(Tab::Scratch(scratch)) => scratch.type_text(text, cx),
             Some(Tab::Document(file)) => file.type_text(text, cx),
             Some(Tab::Diff(diff)) => {
-                let panel = diff.editing_panel(cx).ok_or_else(|| format!("tab {} shows a diff that cannot be edited: only a diff of uncommitted changes can", tab.value()))?;
+                // the find box's query takes typing while it has the keyboard, editable or not
+                let finding = Some(diff.panel(cx)).filter(|panel| panel.read(cx).takes_typing(cx));
+                let panel = diff.editing_panel(cx).or(finding).ok_or_else(|| format!("tab {} shows a diff that cannot be edited: only a diff of uncommitted changes can", tab.value()))?;
+                panel.update(cx, |panel, cx| panel.handle(codeview::panel::Cast::Type(text.to_owned()), cx));
+                Ok(())
+            }
+            Some(Tab::Commit(commit)) => {
+                let panel = Some(commit.panel(cx)).filter(|panel| panel.read(cx).takes_typing(cx));
+                let panel = panel.ok_or_else(|| format!("tab {} shows a commit, which is read-only; its find box (click find:open) takes typing", tab.value()))?;
                 panel.update(cx, |panel, cx| panel.handle(codeview::panel::Cast::Type(text.to_owned()), cx));
                 Ok(())
             }

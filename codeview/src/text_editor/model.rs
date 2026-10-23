@@ -312,6 +312,13 @@ impl EditorModel {
         self.anchor = None;
     }
 
+    /// Selects `bytes` of stored line `line`, the caret at their end.
+    pub fn select_in_line(&mut self, line: usize, bytes: Range<usize>) {
+        let line = line.min(self.line_count() - 1);
+        self.set_caret(Position::new(line, self.column_at_byte(line, bytes.start)), Selecting::Move);
+        self.set_caret(Position::new(line, self.column_at_byte(line, bytes.end)), Selecting::Extend);
+    }
+
     pub fn select_all(&mut self) {
         self.place_caret(Position::default(), Selecting::Move);
         self.place_caret(self.end(), Selecting::Extend);
@@ -330,6 +337,27 @@ impl EditorModel {
         let end = (probe + 1..chars.len()).take_while(|&at| class(chars[at]) == kind).last().map_or(probe + 1, |at| at + 1);
         self.place_caret(Position::new(position.line, start), Selecting::Move);
         self.place_caret(Position::new(position.line, end), Selecting::Extend);
+    }
+
+    /// The word (letters, digits, `_`) at or just before `position`; `None` off a word.
+    pub fn word_at(&self, position: Position) -> Option<Range<Position>> {
+        let position = self.clamp(position);
+        let chars: Vec<char> = self.line(position.line).chars().collect();
+        let is_word = |at: usize| chars.get(at).is_some_and(|c| c.is_alphanumeric() || *c == '_');
+        let start = (0..position.column).rev().take_while(|&at| is_word(at)).last().unwrap_or(position.column);
+        let end = (position.column..chars.len()).take_while(|&at| is_word(at)).last().map_or(position.column, |at| at + 1);
+        (start < end).then(|| Position::new(position.line, start)..Position::new(position.line, end))
+    }
+
+    /// The byte offset of `position` in the text.
+    pub fn byte_of(&self, position: Position) -> usize {
+        self.table.line_start(position.line) as usize + self.byte_in_line(position)
+    }
+
+    /// Where byte `byte` of the text is.
+    pub fn position_of(&self, byte: usize) -> Position {
+        let line = self.table.line_of(byte as u64);
+        Position::new(line, self.column_at_byte(line, byte - self.table.line_start(line) as usize))
     }
 
     /// The whole line with its line break.
@@ -562,7 +590,7 @@ impl EditorModel {
         text.as_bytes().to_vec()
     }
 
-    fn text_in(&self, start: Position, end: Position) -> String {
+    pub fn text_in(&self, start: Position, end: Position) -> String {
         let lines: Vec<String> = (start.line..=end.line).map(|line| self.line(line)).collect();
         let (first, last) = (&lines[0], &lines[lines.len() - 1]);
         if start.line == end.line {
@@ -730,6 +758,18 @@ mod tests {
     /// The text as the editor shows it: lines joined by LF.
     fn text(model: &EditorModel) -> String {
         (0..model.line_count()).map(|line| model.line(line)).collect::<Vec<_>>().join("\n")
+    }
+
+    #[test]
+    fn should_select_bytes_of_a_line() {
+        // given
+        let mut model = model("one\nzażółć two\n");
+
+        // when
+        model.select_in_line(1, 11..14);
+
+        // then
+        assert_eq!(model.selection(), Some(Position::new(1, 7)..Position::new(1, 10)));
     }
 
     #[test]

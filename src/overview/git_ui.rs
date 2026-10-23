@@ -93,13 +93,16 @@ pub fn segment(id: impl Into<ElementId>, label: impl Into<SharedString>, picked:
 }
 
 /// Inline | Side by side, for a diff panel; a click on the other one switches its layout (targets
-/// `diff-layout:inline` and `diff-layout:side-by-side`).
+/// `diff-layout:inline` and `diff-layout:side-by-side`). Nothing for a panel without a layout to pick, as one whose
+/// files are all added or deleted.
 pub fn layout_switch(panel: &Entity<Panel>, theme: Theme, cx: &App) -> Div {
-    let shown = panel.read(cx).diff_layout(cx);
+    let Some(shown) = panel.read(cx).diff_layout(cx) else {
+        return div();
+    };
     let segments = [(DiffLayout::Inline, "inline", "Inline"), (DiffLayout::SideBySide, "side-by-side", "Side by side")].map(|(layout, name, label)| {
         let panel = panel.clone();
         let pick = target(format!("diff-layout:{name}"), move |_event, _window, cx| switch_layout(&panel, layout, cx), cx);
-        segment(("diff-layout", layout as usize), label, Picked::from(shown == Some(layout)), theme).on_click(pick)
+        segment(("diff-layout", layout as usize), label, Picked::from(shown == layout), theme).on_click(pick)
     });
     div().flex().flex_none().gap_1().children(segments)
 }

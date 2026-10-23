@@ -5,15 +5,18 @@ use std::process::ExitStatus;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use alacritty_terminal::event::Event;
+use alacritty_terminal::Term;
+use alacritty_terminal::event::{Event, EventListener};
+use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::index::{Column, Line, Point as GridPoint, Side};
-use alacritty_terminal::selection::SelectionType;
+use alacritty_terminal::grid::Scroll;
+use alacritty_terminal::selection::{Selection, SelectionType};
 use alacritty_terminal::term::TermMode;
 use alacritty_terminal::vte::ansi::CursorShape;
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
-    App, Bounds, BorderStyle, ClipboardItem, Context, CursorStyle, ExternalPaths, FocusHandle, Font, FontStyle, Hsla,
+    App, Bounds, BorderStyle, ClipboardItem, ContentMask, Context, CursorStyle, ExternalPaths, FocusHandle, Font, FontStyle, Hsla,
     KeyDownEvent, Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
     SharedString, Size,
     StrikethroughStyle, Task, TextRun, WeakEntity, UnderlineStyle, Window, canvas, div, fill, outline, point, prelude::*,
@@ -23,11 +26,11 @@ use gpui::{
 use super::colors::{ColorResolver, unpack};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
-use super::layout::{CursorMark, Frame, Run, Segment, Underline, layout};
+use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::progress::Progress;
 use super::session::{GridSize, Session};
-use super::text::{ScreenText, output_text, screen_text};
+use super::text::{OutputRow, ScreenText, output_rows, output_text, screen_text};
 use super::hosted::HostedTerminals;
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
@@ -222,6 +225,35 @@ impl TerminalView {
 
     pub fn output_text(&self, last: Option<usize>) -> Vec<String> {
         self.session.with_term(|term| output_text(term, last))
+    }
+
+    /// Scrolls the terminal to the output line `find` picks, its match selected, all under one lock so output arriving
+    /// meanwhile cannot move it; to the bottom when `find` finds none, with its reason.
+    pub fn reveal<E>(&self, find: impl FnOnce(&[OutputRow]) -> Result<LineAt, E>) -> Result<(), E> {
+        self.session.with_term(|term| {
+            let output = output_rows(term);
+            let found = find(&output).map(|at| match_window(term, &output[at.index], at.bytes, term.screen_lines()).0);
+            match &found {
+                Ok(window) => reveal_window(term, window),
+                Err(_) => term.scroll_display(Scroll::Bottom),
+            }
+            found.map(|_| ())
+        })
+    }
+
+    /// The terminal's last `rows` lines laid out, without touching what its tab shows.
+    pub fn snapshot_bottom(&self, rows: usize, palette: &TerminalPalette) -> Snapshot {
+        self.session.with_term(|term| Snapshot { frame: Rc::new(layout_window(term, &bottom_window(term, rows), palette)), shown: Shown::Bottom })
+    }
+
+    /// `rows` lines around the output line `find` picks laid out, its match marked, under one lock.
+    pub fn snapshot_found<E>(&self, find: impl FnOnce(&[OutputRow]) -> Result<LineAt, E>, rows: usize, palette: &TerminalPalette) -> Result<Snapshot, E> {
+        self.session.with_term(|term| {
+            let output = output_rows(term);
+            let at = find(&output)?;
+            let (window, shown) = match_window(term, &output[at.index], at.bytes, rows);
+            Ok(Snapshot { frame: Rc::new(layout_window(term, &window, palette)), shown })
+        })
     }
 
     /// Applies what the shell asked for: replies to its queries, clipboard, title, exit.
@@ -697,6 +729,46 @@ fn grid(session: Rc<Session>, pointer: Rc<Pointer>, metrics: CellMetrics, palett
         },
     )
     .size_full()
+}
+
+/// Lines of a terminal laid out, and what of them to keep in view.
+#[derive(Debug, Clone)]
+pub struct Snapshot {
+    pub frame: Rc<Frame>,
+    pub shown: Shown,
+}
+
+/// Scrolls so `window`'s top line is the screen's first (kept inside the history) and selects its mark, as the mouse
+/// would.
+fn reveal_window<T: EventListener>(term: &mut Term<T>, window: &GridWindow) {
+    let current = term.grid().display_offset() as i32;
+    term.scroll_display(Scroll::Delta((-window.top).max(0) - current));
+    if let Some((start, end)) = window.mark {
+        let mut selection = Selection::new(SelectionType::Simple, start, Side::Left);
+        selection.update(end, Side::Right);
+        term.selection = Some(selection);
+    }
+}
+
+/// Paints `snapshot` as the terminal draws, taking no input, scrolled so what it keeps in view is in view.
+pub fn snapshot_element(snapshot: Snapshot, palette: TerminalPalette) -> impl IntoElement {
+    let Snapshot { frame, shown } = snapshot;
+    let painted = canvas(
+        |_, _, _| {},
+        move |bounds, (), window, cx| {
+            let metrics = CellMetrics::measure(window, cx);
+            let columns = (f32::from(bounds.size.width) / f32::from(metrics.cell_width)).floor() as usize;
+            let rows = (f32::from(bounds.size.height) / f32::from(metrics.line_height)).floor() as usize;
+            let (right, down) = match &shown {
+                Shown::Bottom => (0, frame.lines.len().saturating_sub(rows)),
+                Shown::Match { line, columns: matched } => (columns_shift(matched, columns), line.saturating_sub(rows / 3)),
+            };
+            let origin = point(bounds.origin.x - metrics.cell_width * right as f32, bounds.origin.y - metrics.line_height * down as f32);
+            window.with_content_mask(Some(ContentMask { bounds }), |window| paint_frame(&frame, origin, metrics, palette.cursor, window, cx));
+        },
+    )
+    .size_full();
+    div().flex_1().min_h_0().overflow_hidden().bg(rgb(palette.background)).child(painted)
 }
 
 /// Cell size of the monospace font at the terminal's text size.

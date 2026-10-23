@@ -33,6 +33,43 @@ impl ThemePreference {
     }
 }
 
+/// Which theme the looks come from: IVE's own, or a file `themes/<name>.toml` in the profile folder.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(from = "Option<String>", into = "Option<String>")]
+pub enum ThemeChoice {
+    #[default]
+    Builtin,
+    File(String),
+}
+
+impl ThemeChoice {
+    pub fn is_builtin(&self) -> bool {
+        *self == Self::Builtin
+    }
+
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Builtin => "Default",
+            Self::File(name) => name,
+        }
+    }
+}
+
+impl From<Option<String>> for ThemeChoice {
+    fn from(name: Option<String>) -> Self {
+        name.map_or(Self::Builtin, Self::File)
+    }
+}
+
+impl From<ThemeChoice> for Option<String> {
+    fn from(choice: ThemeChoice) -> Self {
+        match choice {
+            ThemeChoice::Builtin => None,
+            ThemeChoice::File(name) => Some(name),
+        }
+    }
+}
+
 /// Whether a release build updates itself from GitHub Releases.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -62,6 +99,8 @@ impl AutoUpdate {
 #[serde(default)]
 pub struct Settings {
     pub theme: ThemePreference,
+    #[serde(skip_serializing_if = "ThemeChoice::is_builtin")]
+    pub user_theme: ThemeChoice,
     /// project tree width in pixels, once the user resized it; IVE fits it to the window
     pub sidebar_width: Option<u32>,
     /// the diff layout the user last switched to: new diff and commit tabs open in it
@@ -77,6 +116,10 @@ pub struct Settings {
 impl Settings {
     pub fn with_theme(&self, theme: ThemePreference) -> Self {
         Self { theme, ..self.clone() }
+    }
+
+    pub fn with_user_theme(&self, user_theme: ThemeChoice) -> Self {
+        Self { user_theme, ..self.clone() }
     }
 
     pub fn with_sidebar_width(&self, width: Option<u32>) -> Self {
@@ -219,6 +262,45 @@ impl fmt::Display for SettingsError {
 mod tests {
     use super::*;
     use crate::overview::file_list::{FileLayout, FileSort};
+
+    #[test]
+    fn should_save_and_load_user_theme() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let settings = Settings::default().with_user_theme(ThemeChoice::File("nord".to_owned()));
+
+        // when
+        settings.save(&path).unwrap();
+
+        // then
+        assert!(fs::read_to_string(&path).unwrap().contains("user_theme = \"nord\""));
+        assert_eq!(Settings::load(&path).unwrap(), settings);
+    }
+
+    #[test]
+    fn should_leave_builtin_theme_out_of_file() {
+        // given
+        let settings = Settings::default();
+
+        // when
+        let text = toml::to_string(&settings).unwrap();
+
+        // then
+        assert!(!text.contains("user_theme"), "{text}");
+    }
+
+    #[test]
+    fn should_keep_file_named_default_distinct_from_builtin() {
+        // given
+        let settings = Settings::default().with_user_theme(ThemeChoice::File("Default".to_owned()));
+
+        // when
+        let loaded: Settings = toml::from_str(&toml::to_string(&settings).unwrap()).unwrap();
+
+        // then
+        assert_eq!(loaded.user_theme, ThemeChoice::File("Default".to_owned()));
+    }
 
     #[test]
     fn should_not_save_over_a_file_that_failed_to_load() {

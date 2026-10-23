@@ -54,6 +54,8 @@ pub enum Cast {
     /// scrolls line `line` (from 1) into view and marks it; a diff scrolls the hunk holding its first file's new-side
     /// line `line` to the top
     RevealLine(usize),
+    /// as [`Cast::RevealLine`], and selects `bytes` of the line and scrolls sideways to them; a diff reveals the line
+    RevealRange { line: usize, bytes: Range<usize> },
     /// the file went away on disk; its text stays
     MarkDeleted,
     SetPolicy(EditPolicy),

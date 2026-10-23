@@ -20,29 +20,31 @@ use crate::script::keymap::{Action, Builtin, MouseTrigger, Scope};
 use crate::script::state::{ScriptState, bound_action, bound_mouse, invoke};
 use crate::tabs::TabId;
 use crate::theme_config::ThemeSpec;
+use crate::theme_config::user::THEMES_DIR;
 use crate::script::temporary_tabs::TemporaryTabs;
 use crate::script::{ScriptEvent, Scripts};
 use crate::text_input;
 use crate::theme::Fonts;
 use crate::watch::{OpenPaths, Watched};
 
-/// The scripts folder as `OpenPaths` reports it (canonical), and the task applying script events.
+/// The scripts folder and its themes folder as `OpenPaths` reports them (canonical), and the task applying script
+/// events.
 pub(super) struct ScriptWatch {
-    dir: Option<PathBuf>,
+    dirs: Vec<PathBuf>,
     _events: Task<()>,
 }
 
 impl ScriptWatch {
-    /// Makes the scripts state global, watches `dir` (creating it: it is IVE's config folder) and applies the
-    /// script thread's events as they come.
+    /// Makes the scripts state global, watches `dir` and its `themes` (creating them: `dir` is IVE's config folder)
+    /// and applies the script thread's events as they come.
     pub(super) fn start(scripts: Scripts, dir: Option<PathBuf>, paths: &mut OpenPaths, window: &mut Window, cx: &mut Context<Workspace>) -> Self {
         cx.set_global(ScriptState::new(scripts.commands, scripts.log));
-        let dir = dir.and_then(|dir| watched_dir(&dir));
-        if let Some(dir) = &dir {
+        let dirs: Vec<PathBuf> = dir.iter().flat_map(|dir| [dir.clone(), dir.join(THEMES_DIR)]).filter_map(|dir| watched_dir(&dir)).collect();
+        if !dirs.is_empty() {
             let owner = paths.new_owner();
-            paths.set(owner, [Watched::Folder(dir.clone())]);
+            paths.set(owner, dirs.iter().cloned().map(Watched::Folder));
         }
-        Self { dir, _events: apply_events(scripts.events, window, cx) }
+        Self { dirs, _events: apply_events(scripts.events, window, cx) }
     }
 }
 
@@ -151,9 +153,10 @@ impl Workspace {
         self.cast_to_document_tab(shown, Cast::Command(Command::Move(Motion::DocumentEnd, Selecting::Move)), cx);
     }
 
-    /// A folder changed on disk; when it is the scripts folder, the script thread reloads if a script changed.
+    /// A folder changed on disk; when it is the scripts or themes folder, the script thread reloads if a script or
+    /// theme changed.
     pub(super) fn scripts_folder_changed(&self, dir: &Path, cx: &Context<Self>) {
-        if self.scripts.dir.as_deref() == Some(dir) {
+        if self.scripts.dirs.iter().any(|watched| watched == dir) {
             cx.global::<ScriptState>().reload();
         }
     }

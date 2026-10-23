@@ -3,6 +3,7 @@ mod age;
 mod api;
 mod args;
 mod assets;
+mod build_info;
 mod click_targets;
 mod clipboard;
 mod codeview_host;
@@ -141,7 +142,8 @@ pub fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     let log = script::log::ScriptLog::new(script::log::default_path(), script::log::MAX_LOG_BYTES);
-    let scripts = tracing::info_span!("start_scripts").in_scope(|| script::start(script::default_dir(), log, calls));
+    let setup = script::Setup { dir: script::default_dir(), theme: saved_user_theme() };
+    let scripts = tracing::info_span!("start_scripts").in_scope(|| script::start(setup, log, calls));
     let state_path = profile::current().state_path();
     let saved = tracing::info_span!("load_state").in_scope(|| load_state(state_path.as_deref()));
     let startup = Startup {
@@ -370,6 +372,13 @@ fn serve_mcp(mcp: McpPort, start: Start, calls: &UnboundedSender<Call>) -> Resul
         terminal::env::announce_mcp(url, token.value().to_owned());
     }
     Ok(())
+}
+
+/// The theme the settings picked, for the scripts' first load; IVE's own when they do not load, which
+/// [`load_settings`] reports.
+fn saved_user_theme() -> settings::ThemeChoice {
+    let saved = settings::default_path().and_then(|path| settings::Settings::load(&path).ok());
+    saved.map(|settings| settings.user_theme).unwrap_or_default()
 }
 
 /// Saved settings, or defaults when the file does not load; the reason goes to stderr too, since no window exists

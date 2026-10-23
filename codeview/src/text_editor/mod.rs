@@ -5,7 +5,6 @@ mod colours;
 mod history;
 pub(crate) mod keys;
 mod layout;
-mod message_field;
 pub(crate) mod model;
 mod view;
 

@@ -386,37 +386,14 @@ button.card:hover { border-color: var(--accent); }
 /* appearance.rs theme picker: radius 6, options padding 12/4, the chosen one on the accent */
 .segmented { border-radius: 6px; }
 .segmented button { padding: 4px 12px; }
-/* scripts.rs (a proposal): text selectable throughout; blocks are monospace on the editor colour, Copy at the right of
-   their head; Quick reference blocks fold. Width capped so the prompt reads as a page, not a log line. */
-.scripts { max-width: 920px; user-select: text; }
-.scripts__lead { margin: 0; line-height: 1.5; }
-.scripts__heading { margin: 8px 0 0; font-size: 14px; font-weight: 600; color: var(--muted); }
-.scripts__note { margin: -8px 0 0; font-size: 13px; }
-.block { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--background); }
-.block__head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; background: var(--sidebar); list-style: none; cursor: default; }
-details.block > .block__head { cursor: pointer; }
-details.block > .block__head::-webkit-details-marker { display: none; }
-details.block > .block__head::before { content: "›"; width: 10px; color: var(--muted); transition: transform .1s; }
-details.block[open] > .block__head::before { transform: rotate(90deg); }
-details.block[open] > .block__head, .block--prompt .block__head { border-bottom: 1px solid var(--border); }
-.block__title { flex: 1; font-size: 14px; font-weight: 600; user-select: none; }
-.block__copy { flex: none; padding: 2px 10px; border-radius: 4px; border: 1px solid var(--border); font-size: 13px; color: var(--text); user-select: none; }
-.block__copy:hover { background: var(--hover); }
-.block__text { margin: 0; padding: 10px 12px; font: 13px/20px var(--mono); white-space: pre; overflow-x: auto; user-select: text; cursor: text; }
-.block__text::selection, .block__text *::selection, .files__path::selection { background: var(--selected); }
-.block__task { color: var(--accent); }
-.block__starters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 13px; }
-.chip { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; }
-.chip:hover { background: var(--hover); }
-.chip--on, .chip--on:hover { background: var(--selected); border-color: var(--accent); }
-.files { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content max-content; align-items: center; column-gap: 16px;
-  border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px 4px 12px; }
-.files__row { display: contents; }
-.files__row > * { padding: 4px 0; }
-.files__name { font-size: 14px; }
-.files__path { font: 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; cursor: text; }
-.files__role { font-size: 13px; }
-.files__row .block__copy { padding: 1px 8px; }
+/* the Theme row: one button per theme file, wrapping; a picked theme whose file is gone, muted on the hover colour */
+.segmented--wrap { flex-wrap: wrap; }
+.segmented button.segmented__missing, .segmented button.segmented__missing:hover { background: var(--hover); color: var(--muted); }
+/* scripts.rs: the instructions as paragraphs, each heading on its own line in semibold, text selectable */
+.scripts { max-width: 920px; user-select: text; line-height: 1.5; }
+.scripts__head { display: flex; align-items: center; justify-content: space-between; }
+.scripts__title, .scripts__heading { font-weight: 600; }
+.scripts__body { white-space: pre-line; }
 
 /* The theme's panels (panels.gap, panels.radius): a gap between the tree panel and the editor, on a frame colour, as
    IntelliJ Islands (frame measured from Islands Dark, light from ManyIslandsLight main-window-bg-alt). #gap=0 for the

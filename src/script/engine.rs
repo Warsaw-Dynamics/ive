@@ -77,14 +77,14 @@ impl Engine {
         Ok(Self { context, runtime, output })
     }
 
-    /// Loads `ive.rn`, then `dir/init.rn` when there is one, as load number `generation`. The error names the file,
-    /// and line and column for each compile error.
-    pub fn load(&self, dir: Option<&Path>, generation: u64) -> Result<Loaded, String> {
+    /// Loads `ive.rn`, then `dir/init.rn` when there is one, as load number `generation`, with `config.theme`
+    /// starting as `theme`. The error names the file, and line and column for each compile error.
+    pub fn load(&self, dir: Option<&Path>, theme: rune::Value, generation: u64) -> Result<Loaded, String> {
         let mut bound = Vec::new();
         let mut functions = Functions { bound: &mut bound, generation };
         let ive_rn = Script { name: IVE_RN_NAME, text: IVE_RN.to_owned(), path: None };
         let start = Carried {
-            theme: theme_config::default_value(),
+            theme,
             excluded: rune::Value::from(()),
             temporary_tabs: rune::Value::from(()),
             tab_menus: rune::Value::from(()),
@@ -282,12 +282,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("init.rn"), init).unwrap();
         let engine = Engine::new(futures::channel::mpsc::unbounded().0).unwrap();
-        let loaded = engine.load(Some(dir.path()), 1);
+        let loaded = engine.load(Some(dir.path()), theme_config::default_value(), 1);
         (engine, loaded)
     }
 
     fn defaults() -> Loaded {
-        Engine::new(futures::channel::mpsc::unbounded().0).unwrap().load(None, 1).unwrap()
+        Engine::new(futures::channel::mpsc::unbounded().0).unwrap().load(None, theme_config::default_value(), 1).unwrap()
     }
 
     fn pressed(key: &str) -> Keystroke {
@@ -1151,6 +1151,20 @@ mod tests {
         assert_eq!(keymap.find_key(&pressed(find), Place::Hub).cloned(), builtin(Builtin::HubToggleContent));
         assert_eq!(keymap.find_key(&pressed("alt-r"), Place::Hub).cloned(), builtin(Builtin::HubToggleRegex));
         assert_eq!(keymap.find_key(&pressed("alt-w"), Place::Hub).cloned(), builtin(Builtin::HubToggleWholeWord));
+        assert_eq!(keymap.find_key(&pressed("alt-p"), Place::Hub).cloned(), builtin(Builtin::HubCycleSearchIn));
+    }
+
+    #[test]
+    fn should_bind_find_and_its_steps_in_code_views_only() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let find = if cfg!(target_os = "macos") { "cmd-f" } else { "ctrl-f" };
+        assert_eq!(keymap.find_key(&pressed(find), Place::Editor).cloned(), builtin(Builtin::Find));
+        assert_eq!(keymap.find_key(&pressed("f3"), Place::Editor).cloned(), builtin(Builtin::FindNext));
+        assert_eq!(keymap.find_key(&pressed("shift-f3"), Place::Editor).cloned(), builtin(Builtin::FindPrevious));
+        assert_ne!(keymap.find_key(&pressed(find), Place::Terminal).cloned(), builtin(Builtin::Find));
     }
 
     #[test]
@@ -1373,7 +1387,7 @@ mod tests {
         let engine = Engine::new(futures::channel::mpsc::unbounded().0).unwrap();
 
         // when
-        let loaded = engine.load(Some(dir.path()), 1);
+        let loaded = engine.load(Some(dir.path()), theme_config::default_value(), 1);
 
         // then
         let action = loaded.unwrap().keymap.find_key(&pressed("f5"), Place::Elsewhere).cloned();

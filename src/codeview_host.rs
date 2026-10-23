@@ -87,6 +87,9 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Undo => Command::Undo,
         Builtin::Redo => Command::Redo,
         Builtin::ToggleDiffLayout => Command::ToggleLayout,
+        Builtin::Find => Command::Find,
+        Builtin::FindNext => Command::FindNext,
+        Builtin::FindPrevious => Command::FindPrevious,
         _ => return None,
     })
 }
@@ -266,11 +269,24 @@ mod tests {
         assert_eq!(decision, Decision::Done(KeyOutcome::Command(Command::ToggleLayout)));
     }
 
-    /// A diff panel showing one added line, as a diff tab opens it.
+    #[test]
+    fn should_map_the_find_builtins_to_commands_in_every_code_view() {
+        // given
+        let finds = [Builtin::Find, Builtin::FindNext, Builtin::FindPrevious];
+
+        // when
+        let decisions = [KeyScope::Editor, KeyScope::Viewer].map(|scope| finds.map(|find| decide(Some(Action::Builtin(find)), scope)));
+
+        // then
+        let commands = || [Command::Find, Command::FindNext, Command::FindPrevious].map(|command| Decision::Done(KeyOutcome::Command(command)));
+        assert_eq!(decisions, [commands(), commands()]);
+    }
+
+    /// A diff panel showing one line added to a file, as a diff tab opens it.
     fn opened_diff(cx: &mut TestAppContext) -> Entity<Panel> {
-        let line = DiffLine { kind: LineKind::Added, old: None, new: Some(1), text: "a".to_owned() };
-        let hunk = Hunk { header: "@@ -0,0 +1 @@".to_owned(), lines: vec![line] };
-        let file = FileDiff { path: GitPath::from_bytes(b"a.rs"), old_path: None, mark: Mark::Added, body: DiffBody::Text { hunks: vec![hunk], cut: None } };
+        let line = DiffLine { kind: LineKind::Added, old: None, new: Some(2), text: "a".to_owned() };
+        let hunk = Hunk { header: "@@ -1,0 +2 @@".to_owned(), lines: vec![line] };
+        let file = FileDiff { path: GitPath::from_bytes(b"a.rs"), old_path: None, mark: Mark::Modified, body: DiffBody::Text { hunks: vec![hunk], cut: None } };
         cx.update(|cx| diff_panel(vec![file], Headers::Hidden, cx))
     }
 

@@ -920,6 +920,7 @@ dependencies = [
  "imara-diff",
  "memchr",
  "memmap2",
+ "regex",
  "serde",
  "streaming-iterator",
  "tempfile",

@@ -78,6 +78,17 @@ impl LineScroll {
         self.scroll_to(Axis::Vertical, self.top.get());
     }
 
+    /// The viewport's size after layout, in lines and pixels; whether it changed.
+    pub fn set_viewport(&self, lines: f64, width: f64) -> bool {
+        let changed = self.viewport_lines.get() != Some(lines) || self.viewport_width.get() != width;
+        self.viewport_measured(lines);
+        self.viewport_width.set(width);
+        if changed {
+            self.set_content_width(self.content_width.get());
+        }
+        changed
+    }
+
     /// For views whose text changes; keeps the position valid.
     pub fn set_line_count(&self, line_count: usize) {
         self.line_count.set(line_count);
@@ -163,11 +174,7 @@ pub fn measure_viewport(scroll: Rc<LineScroll>, metrics: Metrics) -> impl IntoEl
         move |bounds: Bounds<Pixels>, window, _cx| {
             let lines = f64::from(f32::from(bounds.size.height) / f32::from(metrics.line_height));
             let text_width = f64::from(f32::from(bounds.size.width - metrics.gutter_width()));
-            let changed = scroll.viewport_lines.get() != Some(lines) || scroll.viewport_width.get() != text_width;
-            scroll.viewport_measured(lines);
-            scroll.viewport_width.set(text_width);
-            if changed {
-                scroll.set_content_width(scroll.content_width.get());
+            if scroll.set_viewport(lines, text_width) {
                 window.refresh();
             }
         },

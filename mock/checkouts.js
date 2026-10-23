@@ -277,15 +277,16 @@
     { name: 'git2', license: 'MIT OR Apache-2.0' }, { name: 'rune', license: 'MIT OR Apache-2.0' }, { name: 'Inter', license: 'OFL-1.1' },
     { name: 'JetBrains Mono', license: 'OFL-1.1' }
   ];
-  // Settings › Scripts (a proposal): starters fill the prompt's Task line.
-  var SCRIPT_TASKS = [
-    ['Bind a key', 'Bind Ctrl+Alt+R to restart IVE (click the "restart" target).'],
-    ['Mouse binding', 'Make Ctrl + left click on a tab close it, and middle click do nothing.'],
-    ['Colours', 'Make the dark tree background #202124 and strings in Rust orange.'],
-    ['Bigger UI', 'Make the whole UI an eighth bigger and the code font 15 px.'],
-    ['Function', 'Bind Ctrl+Alt+D to a function that runs `git diff --stat` in a new terminal in the shown tab\'s checkout.'],
-    ['Terminal keys', 'Make Shift+Enter in terminals send ESC CR (Claude Code\'s new line).']
+  // Settings › Scripts: settings_page/scripts.rs sections, [heading ('' for none), text], paths of the default profile.
+  var SCRIPT_SECTIONS = [
+    ['', 'All your changes go in /home/me/.config/ive/default. IVE writes two reference files there at every start. They are read-only, and editing them changes nothing:\n- ive.rn: every default key binding, mouse binding and menu\n- theme.toml: every default colour and size, for both the dark and light looks'],
+    ['To change keys, mouse clicks, menus or excluded folders:', 'write init.rn in that folder. IVE runs it after ive.rn. An entry with the same scope and key replaces the default one. Look up the entry to override in ive.rn. IVE reloads it on save.'],
+    ['To make a theme:', 'create themes/<name>.toml in that folder, with the same sections as theme.toml ([sizes], [dark], [light]…) but only the values you change. Everything else stays at the default. Pick it under Settings › Appearance › Theme. IVE reloads it on save.'],
+    ['To adjust any theme from a script:', 'set config.theme.<path> in init.rn. This applies on top of the picked theme, for example config.theme.dark.tree = "#202124"; for [dark] tree.'],
+    ['Checking it worked:', 'load errors, with file, line or key, and the bad value, go to /home/me/.local/state/ive/default/scripts.log. IVE opens the log when a load fails. Agents connected over MCP can read it with script_status. A failed load keeps the previous settings.']
   ];
+  // Settings › Appearance › Theme: the files in themes/ (theme_config/user.rs names, sorted).
+  var USER_THEMES = ['nord', 'violet'];
 
   function withPaths(entry, parent) {
     entry.path = parent + '/' + entry.name;
@@ -513,7 +514,8 @@
       return Object.assign({
         projects: prepare(PROJECTS),
         scratches: SCRATCHES,
-        scriptTasks: SCRIPT_TASKS,
+        scriptSections: SCRIPT_SECTIONS,
+        userThemes: USER_THEMES,
         thirdParty: THIRD_PARTY,
         open: ['atlassian', 'forge-installer', 'platform', 'notes'],
         recent: ['paas-ownhq', 'forge-ari'],
@@ -554,8 +556,8 @@
         // Settings: theme preference (settings.rs ThemePreference) and the shown page.
         themePreference: 'system',
         settingsPage: 'Appearance',
-        // Settings › Scripts: the prompt's Task line, and which block's Copy just said Copied.
-        scriptTask: '<what you want changed>',
+        // Settings › Appearance › Theme (settings.rs ThemeChoice), and which Copy just said Copied.
+        userTheme: 'Default',
         copied: null,
         // Last focused checkout per project: where project-level things run when no worktree tab is focused.
         lastCheckout: {},
@@ -990,10 +992,14 @@
         },
         findFile: function (id, path) { return find(this.checkout(id).tree, path); },
         openSettings: function () { this.openTab({ key: 'settings', kind: 'settings', title: 'Settings', co: null, project: null }); },
-        // Settings › Scripts: a block's text as shown (its <pre>), so what is copied is what is read.
-        copyBlock: function (id, el) {
+        // Settings › Scripts: the instructions as plain text, as scripts.rs instructions() writes them.
+        scriptInstructions: function () {
+          var paragraphs = SCRIPT_SECTIONS.map(function (s) { return s[0] ? s[0] + ' ' + s[1] : s[1]; });
+          return 'Customising IVE\n\n' + paragraphs.join('\n\n') + '\n\nFull reference: "Scripting" and "Theme" in IVE\'s README: https://github.com/Warsaw-Dynamics/ive#scripting\n';
+        },
+        copyText: function (id, text) {
           var self = this;
-          try { navigator.clipboard.writeText(el.textContent); } catch (e) { /* mock: clipboard may be blocked */ }
+          try { navigator.clipboard.writeText(text); } catch (e) { /* mock: clipboard may be blocked */ }
           this.copied = id;
           clearTimeout(this.copiedTimer);
           this.copiedTimer = setTimeout(function () { self.copied = null; }, 1500);
@@ -1850,7 +1856,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
     });
   });
 })();

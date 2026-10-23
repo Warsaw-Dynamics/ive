@@ -32,6 +32,17 @@ pub enum Command {
     Flush,
     /// a diff switches between inline and side by side
     ToggleLayout,
+    /// the find box opens, or takes the keyboard back
+    Find,
+    FindNext,
+    FindPrevious,
+}
+
+impl Command {
+    /// Whether the panel runs it: the find box's commands, which the views around the text let through.
+    pub fn is_find(self) -> bool {
+        matches!(self, Self::Find | Self::FindNext | Self::FindPrevious)
+    }
 }
 
 /// What the host made of a key press.

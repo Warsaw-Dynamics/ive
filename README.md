@@ -88,6 +88,7 @@ under which the task bar groups IVE's windows, so pinning one pins the shortcut.
 | Tab menu | right click on a tab (other clicks and menus: `config.tab_menus` in [Scripting](#scripting)): Keep Tab (a temporary tab), Stop (a process tab: as Ctrl+Shift+Q), then for a file's tab (a file, a diff, a scratch) Send to Terminal, Find in Files, Copy Path, Open In and Git as in the tree menu, then Close, Close Other Tabs, Close Tabs to the Left / Right |
 | Tree menu | right click on a row (`config.tree_menus` in [Scripting](#scripting)): on a selected file or folder it applies to the whole selection, on another row to that row alone (a worktree or project row: its root folder; a changed file: the file). New Terminal (a Processes folder: a terminal in its worktree, as its +), Stop (a process row: ends it for good, as its Stop button; a running run's row: stops the run), Send to Terminal ▸, Open in Terminal (a terminal in the folder), Run (a `.sh`, `.bash` or `.zsh` file as a shell scratch runs; a folder's `.run.toml` configurations), Find in Files…, Copy Path ▸ (absolute, relative to its worktree, file name; one per line), Open In ▸ (Reveal in Files / Finder, Open in Default App, Open in Browser for `.html`, `.htm`, `.svg`, Open in New Window), Git ▸ (Show Diff of an uncommitted file, Compare with Base Branch, Show History of a file or folder, following a renamed file, Add to .gitignore), Compare Files (two files). Items that do not apply are left out; ↑ ↓ Enter → ← Escape work in it |
 | Send to Terminal | the menu's submenu lists the terminals, most recently used first (shown or Enter pressed in it), then New Terminal in the worktree: the paths are pasted into the chosen one, which is shown, without Enter. They are relative to the terminal's current folder (`../` included) when the terminal works in the worktree of every path, else absolute; a drag onto a terminal and the hub's Alt+Enter type paths the same way |
+| Find in a file | Ctrl+F (Cmd+F on macOS) in a file, scratch, diff or commit tab: a box at the top right of the code with the selection (on one line) or the word at the caret, else the last query; every match marked (and on the scrollbar), `3 of 12`. Enter / Shift+Enter in the box, F3 / Shift+F3 anywhere in the code (macOS also Cmd+G / Cmd+Shift+G) and ▲ ▼ go to the next or previous match, round at the ends, and select it; Alt+C, Alt+W, Alt+R in the box (macOS Cmd+Alt+C, W, R) or Aa, W, .* match case, whole words, regex; Esc or × closes it and leaves the match selected. A side-by-side diff searches the side last clicked; a match in a collapsed commit file opens it. F3 with the box closed opens it with the last query |
 | Find in files | Ctrl+Shift+F (Cmd+Shift+F on macOS), or Find in Files… in a menu for the picked files and folders: the hub searching file contents, see [Hub](#hub-ctrlshifte) |
 | Temporary tabs | a project or a worktree's Processes clicked in the tree, Settings and the hub open in a temporary tab (italic title) that closes once another tab is shown; middle click on the row, or double click on the tab, keeps it; temporary tabs are not restored at the next start; see `config.temporary_tabs` in [Scripting](#scripting) |
 | Reorder tabs | drag a tab; a bar between tabs marks where it lands (past the last tab moves it last) |
@@ -139,8 +140,8 @@ lists **Recent** (every tab shown, newest first, open or closed: a closed one is
 every open project, and their scratches (`scratches/<name>`), as fzf does: fuzzy, smart case, `'exact`, `^prefix`,
 `suffix$`, `!not`, space for AND and `a | b` for OR, the matched characters highlighted; the counter at the right of
 the query reads `matched/total · ms`. `file.rs:42` opens the file at line 42, marked. The preview on the right
-shows the selected row: a file's lines, a change's diff, a process's last lines, a run configuration's command or
-its run's output, a worktree's summary.
+shows the selected row: a file in the editor's view (coloured, read-only), a change's diff, a process's terminal as it
+draws it (its last lines), a run configuration's command or its run's output, a worktree's summary.
 
 A row of one worktree carries its colour and name and opens there; a file or run configuration in several says
 `N worktrees`, and Enter asks which, most recently used first (a worktree is used when one of its tabs is shown,
@@ -161,16 +162,25 @@ Enter is pressed in one of its terminals or a run starts in it), so Enter, Enter
 | Ctrl+Shift+E again | only the changed files; the query filters them |
 | Ctrl+Shift+F (Cmd+Shift+F on macOS) | between searching file names and file contents |
 | Alt+R, Alt+W | a contents search's query as a regex; whole words only |
+| Alt+P | what a contents search covers: files and processes' output, files only, output only |
 | Escape | from the worktree question back to the list; else clear the query; else back to the tab shown before |
 
 **Contents.** Ctrl+Shift+F in the hub, or Find in Files from anywhere, searches the files' lines instead of their
 names: plain text from 2 characters, smart case (any capital makes it exact), Alt+R for a regex and Alt+W for whole
-words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line, marked, and the
-preview shows the lines around it. It searches the hub's scope (the worktrees of All, a project or a worktree, and
-their scratches), or the files and folders Find in Files was picked on, named above the rows (`Contents of src +1`);
-Backspace on an empty query drops them for the scope. Gitignored and excluded files are left out unless Alt+I, but a
-folder picked in the tree is searched even when it is ignored itself. Files over 8 MB and binary files are skipped,
-and the list stops at 2,000 lines. The counter reads `matches in files · ms`.
+words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line with the match
+selected, and the preview shows the file around it, scrolled sideways to the match. It searches the hub's scope (the
+worktrees of All, a project or a worktree, and their scratches), or the files and folders Find in Files was picked on,
+named above the rows (`Contents of src +1`); Backspace on an empty query drops them for the scope. Gitignored and
+excluded files are left out unless Alt+I, but a folder picked in the tree is searched even when it is ignored itself.
+Files over 8 MB and binary files are skipped.
+
+It also searches what the processes of the scope printed (running ones, and runs that ended, scrollback included),
+listed under **Output** as `process:line`; a process in no worktree only in All. The preview draws the terminal
+around the line, the match marked; Enter shows the process's tab scrolled to the line with the match selected, or at
+its bottom when the line has left the scrollback. Alt+P cycles what is searched: files and output, files only, output
+only; a search of files picked in the tree searches files only. The list stops at 2,000 lines, output first. The
+counter reads `matches in files and processes · ms`. The lines stay as found: files changing on disk or processes
+printing do not search again, a change to the query does.
 
 Prefixes: `>` actions (New terminal, New scratch, Git log, project overview, Close Other Tabs, Settings, theme), `@`
 processes and run configurations (Enter shows a configuration's live run, or starts one), `#` worktrees and the
@@ -535,10 +545,12 @@ async fn restart(context) {
 | `act::OpenTerminalHere`, `act::RevealInFileManager`, `act::OpenInNewWindow` | tree, window, menus | a terminal in the folder (a file: its folder); the OS file manager with it selected; the file in a window of its own |
 | `act::OpenWithDefaultApp`, `act::OpenInBrowser`, `act::RunFile`, `act::GitShowDiff`, `act::GitCompareWithBase`, `act::GitHistory`, `act::GitIgnore`, `act::CompareFiles` | menus | as the tree menu's items of those names |
 | `act::HubToggleContent`, `act::HubToggleRegex`, `act::HubToggleWholeWord` | hub | file names or contents; a contents query as a regex; whole words |
+| `act::HubCycleSearchIn` | hub | what a contents search covers: files and output, files only, output only (Alt+P) |
 | `act::ActivateRow`, `act::ToggleRow` | tree | the row's click (a project's overview, open the file, toggle a worktree or folder); expand or collapse it |
 | `act::ActivateRowToKeep` | tree | the row's click, its project tab kept rather than temporary (middle click by default); on other rows the same as `ActivateRow` |
 | `act::ToggleRowSelection`, `act::ExtendRowSelection` | tree | Ctrl+click (Cmd on macOS) adds a file or folder to the selection or takes it out; Shift+click selects the files and folders from the last clicked row; dragging a selected row onto a terminal types all their paths |
 | `act::SelectAll`, `act::Cut`, `act::Undo`, `act::Redo` | editor | the scratch editor's commands |
+| `act::Find`, `act::FindNext`, `act::FindPrevious` | editor | a code view's find box: open it (or give it the keyboard back), the next and previous match (Ctrl+F, F3, Shift+F3; macOS Cmd+F, also Cmd+G, Cmd+Shift+G) |
 | `act::ToggleDiffLayout` | editor | a focused diff inline or side by side (no key by default); new diff and commit tabs open in the layout last switched to |
 | `act::OpenHub` | window | shows the hub (Ctrl+Shift+E) |
 | `act::OpenTerminalIn` | window | the hub asking where a new terminal goes: a checkout, or a branch that first gets its worktree (Ctrl+Shift+T) |
@@ -633,6 +645,28 @@ Every colour and size IVE draws with is in `config.theme`. `init` gets it alread
 so `init.rn` sets only what it changes, and can read the defaults to compute from them. IVE writes the whole default
 theme next to `ive.rn` as `theme.toml`, read-only, for you to read; like `ive.rn`, editing it changes nothing.
 
+**User themes.** A theme is a file `themes/<name>.toml` next to `init.rn`, in `theme.toml`'s shape but holding only
+what it changes; it has both looks, `[dark]` and `[light]`. Settings › Appearance › Theme picks one (Default is
+IVE's own; the choice is kept in `settings.toml` as `user_theme`), and Mode picks the look. The theme is merged
+over the default, tables key by key, anything else (arrays included) replaced whole, and `config.theme` starts from
+the result, so `init.rn` changes it further. Saving, adding or removing a theme reloads it. A theme is checked like
+`init.rn`'s theme, with the file in the message (`themes/nord.toml: theme.dark.tre: unknown field …`), larger than
+256 KB is refused, and a failed load keeps the previous one; at start, a broken theme leaves the default theme with
+`init.rn`'s bindings. A picked theme whose file is gone draws the default and stays picked, muted, until its file
+is back. Settings › Scripts says where every customisation goes, with Copy instructions for an agent's prompt.
+
+```toml
+# themes/dim.toml
+[sizes]
+rem = 15.0
+
+[dark]
+tree = "#202124"
+
+[light.git]
+modified = "#1F5FBF"
+```
+
 ```rune
 pub fn init(config) {
     config.theme.dark.tree = "#202124";
@@ -647,7 +681,8 @@ pub fn init(config) {
 ```
 
 - Colours are per theme, in `config.theme.dark` and `config.theme.light`: `"#RRGGBB"`, or `"#RRGGBBAA"` where a
-  colour is see-through (`diff_added`, `scrollbar_thumb`, row backgrounds).
+  colour is see-through (`diff_added`, `scrollbar_thumb`, `find_match` and `find_current` for the find box's matches, row
+  backgrounds).
 - Sizes are shared by both themes, in `config.theme.sizes`, grouped by where they are drawn: `tree`, `tabs`, `window`,
   `editor`, `diff`, `terminal`, `overview`, `git`, `settings`, `controls`, `menu`, and `icon` for every icon. A size is
   pixels, written with a decimal point (`26.0`: Rune does not mix whole and decimal numbers) or as `"26px"`, or rem,
@@ -784,10 +819,11 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |
+| file, scratch, diff and commit tabs (shown) | `find:open` (the find box, as Ctrl+F; its query has the keyboard, so `send_text` or `window_text` types it). While it is open: `find:query` (gives it the keyboard back), `find:previous`, `find:next`, `find:match-case`, `find:whole-word`, `find:regex`, `find:close` |
 | file tab | `change-marker:<line>`: a change marker in the gutter, by its first line (from 1); it opens the change's popup. While the popup is open: `change-popup:prev`, `change-popup:next`, `change-popup:rollback`, `change-popup:diff`, `change-popup:copy`, `change-popup:message` (gives the commit message field the keyboard; then `window_text` types in it and `window_keys` `["enter"]` commits) and `change-popup:commit` |
 | Worktrees list | `worktree-filter` (focuses the filter: then `window_text`, `window_keys` `["down", "space"]`), `worktree-row:<path>`, `branch-row:<name>` (as Enter), `worktree-toggle:<path or name>` (Hide, Show, + Worktree), `worktree-hidden-group`, `branch-more`, `branch-all` |
 | Scratches section | `new-scratch` (the name input opens focused and takes `window_text`, Enter / Escape), `scratch-search` (focus the search field), `scratch-name` (focus the open name input, New scratch's or Rename's) |

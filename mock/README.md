@@ -34,12 +34,17 @@ DESIGN.md "Menus"): Send to Terminal ▸ (terminals most recently used first, th
 relative in its own worktree), Open in Terminal, Run (shell files, `.run.toml` folders), Find in Files…, Copy Path ▸,
 Open In ▸ and Git ▸ (Show Diff, Compare with Base Branch, Show History, Add to .gitignore); submenus open on hover. There is no title
 bar: Settings and the window buttons sit at the right end of the tab row; the gear (or Ctrl+,) opens Settings,
-whose Appearance page switches the theme. Alt+F12 opens a terminal in the current tab's checkout.
+whose Appearance page switches Mode (dark, light) and Theme (Default or a `themes/<name>.toml`), and whose Scripts page says where every customisation goes, with Copy instructions. Alt+F12 opens a terminal in the current tab's checkout.
 Ctrl+E opens the hub (a proposal, DESIGN.md "Hub"): recent items, changes in every worktree and running processes;
 typing searches the monorepo's real file paths fzf-style (`data/files.gz`; regenerate with `tools/hub-files.sh`; it also samples the ignored files). Alt+I searches excluded and gitignored files too.
 Ctrl+Shift+F (in the hub too) searches the files' contents instead: rows `path:line` with the matches marked, Alt+R
 regex, Alt+W whole words; Find in Files… in a menu limits it to that file or folder (Backspace on an empty query drops
 it). The mock searches the text its files and scratches have.
+Ctrl+F in a file, scratch, diff or commit tab (a proposal, `find.js`) opens a find bar over the code with the selection
+or the word at the caret: every match marked, the current one stronger and on a strip by the scrollbar, "3 of 12",
+Enter / Shift+Enter and F3 / Shift+F3 (and ▲ ▼) step and wrap, Alt+C match case, Alt+W whole words, Alt+R regex, Esc
+closes and leaves the current match selected in a file. The box floats at the top right of the code, as in Chrome and
+VS Code. A side-by-side diff searches the side last clicked.
 Ctrl+Shift+T (in a browser also Alt+Shift+T; DESIGN.md "New terminal") asks where a new terminal goes: a project, a
 worktree, or a branch without one (local, or only on `origin` with a faded icon), which first gets its worktree in
 the folder `.ive.toml` names. A Processes row's + (on hover) starts a terminal there.

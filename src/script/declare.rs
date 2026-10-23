@@ -259,6 +259,9 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "Undo" => Builtin::Undo,
         "Redo" => Builtin::Redo,
         "ToggleDiffLayout" => Builtin::ToggleDiffLayout,
+        "Find" => Builtin::Find,
+        "FindNext" => Builtin::FindNext,
+        "FindPrevious" => Builtin::FindPrevious,
         "OpenHub" => Builtin::OpenHub,
         "HubDown" => Builtin::HubDown,
         "HubUp" => Builtin::HubUp,
@@ -295,6 +298,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "HubToggleContent" => Builtin::HubToggleContent,
         "HubToggleRegex" => Builtin::HubToggleRegex,
         "HubToggleWholeWord" => Builtin::HubToggleWholeWord,
+        "HubCycleSearchIn" => Builtin::HubCycleSearchIn,
         _ => return Err(format!("action {name:?} is not an act:: action")),
     };
     Ok(Action::Builtin(builtin))

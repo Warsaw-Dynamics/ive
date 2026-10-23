@@ -1,8 +1,16 @@
+use std::ops::Range;
+
+use alacritty_terminal::Term;
+use alacritty_terminal::event::EventListener;
+use alacritty_terminal::grid::{Dimensions, Indexed};
+use alacritty_terminal::index::{Line, Point};
+use alacritty_terminal::selection::SelectionRange;
 use alacritty_terminal::term::RenderableContent;
 use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor};
 
 use super::colors::{ColorResolver, dim};
+use super::text::{OutputRow, last_output_line, output_point};
 use crate::theme::TerminalPalette;
 
 /// One screen of the terminal, ready to paint: per line, background fills and text segments, by column.
@@ -20,7 +28,7 @@ pub struct FrameLine {
     pub segments: Vec<Segment>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fill {
     pub column: usize,
     pub width: usize,
@@ -70,33 +78,122 @@ pub struct CursorMark {
 
 /// Lays out the visible screen; an unfocused terminal shows a hollow cursor.
 pub fn layout(content: RenderableContent<'_>, palette: &TerminalPalette, focused: bool) -> Frame {
-    let resolver = ColorResolver { palette, overrides: content.colors };
-    let offset = content.display_offset as i32;
-    let cursor_line = usize::try_from(content.cursor.point.line.0 + offset).ok();
-    let cursor_shape = match content.cursor.shape {
+    let shape = match content.cursor.shape {
         CursorShape::Block if !focused => CursorShape::HollowBlock,
         shape => shape,
     };
+    let painting = Painting {
+        resolver: ColorResolver { palette, overrides: content.colors },
+        top: -(content.display_offset as i32),
+        cursor: Some((content.cursor.point, shape)),
+        selection: content.selection,
+    };
+    lay_out(content.display_iter, &painting)
+}
+
+/// Which grid lines a frame shows: `rows` from line `top`, with `mark` (first and last cell) drawn as selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Window {
+    pub top: i32,
+    pub rows: usize,
+    pub mark: Option<(Point, Point)>,
+}
+
+/// Lays out `window` of the terminal's lines without a cursor, whatever it shows on screen.
+pub fn layout_window<T: EventListener>(term: &Term<T>, window: &Window, palette: &TerminalPalette) -> Frame {
+    let grid = term.grid();
+    let bottom = window.top + window.rows as i32;
+    // the iterator yields the cells after its start: the first is the window's top left
+    let cells = grid.iter_from(Point::new(Line(window.top - 1), grid.last_column())).take_while(|indexed| indexed.point.line.0 < bottom);
+    let painting = Painting {
+        resolver: ColorResolver { palette, overrides: term.colors() },
+        top: window.top,
+        cursor: None,
+        selection: window.mark.map(|(start, end)| SelectionRange::new(start, end, false)),
+    };
+    lay_out(cells, &painting)
+}
+
+/// A line of a terminal's output to show: its index among [`output_rows`](super::text::output_rows), and the bytes
+/// of it to mark.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LineAt {
+    pub index: usize,
+    pub bytes: Range<usize>,
+}
+
+/// What a window keeps in view when it is painted in less room than it has lines and columns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Shown {
+    /// its last line, at the bottom
+    Bottom,
+    /// the match on window line `line`, a third of the way down, and its `columns`
+    Match { line: usize, columns: Range<usize> },
+}
+
+/// The last `rows` lines of the output, down to its last row with anything on it.
+pub fn bottom_window<T: EventListener>(term: &Term<T>, rows: usize) -> Window {
+    let top = last_output_line(term) + 1 - rows as i32;
+    Window { top: top.max(-(term.grid().history_size() as i32)), rows, mark: None }
+}
+
+/// `rows` lines showing `bytes` of output line `row` a third of the way down, marked.
+pub fn match_window<T: EventListener>(term: &Term<T>, row: &OutputRow, bytes: Range<usize>, rows: usize) -> (Window, Shown) {
+    let (history, screen) = (term.grid().history_size(), term.screen_lines());
+    let start = output_point(term, row, bytes.start);
+    let last_char = row.text.get(..bytes.end).and_then(|text| text.char_indices().last()).map_or(bytes.start, |(at, _)| at.max(bytes.start));
+    let end = output_point(term, row, last_char);
+    let top = top_showing(start.line.0, rows, history, screen);
+    let shown = Shown::Match { line: (start.line.0 - top) as usize, columns: start.column.0..end.column.0.max(start.column.0) + 1 };
+    (Window { top, rows, mark: Some((start, end)) }, shown)
+}
+
+/// The first line of a window of `rows` that shows grid line `line` a third of the way down, kept inside the
+/// `history` lines above the screen and the `screen` lines of it.
+pub fn top_showing(line: i32, rows: usize, history: usize, screen: usize) -> i32 {
+    let top = line - (rows / 3) as i32;
+    top.min(screen as i32 - rows as i32).max(-(history as i32))
+}
+
+/// Cells kept between a match and the edge of a view it is scrolled into.
+const SHIFT_MARGIN: usize = 2;
+
+/// Columns to scroll a view `visible` columns wide to the right so `columns` are in it; a match wider than the view
+/// shows its start.
+pub fn columns_shift(columns: &Range<usize>, visible: usize) -> usize {
+    (columns.end + SHIFT_MARGIN).saturating_sub(visible).min(columns.start.saturating_sub(SHIFT_MARGIN))
+}
+
+/// How the cells of a frame are drawn: colours, its first grid line, the cursor and the selection.
+struct Painting<'a> {
+    resolver: ColorResolver<'a>,
+    top: i32,
+    cursor: Option<(Point, CursorShape)>,
+    selection: Option<SelectionRange>,
+}
+
+fn lay_out<'a>(cells: impl Iterator<Item = Indexed<&'a Cell>>, painting: &Painting) -> Frame {
+    let palette = painting.resolver.palette;
     let mut frame = Frame::default();
-    for indexed in content.display_iter {
-        let Ok(line) = usize::try_from(indexed.point.line.0 + offset) else {
+    for indexed in cells {
+        let Ok(line) = usize::try_from(indexed.point.line.0 - painting.top) else {
             continue;
         };
         if indexed.cell.flags.intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER) {
             continue;
         }
         let column = indexed.point.column.0;
-        let selected = content.selection.is_some_and(|selection| selection.contains(indexed.point));
-        let on_cursor = cursor_line == Some(line) && content.cursor.point.column.0 == column;
-        let mut look = CellLook::of(indexed.cell, &resolver);
+        let selected = painting.selection.is_some_and(|selection| selection.contains(indexed.point));
+        let cursor = painting.cursor.filter(|(point, _)| *point == indexed.point).map(|(_, shape)| shape);
+        let mut look = CellLook::of(indexed.cell, &painting.resolver);
         if selected {
             look.background = palette.selection;
         }
-        if on_cursor && cursor_shape == CursorShape::Block {
+        if cursor == Some(CursorShape::Block) {
             look = look.under_block_cursor(palette.cursor);
         }
-        if on_cursor && !matches!(cursor_shape, CursorShape::Block | CursorShape::Hidden) {
-            frame.cursor = Some(CursorMark { line, column, cells: look.cells, shape: cursor_shape });
+        if let Some(shape) = cursor.filter(|shape| !matches!(shape, CursorShape::Block | CursorShape::Hidden)) {
+            frame.cursor = Some(CursorMark { line, column, cells: look.cells, shape });
         }
         if frame.lines.len() <= line {
             frame.lines.resize_with(line + 1, FrameLine::default);
@@ -194,8 +291,8 @@ impl FrameLine {
 
 #[cfg(test)]
 mod tests {
-    use alacritty_terminal::Term;
     use alacritty_terminal::event::VoidListener;
+    use alacritty_terminal::index::Column;
     use alacritty_terminal::term::Config;
     use alacritty_terminal::vte::ansi::Processor;
 
@@ -292,5 +389,129 @@ mod tests {
         // then
         let lines: Vec<_> = (0..frame.lines.len()).map(|line| line_text(&frame, line)).collect();
         assert_eq!(lines, ["one", "two", "three"]);
+    }
+
+    fn scrolled_term() -> Term<VoidListener> {
+        let size = GridSize { columns: 20, lines: 3, cell_width: 8, cell_height: 16 };
+        let mut term = Term::new(Config { scrolling_history: 100, ..Config::default() }, &size, VoidListener);
+        let printed: Vec<String> = (0..10).map(|line| format!("l{line}")).collect();
+        Processor::<alacritty_terminal::vte::ansi::StdSyncHandler>::new().advance(&mut term, printed.join("\r\n").as_bytes());
+        term
+    }
+
+    #[test]
+    fn should_lay_out_only_the_window_rows() {
+        // given
+        let term = scrolled_term();
+        let palette = Theme::of(Appearance::Dark).terminal;
+
+        // when
+        let frame = layout_window(&term, &Window { top: -5, rows: 2, mark: None }, &palette);
+
+        // then
+        let lines: Vec<_> = (0..frame.lines.len()).map(|line| line_text(&frame, line)).collect();
+        assert_eq!(lines, ["l2", "l3"]);
+    }
+
+    #[test]
+    fn should_mark_the_window_selection() {
+        // given
+        let term = scrolled_term();
+        let palette = Theme::of(Appearance::Dark).terminal;
+        let mark = (Point::new(Line(-4), Column(0)), Point::new(Line(-4), Column(1)));
+
+        // when
+        let frame = layout_window(&term, &Window { top: -5, rows: 2, mark: Some(mark) }, &palette);
+
+        // then
+        assert_eq!((frame.lines[0].fills.len(), frame.lines[1].fills.clone()), (0, vec![Fill { column: 0, width: 2, color: palette.selection }]));
+    }
+
+    #[test]
+    fn should_not_move_the_terminal_display_offset() {
+        // given
+        let term = scrolled_term();
+        let palette = Theme::of(Appearance::Dark).terminal;
+
+        // when
+        layout_window(&term, &Window { top: -5, rows: 2, mark: None }, &palette);
+
+        // then
+        assert_eq!(term.grid().display_offset(), 0);
+    }
+
+    #[test]
+    fn should_put_the_line_a_third_down() {
+        // given
+        let (line, rows, history, screen) = (-40, 30, 100, 24);
+
+        // when
+        let top = top_showing(line, rows, history, screen);
+
+        // then
+        assert_eq!(top, -50);
+    }
+
+    #[test]
+    fn should_clamp_to_the_top_of_history() {
+        // given
+        let (line, rows, history, screen) = (-98, 30, 100, 24);
+
+        // when
+        let top = top_showing(line, rows, history, screen);
+
+        // then
+        assert_eq!(top, -100);
+    }
+
+    #[test]
+    fn should_stay_at_the_bottom_for_a_screen_line() {
+        // given
+        let (line, rows, history, screen) = (20, 24, 100, 24);
+
+        // when
+        let top = top_showing(line, rows, history, screen);
+
+        // then
+        assert_eq!(top, 0);
+    }
+
+    #[test]
+    fn should_shift_a_match_past_the_view_into_it() {
+        // given
+        let (columns, visible) = (100..106, 80);
+
+        // when
+        let shifted = [columns_shift(&columns, visible), columns_shift(&(10..16), visible), columns_shift(&(0..300), visible)];
+
+        // then
+        assert_eq!(shifted, [28, 0, 0]);
+    }
+
+    #[test]
+    fn should_end_the_bottom_window_at_the_last_row() {
+        // given
+        let term = scrolled_term();
+
+        // when
+        let window = bottom_window(&term, 4);
+
+        // then
+        assert_eq!((window.top, window.rows, window.mark), (-1, 4, None));
+    }
+
+    #[test]
+    fn should_put_a_match_a_third_down_with_its_columns() {
+        // given
+        let term = scrolled_term();
+        let rows = crate::terminal::text::output_rows(&term);
+
+        // when
+        let (window, shown) = match_window(&term, &rows[5], 1..2, 6);
+
+        // then
+        assert_eq!(window.top, -4);
+        assert_eq!(window.mark, Some((Point::new(Line(-2), Column(1)), Point::new(Line(-2), Column(1)))));
+        assert_eq!(shown, Shown::Match { line: 2, columns: 1..2 });
     }
 }
