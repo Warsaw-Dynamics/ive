@@ -10,26 +10,26 @@ This is the visible master checklist for further work. The controller updates it
 
 - Mermaid and the standalone native pgui viewer are implemented and independently reviewed.
 - Native PlantUML checkpoints through timing, Gantt, Salt, nwdiag and files/packetdiag/board/HCL are independently approved.
-- Owner now requires LALRPOP to replace current PlantUML ad-hoc parsers, not merely a pilot for future families. This rewrite is the next implementation priority; models/layouts/viewer and regression evidence are preserved.
-- Chen/ArchiMate and the lexical prerequisite are implemented. LALRPOP Tasks1–16 have tested integrated routes for all current structural syntax; Task17 final cleanup is tested in an isolated branch and awaits integration. Broad review follows the remaining port work.
+- Owner required LALRPOP to replace current PlantUML ad-hoc parsers. All17 migration stages are now integrated, with current structural syntax routed through generated parsers and obsolete line adapters removed.
+- Chen/ArchiMate and the lexical prerequisite are implemented. Broad review follows the remaining port work.
 - Full Mermaid/PlantUML compatibility is **not complete**. Remaining family increments, advanced state work, final corpus/documentation and whole-branch review are still required.
-- Current estimate (2026-10-23): Task17 parser cleanup plus final checks/review about 2–4 more hours if no new blocker appears; remaining planned family increments and final evidence about 1–2 additional working days. These are estimates, not a claim of complete upstream syntax or pixel parity.
+- Current estimate (2026-10-23): parser migration is verified; remaining planned family increments and final evidence about 1–2 working days if no new blocker appears. This is an estimate, not a claim of complete upstream syntax or pixel parity.
 - Main IVE product code is unchanged. Work is isolated in a separate Rust workspace/worktree; IVE markdown integration is a later project.
 
 | Item | Current value |
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `0f468eb` — Task17 tooling and final cleanup integrated across all21 generated parsers; central full gates/native checks pending |
+| Latest integrated product checkpoint | `0f468eb` — Task17 tooling and final cleanup integrated across all21 generated parsers; central full gates/native checks pass |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | No parser implementation writer; central Task17 integration is stable and root final verification is in progress |
+| Current implementers | No parser implementation writer; EBNF/regex and chart native-family briefs are prepared |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Run final parser gates/native/baseline, then resume remaining native family queue; broad review stays at the end of the port |
-| Latest independent controller checks | At `da590bc`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build, native packetdiag and styled Creole graph captures plus empty-PATH/no-display exports pass; zero fallbacks and no surviving viewer. Agent combined strict Clippy/fmt, private generator21 and 220 MIT/43 fixture/43 module audit pass. Prior batches covered Salt/nwdiag, timing/Gantt/YAML, class/activity/Chen/JSON/HCL native captures/exports. Earlier `0c5177e` completed all16 gates. |
+| Next implementation | Resume EBNF/regex and charts with LALRPOP; broad review stays at the end of the port |
+| Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
-| Latest native compatibility captures | Packetdiag/styled Creole graph measurements9/22, zero fallback; root inspected `/tmp/ive-parser-batch5-*.png`, verified empty-PATH exports and no surviving viewer. Salt/nwdiag, timing/Gantt/YAML, and class/activity/Chen/JSON/HCL passed in prior batches. |
+| Latest native compatibility captures | Final17-family matrix `/tmp/ive-parser-final-*.png`: sequence/state/mindmap/WBS/files/board/class/activity/Chen/JSON/HCL/timing/Gantt/YAML/Salt/nwdiag/packetdiag; all native measurements positive, zero fallback, empty-PATH/no-display exports pass. Every PNG hash matches a previously inspected capture; no viewer survivor. |
 
 ## Completed work
 
@@ -156,21 +156,22 @@ TDD: initial8 expected failures/four controls →12 public GREEN, strengthened t
 
 Boundaries: packet full-label scale/max-height row policy deliberately differs from upstream. HCL duplicate topblocks, shared styles/chrome and evaluation explicitly reject; constants remain admitted. Header-name tokens stay on one physical line; opening braces may follow later. Broader grammar, original symbols/themes/routes and pixel parity are not claimed. Full evidence: task-3i-report.md and /tmp/ive-plantuml-3i.SWV6Rh/ plus fix1.HBrstU/.
 
-## Active priority — PlantUML LALRPOP rewrite
+## Completed priority — current PlantUML LALRPOP rewrite
 
 - [x] Owner explicitly directs full current parser replacement, superseding the earlier pilot-only recommendation.
 - [x] Hold new-family implementation and dispatch read-only migration architecture preparation.
 - [x] Resolve the load-bearing shared comment-tokenization regression N1; independent fix2 review passes.
 - [x] Inventory current syntax and commit design/17-task plan after independent builder check.
 - [x] Add pinned, reproducible LALRPOP generation, bounded spanned token/AST/error/budget/cancellation core and real definition-syntax cutover.
-- [ ] Migrate sequence/UML-description/Chen, state/activity and tree/data/HCL grammars to real generated productions.
-- [ ] Migrate timing/Gantt, Salt/nwdiag and files/packet/board grammars.
-- [ ] Migrate applicable shared syntax parsing (preambles/styles/supported directives/markup), explicitly separating lexical and semantic work.
-- [ ] Remove superseded ad-hoc syntax dispatch; no generated Line* wrapper forwarding to legacy parsers, no runtime legacy fallback after cutover.
-- [ ] Verify accepted/rejected grammar, identity/geometry/source-location/bounds and genuine native captures; perform broad independent review after implementation.
+- [x] Migrate sequence/UML-description/Chen, state/activity and tree/data/HCL grammars to real generated productions.
+- [x] Migrate timing/Gantt, Salt/nwdiag and files/packet/board grammars.
+- [x] Migrate applicable shared syntax parsing (preambles/styles/supported directives/markup), explicitly separating lexical and semantic work.
+- [x] Remove superseded ad-hoc syntax dispatch; no generated Line* wrapper forwarding to legacy parsers, no runtime legacy fallback after cutover.
+- [x] Verify admitted grammar, identity/geometry/source-location/bounds, unchanged baseline and genuine native captures for the current documented subset.
+- [ ] Perform broad independent review after the remaining port implementation.
 - [ ] Resume remaining family queue using LALRPOP, then final evidence/whole-branch review.
 
-Approach: staged real grammar cutovers with existing models/layouts retained. Custom bounded lexing/preprocessing stays explicit where it owns comments/raw modes/macros; it is not a substitute for generated structural grammar. Definitions, document/header syntax and preamble/style/skinparam/region syntax are independently approved as rewritten; family and Creole syntax remain pending.
+Implemented approach: generated grammar cutovers retain existing models/layouts. Custom bounded lexing/preprocessing remains for comments/raw modes/macros and primitive lexical ownership; generated productions own current structural syntax. New family syntax still needs its own LALRPOP grammar.
 
 ### LALRPOP cutover tracking
 
@@ -192,7 +193,7 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 14 | nwdiag/contextual server-name repair | INTEGRATEDe4ace61 from testeddc29c48 —489 combined focused tests, strict Clippy/fmt, private generator19 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 15 | Packetdiag | INTEGRATEDda590bc from testeda08bf48 —593 combined focused tests, strict Clippy/fmt, private generator21 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 16 | Creole nesting | INTEGRATEDa796711 from testedd398ee6 —577 combined focused tests, strict Clippy/fmt, private generator20 and source audit; root full/baseline/native checks pass at laterda590bc head; broad review deferred |
-| 17 | Legacy-syntax removal/inventory/integration review | INTEGRATED0f468eb from testedf714769/toolingdd7c26f —593 focused parser/public tests, Node25, generator5, dependency audit5, strict checks, private reproduction21/source220+43+43/closure67 pass; Line adapters removed,21 grammars/zero pending syntax; root final gates/native pending |
+| 17 | Legacy-syntax removal/inventory/integration review | VERIFIED0f468eb from testedf714769/toolingdd7c26f —root core/audit gates, unchanged43 baseline and17 native family captures/exports pass; Line adapters removed,21 grammars/zero pending syntax; broad review deferred until port end |
 
 Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generated definitions, wrappers, shared ownership, typed headers, origin/body spans and preamble/style/skinparam/region grammar are active. That checkpoint passed544 Rust+seven faults/all16 gates,18Node,generator3/notice5/67-package audit/four reproducible outputs and unchanged43-fixture baseline SHA a14d47f73af4f7c78c67dc746ac5c51eb96d89e54db1b52425cc1b8e08fafafe. Empty-value errors are typed; repeated500 sheets pass with/without definitions and identical SVGs. Actual styled/constants20/22/12/14 and font6/14/96 each8 native,all zero fallback, are inspected/hash-verified; exports/cleanup pass. The table above tracks subsequent cutover reviews and pending combined verification.
 
@@ -202,8 +203,8 @@ Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generate
 - Independent family ports use separate worktrees. A designated integration writer combines tested branches in `diagram-ports`; the controller runs shared gates on combined batches.
 - Workers implement, run focused regression tests, repair failures and commit coherent checkpoints. Broad review happens at the end; native captures and baseline exports run centrally at meaningful integration milestones.
 - Cargo commands share an outer build lock to avoid competing with the existing500ms test. Generator binaries use a separate target directory per checkout: their embedded checkout paths caused cross-worktree output generation when a shared executable was reused. The private targets fix that hazard; no source baseline or assertion was weakened.
-- The previous10–18hour estimate described serial execution and is superseded. The first combined integration is complete; remaining time chiefly depends on grammar implementations and compatibility fixes. No revised completion time is claimed yet.
-- Read-only next-family preparation is complete for [Task 3K EBNF/regex](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3k-preparation.md) and [Task 3L charts](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3l-preparation.md). Both remain held for product implementation until Task17 parser cleanup is stable.
+- The previous10–18hour estimate described serial parser migration and is superseded. The current estimate for remaining family increments is recorded in Current status above.
+- Read-only next-family preparation is complete for [Task 3K EBNF/regex](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3k-preparation.md) and [Task 3L charts](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3l-preparation.md). Both can now start product implementation from the verified parser checkpoint.
 
 ## Completed prerequisite repair gate — Task 3J
 
