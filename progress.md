@@ -243,8 +243,8 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; baseline selector repair pending |
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
 | 4 | 3M ASCII Git — ACTIVE | Generated raw-grid parser/native topology passes327 engine units+six public controls, including original-verified two-parent merge, sparse/negative/bounds/cancel cases; frozen43 baseline selector RED→GREEN5; source/strict/final commit pending |
-| 5 | 3N wire — ACTIVE | Isolated implementation from chart head; indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
-| 6 | 3O legacy BPM | Genuine legacy events/branches/splits/merges and continuation, distinct from modern activity/BPMN |
+| 5 | 3N wire — ACTIVE | Generated offside grammar/typed block placement passes first original nested/horizontal/vertical controls; table/depth bounds measured, wider geometry/source/strict checks pending |
+| 6 | 3O legacy BPM — ACTIVE | Generated branch/else/end grammar, typed Start/Event/Merge graph and sparse layout pass first topology plus eight public controls; private geometry/storage/source/strict checks pending |
 | 7 | 3P directional flow | Cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
 | 8 | 3Q standalone Creole | Real document paragraphs/blank lines/styled runs, not one universal label |
 | 9 | 3B2 advanced state | Concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
