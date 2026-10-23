@@ -12,6 +12,12 @@
   },
   "grammars": [
     {
+      "generated": "engine/src/plantuml/generated/activity.rs",
+      "generatedSha256": "965aeffbee0584b443512415e6651a25639777d2ffc6effcaee42702b2851d49",
+      "grammar": "engine/src/plantuml/parser/grammar/activity.lalrpop",
+      "grammarSha256": "ca3f7156779b2fe62ac5254cffbf33901cad71b481ae3cc341f539965865570d"
+    },
+    {
       "generated": "engine/src/plantuml/generated/board.rs",
       "generatedSha256": "bbd732d9384e12db4faab021b965620d17dc46ae1875cb1ca0dd8bb718eafab1",
       "grammar": "engine/src/plantuml/parser/grammar/board.lalrpop",

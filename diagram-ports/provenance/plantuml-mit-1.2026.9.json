@@ -1858,7 +1858,9 @@
       "sha256": "291c4718ac1f4d3c27ed5608b45273da843d4fe92f50490cb98a8d490ee9e2db",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1873,7 +1875,9 @@
       "sha256": "fa0ff1dcb54b2a354739ca38c005503fdab76c5211f94ddecec9bb70841b0c8b",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1888,7 +1892,9 @@
       "sha256": "8139589658873c4d29a73dfdd5c5532e8e64aee123e5ac19717cf9bbb99b6fc1",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1903,7 +1909,9 @@
       "sha256": "bd37cc74050d4d7dabea2bf90f3f7bb8b8418934087e4385fbb5b4214a9229ea",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1918,7 +1926,9 @@
       "sha256": "d9aeeb018b03494aec5681567908056492a6923fe96b16da9f8394f1f9d76537",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1933,7 +1943,9 @@
       "sha256": "600fa7c42ee6a49f02facd559117be5fd7c06f6524a6ce0177958ddcd16c5849",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1948,7 +1960,9 @@
       "sha256": "376f54302e4993de0d1c1066b52fc70380dc9452fadddd9cadc10a37b6f5ca12",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1963,7 +1977,9 @@
       "sha256": "f7cbbaf3788cc2c1dd420db497596d50e9558d5bfc4bf6eb8dde87f6bc385124",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1978,7 +1994,9 @@
       "sha256": "3b9823f49ea06af651fd1a4dff06f2d8cc9917a6235d56cb3b9c3809f28f8b86",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -1993,7 +2011,9 @@
       "sha256": "78c3c294d6b224b359c3891c427291f55eca14b81b1fedde9f9e62a4757e20c3",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2008,7 +2028,9 @@
       "sha256": "c90d1da7ef7a224e8051310e8c53536c892520949530462aaa940e944711d3f4",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2023,7 +2045,9 @@
       "sha256": "ee369912599c95a85bee467169786fcf50c3acd8abbc03a48d11e9ab9b806912",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2038,7 +2062,9 @@
       "sha256": "a3f19d9f35ea7e17b55ae9fd3893174fc071883f7db76fa55f5613f3d15b6147",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2053,7 +2079,9 @@
       "sha256": "d70b680df6f5e5bfe05a54445d0fb6d4db4eb726b1b40035fb08ce728c3f4e16",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2068,7 +2096,9 @@
       "sha256": "b2960122b10528c0d6f0da05a4c67e6ce1779ec99f589a3435b54124dfd9b937",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2083,7 +2113,9 @@
       "sha256": "317c10ea84b981cdaff01ce1da3c52d77291dd3a3b4eb106b1d5bfccd9f18d70",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2098,7 +2130,9 @@
       "sha256": "78bf2171583206415cb6aaaf0530649744fde6b24baffba6399434f7d0ffca40",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [
@@ -2113,7 +2147,9 @@
       "sha256": "3620a5d2f482d36e9f837b8f827d1cf5417dbf8ac277b6f46f00426cee34b356",
       "rust": [
         "engine/src/plantuml/activity.rs",
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/source.rs",
+        "engine/src/plantuml/parser/activity.rs",
+        "engine/src/plantuml/parser/grammar/activity.lalrpop"
       ],
       "behavior": "Modern structured activity grammar subset, strict suffix/stack admission and retained action/guard text.",
       "copyrights": [

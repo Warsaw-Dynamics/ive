@@ -1,14 +1,16 @@
 {
   "schema": 1,
-  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Other family grammars and Creole remain pending.",
+  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Generated structured activity instructions, nested control blocks and raw actions preserve the activity model. Other family grammars and Creole remain pending.",
   "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, sequence participant/message/note/frame/lifecycle semantics and scoped two-phase state identity/resolution are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
   "authoredFiles": [
+    "engine/src/plantuml/parser/activity.rs",
     "engine/src/plantuml/parser/board.rs",
     "engine/src/plantuml/parser/context.rs",
     "engine/src/plantuml/parser/definition.rs",
     "engine/src/plantuml/parser/document.rs",
     "engine/src/plantuml/parser/error.rs",
     "engine/src/plantuml/parser/files.rs",
+    "engine/src/plantuml/parser/grammar/activity.lalrpop",
     "engine/src/plantuml/parser/grammar/board.lalrpop",
     "engine/src/plantuml/parser/grammar/definition.lalrpop",
     "engine/src/plantuml/parser/grammar/document.lalrpop",
@@ -31,6 +33,7 @@
     "engine/src/plantuml/parser/uml.rs"
   ],
   "generatedFiles": [
+    "engine/src/plantuml/generated/activity.rs",
     "engine/src/plantuml/generated/board.rs",
     "engine/src/plantuml/generated/definition.rs",
     "engine/src/plantuml/generated/document.rs",

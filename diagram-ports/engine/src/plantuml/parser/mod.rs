@@ -1,4 +1,5 @@
 //! Original bounded parser infrastructure; semantic source traces remain in provenance.
+pub(super) mod activity;
 pub(super) mod board;
 pub(super) mod context;
 pub(super) mod definition;
@@ -88,3 +89,8 @@ mod generated_state;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/uml.rs"]
 mod generated_uml;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/activity.rs"]
+mod generated_activity;

@@ -11,25 +11,11 @@ pub(super) struct Token {
     pub quoted: bool,
 }
 
-pub(super) fn tokens(line: &Line, budget: &mut Budget) -> Result<Vec<Token>, RenderError> {
-    scan_tokens(line, budget, TokenAccounting::Work)
-}
-
 pub(super) fn model_tokens(line: &Line, budget: &mut Budget) -> Result<Vec<Token>, RenderError> {
-    scan_tokens(line, budget, TokenAccounting::Model)
+    scan_tokens(line, budget)
 }
 
-#[derive(Clone, Copy)]
-enum TokenAccounting {
-    Work,
-    Model,
-}
-
-fn scan_tokens(
-    line: &Line,
-    budget: &mut Budget,
-    accounting: TokenAccounting,
-) -> Result<Vec<Token>, RenderError> {
+fn scan_tokens(line: &Line, budget: &mut Budget) -> Result<Vec<Token>, RenderError> {
     budget.charge(line.text.len())?;
     let mut rest = line.text.as_str();
     let mut out = Vec::new();
@@ -38,28 +24,20 @@ fn scan_tokens(
         if rest.is_empty() {
             break;
         }
-        if matches!(accounting, TokenAccounting::Model) {
-            budget.item()?;
-        }
-        let (text, quoted, used) = next(rest, line.number, accounting)?;
+        budget.item()?;
+        let (text, quoted, used) = next(rest, line.number)?;
         out.push(Token { text, quoted });
         rest = &rest[used..];
     }
     Ok(out)
 }
 
-fn next(
-    rest: &str,
-    line: usize,
-    accounting: TokenAccounting,
-) -> Result<(String, bool, usize), RenderError> {
+fn next(rest: &str, line: usize) -> Result<(String, bool, usize), RenderError> {
     if rest.starts_with('"') {
         return quoted(rest, line);
     }
     if let Some(arrow) = arrow_at(rest) {
-        if matches!(accounting, TokenAccounting::Model) {
-            super::budget::bound("Chen token bytes", arrow.len(), 16 * 1024)?;
-        }
+        super::budget::bound("Chen token bytes", arrow.len(), 16 * 1024)?;
         return Ok((arrow.into(), false, arrow.len()));
     }
     let first = rest.chars().next().unwrap();
@@ -75,9 +53,7 @@ fn next(
                 || arrow_at(&rest[*i..]).is_some()
         })
         .map_or(rest.len(), |(i, _)| i);
-    if matches!(accounting, TokenAccounting::Model) {
-        super::budget::bound("Chen token bytes", end, 16 * 1024)?;
-    }
+    super::budget::bound("Chen token bytes", end, 16 * 1024)?;
     Ok((rest[..end].into(), false, end))
 }
 
@@ -121,30 +97,4 @@ pub(super) fn arrow_at(rest: &str) -> Option<&str> {
         .find(|ch: char| !matches!(ch, '-' | '.' | '<' | '>' | '|' | 'o' | '*'))
         .unwrap_or(rest.len());
     Some(&rest[..end])
-}
-
-pub(super) fn split_label(line: &Line) -> (&str, &str) {
-    let mut quoted = false;
-    let mut escaped = false;
-    for (i, ch) in line.text.char_indices() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if quoted && ch == '\\' {
-            escaped = true;
-            continue;
-        }
-        if ch == '"' {
-            quoted = !quoted;
-        }
-        if ch == ':'
-            && !quoted
-            && !line.text[..i].ends_with(':')
-            && !line.text[i + 1..].starts_with(':')
-        {
-            return (line.text[..i].trim(), line.text[i + 1..].trim());
-        }
-    }
-    (&line.text, "")
 }

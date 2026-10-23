@@ -130,6 +130,14 @@ pub(crate) fn render(
     } else {
         None
     };
+    let activity_model = if wrapper == source::Wrapper::Uml && selection == Selection::Activity {
+        Some(parser::activity::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -187,8 +195,10 @@ pub(crate) fn render(
             };
             (family, datascene::layout(&model, &mut context)?)
         } else if selection == Selection::Activity {
-            let model = activity::parse(lines, context.budget)?;
-            ("activity", activitytile::layout(&model, &mut context)?)
+            let model = activity_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML activity selection has no parsed model".into())
+            })?;
+            ("activity", activitytile::layout(model, &mut context)?)
         } else if selection == Selection::State {
             let model = state_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML state selection has no parsed model".into())
