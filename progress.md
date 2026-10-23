@@ -191,7 +191,7 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 14 | nwdiag/contextual server-name repair | INTEGRATEDe4ace61 from testeddc29c48 —489 combined focused tests, strict Clippy/fmt, private generator19 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 15 | Packetdiag | INTEGRATEDda590bc from testeda08bf48 —593 combined focused tests, strict Clippy/fmt, private generator21 and source audit; root full/baseline/native checks pass; broad review deferred |
 | 16 | Creole nesting | INTEGRATEDa796711 from testedd398ee6 —577 combined focused tests, strict Clippy/fmt, private generator20 and source audit; root full/baseline/native checks pass at laterda590bc head; broad review deferred |
-| 17 | Legacy-syntax removal/inventory/integration review | FINAL REMOVAL IN PROGRESS — isolated branch from da590bc; tested toolingd29b746 being unioned,21 grammars/71 modules/1,111 functions to classify and obsolete Line/adapter syntax to remove |
+| 17 | Legacy-syntax removal/inventory/integration review | FINAL REMOVAL IN PROGRESS — isolated branch from da590bc; tooling unioned locally, production Line materialization/header PhysicalRows/Gantt dummy Line and line-based test adapters removed; serial engine tests and final 21-parser ledger checks pending |
 
 Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generated definitions, wrappers, shared ownership, typed headers, origin/body spans and preamble/style/skinparam/region grammar are active. That checkpoint passed544 Rust+seven faults/all16 gates,18Node,generator3/notice5/67-package audit/four reproducible outputs and unchanged43-fixture baseline SHA a14d47f73af4f7c78c67dc746ac5c51eb96d89e54db1b52425cc1b8e08fafafe. Empty-value errors are typed; repeated500 sheets pass with/without definitions and identical SVGs. Actual styled/constants20/22/12/14 and font6/14/96 each8 native,all zero fallback, are inspected/hash-verified; exports/cleanup pass. The table above tracks subsequent cutover reviews and pending combined verification.
 
@@ -202,6 +202,7 @@ Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generate
 - Workers implement, run focused regression tests, repair failures and commit coherent checkpoints. Broad review happens at the end; native captures and baseline exports run centrally at meaningful integration milestones.
 - Cargo commands share an outer build lock to avoid competing with the existing500ms test. Generator binaries use a separate target directory per checkout: their embedded checkout paths caused cross-worktree output generation when a shared executable was reused. The private targets fix that hazard; no source baseline or assertion was weakened.
 - The previous10–18hour estimate described serial execution and is superseded. The first combined integration is complete; remaining time chiefly depends on grammar implementations and compatibility fixes. No revised completion time is claimed yet.
+- Read-only next-family preparation is complete for [Task 3K EBNF/regex](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3k-preparation.md) and [Task 3L charts](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3l-preparation.md). Both remain held for product implementation until Task17 parser cleanup is stable.
 
 ## Completed prerequisite repair gate — Task 3J
 
