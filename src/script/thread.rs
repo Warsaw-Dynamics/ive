@@ -49,7 +49,7 @@ pub enum ScriptEvent {
         themes: Vec<String>,
     },
     /// the load failed (the log says why); the previous bindings stay
-    LoadFailed { message: String, errors: usize },
+    LoadFailed { message: String, errors: usize, themes: Vec<String> },
     /// a bound function failed; the log says why
     RunFailed,
     /// the menu condition asked as `request` answered
@@ -140,7 +140,7 @@ fn write_defaults(dir: Option<&Path>, log: &ScriptLog) {
 fn fail_start(thread: &Thread, message: String) {
     let message = format!("scripts are off: {message}");
     thread.log.append(&message);
-    let _ = thread.events.unbounded_send(ScriptEvent::LoadFailed { message, errors: 1 });
+    let _ = thread.events.unbounded_send(ScriptEvent::LoadFailed { message, errors: 1, themes: Vec::new() });
 }
 
 /// The loaded scripts and what the thread needs to load them again.
@@ -204,14 +204,27 @@ impl Runner {
         }
     }
 
-    /// A broken theme fails the load; at start there is nothing to keep, so the scripts load over the default theme.
+    /// A broken theme fails the load; at start there is nothing to keep, so the scripts load over the default theme,
+    /// and when they fail too, one failure names both.
     fn theme_failed(&mut self, dir: Option<&Path>, message: String) {
         if self.current.is_some() {
             return self.fail(message);
         }
-        self.log.append(&message);
-        self.load_with(dir, theme_config::default_value());
-        self.send(ScriptEvent::LoadFailed { errors: message.lines().count(), message });
+        let loaded = self.engine.load(dir, theme_config::default_value(), self.loads);
+        self.drain_output();
+        match loaded {
+            Ok(loaded) => {
+                self.apply(loaded);
+                self.fail(message);
+            }
+            Err(scripts_error) => self.fail(format!("{message}\n{scripts_error}")),
+        }
+    }
+
+    /// Tells the gpui thread the load failed, with the themes there are now, so one can be picked to get out of it.
+    fn send_failed(&self, message: String) {
+        let themes = self.dir.as_deref().map(user::names).unwrap_or_default();
+        self.send(ScriptEvent::LoadFailed { errors: message.lines().count(), message, themes });
     }
 
     /// `config.theme` before the scripts run: the default with the picked theme merged over it.
@@ -257,7 +270,7 @@ impl Runner {
                 Err(defaults_error) => self.log.append(&format!("IVE's own ive.rn did not load, so there are no bindings: {defaults_error}")),
             }
         }
-        self.send(ScriptEvent::LoadFailed { errors: message.lines().count(), message });
+        self.send_failed(message);
     }
 
     fn invoke(&self, generation: u64, function: usize, context: Option<serde_json::Value>) {
@@ -721,6 +734,46 @@ mod tests {
         // then
         assert_eq!(loaded_tree(next_load(&mut scripts)), DEFAULT_TREE);
         logged(&log_in(dir.path()), "theme \"gone\": no file themes/gone.toml; using the default");
+    }
+
+    #[test]
+    fn should_report_both_errors_when_theme_and_init_broken_at_start() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", BROKEN);
+        fs::write(dir.path().join("init.rn"), "pub fn init(config) {").unwrap();
+
+        // when
+        let mut scripts = start_themed(dir.path(), "nord");
+
+        // then
+        assert!(matches!(next_load(&mut scripts), ScriptEvent::Loaded { .. }));
+        match next_load(&mut scripts) {
+            ScriptEvent::LoadFailed { message, .. } => assert!(message.contains("themes/nord.toml: ") && message.contains("init.rn"), "{message}"),
+            event => panic!("expected the failure, got {event:?}"),
+        }
+        assert!(next_event(&mut scripts, Duration::from_millis(500)).is_none());
+    }
+
+    #[test]
+    fn should_list_themes_while_load_fails() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let (calls, _) = responder(answer_terminal);
+        fs::write(dir.path().join("init.rn"), "pub fn init(config) {").unwrap();
+        let mut scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
+        assert!(matches!(next_load(&mut scripts), ScriptEvent::Loaded { .. }));
+        assert!(matches!(next_load(&mut scripts), ScriptEvent::LoadFailed { .. }));
+
+        // when
+        write_theme(dir.path(), "fixed", NORD);
+        scripts.commands.unbounded_send(ScriptCommand::Reload).unwrap();
+
+        // then
+        match next_load(&mut scripts) {
+            ScriptEvent::LoadFailed { themes, .. } => assert_eq!(themes, ["fixed"]),
+            event => panic!("expected the failure, got {event:?}"),
+        }
     }
 
     #[test]

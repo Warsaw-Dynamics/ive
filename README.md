@@ -796,7 +796,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own), `copy-script-instructions`, `open-ive-readme` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |

@@ -51,7 +51,7 @@ fn render_user_theme_picker(current: &ThemeChoice, theme: Theme, cx: &mut Contex
 
 /// Click target `user-theme:<name>`, `user-theme:Default` for IVE's own.
 fn render_user_theme(option: ThemeChoice, selected: bool, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let id = format!("user-theme:{}", option.label());
+    let id = user_theme_target(&option);
     let button = div()
         .id(SharedString::from(id.clone()))
         .px(theme.sizes.settings.segment_padding_x.px())
@@ -63,6 +63,15 @@ fn render_user_theme(option: ThemeChoice, selected: bool, theme: Theme, cx: &mut
         return button.bg(rgb(theme.accent)).text_color(rgb(theme.on_accent));
     }
     button.hover(|style| style.bg(rgb(theme.hover)))
+}
+
+/// `user-theme:<name>` for a theme file, `user-theme:Default` for IVE's own; a file named `Default` is
+/// `user-theme:Default.toml`, so the two stay apart.
+fn user_theme_target(option: &ThemeChoice) -> String {
+    match option {
+        ThemeChoice::File(name) if name == ThemeChoice::Builtin.label() => format!("user-theme:{name}.toml"),
+        option => format!("user-theme:{}", option.label()),
+    }
 }
 
 fn render_theme_picker(current: ThemePreference, theme: Theme, cx: &mut Context<Workspace>) -> Div {
@@ -87,4 +96,33 @@ fn render_option(option: ThemePreference, selected: bool, theme: Theme, cx: &mut
         return button.bg(rgb(theme.accent)).text_color(rgb(theme.on_accent));
     }
     button.hover(|style| style.bg(rgb(theme.hover)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_give_theme_file_named_default_its_own_target() {
+        // given
+        let (builtin, file) = (ThemeChoice::Builtin, ThemeChoice::File("Default".to_owned()));
+
+        // when
+        let targets = (user_theme_target(&builtin), user_theme_target(&file));
+
+        // then
+        assert_eq!(targets, ("user-theme:Default".to_owned(), "user-theme:Default.toml".to_owned()));
+    }
+
+    #[test]
+    fn should_name_theme_file_target_after_file() {
+        // given
+        let file = ThemeChoice::File("nord".to_owned());
+
+        // when
+        let target = user_theme_target(&file);
+
+        // then
+        assert_eq!(target, "user-theme:nord");
+    }
 }

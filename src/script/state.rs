@@ -47,7 +47,10 @@ impl ScriptState {
                 self.load = if has_init { LoadStatus::Loaded { bindings: keymap.len() } } else { LoadStatus::NoInit };
                 self.keymap = keymap;
             }
-            ScriptEvent::LoadFailed { message, errors } => self.load = LoadStatus::Failed { message, errors },
+            ScriptEvent::LoadFailed { message, errors, themes } => {
+                self.themes = themes;
+                self.load = LoadStatus::Failed { message, errors };
+            }
             // the workspace shows the log, or hands the answer to the open menu; nothing to keep
             ScriptEvent::RunFailed | ScriptEvent::Tested { .. } => {}
         }
@@ -180,7 +183,7 @@ mod tests {
         state.apply(loaded(send_binding("f5")));
 
         // when
-        state.apply(ScriptEvent::LoadFailed { message: "init.rn:1:1: broken".to_owned(), errors: 1 });
+        state.apply(ScriptEvent::LoadFailed { message: "init.rn:1:1: broken".to_owned(), errors: 1, themes: Vec::new() });
 
         // then
         assert_eq!(state.find_key(&Keystroke::parse("f5").unwrap(), Place::Elsewhere), Some(Action::Send("x".to_owned())));
@@ -191,7 +194,7 @@ mod tests {
     fn should_describe_failed_load() {
         // given
         let (_dir, mut state) = new_state();
-        state.apply(ScriptEvent::LoadFailed { message: "init.rn:2:19: broken".to_owned(), errors: 1 });
+        state.apply(ScriptEvent::LoadFailed { message: "init.rn:2:19: broken".to_owned(), errors: 1, themes: Vec::new() });
 
         // when
         let status = script_status_json(&state);
