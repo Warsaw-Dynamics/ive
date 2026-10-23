@@ -93,7 +93,7 @@ fn render_instructions(dir: &Path, log: &Path, theme: Theme, cx: &mut Context<Wo
         .child("Copy instructions")
         .on_click(target("copy-script-instructions".to_owned(), cx.listener(move |_, _event, _window, cx| cx.write_to_clipboard(ClipboardItem::new_string(text.clone()))), cx));
     let heading = div().flex().items_center().justify_between().child(div().font_weight(FontWeight::SEMIBOLD).child(TITLE)).child(copy);
-    let paragraphs = sections(dir, log).map(|(title, body)| div().child(div().font_weight(FontWeight::SEMIBOLD).child(title)).child(body));
+    let paragraphs = sections(dir, log).map(|(heading, body)| render_section(heading, body));
     let readme = div()
         .id("open-ive-readme")
         .text_color(rgb(theme.accent))
@@ -102,6 +102,13 @@ fn render_instructions(dir: &Path, log: &Path, theme: Theme, cx: &mut Context<Wo
         .child(README_LINE)
         .on_click(target("open-ive-readme".to_owned(), cx.listener(|_, _event, _window, cx| cx.open_url(README_URL)), cx));
     div().flex().flex_col().gap(theme.sizes.settings.page_gap.px()).child(heading).children(paragraphs).child(readme)
+}
+
+fn render_section(heading: &'static str, body: String) -> Div {
+    if heading.is_empty() {
+        return div().child(body);
+    }
+    div().child(div().font_weight(FontWeight::SEMIBOLD).child(heading)).child(body)
 }
 
 /// Click target `open-settings-toml`; a muted line until the first change on a settings page writes the file.
