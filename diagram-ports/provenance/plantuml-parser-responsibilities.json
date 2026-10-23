@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "d3d068a plus Git; 26 generated grammars, no pending syntax or obsolete Line adapters",
+  "basis": "ffd73cb plus Task3N wire;27 generated grammars, no pending syntax or obsolete Line adapters",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -522,6 +522,7 @@
     {
       "path": "engine/src/plantuml/text.rs",
       "groups": [
+        {"role": "infrastructure", "reason": "Private typed text-color override uses the existing full style cache/measurement path; typed layout failures use existing bounded origin mapping once. No new language parsing.", "symbols": ["colored_label#1", "locate_failure#1"]},
         {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["family#1", "new#1", "with_fonts#1", "with_origins#1", "label#1", "styled_label#1", "data_label#1", "tree_label#1", "region_label#1", "base#1", "measure_label#1", "literal_lines#1", "measure_line#1", "font_style#1", "validate_label#1", "append_label#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["measure#1", "should_bound_aggregate_body_and_chrome_measurement_requests_before_host_call#1", "should_reject_oversized_label_before_scanning_or_retaining_it#1", "should_coalesce_equal_styles_and_keep_color_only_cache_changes#1", "should_bound_tokens_before_measuring_many_short_runs#1", "should_bound_marker_activation_and_escaped_punctuation_with_linear_work#1"]}
       ]
@@ -567,343 +568,111 @@
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["value#1", "should_check_flow_scalar_depth_before_any_field_accumulation#1", "should_admit_flow_scalars_at_exact_depth_including_mandatory_empty_element#1", "should_scan_long_whitespace_flow_fields_with_linear_charged_work#1", "should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work#1", "should_preserve_escaped_content_when_deciding_whether_quotes_open#1", "should_charge_trimmed_flow_copy_before_allocating_a_second_string#1", "should_enforce_flow_item_limit_before_next_field_accumulation#1", "should_replace_yaml_duplicate_without_moving_first_key_and_keep_string_scalars#1", "should_apply_literal_block_trimming_and_nonstructured_stopping_quirk#1", "should_distinguish_map_unquoting_from_flow_list_escaping#1", "should_preserve_list_of_maps_and_plain_dash_map_ownership#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/ebnf.rs",
       "groups": [
-        {
-          "role": "semantic",
-          "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.",
-          "symbols": [
-            "node#1",
-            "text#1",
-            "rule#1",
-            "span#1",
-            "rule_span#1",
-            "len#1",
-            "root_count#1",
-            "root#1",
-            "tile#1"
-          ]
-        }
+        {"role": "semantic", "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.", "symbols": ["node#1", "text#1", "rule#1", "span#1", "rule_span#1", "len#1", "root_count#1", "root#1", "tile#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/regex.rs",
       "groups": [
-        {
-          "role": "semantic",
-          "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.",
-          "symbols": [
-            "bounds#1",
-            "node#1",
-            "text#1",
-            "member#1",
-            "range#1",
-            "class#1",
-            "repeat#1",
-            "span#1",
-            "rule_span#1",
-            "len#1",
-            "root_count#1",
-            "root#1",
-            "tile#1"
-          ]
-        }
+        {"role": "semantic", "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.", "symbols": ["bounds#1", "node#1", "text#1", "member#1", "range#1", "class#1", "repeat#1", "span#1", "rule_span#1", "len#1", "root_count#1", "root#1", "tile#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/railroad.rs",
       "groups": [
-        {
-          "role": "layout",
-          "reason": "Measured railroad tiles, stable semantic ownership, finite port placement and bounded native orthogonal routes.",
-          "symbols": [
-            "len#1",
-            "root_count#1",
-            "root#1",
-            "tile#1",
-            "span#1",
-            "rule_span#1",
-            "geometry#1",
-            "store#1",
-            "measure#1",
-            "layout#1",
-            "emit#1",
-            "rail#1",
-            "place#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.",
-          "symbols": [
-            "draw#1",
-            "rect#1",
-            "points#1",
-            "should_stack_ordered_branches_and_connect_both_ports_to_shared_rails#1",
-            "should_connect_repeat_return_and_optional_bypass_without_crossing_leaf_interiors#1",
-            "should_bound_every_tile_and_expose_measured_entry_exit_ports#1"
-          ]
-        }
+        {"role": "layout", "reason": "Measured railroad tiles, stable semantic ownership, finite port placement and bounded native orthogonal routes.", "symbols": ["len#1", "root_count#1", "root#1", "tile#1", "span#1", "rule_span#1", "geometry#1", "store#1", "measure#1", "layout#1", "emit#1", "rail#1", "place#1"]},
+        {"role": "test-adapter", "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.", "symbols": ["draw#1", "rect#1", "points#1", "should_stack_ordered_branches_and_connect_both_ports_to_shared_rails#1", "should_connect_repeat_return_and_optional_bypass_without_crossing_leaf_interiors#1", "should_bound_every_tile_and_expose_measured_entry_exit_ports#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/parser/ebnf.rs",
       "groups": [
-        {
-          "role": "generated-facade",
-          "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.",
-          "symbols": [
-            "parse#1"
-          ]
-        }
+        {"role": "generated-facade", "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.", "symbols": ["parse#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/parser/regex.rs",
       "groups": [
-        {
-          "role": "generated-facade",
-          "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.",
-          "symbols": [
-            "parse#1"
-          ]
-        }
+        {"role": "generated-facade", "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.", "symbols": ["parse#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/parser/railroad.rs",
       "groups": [
-        {
-          "role": "infrastructure",
-          "reason": "Checked aggregate token/AST capacity, actual generated table-derived stack/reduction/symbol/diagnostic admission.",
-          "symbols": [
-            "reserve#1",
-            "push#1",
-            "admit#1"
-          ]
-        },
-        {
-          "role": "lexical",
-          "reason": "Family-owned primitive quote/escape/identifier/numeric lexemes and delimiter depth admission; no recursive structural grammar.",
-          "symbols": [
-            "lex#1",
-            "ebnf_token#1",
-            "regex_token#1",
-            "escape#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.",
-          "symbols": [
-            "ebnf_model#1",
-            "regex_model#1",
-            "should_preserve_ordered_rule_ids_quote_kinds_and_symbolic_references#1",
-            "should_keep_ebnf_sequence_precedence_and_independent_optional_repeat_nodes#1",
-            "should_parse_regex_precedence_and_count_metadata_without_expansion#1",
-            "should_retain_negation_ranges_escaped_brackets_and_noncapture_kind#1",
-            "should_admit_retained_vector_growth_before_allocation_and_keep_exact_payload_witnesses#1"
-          ]
-        }
+        {"role": "infrastructure", "reason": "Checked aggregate token/AST capacity, actual generated table-derived stack/reduction/symbol/diagnostic admission.", "symbols": ["reserve#1", "push#1", "admit#1"]},
+        {"role": "lexical", "reason": "Family-owned primitive quote/escape/identifier/numeric lexemes and delimiter depth admission; no recursive structural grammar.", "symbols": ["lex#1", "ebnf_token#1", "regex_token#1", "escape#1"]},
+        {"role": "test-adapter", "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.", "symbols": ["ebnf_model#1", "regex_model#1", "should_preserve_ordered_rule_ids_quote_kinds_and_symbolic_references#1", "should_keep_ebnf_sequence_precedence_and_independent_optional_repeat_nodes#1", "should_parse_regex_precedence_and_count_metadata_without_expansion#1", "should_retain_negation_ranges_escaped_brackets_and_noncapture_kind#1", "should_admit_retained_vector_growth_before_allocation_and_keep_exact_payload_witnesses#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/bpm.rs",
       "groups": [
-        {
-          "role": "semantic",
-          "reason": "Immutable legacy BPM instructions and typed flow nodes/edges, synthetic split/join ownership and bounded arm lowering; no source parsing.",
-          "symbols": [
-            "ports#1",
-            "new#1",
-            "node#1",
-            "append#1",
-            "block#1",
-            "instruction#1",
-            "event#1",
-            "branch#1",
-            "edge#1",
-            "finish#1",
-            "lower#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
-          "symbols": [
-            "parse#1",
-            "should_lower_implicit_start_events_and_two_synthetic_branch_merges#1",
-            "should_keep_nested_instruction_arms_as_ids_and_distinct_owned_graph_edges#1",
-            "should_reject_empty_document_under_shared_nonempty_source_admission#1"
-          ]
-        }
+        {"role": "semantic", "reason": "Immutable legacy BPM instructions and typed flow nodes/edges, synthetic split/join ownership and bounded arm lowering; no source parsing.", "symbols": ["ports#1", "new#1", "node#1", "append#1", "block#1", "instruction#1", "event#1", "branch#1", "edge#1", "finish#1", "lower#1"]},
+        {"role": "test-adapter", "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.", "symbols": ["parse#1", "should_lower_implicit_start_events_and_two_synthetic_branch_merges#1", "should_keep_nested_instruction_arms_as_ids_and_distinct_owned_graph_edges#1", "should_reject_empty_document_under_shared_nonempty_source_admission#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/bpmscene.rs",
       "groups": [
-        {
-          "role": "layout",
-          "reason": "Measured sparse native left-to-right branch composition, finite node/port placement, owned bounded orthogonal edge routes and scene emission.",
-          "symbols": [
-            "reserve#1",
-            "filled#1",
-            "push#1",
-            "measure#1",
-            "positions#1",
-            "owner#1",
-            "layout#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
-          "symbols": [
-            "draw#1",
-            "rectangle#1",
-            "should_stack_ordered_arms_without_overlapping_events_and_keep_continue_to_the_right#1",
-            "should_route_nested_split_and_join_edges_outside_all_event_boxes_and_contain_labels#1",
-            "should_bound_layout_work_before_allocating_sparse_positions#1"
-          ]
-        }
+        {"role": "layout", "reason": "Measured sparse native left-to-right branch composition, finite node/port placement, owned bounded orthogonal edge routes and scene emission.", "symbols": ["reserve#1", "filled#1", "push#1", "measure#1", "positions#1", "owner#1", "layout#1"]},
+        {"role": "test-adapter", "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.", "symbols": ["draw#1", "rectangle#1", "should_stack_ordered_arms_without_overlapping_events_and_keep_continue_to_the_right#1", "should_route_nested_split_and_join_edges_outside_all_event_boxes_and_contain_labels#1", "should_bound_layout_work_before_allocating_sparse_positions#1"]}
       ]
     },
-{
+    {
       "path": "engine/src/plantuml/parser/bpm.rs",
       "groups": [
-        {
-          "role": "infrastructure",
-          "reason": "Checked aggregate token/model capacity and actual generated state/symbol/reduction/diagnostic resource admission.",
-          "symbols": [
-            "push#1",
-            "admit#1"
-          ]
-        },
-        {
-          "role": "generated-facade",
-          "reason": "Borrowed family tokens delivered to the real registered structural grammar and once-only authored origin mapping.",
-          "symbols": [
-            "parse#1"
-          ]
-        },
-        {
-          "role": "lexical",
-          "reason": "Raw event-label/final-semicolon lexemes and finite keyword/newline delivery with nesting/work admission; generated grammar owns recursive branch structure.",
-          "symbols": [
-            "lex#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
-          "symbols": [
-            "should_reject_arena_growth_before_allocation_and_measure_actual_payloads#1"
-          ]
-        }
+        {"role": "infrastructure", "reason": "Checked aggregate token/model capacity and actual generated state/symbol/reduction/diagnostic resource admission.", "symbols": ["push#1", "admit#1"]},
+        {"role": "generated-facade", "reason": "Borrowed family tokens delivered to the real registered structural grammar and once-only authored origin mapping.", "symbols": ["parse#1"]},
+        {"role": "lexical", "reason": "Raw event-label/final-semicolon lexemes and finite keyword/newline delivery with nesting/work admission; generated grammar owns recursive branch structure.", "symbols": ["lex#1"]},
+        {"role": "test-adapter", "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.", "symbols": ["should_reject_arena_growth_before_allocation_and_measure_actual_payloads#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/git.rs",
       "groups": [
-        {
-          "role": "infrastructure",
-          "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.",
-          "symbols": [
-            "shift#1",
-            "new#1",
-            "new#2",
-            "admit#1",
-            "retain#1",
-            "push#1",
-            "new#3"
-          ]
-        },
-        {
-          "role": "semantic",
-          "reason": "Typed sparse grid identity/ancestry resolution after generated syntax; visited directional paths, constraints and complete connector ownership.",
-          "symbols": [
-            "cell#1",
-            "blank#1",
-            "commit#1",
-            "at#1",
-            "candidates#1",
-            "next#1",
-            "trace#1",
-            "failure#1",
-            "finish#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
-          "symbols": [
-            "should_preserve_raw_rows_columns_comments_and_typed_older_ancestry#1",
-            "should_store_sparse_long_rows_without_a_width_times_height_grid#1",
-            "should_cancel_inside_sparse_parent_traversal_before_emitting_any_model#1"
-          ]
-        }
+        {"role": "infrastructure", "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.", "symbols": ["shift#1", "new#1", "new#2", "admit#1", "retain#1", "push#1", "new#3"]},
+        {"role": "semantic", "reason": "Typed sparse grid identity/ancestry resolution after generated syntax; visited directional paths, constraints and complete connector ownership.", "symbols": ["cell#1", "blank#1", "commit#1", "at#1", "candidates#1", "next#1", "trace#1", "failure#1", "finish#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_preserve_raw_rows_columns_comments_and_typed_older_ancestry#1", "should_store_sparse_long_rows_without_a_width_times_height_grid#1", "should_cancel_inside_sparse_parent_traversal_before_emitting_any_model#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/gitscene.rs",
       "groups": [
-        {
-          "role": "layout",
-          "reason": "Original finite measured commit/lane/label geometry and owned ancestor links; no excluded upstream layout translation.",
-          "symbols": [
-            "layout#1",
-            "point#1",
-            "boundary#1",
-            "caption#1",
-            "push#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
-          "symbols": [
-            "should_place_newer_commits_above_older_parents_with_measured_nonoverlapping_labels#1",
-            "should_cancel_inside_git_layout_measurement_without_serializing_a_partial_scene#1"
-          ]
-        }
+        {"role": "layout", "reason": "Original finite measured commit/lane/label geometry and owned ancestor links; no excluded upstream layout translation.", "symbols": ["layout#1", "point#1", "boundary#1", "caption#1", "push#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_place_newer_commits_above_older_parents_with_measured_nonoverlapping_labels#1", "should_cancel_inside_git_layout_measurement_without_serializing_a_partial_scene#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/parser/git.rs",
       "groups": [
-        {
-          "role": "generated-facade",
-          "reason": "Invokes the registered generated raw Git grammar and maps structured failures once.",
-          "symbols": [
-            "parse#1",
-            "parse_body#1"
-          ]
-        },
-        {
-          "role": "infrastructure",
-          "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.",
-          "symbols": [
-            "push#1",
-            "admit#1"
-          ]
-        },
-        {
-          "role": "lexical",
-          "reason": "Bounded raw primitive cells, identifier decoding and literal comment ownership; generated productions own row structure and EOF.",
-          "symbols": [
-            "row#1",
-            "copy#1"
-          ]
-        },
-        {
-          "role": "test-adapter",
-          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
-          "symbols": [
-            "should_cancel_long_raw_grid_lexing_before_retaining_a_named_token#1",
-            "should_reject_generated_suffixes_and_cancel_generated_delivery_and_eof#1"
-          ]
-        }
+        {"role": "generated-facade", "reason": "Invokes the registered generated raw Git grammar and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
+        {"role": "infrastructure", "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.", "symbols": ["push#1", "admit#1"]},
+        {"role": "lexical", "reason": "Bounded raw primitive cells, identifier decoding and literal comment ownership; generated productions own row structure and EOF.", "symbols": ["row#1", "copy#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_cancel_long_raw_grid_lexing_before_retaining_a_named_token#1", "should_reject_generated_suffixes_and_cancel_generated_delivery_and_eof#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/wire.rs",
+      "groups": [
+        {"role": "generated-facade", "reason": "Checked generated wire entry, actual parser/semantic retention and work admission, then once-origin mapping.", "symbols": ["parse#1", "parse_body#1", "admit#1"]},
+        {"role": "lexical", "reason": "Bounded raw indentation/offside tokens, finite primitive names/numbers/colors/arrows and literal label ownership; structural scopes/size/endpoint/statement grammar remains generated.", "symbols": ["row_tokens#1", "indent#1", "scan#1", "arrow#1"]},
+        {"role": "test-adapter", "reason": "Wire contract assertions and test-only generated facade setup.", "symbols": ["model#1", "should_keep_scoped_identity_four_space_tab_and_remaining_space_levels#1", "should_resolve_global_dotted_endpoints_and_independent_ordered_axis_slots#1", "should_admit_depth64_reject65_and_bound_sizes_before_label_retention#1", "should_reject_direct_generated_dangling_scopes_suffixes_and_cancel_actions#1", "should_cancel_long_literal_scans_and_bound_generated_entry_retention#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/wire.rs",
+      "groups": [
+        {"role": "semantic", "reason": "Typed hierarchical block/column/link construction and scoped identity lookup after generated grammar; finite size/color policy and structured failure values.", "symbols": ["value#1", "new#1", "block#1", "enter#1", "leave#1", "column#1", "path#1", "link#1", "finish#1", "lookup#1", "size#1", "failure#1", "overflow#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/wirescene.rs",
+      "groups": [
+        {"role": "layout", "reason": "Bounded measured bottom-up wire cursor placement, source-slot reservation, native straight routes/heads/labels and located layout admission; no source syntax recognition.", "symbols": ["layout#1", "store#1", "measure#1", "place#1", "fail#1", "draw_blocks#1", "endpoints#1", "draw_link#1", "overlaps#1", "crosses#1", "head#1"]},
+        {"role": "test-adapter", "reason": "Wire contract assertions and test-only generated facade setup.", "symbols": ["inspect#1", "should_draw_axis_aligned_arrowheads_with_the_tip_on_each_wire_endpoint#1", "should_size_children_once_and_keep_parent_labels_columns_and_forced_leaf_dimensions#1", "should_keep_separate_source_slots_and_reserve_long_horizontal_and_vertical_labels#1", "should_keep_measured_attachment_spacing_local_to_each_source_block#1", "should_cancel_iterative_placement_and_reject_route_product_before_measurement#1"]}
       ]
     }
   ]

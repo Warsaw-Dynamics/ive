@@ -1,0 +1,10 @@
+@startwire
+title Nested signal paths
+* System
+    * Input [120x60]
+    * Storage [120x60]
+    ---
+    * Output [120x60]
+System.Input -> System.Output : signal
+System.Input --> System.Storage : save
+@endwire

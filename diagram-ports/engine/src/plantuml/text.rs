@@ -74,6 +74,18 @@ impl<'a> Context<'a> {
     pub fn label(&mut self, text: &str) -> Result<Label, RenderError> {
         self.styled_label(text, Decoration::Plain)
     }
+    pub fn colored_label(
+        &mut self,
+        text: &str,
+        color: super::style::Color,
+    ) -> Result<Label, RenderError> {
+        let mut base = self.base(Role::Element, LabelMode::Display);
+        base.font.color = color;
+        self.measure_label(text, base, LabelMode::Display)
+    }
+    pub fn locate_failure(&mut self, failure: super::parser::error::ParseFailure) -> RenderError {
+        failure.into_document(self.origins, self.budget)
+    }
     pub fn styled_label(
         &mut self,
         text: &str,

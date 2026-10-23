@@ -1,0 +1,20 @@
+grammar(builder: &mut crate::plantuml::wire::Builder<'_>);
+use crate::plantuml::{wire::{self,Header,LinkInput,Scope,Size,WireColor},parser::{wire::Token,error::ParseFailure}};
+pub Wire: () = <Statements> =>? builder.budget.charge(1).map_err(|error|lalrpop_util::ParseError::User{error:ParseFailure::terminal(error)});
+Statements: () = {=>(),<Statements> <Statement>=>()};
+Statement: () = {
+ <Block> <Children>=>(),
+ "column" "end"=>? builder.column().map_err(|error|lalrpop_util::ParseError::User{error}),
+ <l:@L> <from:Path> <style:"arrow"> <to:Path> <color:Color> <label:Label> "end" <r:@R>=>? builder.link(LinkInput{from,to,style,label,color,span:l..r}).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Block: () = <l:@L> "*" <name:"name"> <size:Size> <color:Color> "end" <r:@R>=>? builder.block(Header{name,size,color,span:l..r}).map_err(|error|lalrpop_util::ParseError::User{error});
+Children: () = {=>(),"indent" <scope:Enter> <_statements:Statements> "dedent" =>? builder.leave(scope).map_err(|error|lalrpop_util::ParseError::User{error})};
+Enter: Scope = <l:@L> =>? builder.enter(l..l).map_err(|error|lalrpop_util::ParseError::User{error});
+Size: Size = {=>Size::Auto,<l:@L> "[" <width:"number"> <_separator:Separator> <height:"number"> "]" <r:@R>=>? wire::size((width,height),l..r).map_err(|error|lalrpop_util::ParseError::User{error})};
+Separator: () = {"x"=>(),"*"=>()};
+Color: WireColor = {=>WireColor::Default,<value:"color">=>WireColor::Rgb(value)};
+Label: String = {=>String::new(),":" <text:"label">=>text};
+Path: Vec<String> = {<part:"name">=>? builder.path(Vec::new(),part).map_err(|error|lalrpop_util::ParseError::User{error}),<parts:Path> "." <part:"name">=>? builder.path(parts,part).map_err(|error|lalrpop_util::ParseError::User{error})};
+extern {type Location=usize;type Error=ParseFailure;enum Token {
+ "*"=>Token::Star,"column"=>Token::Column,"["=>Token::Open,"]"=>Token::Close,"x"=>Token::Times,"."=>Token::Dot,":"=>Token::Colon,"number"=>Token::Number(<usize>),"name"=>Token::Name(<String>),"arrow"=>Token::Arrow(<crate::plantuml::wire::Style>),"color"=>Token::Color(<crate::plantuml::style::Color>),"label"=>Token::Label(<String>),"end"=>Token::End,"indent"=>Token::Indent,"dedent"=>Token::Dedent,
+}}

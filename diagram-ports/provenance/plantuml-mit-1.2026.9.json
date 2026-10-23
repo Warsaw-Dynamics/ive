@@ -2503,7 +2503,7 @@
         "engine/src/plantuml/parser/grammar/document.lalrpop",
         "engine/src/plantuml/parser/ownership.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family. Task 2 moves wrapper classification/pairing into shared lexical ownership and generated document productions, retaining UML-only case insensitivity and rejecting output filenames. Task3L: exact chart wrapper maps to generated document and dedicated native Chart model, no filenames or wrapper aliases.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family. Task 2 moves wrapper classification/pairing into shared lexical ownership and generated document productions, retaining UML-only case insensitivity and rejecting output filenames. Task3L: exact chart wrapper maps to generated document and dedicated native Chart model, no filenames or wrapper aliases. Task3N: exact wire wrappers map to generated document and dedicated native hierarchical Wire model; no output filenames.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -4102,6 +4102,175 @@
       ],
       "behavior": "Literal identity/comment decoding and narrow vertical/diagonal grid transitions; iterative checked visited(row,column,direction) ancestry, no layout translation.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WireDiagramFactory.java",
+      "sha256": "6f6c3863457e2212b3f457436dfa4969e0b8f286b3ab1044d64d9b5b22e5b221",
+      "rust": [
+        "engine/src/plantuml/parser/wire.rs",
+        "engine/src/plantuml/parser/grammar/wire.lalrpop",
+        "engine/src/plantuml/wire.rs"
+      ],
+      "behavior": "Task3N: Exact wire wrapper and component/column/link commands under shared common preamble; bus/spot/print/goto/move commands remain rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WireDiagram.java",
+      "sha256": "b8c935c1ea3dc0c0d06f3ee27544cc7d29214780239bb0b1e0978a3369e70b08",
+      "rust": [
+        "engine/src/plantuml/wire.rs",
+        "engine/src/plantuml/wirescene.rs"
+      ],
+      "behavior": "Task3N: Parent/local/dotted identity and exact four-space replacement plus tab/remaining-space level counting; independent source attachment slots and one-axis destination coordinate. Native resolves bounded forward dotted references after declarations and rejects out-of-extent/backward routes.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WBlock.java",
+      "sha256": "05acd575509ca1c5f24edce3cc91c56ffbce800233b78252ee9807dbba7736eb",
+      "rust": [
+        "engine/src/plantuml/wire.rs",
+        "engine/src/plantuml/wirescene.rs"
+      ],
+      "behavior": "Task3N: Ordered scoped children, forced/auto sizes, column/cursor placement, underscore-to-space display and separate horizontal/vertical outgoing slot order. Native computes measured natural sizes bottom-up once, expands gaps/slot spacing per source for labels, and rejects undersized forced parents. Original percent/cursor/print and unchecked recursion not translated.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/CommandComponent.java",
+      "sha256": "67c7056419eba96d859bdb1dc4de9e394988b98baf68c42b07530b849dc55664",
+      "rust": [
+        "engine/src/plantuml/parser/wire.rs",
+        "engine/src/plantuml/parser/grammar/wire.lalrpop",
+        "engine/src/plantuml/wire.rs"
+      ],
+      "behavior": "Task3N: Generated star/name/optional size/color/full-EOF structure; exact scalar numeric bounds before retained labels. Native forced dimensions1..100000 and #RRGGBB-only colors, Unicode alphanumeric/underscore names; dotted structure belongs to generated endpoints, not declaration names.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/CommandNewColumn.java",
+      "sha256": "65f29ca03c2cab968266045c034fdcf21fd8f3799cc6e22003786f120b6ecdad",
+      "rust": [
+        "engine/src/plantuml/parser/wire.rs",
+        "engine/src/plantuml/parser/grammar/wire.lalrpop",
+        "engine/src/plantuml/wire.rs"
+      ],
+      "behavior": "Task3N: Dash-run column primitive plus generated statement placement at the current offside scope, without source command forwarding.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/CommandWLink.java",
+      "sha256": "1eee3fcb43d34880b4af071614b639b274ae12267bda9adcd4b81f6197ceac2a",
+      "rust": [
+        "engine/src/plantuml/parser/wire.rs",
+        "engine/src/plantuml/parser/grammar/wire.lalrpop",
+        "engine/src/plantuml/wire.rs"
+      ],
+      "behavior": "Task3N: Generated dotted endpoint, finite normal-arrow, optional color, colon and bounded raw label structure/full EOF. Primitive labels retain URL/apostrophe/comment-looking text; explicit source anchors and buses are rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WOrientation.java",
+      "sha256": "1031a268abd369e0c1288bc5ecb3128a17a126ee6ce90e9ff459a33728f7eafe",
+      "rust": [
+        "engine/src/plantuml/wire.rs",
+        "engine/src/plantuml/parser/wire.rs"
+      ],
+      "behavior": "Task3N: Finite normal arrow orientation: single hyphen horizontal versus double hyphen vertical, independent of head direction; no bus geometry admitted.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WArrowDirection.java",
+      "sha256": "e5e31c8ffc6de241a620a756ea403425697d28f18e16bc423529d128bed3d2c8",
+      "rust": [
+        "engine/src/plantuml/wire.rs",
+        "engine/src/plantuml/parser/wire.rs"
+      ],
+      "behavior": "Task3N: Finite no/forward/reverse/both arrowhead direction, independent of orientation and endpoint identities.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WLinkType.java",
+      "sha256": "28c14c0ea8bb3b0d8593af40cb049ab391165dce8d68a8d3261ea23d030b6687",
+      "rust": [
+        "engine/src/plantuml/wire.rs",
+        "engine/src/plantuml/parser/wire.rs"
+      ],
+      "behavior": "Task3N: Normal link type and15-unit minimum source-slot spacing; native measured spacing can expand independently per source/axis. BUS remains unsupported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WLinkHorizontal.java",
+      "sha256": "69ab4bafdf73080ccbc63a6820ba37dcbf0818504b9d5e11e4f0388d79cd43c4",
+      "rust": [
+        "engine/src/plantuml/wirescene.rs",
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Task3N: Straight right-edge source to target-X normal route, head direction and label ownership. Native measured clearances, containment/intersection admission and centered label masks differ; per-link RGB reaches line and measured text.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wire/WLinkVertical.java",
+      "sha256": "052c0032fc4b62cffc140a9128cc205f217d35f306a8cd44f207253af6271089",
+      "rust": [
+        "engine/src/plantuml/wirescene.rs",
+        "engine/src/plantuml/text.rs"
+      ],
+      "behavior": "Task3N: Straight bottom-edge source to target-Y normal route and head direction. Native additionally measures and paints vertical labels required by this increment; source drawU omits them. No bus paths/assets imported.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4617,6 +4786,32 @@
         "b2",
         "a1"
       ]
+    },
+    {
+      "path": "fixtures/plantuml/wirebase.puml",
+      "sha256": "d2da7ba763012f397c23facf849424dfcac3b507c108547ad548f23f67bd0bb2",
+      "origin": "/tmp/ive-plantuml-native-oracles/wire-components-link.puml",
+      "originalFamily": "wire",
+      "expectedLabels": [
+        "Input",
+        "Output",
+        "signal"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/wire.puml",
+      "sha256": "8d229fb9d4b737c00568db2fdce9405850f81a6225e5353e8b38a81992fde795",
+      "origin": "independently authored native nested-wire validation example",
+      "originalFamily": "native wire validation",
+      "expectedLabels": [
+        "Nested signal paths",
+        "System",
+        "Input",
+        "Storage",
+        "Output",
+        "signal",
+        "save"
+      ]
     }
   ],
   "oracle": {
@@ -4690,7 +4885,9 @@
     "engine/src/plantuml/bpm.rs",
     "engine/src/plantuml/bpmscene.rs",
     "engine/src/plantuml/git.rs",
-    "engine/src/plantuml/gitscene.rs"
+    "engine/src/plantuml/gitscene.rs",
+    "engine/src/plantuml/wire.rs",
+    "engine/src/plantuml/wirescene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",

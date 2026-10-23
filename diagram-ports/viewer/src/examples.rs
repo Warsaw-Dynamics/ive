@@ -70,6 +70,10 @@ pub const PLANTUML_EXAMPLES: &[Example] = &[
         source: include_str!("../../fixtures/plantuml/regex.puml"),
     },
     Example {
+        name: "plantuml-wire",
+        source: include_str!("../../fixtures/plantuml/wire.puml"),
+    },
+    Example {
         name: "plantuml-chart",
         source: include_str!("../../fixtures/plantuml/chart.puml"),
     },
@@ -235,6 +239,30 @@ mod tests {
             assert!(output.svg.contains(&format!("data-kind=\"{kind}\"")));
         }
     }
+    #[test]
+    fn should_find_native_wire_example_with_nested_blocks_and_both_route_axes() {
+        // given
+        let source = super::source("plantuml-wire").unwrap();
+        // when
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "wire");
+        assert_eq!(output.svg.matches("data-kind=\"wire-block\"").count(), 4);
+        assert_eq!(output.svg.matches("data-kind=\"wire-link\"").count(), 2);
+        assert!(
+            output.svg.contains("System.Input")
+                && output.svg.contains("signal")
+                && output.svg.contains("save")
+        );
+    }
+
     #[test]
     fn should_find_native_chart_example_with_actual_default_range_bars_and_legend() {
         // given

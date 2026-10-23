@@ -3,6 +3,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Wrapper {
     Bpm,
+    Wire,
     Chart,
     Ebnf,
     Regex,

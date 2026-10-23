@@ -33,6 +33,7 @@ pub(super) mod timing;
 pub(super) mod token;
 pub(super) mod tree;
 pub(super) mod uml;
+pub(super) mod wire;
 pub(super) mod yaml;
 
 pub(super) use definition::parse_definition;
@@ -86,6 +87,11 @@ mod generated_board;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/chart.rs"]
 mod generated_chart;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/wire.rs"]
+mod generated_wire;
 
 #[derive(Clone, Copy)]
 pub(super) struct SourceView<'s> {

@@ -1,0 +1,6 @@
+@startwire
+* Input [100x50]
+---
+* Output [100x50]
+Input -> Output : signal
+@endwire

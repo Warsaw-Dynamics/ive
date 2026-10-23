@@ -61,6 +61,7 @@ enum Mode {
     Uml,
     Literal,
     Git,
+    Wire,
     Other,
 }
 
@@ -78,7 +79,7 @@ impl Ownership {
                 && !self.graph
                 && !self.block
                 && raw.trim_start().starts_with(':'));
-        let literal = raw_body || matches!(self.mode, Mode::Literal | Mode::Git);
+        let literal = raw_body || matches!(self.mode, Mode::Literal | Mode::Git | Mode::Wire);
         let (text, offsets) = if literal || (!self.block && raw.trim_start().starts_with("!define"))
         {
             (raw.to_owned(), Vec::new())
@@ -124,6 +125,7 @@ impl Ownership {
             Kind::Start(wrapper) => {
                 self.wrapper = wrapper;
                 self.mode = match wrapper {
+                    Wrapper::Wire => Mode::Wire,
                     Wrapper::Uml => Mode::Uml,
                     Wrapper::Bpm
                     | Wrapper::Ebnf
@@ -244,6 +246,7 @@ fn classify(command: &str) -> Kind {
         return Kind::End(Wrapper::Uml);
     }
     for (name, wrapper) in [
+        ("wire", Wrapper::Wire),
         ("chart", Wrapper::Chart),
         ("mindmap", Wrapper::Mindmap),
         ("bpm", Wrapper::Bpm),

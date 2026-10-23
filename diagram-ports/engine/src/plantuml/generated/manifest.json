@@ -55,9 +55,9 @@
     },
     {
       "generated": "engine/src/plantuml/generated/document.rs",
-      "generatedSha256": "353bd6692ad4de15f9905609ced3a0f687fa63f0d699076405c131e057005b1c",
+      "generatedSha256": "76a3eeee3b680afb7d04ced566bddb3e13a7d6cdad4311edb5871fe86918545e",
       "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
-      "grammarSha256": "6d0ff164839deae47862ae90b103ea7a38f90a1a6e91a6876d46b789f1ad72d0"
+      "grammarSha256": "648bb459e7e49288d096246f5e7a76bbadfd0632afc0a1e7203883232816f358"
     },
     {
       "generated": "engine/src/plantuml/generated/ebnf.rs",
@@ -160,6 +160,12 @@
       "generatedSha256": "20ba6dca03dc4b42ae98666dd90431c132254a4dfb1bbfa80775982a5398d8ef",
       "grammar": "engine/src/plantuml/parser/grammar/uml.lalrpop",
       "grammarSha256": "4454c4ab05bfc5ae7ff9af1af3aebb4fd2b81c6d6c5c11cfd7509a589650010c"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/wire.rs",
+      "generatedSha256": "ae9667ee1b84970e7b4bbafe84c47a15724ae4ba9504bf5e4f0aaf0143df53a7",
+      "grammar": "engine/src/plantuml/parser/grammar/wire.lalrpop",
+      "grammarSha256": "ecf3ff41c82b6e758964c3490c3f148357d85cf2a8f8ae47809c85b62ed11b1e"
     },
     {
       "generated": "engine/src/plantuml/generated/yaml.rs",

@@ -17,6 +17,8 @@ use std::ops::Range;
 pub(in crate::plantuml) enum Token {
     StartBpm,
     EndBpm,
+    StartWire,
+    EndWire,
     StartChart,
     EndChart,
     StartUml,
@@ -96,6 +98,8 @@ pub(in crate::plantuml) fn emit(
     let token = match kind {
         Kind::Start(Wrapper::Bpm) => Token::StartBpm,
         Kind::End(Wrapper::Bpm) => Token::EndBpm,
+        Kind::Start(Wrapper::Wire) => Token::StartWire,
+        Kind::End(Wrapper::Wire) => Token::EndWire,
         Kind::Start(Wrapper::Chart) => Token::StartChart,
         Kind::End(Wrapper::Chart) => Token::EndChart,
         Kind::Start(Wrapper::Uml) => Token::StartUml,

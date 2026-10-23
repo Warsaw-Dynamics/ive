@@ -90,6 +90,20 @@ test('should accept the exact authorized source and module inventory', () => {
   assert.doesNotThrow(() => validateManifest(source));
 });
 
+test('should admit selected wire semantics and reject unported bus cursor or spot implementations', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const name of ['WireDiagram', 'WBlock', 'CommandComponent', 'CommandNewColumn', 'CommandWLink', 'WOrientation', 'WArrowDirection', 'WLinkType', 'WLinkHorizontal', 'WLinkVertical']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/wire/${name}.java`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const name of ['Block', 'WCursor', 'Spot', 'WPrint', 'CommandSpot', 'CommandMove', 'CommandGoto', 'CommandPrint']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/wire/${name}.java`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should admit selected categorical chart sources and reject unported chart siblings', () => {
   // given
   const source = manifest();
