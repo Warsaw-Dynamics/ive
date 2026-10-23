@@ -76,9 +76,9 @@ impl Tail {
         }
         if !self.colon && atom != Atom::Colon {
             self.last_head = atom;
+            self.arrow |= atom == Atom::Arrow;
         }
         self.colon |= atom == Atom::Colon;
-        self.arrow |= atom == Atom::Arrow;
         self.count += 1;
         Ok(self)
     }
@@ -246,10 +246,7 @@ fn primitive(rest: &str, budget: &mut Budget) -> Result<(Atom, usize), ParseFail
     if rest.starts_with('"') {
         return quote(rest, budget);
     }
-    if ["--", "->", "..", "<-", "<|", "o-", "o.", "*-", "*.", "<."]
-        .iter()
-        .any(|prefix| rest.starts_with(prefix))
-    {
+    if starts_arrow(rest) {
         let bytes = scan_arrow(rest, budget)?;
         return Ok((Atom::Arrow, bytes));
     }
@@ -260,6 +257,16 @@ fn primitive(rest: &str, budget: &mut Budget) -> Result<(Atom, usize), ParseFail
     let (atom, bytes) = punctuation(rest);
     budget.charge(bytes).map_err(ParseFailure::terminal)?;
     Ok((atom, bytes))
+}
+
+fn starts_arrow(rest: &str) -> bool {
+    matches!(
+        rest.as_bytes(),
+        [b'-', b'-' | b'>', ..]
+            | [b'.', b'.', ..]
+            | [b'<', b'-' | b'|' | b'.', ..]
+            | [b'o' | b'*', b'-' | b'.', ..]
+    )
 }
 
 fn scan_arrow(rest: &str, budget: &mut Budget) -> Result<usize, ParseFailure> {
@@ -283,10 +290,13 @@ fn scan_arrow(rest: &str, budget: &mut Budget) -> Result<usize, ParseFailure> {
 fn scan_word(rest: &str, budget: &mut Budget) -> Result<usize, ParseFailure> {
     let mut length = 0;
     let mut pending = 0;
-    for ch in rest
-        .chars()
-        .take_while(|ch| ch.is_alphanumeric() || *ch == '_')
-    {
+    for (offset, ch) in rest.char_indices() {
+        if (offset == 0 && ch == '@')
+            || starts_arrow(&rest[offset..])
+            || !(ch.is_alphanumeric() || matches!(ch, '_' | '.' | '@'))
+        {
+            break;
+        }
         length += ch.len_utf8();
         pending += ch.len_utf8();
         if pending >= 256 {
@@ -422,6 +432,90 @@ impl PhysicalRows<'_> {
 mod tests {
     use super::*;
     use crate::RenderOptions;
+
+    #[test]
+    fn should_freeze_state_header_facts_before_literal_label_payload() {
+        // given
+        for text in [
+            "Idle : waiting -> ready",
+            "Idle : waiting --> [*]",
+            "Idle : waiting o-- ready",
+            "Idle : \"waiting -> ready\"",
+            "\"Idle -> Ready\" : waiting",
+            "Idle::entry : waiting -> ready",
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            // when
+            let evidence = parse(text, 0, &mut budget).unwrap();
+            // then
+            assert_eq!(evidence.candidate, Selection::State, "{text}");
+        }
+        // given
+        for (text, expected) in [
+            ("state Idle", Selection::State),
+            ("Idle --> Ready : waiting -> ready", Selection::Pending),
+            ("class A : waiting -> ready", Selection::Uml),
+            ("participant \"arrow -> label\" as A", Selection::Sequence),
+            ("robust \"arrow -> track\" as T", Selection::Timing),
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            // when
+            let evidence = parse(text, 0, &mut budget).unwrap();
+            // then
+            assert_eq!(evidence.selection, expected, "{text}");
+        }
+    }
+
+    #[test]
+    fn should_preserve_complete_keyword_prefixed_endpoint_names_in_header_evidence() {
+        // given
+        for endpoint in [
+            "class.foo",
+            "class@foo",
+            "state.foo",
+            "state@foo",
+            "start.foo",
+            "note@foo",
+            "robust.foo",
+            "concise@foo",
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            // when
+            let evidence = parse(&format!("{endpoint} -> B : ping"), 0, &mut budget).unwrap();
+            // then
+            assert_eq!(evidence.selection, Selection::Pending, "{endpoint}");
+            assert_eq!(evidence.candidate, Selection::Pending, "{endpoint}");
+            assert!(
+                !evidence.graph_declaration && !evidence.timing && !evidence.note_body,
+                "{endpoint}"
+            );
+        }
+        // given
+        for (text, expected) in [
+            ("class class.foo", Selection::Uml),
+            ("state state@foo", Selection::State),
+            ("robust \"track\" as T", Selection::Timing),
+            ("note over note@foo", Selection::Sequence),
+            ("class..>B : ping", Selection::Pending),
+            ("class.foo-->B : ping", Selection::Pending),
+            ("state@foo<--B : ping", Selection::Pending),
+            ("if(ready) then (yes)", Selection::Activity),
+            ("\"A -> B\" -> C : ping", Selection::Pending),
+        ] {
+            let mut budget = Budget::new(&RenderOptions::default());
+            // when
+            let evidence = parse(text, 0, &mut budget).unwrap();
+            // then
+            assert_eq!(evidence.selection, expected, "{text}");
+        }
+        // given
+        let mut budget = Budget::new(&RenderOptions::default());
+        // when
+        let evidence = parse("@42", 0, &mut budget).unwrap();
+        // then
+        assert!(evidence.at);
+        assert!(!evidence.timing);
+    }
 
     #[test]
     fn should_admit_header_source_and_interrupt_primitive_scans_before_retention() {

@@ -12,6 +12,57 @@ fn diagram(body: &str) -> String {
 }
 
 #[test]
+fn should_render_implicit_state_descriptions_with_literal_arrow_text() {
+    // given
+    for label in [
+        "waiting -> ready",
+        "waiting --> ready",
+        "waiting <- ready",
+        "waiting ..> ready",
+        "waiting o-- ready",
+    ] {
+        for declaration in ["state Idle\n", ""] {
+            let source = diagram(&format!("{declaration}Idle : {label}"));
+            // when
+            let rendered = render(&source, &options()).unwrap();
+            // then
+            assert_eq!(rendered.family, "state", "{source}");
+            let xml = roxmltree::Document::parse(&rendered.svg).unwrap();
+            assert!(
+                xml.descendants()
+                    .any(|node| node.has_tag_name("text") && node.text() == Some(label)),
+                "{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn should_render_keyword_prefixed_dotted_and_at_endpoints_as_implicit_sequence() {
+    // given
+    for endpoint in [
+        "class.foo",
+        "class@foo",
+        "state.foo",
+        "state@foo",
+        "start.foo",
+        "note@foo",
+        "robust.foo",
+        "concise@foo",
+    ] {
+        for declaration in [format!("participant {endpoint}\n"), String::new()] {
+            let source = diagram(&format!("{declaration}{endpoint} -> B : ping"));
+            // when
+            let rendered = render(&source, &options()).unwrap();
+            // then
+            assert_eq!(rendered.family, "sequence", "{source}");
+            assert!(rendered.svg.contains(endpoint), "{source}");
+            assert!(rendered.svg.contains("ping"), "{source}");
+        }
+    }
+}
+
+#[test]
 fn should_reject_substantive_suffixes_and_validate_every_endpoint_branch() {
     // given
     for body in [
