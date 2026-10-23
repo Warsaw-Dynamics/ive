@@ -242,7 +242,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
 | 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; baseline selector repair pending |
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
-| 4 | 3M ASCII Git — ACTIVE | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
+| 4 | 3M ASCII Git — ACTIVE | Generated raw-grid parser/native topology passes327 engine units+six public controls, including original-verified two-parent merge, sparse/negative/bounds/cancel cases; frozen43 baseline selector RED→GREEN5; source/strict/final commit pending |
 | 5 | 3N wire — ACTIVE | Isolated implementation from chart head; indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
 | 6 | 3O legacy BPM | Genuine legacy events/branches/splits/merges and continuation, distinct from modern activity/BPMN |
 | 7 | 3P directional flow | Cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
