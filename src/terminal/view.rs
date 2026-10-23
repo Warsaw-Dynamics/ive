@@ -30,7 +30,7 @@ use super::layout::{CursorMark, Frame, Run, Segment, Underline, Window as GridWi
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::progress::Progress;
 use super::session::{GridSize, Session};
-use super::text::{OutputRow, ScreenText, output_point, output_rows, output_text, screen_text};
+use super::text::{ScreenText, output_point, output_rows, output_text, screen_text};
 #[cfg(unix)]
 use super::hosted::HostedTerminals;
 #[cfg(unix)]
@@ -234,15 +234,23 @@ impl TerminalView {
         self.session.with_term(|term| output_text(term, last))
     }
 
-    pub fn output_rows(&self) -> Vec<OutputRow> {
-        self.session.with_term(|term| output_rows(term))
+    /// Scrolls the terminal to what `at` names, its match selected; to the bottom when that is gone.
+    pub fn reveal(&self, at: &FrameAt) {
+        let target = self.session.with_term(|term| {
+            let (window, _) = window_at(term, at, term.screen_lines());
+            window.mark.map(|mark| (window.top, mark))
+        });
+        match target {
+            Some((top, mark)) => self.session.reveal(top, mark),
+            None => self.session.scroll_to_bottom(),
+        }
     }
 
     /// `rows` lines of the terminal as `at` says, laid out without touching what its tab shows.
     pub fn snapshot(&self, at: &FrameAt, rows: usize, palette: &TerminalPalette) -> Snapshot {
         self.session.with_term(|term| {
-            let (window, columns) = window_at(term, at, rows);
-            Snapshot { frame: Rc::new(layout_window(term, &window, palette)), columns }
+            let (window, shown) = window_at(term, at, rows);
+            Snapshot { frame: Rc::new(layout_window(term, &window, palette)), shown }
         })
     }
 
@@ -729,15 +737,24 @@ pub enum FrameAt {
     Line { index: usize, bytes: Range<usize> },
 }
 
-/// Lines of a terminal laid out, and the columns of the match they mark.
+/// Lines of a terminal laid out, and what of them to keep in view.
 #[derive(Debug, Clone)]
 pub struct Snapshot {
     pub frame: Rc<Frame>,
-    pub columns: Option<Range<usize>>,
+    pub shown: Shown,
 }
 
-/// The grid lines `at` shows, and the columns of its match; a line no longer in the output shows the bottom.
-fn window_at<T: EventListener>(term: &Term<T>, at: &FrameAt, rows: usize) -> (GridWindow, Option<Range<usize>>) {
+/// What a snapshot keeps in view when it is painted in less room than it has lines and columns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Shown {
+    /// its last line, at the bottom
+    Bottom,
+    /// the match on frame line `line`, a third of the way down, and its `columns`
+    Match { line: usize, columns: Range<usize> },
+}
+
+/// The grid lines `at` shows, and what of them to keep in view; a line no longer in the output shows the bottom.
+fn window_at<T: EventListener>(term: &Term<T>, at: &FrameAt, rows: usize) -> (GridWindow, Shown) {
     let (history, screen) = (term.grid().history_size(), term.screen_lines());
     let output = output_rows(term);
     let found = match at {
@@ -747,25 +764,30 @@ fn window_at<T: EventListener>(term: &Term<T>, at: &FrameAt, rows: usize) -> (Gr
     let Some((row, bytes)) = found else {
         let last = output.last().map_or(0, |row| row.first);
         let top = (last + 1 - rows as i32).min(screen as i32 - rows as i32).max(-(history as i32));
-        return (GridWindow { top, rows, mark: None }, None);
+        return (GridWindow { top, rows, mark: None }, Shown::Bottom);
     };
     let start = output_point(term, row, bytes.start);
     let last_char = row.text.get(..bytes.end).and_then(|text| text.char_indices().last()).map_or(bytes.start, |(at, _)| at.max(bytes.start));
     let end = output_point(term, row, last_char);
     let top = top_showing(start.line.0, rows, history, screen);
-    (GridWindow { top, rows, mark: Some((start, end)) }, Some(start.column.0..end.column.0.max(start.column.0) + 1))
+    let shown = Shown::Match { line: (start.line.0 - top) as usize, columns: start.column.0..end.column.0.max(start.column.0) + 1 };
+    (GridWindow { top, rows, mark: Some((start, end)) }, shown)
 }
 
-/// Paints `snapshot` as the terminal draws, taking no input, scrolled sideways so its marked columns are in view.
+/// Paints `snapshot` as the terminal draws, taking no input, scrolled so what it keeps in view is in view.
 pub fn snapshot_element(snapshot: Snapshot, palette: TerminalPalette) -> impl IntoElement {
-    let Snapshot { frame, columns } = snapshot;
+    let Snapshot { frame, shown } = snapshot;
     let painted = canvas(
         |_, _, _| {},
         move |bounds, (), window, cx| {
             let metrics = CellMetrics::measure(window, cx);
-            let visible = (f32::from(bounds.size.width) / f32::from(metrics.cell_width)).floor() as usize;
-            let shift = columns.as_ref().map_or(0, |columns| columns_shift(columns, visible));
-            let origin = point(bounds.origin.x - metrics.cell_width * shift as f32, bounds.origin.y);
+            let columns = (f32::from(bounds.size.width) / f32::from(metrics.cell_width)).floor() as usize;
+            let rows = (f32::from(bounds.size.height) / f32::from(metrics.line_height)).floor() as usize;
+            let (right, down) = match &shown {
+                Shown::Bottom => (0, frame.lines.len().saturating_sub(rows)),
+                Shown::Match { line, columns: matched } => (columns_shift(matched, columns), line.saturating_sub(rows / 3)),
+            };
+            let origin = point(bounds.origin.x - metrics.cell_width * right as f32, bounds.origin.y - metrics.line_height * down as f32);
             window.with_content_mask(Some(ContentMask { bounds }), |window| paint_frame(&frame, origin, metrics, palette.cursor, window, cx));
         },
     )

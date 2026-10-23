@@ -13,7 +13,7 @@ use crate::hub::history::{History, Shown, TabIdentity};
 use crate::hub::matcher::Query;
 use crate::hub::model::{Effect, HubState, Mode, mode};
 use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Root, Search};
-use crate::hub::output::{OutputLines, in_scope, search_output};
+use crate::hub::output::{self, OutputHit, OutputLines, in_scope, search_output};
 use crate::hub::rows::{List, Located, Places, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
@@ -28,7 +28,8 @@ use crate::git::repo::GitError;
 use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
-use crate::hub::preview::{PROCESS_PREVIEW_LINES, Reveal, reveal_cast};
+use crate::hub::preview::{Reveal, reveal_cast};
+use crate::terminal::FrameAt;
 use crate::hub::view::{Drawn, HubTab, Preview, escape_does, render_hub};
 use crate::run::file::ConfigKind;
 use crate::hub::{corpus::Corpus, key_label};
@@ -50,6 +51,8 @@ use crate::tabs::TabId;
 use crate::text_input::{self, TextInput, TextInputEvent};
 
 const QUERY_TARGET: &str = "hub-query";
+/// Lines of a terminal laid out for its preview: more than a preview pane is tall.
+const TERMINAL_PREVIEW_ROWS: usize = 120;
 const PLACEHOLDER: &str = "Files, or > actions, @ processes, # worktrees, : scope";
 const NEW_TERMINAL_PLACEHOLDER: &str = "New terminal in… type a project, worktree or branch";
 
@@ -58,6 +61,10 @@ enum Wanted {
     Ready(Preview),
     File { title: String, path: PathBuf, reveal: Reveal },
     Diff { title: String, dir: PathBuf, path: String },
+    /// a process's last lines, drawn as its terminal draws them
+    Process(ProcessId),
+    /// a line of a process's output, found again
+    Output(Box<OutputHit>),
 }
 
 impl Wanted {
@@ -67,6 +74,8 @@ impl Wanted {
             Self::Ready(_) => "ready".to_owned(),
             Self::File { path, reveal, .. } => format!("file:{}:{reveal:?}", path.display()),
             Self::Diff { dir, path, .. } => format!("diff:{}:{path}", dir.display()),
+            Self::Process(process) => format!("process:{}", process.value()),
+            Self::Output(hit) => format!("output:{}:{}", hit.process.value(), hit.line),
         }
     }
 }
@@ -393,7 +402,7 @@ impl Workspace {
             },
             Target::Change { checkout, path } => Wanted::Diff { title: format!("{path} · uncommitted"), dir: checkout.path.clone(), path: path.clone() },
             Target::Process(process) => self.process_preview(*process),
-            Target::Output(hit) => self.process_preview(hit.process),
+            Target::Output(hit) => Wanted::Output(hit.clone()),
             Target::RunConfig { folder, key, .. } => self.config_preview(item, folder, key, sources),
             Target::Worktree(checkout) => self.worktree_preview(checkout, sources),
             Target::Line(number) => match sources.back.as_ref().and_then(|back| self.tabs.get(back.tab)) {
@@ -409,10 +418,26 @@ impl Workspace {
     }
 
     fn process_preview(&self, id: ProcessId) -> Wanted {
-        match self.processes.get(id) {
-            Some(process) => Wanted::Ready(Preview::Lines { title: process.title(), lines: process.view.output_text(Some(PROCESS_PREVIEW_LINES)), mono: true }),
-            None => Wanted::Ready(Preview::Message("This process has ended".to_owned())),
-        }
+        Wanted::Process(id)
+    }
+
+    /// A process's terminal, at its bottom or at a line of its output; drawn again each time, as it prints.
+    fn terminal_preview(&self, wanted: Wanted, cx: &App) -> Wanted {
+        let palette = cx.global::<crate::theme::Theme>().terminal;
+        let (id, at) = match wanted {
+            Wanted::Process(id) => (id, Ok(FrameAt::Bottom)),
+            Wanted::Output(hit) => {
+                let lines = self.processes.get(hit.process).map(|process| process.view.output_text(None));
+                (hit.process, output::frame_at(lines.as_deref(), &hit))
+            }
+            other => return other,
+        };
+        let preview = match (self.processes.get(id), at) {
+            (Some(process), Ok(at)) => Preview::Terminal { title: process.title(), snapshot: process.view.snapshot(&at, TERMINAL_PREVIEW_ROWS, &palette) },
+            (None, _) => Preview::Message(output::PROCESS_ENDED.to_owned()),
+            (Some(_), Err(why)) => Preview::Message(why.to_owned()),
+        };
+        Wanted::Ready(preview)
     }
 
     /// A configuration's live run's last lines there, else its command.
@@ -535,6 +560,7 @@ impl Workspace {
     /// Shows `wanted` in the preview, reading a file or a diff off the UI thread; the same row again keeps it.
     fn show_hub_preview(&mut self, id: TabId, wanted: Option<Wanted>, cx: &mut Context<Self>) {
         let key = wanted.as_ref().map(Wanted::key);
+        let wanted = wanted.map(|wanted| self.terminal_preview(wanted, cx));
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
             return;
         };
@@ -548,6 +574,8 @@ impl Workspace {
             return;
         };
         let reading = match wanted {
+            // `terminal_preview` drew them above
+            Wanted::Process(_) | Wanted::Output(_) => return,
             Wanted::Ready(preview) => {
                 hub.preview = preview;
                 hub.preview_task = None;
@@ -1039,7 +1067,7 @@ impl Workspace {
             Target::Tab(id) => self.activate_tab(id, window, cx),
             Target::Reopen(saved) => self.reopen(&saved, line, window, cx),
             Target::Process(id) => self.show_process(id, window, cx),
-            Target::Output(hit) => self.show_process(hit.process, window, cx),
+            Target::Output(hit) => self.show_output_line(&hit, window, cx),
             Target::File { path, .. } | Target::Change { path, .. } => {
                 if let Some(checkout) = checkout {
                     self.open_document_at(&checkout.path.join(path), Reveal::of_line(line), window, cx);
@@ -1069,6 +1097,22 @@ impl Workspace {
             Target::NewWorktreeTerminal { .. } => {}
             Target::Hit { path, line, bytes } => self.open_document_at(&path, Reveal::Range { line: line as usize, bytes }, window, cx),
         }
+    }
+
+    /// Shows the process's tab scrolled to the hit's line, its match selected; at its bottom when the line is gone.
+    fn show_output_line(&mut self, hit: &OutputHit, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(process) = self.processes.get(hit.process) else {
+            eprintln!("ive: cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED);
+            return;
+        };
+        let lines = process.view.output_text(None);
+        let at = output::frame_at(Some(&lines), hit).unwrap_or_else(|why| {
+            eprintln!("ive: {}:{}: {why}", hit.title, hit.line);
+            FrameAt::Bottom
+        });
+        process.view.reveal(&at);
+        self.show_process(hit.process, window, cx);
+        cx.notify();
     }
 
     /// Shows the file's tab, opening it when needed, scrolled as `reveal` says.

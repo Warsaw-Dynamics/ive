@@ -21,4 +21,4 @@ pub use directory::{DirectoryReport, DirectoryTracker, Sample};
 pub use launch::Launch;
 pub use mouse::{Button, Gesture, GestureKind, ScreenCell};
 pub use progress::Progress;
-pub use view::{Source, TerminalState, TerminalView};
+pub use view::{FrameAt, Snapshot, Source, TerminalState, TerminalView, snapshot_element};

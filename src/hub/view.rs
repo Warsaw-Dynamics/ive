@@ -24,6 +24,7 @@ use crate::icons;
 use crate::overview::git_ui::{layout_switch, mark_label, tag};
 use crate::scratch::search::Generations;
 use crate::tabs::TabId;
+use crate::terminal::{Snapshot, snapshot_element};
 use crate::text_input::TextInput;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
@@ -66,6 +67,8 @@ pub enum Preview {
     Loading,
     /// a file in the editor's view, read-only
     File { title: String, panel: Entity<Panel> },
+    /// lines of a process's terminal, drawn as it draws them
+    Terminal { title: String, snapshot: Snapshot },
     Diff { title: String, panel: Entity<Panel> },
     /// a process's last lines, a run configuration's command, a worktree's summary
     Lines { title: String, lines: Vec<String>, mono: bool },
@@ -226,6 +229,7 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
             let body = if *is_mono { body.font_family(mono) } else { body };
             pane.child(title(name)).child(body.children(lines.iter().map(|line| div().whitespace_nowrap().child(line.clone()))))
         }
+        Preview::Terminal { title: name, snapshot } => pane.child(title(name)).child(snapshot_element(snapshot.clone(), theme.terminal)),
         Preview::File { title: name, panel } => pane.child(title(name)).child(div().flex().flex_1().min_h_0().child(panel.clone())),
     }
 }

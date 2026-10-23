@@ -9,6 +9,7 @@ use super::content::shown;
 use super::sources::HubScope;
 use crate::process::ProcessId;
 use crate::project::CheckoutRef;
+use crate::terminal::FrameAt;
 
 /// One process's output, taken on the UI thread for a search off it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +57,17 @@ pub fn search_output(outputs: &[OutputLines], regex: &Regex, limit: usize) -> (V
         }
     }
     (hits, false)
+}
+
+pub const PROCESS_ENDED: &str = "This process has ended";
+pub const LINE_GONE: &str = "This line is no longer in the output";
+
+/// Where a terminal shows `hit`, given its output's `lines` now (`None` once the process is gone); else why it
+/// cannot.
+pub fn frame_at(lines: Option<&[String]>, hit: &OutputHit) -> Result<FrameAt, &'static str> {
+    let lines = lines.ok_or(PROCESS_ENDED)?;
+    let index = locate(lines, hit).ok_or(LINE_GONE)?;
+    Ok(FrameAt::Line { index, bytes: hit.bytes.clone() })
 }
 
 /// Whether a process working in `checkout` is in the hub's `scope`; one in no checkout only in all projects.
@@ -209,5 +221,42 @@ mod tests {
 
         // then
         assert_eq!(searched, [true, false]);
+    }
+
+    #[test]
+    fn should_look_at_the_located_line() {
+        // given
+        let lines = ["one", "target", "three"];
+        let hit = hit_at(&lines, 1);
+
+        // when
+        let at = frame_at(Some(&owned(&lines)), &hit);
+
+        // then
+        assert_eq!(at, Ok(FrameAt::Line { index: 1, bytes: 0..6 }));
+    }
+
+    #[test]
+    fn should_say_a_removed_process_has_ended() {
+        // given
+        let hit = hit_at(&["target"], 0);
+
+        // when
+        let at = frame_at(None, &hit);
+
+        // then
+        assert_eq!(at, Err(PROCESS_ENDED));
+    }
+
+    #[test]
+    fn should_say_a_line_gone_from_the_output() {
+        // given
+        let hit = hit_at(&["target"], 0);
+
+        // when
+        let at = frame_at(Some(&owned(&["other"])), &hit);
+
+        // then
+        assert_eq!(at, Err(LINE_GONE));
     }
 }

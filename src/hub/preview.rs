@@ -1,12 +1,8 @@
-//! What the hub's preview shows of the selected row: a file in the editor's view, a change's diff, a process's last
-//! lines, a run configuration's command, a worktree's summary.
+//! Where the hub's file preview, and the tab Enter opens from it, scroll to.
 
 use std::ops::Range;
 
 use codeview::panel::Cast;
-
-/// A process's last lines.
-pub const PROCESS_PREVIEW_LINES: usize = 30;
 
 /// Where a file's preview, or the tab Enter opens, scrolls to.
 #[derive(Debug, Clone, PartialEq, Eq)]
