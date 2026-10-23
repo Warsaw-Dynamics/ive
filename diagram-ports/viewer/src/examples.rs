@@ -58,6 +58,22 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-mindmap",
+        source: include_str!("../../fixtures/plantuml/mindmap.puml"),
+    },
+    Example {
+        name: "plantuml-wbs",
+        source: include_str!("../../fixtures/plantuml/wbs.puml"),
+    },
+    Example {
+        name: "plantuml-json",
+        source: include_str!("../../fixtures/plantuml/json.puml"),
+    },
+    Example {
+        name: "plantuml-yaml",
+        source: include_str!("../../fixtures/plantuml/yaml.puml"),
+    },
+    Example {
         name: "plantuml-state",
         source: include_str!("../../fixtures/plantuml/state.puml"),
     },
@@ -98,11 +114,15 @@ pub fn for_language(language: &str) -> &'static [Example] {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn should_find_native_state_and_activity_examples() {
+    fn should_find_native_control_tree_and_data_examples() {
         // given
         for (name, family) in [
             ("plantuml-state", "state"),
             ("plantuml-activity", "activity"),
+            ("plantuml-mindmap", "mindmap"),
+            ("plantuml-wbs", "wbs"),
+            ("plantuml-json", "json"),
+            ("plantuml-yaml", "yaml"),
         ] {
             // when
             let source = super::source(name).unwrap();

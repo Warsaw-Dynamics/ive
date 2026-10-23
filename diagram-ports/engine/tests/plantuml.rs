@@ -493,7 +493,7 @@ fn should_reject_malformed_wrappers_comments_and_stacks() {
         "@startuml\nA -> B",
         "@startuml\n/' unterminated\n@enduml",
         "@startuml\n@enduml",
-        "@startjson\n{}\n@endjson",
+        "@startjson\n{}\n@endyaml",
         "@startuml\nalt test\nA -> B\n@enduml",
         "@startuml\ndeactivate A\n@enduml",
         "@startuml\nclass A {\n@enduml",

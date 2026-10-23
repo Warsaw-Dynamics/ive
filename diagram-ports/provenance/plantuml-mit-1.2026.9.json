@@ -10,6 +10,436 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/mindmap/CommandMindMapPlus.java",
+      "sha256": "d4b6070d5a2d0e1b74f95956106b306d8ef1bd25858c5b77894e2c749cce5a9f",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/CommandMindMapOrgmode.java",
+      "sha256": "d6a9840f2bf1e3f32a5cab1c9db491a2752b37d89a91c4f3973b53c52cc08a60",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/CommandMindMapDirection.java",
+      "sha256": "64940e094de1881e49b648bc2e3d1a703a180be8d9c384897f79944f33c7b27b",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/CommandMindMapRoot.java",
+      "sha256": "06ecb74653d0d6ff780bb8960eda78fcb0f7ee7a2cf443f69a653b4aa3960f81",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/MindMapDiagram.java",
+      "sha256": "ad1609f74d3796707f406c29f45736957a44122fc183f88349d98bf2e22c5616",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/MindMap.java",
+      "sha256": "74a1abd5a2dcb55445dc774ad2d58ef12827dc2a5e3aa9ce0622692877f05ce4",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/mindmap/Branch.java",
+      "sha256": "0717f0179ef4f1583e8add65d99659bc6ff2f7fa85219b5051a518d959446ac8",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "Mindmap exact marker/smart-level normalization, first-root coercion, first-child multiplier, independent side parent chains and vertically stacked roots; unsupported color/multiline variants rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/CommandWBSItemNew.java",
+      "sha256": "f09c9b68fca677be74c1145fa549ab07be33e41823c628cda5e2e3d575c1f93e",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "WBS marker/modifier/alias grammar, distinct smart level and global last-parent chain, one root, explicit directions, boxless and pseudo topology; crosslinks rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/WBSDiagram.java",
+      "sha256": "358da9a4a466632afedd157b30a50b0fc55e1c0fcb8abf939c715f9d71100afd",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "WBS marker/modifier/alias grammar, distinct smart level and global last-parent chain, one root, explicit directions, boxless and pseudo topology; crosslinks rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/utils/Direction.java",
+      "sha256": "3cc5b64e1e30a642f2314b23a5682898bd38f69ba597225330d0cd3605fbc5d7",
+      "rust": [
+        "engine/src/plantuml/tree.rs"
+      ],
+      "behavior": "WBS marker/modifier/alias grammar, distinct smart level and global last-parent chain, one root, explicit directions, boxless and pseudo topology; crosslinks rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/WElement.java",
+      "sha256": "0f93fde9d950b941cf04795a54de9d3036eb0e4a85364fd781314704824f9a3d",
+      "rust": [
+        "engine/src/plantuml/tree.rs",
+        "engine/src/plantuml/treescene.rs"
+      ],
+      "behavior": "WBS root-child ordering, root fork/bus, side-relative descendant trunks and zero-paint pseudo topology; original native Rust measured spacing differs.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/Fork.java",
+      "sha256": "88065f9aae786569612a7d877572d8fcd8b0c0e99d726868168cf565916aa086",
+      "rust": [
+        "engine/src/plantuml/tree.rs",
+        "engine/src/plantuml/treescene.rs"
+      ],
+      "behavior": "WBS root-child ordering, root fork/bus, side-relative descendant trunks and zero-paint pseudo topology; original native Rust measured spacing differs.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/ITFComposed.java",
+      "sha256": "7c25f216bd6e1d36bb9d156b607b349b56e25fe6c5a278a81585ef2cb44800ed",
+      "rust": [
+        "engine/src/plantuml/tree.rs",
+        "engine/src/plantuml/treescene.rs"
+      ],
+      "behavior": "WBS root-child ordering, root fork/bus, side-relative descendant trunks and zero-paint pseudo topology; original native Rust measured spacing differs.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/wbs/WBSTextBlock.java",
+      "sha256": "71a00faf056f7ff1ffe3a39924c53609d2144a3a147fc2d98076306040101475",
+      "rust": [
+        "engine/src/plantuml/tree.rs",
+        "engine/src/plantuml/treescene.rs"
+      ],
+      "behavior": "WBS root-child ordering, root fork/bus, side-relative descendant trunks and zero-paint pseudo topology; original native Rust measured spacing differs.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/json/JsonParser.java",
+      "sha256": "78b2c149f9d8fb76cd912525f53e2c0abec1fa606747904e96a37d319bee41e9",
+      "rust": [
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* Copyright (c) 2016 EclipseSource.",
+        "* The above copyright notice and this permission notice shall be included in all",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/json/Json.java",
+      "sha256": "2fbdfa64a137ee58d8e96d8a86000d84eefd326e5bd7281cb7bdda5d34d00372",
+      "rust": [
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* Copyright (c) 2016 EclipseSource.",
+        "* The above copyright notice and this permission notice shall be included in all",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/json/JsonObject.java",
+      "sha256": "a2894810da21e1287c93821803a4fc03a79c1530c5ef623aedc982b04a373c63",
+      "rust": [
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* Copyright (c) 2016 EclipseSource.",
+        "* The above copyright notice and this permission notice shall be included in all",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/jsondiagram/JsonDiagramFactory.java",
+      "sha256": "22ae9ae1f4101aa029c6198011181e57cd552371a35f8840313d9729e1530c53",
+      "rust": [
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "JSON-only raw payload boundary; column-zero hash comment extension explicitly outside admitted strict subset.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/jsondiagram/TextBlockJson.java",
+      "sha256": "fe8caf987bd4001716649bc8badca5cb7c522e820f70f1dcac9ba2bc5953363a",
+      "rust": [
+        "engine/src/plantuml/datascene.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Ordered object/array row identity, scalar placeholders, typed scalar display, scalar/empty-root presentation; original native measured compartment geometry, no Smetana translation.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/jsondiagram/JsonDiagram.java",
+      "sha256": "f45a4ef281001673b3a501dd6c430efb5c2e51d0aa8dd2e268595aa28f93e657",
+      "rust": [
+        "engine/src/plantuml/datascene.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Ordered object/array row identity, scalar placeholders, typed scalar display, scalar/empty-root presentation; original native measured compartment geometry, no Smetana translation.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/parser/YamlLine.java",
+      "sha256": "868aaeb45d1567c03c5c2a6830aa528cb6d9032a9434b41aabc1675331d4ec7f",
+      "rust": [
+        "engine/src/plantuml/yaml.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/parser/YamlParser.java",
+      "sha256": "f676afed3976925d03382dff0f1ae86ccd2704999756276ef9c95825704c8877",
+      "rust": [
+        "engine/src/plantuml/yaml.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/parser/YamlBuilder.java",
+      "sha256": "b152242c11e8f195860ac0f71eeccaae36739fa0fcfebce8598f0ae38665e360",
+      "rust": [
+        "engine/src/plantuml/yaml.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/parser/Monomorph.java",
+      "sha256": "b64718fee43b56d000713dc8a07e7fca9e69ee1cb458e83ba3b6d6741df1d3a3",
+      "rust": [
+        "engine/src/plantuml/yaml.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/yaml/parser/MonomorphToJson.java",
+      "sha256": "811b59d7900989a076a05dbdc4c3f2faec8938a2728150aa04fb4c483fb2413f",
+      "rust": [
+        "engine/src/plantuml/yaml.rs",
+        "engine/src/plantuml/data.rs"
+      ],
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/text/TLineType.java",
+      "sha256": "e2d8f4d06627210fc6148df329bc9d18663b53c5647927f4e456271431eaac84",
+      "rust": [
+        "engine/src/plantuml/source.rs"
+      ],
+      "behavior": "Reject active leading preprocessor directives in all new raw payload wrappers, including literal YAML blocks; quoted/inert payload substrings stay text. No directive execution.",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* The above copyright notice and this permission notice shall be included",
+        "* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/statediagram/StateDiagram.java",
       "sha256": "1a9460c41b7564a730f2b45f7a9b8ccbbe265c5b84d83a2f030e73d8974fb505",
       "rust": [
@@ -988,6 +1418,10 @@
     }
   ],
   "fixtures": [
+    { "path": "fixtures/plantuml/mindmap.puml", "sha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c", "oracleName": "mindmap-hierarchy", "originalFamily": "mindmap", "expectedLabels": ["Release", "Tests", "Unit", "Delivery", "Package"] },
+    { "path": "fixtures/plantuml/wbs.puml", "sha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae", "oracleName": "wbs-hierarchy", "originalFamily": "wbs", "expectedLabels": ["Migration", "Design", "Schema", "Rollout", "Monitor"] },
+    { "path": "fixtures/plantuml/json.puml", "sha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626", "oracleName": "json-nested", "originalFamily": "json", "expectedLabels": ["service", "name", "Billing", "ports", "8080", "8443", "enabled"] },
+    { "path": "fixtures/plantuml/yaml.puml", "sha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb", "oracleName": "yaml-nested", "originalFamily": "yaml", "expectedLabels": ["service", "name", "Billing", "replicas", "2", "zones", "north", "south"] },
     {
       "path": "fixtures/plantuml/state.puml",
       "sha256": "081bdcec241cbc1b3cb035cfe0d7e42dcee2efa45813e0de058c0df8533b24bf",
@@ -1094,6 +1528,11 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/tree.rs",
+    "engine/src/plantuml/treescene.rs",
+    "engine/src/plantuml/data.rs",
+    "engine/src/plantuml/datascene.rs",
+    "engine/src/plantuml/yaml.rs",
     "engine/src/plantuml/state.rs",
     "engine/src/plantuml/stategraph.rs",
     "engine/src/plantuml/activity.rs",
@@ -1112,6 +1551,8 @@
     "engine/src/plantuml/shapes.rs"
   ],
   "implementationNotes": [
+    "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",
+    "Strict ordered duplicate-preserving JSON and narrow preflighted PlantUML YAML string semantics. Data labels remain literal and do not enter UML rich-text/newline normalization. New tree/data labels measure and emit the same explicit Arial/Liberation Sans/DejaVu Sans/Noto Sans/sans-serif chain. EclipseSource minimal-json MIT notice retained.",
     "State owns a distinct typed model and recursive checked Dagre graph adapter. Activity uses structured instructions with bottom-up explicit entry/live/dead exit ports; neither is a UML/sequence AST rewrite.",
     "State-qualified declarations/cross-ownership transitions and activity next-arrow/backward-route syntax remain explicit subset rejections. No concurrency/history/swimlane semantics are claimed.",
     "Typed native ASTs and SVG scenes; no PlantUML-to-Mermaid source rewriting.",

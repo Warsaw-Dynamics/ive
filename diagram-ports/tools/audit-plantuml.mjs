@@ -15,7 +15,7 @@ const safe = value => typeof value === 'string' && !value.split('/').some(part =
 export function validateManifest(manifest) {
   if (manifest.edition !== 'PlantUML MIT' || manifest.version !== '1.2026.9' || manifest.sourceRoot !== sourceRoot || manifest.artifact.path !== artifact || manifest.artifact.sha256 !== artifactHash) throw new Error('unauthorized PlantUML edition, source root or artifact');
   for (const file of manifest.sourceFiles) {
-    if (!safe(file.path) || /\/(?:gen|h|smetana|elk)\//.test(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|utils\/CharHidder\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|statediagram|activitydiagram3|klimt\/(?:font|creole\/(?:legacy|command)))\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
+    if (!safe(file.path) || /\/(?:gen|h|smetana|elk)\//.test(file.path) || !/^net\/sourceforge\/plantuml\/(?:BlockUmlBuilder\.java|PSystemBuilder\.java|utils\/(?:CharHidder|Direction)\.java|text\/TLineType\.java|(?:core|command|sequencediagram\/command|classdiagram|objectdiagram\/command|descdiagram|cucadiagram|statediagram|activitydiagram3|mindmap|wbs|json|jsondiagram|yaml(?:\/parser)?|klimt\/(?:font|creole\/(?:legacy|command)))\/[A-Za-z0-9_/]+\.java)$/.test(file.path)) throw new Error(`unauthorized source path: ${file.path}`);
     if (!/^[a-f0-9]{64}$/.test(file.sha256) || file.notice !== 'provenance/LICENSE-PlantUML-MIT.txt') throw new Error(`invalid source hash/notice: ${file.path}`);
     if (file.rust.some(target => !manifest.nativeModules.includes(target))) throw new Error(`unregistered Rust destination: ${file.path}`);
   }
@@ -36,6 +36,15 @@ export function audit(manifest) {
     const credits = extracted.toString().split('package ')[0].split('\n').map(line => line.trim()).filter(line => /(?:Original\s+Author|Contribut(?:ion|or)s?)\s*:/i.test(line));
     for (const credit of credits) {
       if (!file.copyrights.includes(credit)) throw new Error(`missing source credit: ${file.path}: ${credit}`);
+    }
+    const copyrights = extracted.toString().split('package ')[0].split('\n').map(line => line.trim()).filter(line => /\bCopyright\s+(?:\(c\)\s+)?(?:19|20)\d{2}/i.test(line));
+    for (const copyright of copyrights) {
+      if (!file.copyrights.includes(copyright)) throw new Error(`missing source copyright: ${file.path}: ${copyright}`);
+    }
+    if (file.path.startsWith('net/sourceforge/plantuml/json/')) {
+      const embeddedNotice = extracted.toString().match(/\/\*\*+\n \* Copyright \(c\) 2016 EclipseSource\.[\s\S]*?\*\//)?.[0];
+      const normalizeWhitespace = value => value.split('\n').map(line => line.trimEnd()).join('\n');
+      if (!embeddedNotice || !normalizeWhitespace(fs.readFileSync(path.join(root, file.notice), 'utf8')).includes(normalizeWhitespace(embeddedNotice))) throw new Error(`minimal-json MIT grant missing: ${file.path}`);
     }
   }
   for (const file of manifest.fixtures) {

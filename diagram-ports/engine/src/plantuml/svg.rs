@@ -106,7 +106,7 @@ impl Writer {
             }
             Shape::Text(p, label, decoration) => {
                 for (i, line) in label.lines.iter().enumerate() {
-                    self.add(&format!("<text x=\"{}\" y=\"{}\" fill=\"#172033\" stroke=\"none\" font-family=\"sans-serif\" font-size=\"14\" text-decoration=\"{}\" font-style=\"{}\" xml:space=\"preserve\">", p.x, p.y + label.line_height * (i+1) as f64 - 14./4.5, match decoration { Decoration::Underlined => "underline", _ => "none" }, match decoration { Decoration::Italic => "italic", _ => "normal" }))?;
+                    self.add(&format!("<text x=\"{}\" y=\"{}\" fill=\"#172033\" stroke=\"none\" font-family=\"{}\" font-size=\"14\" text-decoration=\"{}\" font-style=\"{}\" xml:space=\"preserve\">", p.x, p.y + label.line_height * (i+1) as f64 - 14./4.5, label.font_family, match decoration { Decoration::Underlined => "underline", _ => "none" }, match decoration { Decoration::Italic => "italic", _ => "normal" }))?;
                     self.escaped(line)?;
                     self.add("</text>")?;
                 }

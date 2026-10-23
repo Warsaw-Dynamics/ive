@@ -8,6 +8,127 @@ pub(super) struct Line {
     pub text: String,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Wrapper {
+    Uml,
+    Mindmap,
+    Wbs,
+    Json,
+    Yaml,
+}
+
+pub(super) fn prepare_document(
+    source: &str,
+    budget: &mut Budget,
+) -> Result<(Wrapper, Vec<Line>), RenderError> {
+    let first = source
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("")
+        .trim();
+    let (wrapper, end) = match first {
+        "@startmindmap" => (Wrapper::Mindmap, "@endmindmap"),
+        "@startwbs" => (Wrapper::Wbs, "@endwbs"),
+        "@startjson" => (Wrapper::Json, "@endjson"),
+        "@startyaml" => (Wrapper::Yaml, "@endyaml"),
+        _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
+    };
+    budget.charge(source.len())?;
+    let mut state = 0;
+    let mut lines = Vec::new();
+    for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
+        budget.charge(raw.len() + 1)?;
+        let trimmed = raw.trim();
+        if state == 0 && trimmed == first {
+            state = 1;
+        } else if state == 1 && trimmed == end {
+            state = 2;
+        } else if state == 1 {
+            reject_active_preprocessor(raw, offset + 1)?;
+            if trimmed.starts_with("@start") || trimmed.starts_with("@end") {
+                return Err(invalid(
+                    offset + 1,
+                    format!("expected matching {end}, found {trimmed:?}"),
+                ));
+            }
+            budget.text(raw.len())?;
+            lines.push(Line {
+                number: offset + 1,
+                text: raw.to_owned(),
+            });
+        } else if !trimmed.is_empty() {
+            return Err(invalid(
+                offset + 1,
+                "expected exactly one complete PlantUML block",
+            ));
+        }
+    }
+    if state != 2 || lines.iter().all(|line| line.text.trim().is_empty()) {
+        return Err(invalid(
+            1,
+            format!("expected nonempty complete {first}/{end} block"),
+        ));
+    }
+    Ok((wrapper, lines))
+}
+
+fn reject_active_preprocessor(raw: &str, line: usize) -> Result<(), RenderError> {
+    let Some(command) = raw.trim_start().strip_prefix('!') else {
+        return Ok(());
+    };
+    let word = command
+        .trim_start()
+        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if command.contains('=')
+        || matches!(
+            word.as_str(),
+            "include"
+                | "includeurl"
+                | "include_many"
+                | "include_once"
+                | "includedef"
+                | "includesub"
+                | "define"
+                | "definelong"
+                | "undef"
+                | "if"
+                | "ifdef"
+                | "ifndef"
+                | "else"
+                | "elseif"
+                | "endif"
+                | "while"
+                | "endwhile"
+                | "foreach"
+                | "endfor"
+                | "function"
+                | "procedure"
+                | "endfunction"
+                | "endprocedure"
+                | "enddefinelong"
+                | "end"
+                | "final"
+                | "unquoted"
+                | "return"
+                | "assert"
+                | "theme"
+                | "import"
+                | "startsub"
+                | "endsub"
+                | "log"
+                | "dump_memory"
+                | "option"
+        )
+    {
+        return Err(unsupported(line, raw));
+    }
+    Ok(())
+}
+
 pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, RenderError> {
     budget.charge(source.len())?;
     let mut lines = Vec::new();

@@ -1,5 +1,158 @@
 use super::*;
 
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_tree_and_data_text_within_owning_boxes() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            let query = MeasureQuery {
+                operation: request.operation.external_code(),
+                text: request.text.into(),
+                style: request.style.clone(),
+            };
+            eprintln!("native query text={:?} style={:?}", query.text, query.style);
+            Ok(match self.0.measure(&query) {
+                MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                MeasureReply::Fallback => None,
+            })
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let fonts = Arc::new(gpui::TextSystem::new(platform.text_system()));
+    let resources = NativeTextResources::new(fonts);
+    for source in [
+        "@startjson\n{\"short\":\"x\",\"labels\":[\"it's <literal> & Ω\",\"https://example.test/a:b # text\",\"長い日本語 Ω café 😀\"]}\n@endjson",
+        "@startyaml\nnotes: |\n  &literal *literal !customtag\n  quoted: text\nnext: value\n@endyaml",
+        "@startmindmap\n* Root\n** A very long ordinary tree label\n*** Unicode Ω café\n@endmindmap",
+        "@startwbs\n* Root\n** A very long ordinary tree label\n*** Unicode Ω café\n@endwbs",
+    ] {
+        let native = resources.start_render();
+        let mut config = RenderOptions {
+            language: Language::PlantUml,
+            ..Default::default()
+        };
+        config.text_measurement = TextMeasurementPolicy::host_display(
+            TextMeasurementProfileIdentity::new(
+                MeasurementProfileId::new("native-paint-contract").unwrap(),
+                "1",
+            )
+            .unwrap(),
+            Arc::new(Bridge(native.clone())),
+            [TextMeasurementPhase::Layout],
+        );
+        // when
+        let output = diagram_engine::render(source, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let options = crate::svg_fonts::options();
+        let family = options
+            .fontdb
+            .query(&usvg::fontdb::Query {
+                families: &[usvg::fontdb::Family::SansSerif],
+                ..Default::default()
+            })
+            .and_then(|id| options.fontdb.face(id))
+            .map(|face| &face.families);
+        eprintln!(
+            "native resolved={:?}; SVG generic resolved={family:?}",
+            native.report()
+        );
+        let tree = usvg::Tree::from_str(&output.svg, &options).unwrap();
+        let mut inspected = 0;
+        // then
+        for row in xml.descendants().filter(|n| {
+            n.attribute("data-kind").is_some_and(|kind| {
+                kind.starts_with("data-row-") || matches!(kind, "mindmap-node" | "wbs-node")
+            })
+        }) {
+            let id = row.attribute("id").unwrap();
+            let owner_id = if row.attribute("data-kind").unwrap().starts_with("data-row-") {
+                row.attribute("data-owner").unwrap()
+            } else {
+                id
+            };
+            let usvg::Node::Group(owner) = tree.node_by_id(owner_id).unwrap() else {
+                panic!("owner must be group")
+            };
+            let bounds = owner
+                .children()
+                .iter()
+                .find_map(|node| {
+                    if let usvg::Node::Path(path) = node {
+                        Some(path.abs_bounding_box())
+                    } else {
+                        None
+                    }
+                })
+                .expect("owning box must paint a path");
+            let usvg::Node::Group(group) = tree.node_by_id(id).unwrap() else {
+                panic!("row must be group")
+            };
+            let mut pending = vec![group.as_ref()];
+            while let Some(group) = pending.pop() {
+                for child in group.children() {
+                    match child {
+                        usvg::Node::Group(group) => pending.push(group),
+                        usvg::Node::Text(text) => {
+                            inspected += 1;
+                            let painted = text.abs_stroke_bounding_box();
+                            let mut db = options.fontdb.clone();
+                            let selected = (options.font_resolver.select_font)(
+                                text.chunks()[0].spans()[0].font(),
+                                &mut db,
+                            )
+                            .and_then(|id| db.face(id))
+                            .map(|face| &face.families);
+                            eprintln!("actual selected paint font={selected:?}");
+                            let actual_fonts: std::collections::BTreeSet<_> = text
+                                .layouted()
+                                .iter()
+                                .flat_map(|span| &span.positioned_glyphs)
+                                .filter_map(|glyph| tree.fontdb().face(glyph.font))
+                                .map(|face| format!("{:?}", face.families))
+                                .collect();
+                            eprintln!("actual glyph fonts={actual_fonts:?}");
+                            eprintln!(
+                                "SVG text {:?} spans {:?} paint={painted:?}",
+                                text.chunks().iter().map(|c| c.text()).collect::<Vec<_>>(),
+                                text.chunks()
+                                    .iter()
+                                    .flat_map(|c| c.spans())
+                                    .map(|s| (
+                                        s.font().families(),
+                                        s.font_size(),
+                                        s.font().weight()
+                                    ))
+                                    .collect::<Vec<_>>()
+                            );
+                            assert!(
+                                painted.left() >= bounds.left() - 1.
+                                    && painted.top() >= bounds.top() - 1.
+                                    && painted.right() <= bounds.right() + 1.
+                                    && painted.bottom() <= bounds.bottom() + 1.,
+                                "text paint {painted:?} escapes {id} compartment {bounds:?}"
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(inspected >= 2, "no actual text inspected");
+    }
+}
+
 #[test]
 fn should_contain_builtin_tree_text_without_changing_its_connector_clip() {
     // given

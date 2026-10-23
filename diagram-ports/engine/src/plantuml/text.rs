@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub(super) struct Label {
+    pub font_family: &'static str,
     pub lines: Vec<String>,
     pub width: f64,
     pub height: f64,
@@ -18,8 +19,24 @@ pub(super) struct Label {
 pub(super) struct Context<'a> {
     pub session: &'a RenderSession,
     pub budget: &'a mut Budget,
-    cache: HashMap<(String, Decoration), Label>,
+    cache: HashMap<(String, Decoration, LabelMode), Label>,
     calls: usize,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+enum LabelMode {
+    Display,
+    Tree,
+    Data,
+}
+
+impl LabelMode {
+    fn font_family(self) -> &'static str {
+        match self {
+            Self::Display => "sans-serif",
+            Self::Tree | Self::Data => "Arial, Liberation Sans, DejaVu Sans, Noto Sans, sans-serif",
+        }
+    }
 }
 
 impl<'a> Context<'a> {
@@ -41,20 +58,37 @@ impl<'a> Context<'a> {
         text: &str,
         decoration: Decoration,
     ) -> Result<Label, RenderError> {
+        self.measure_label(text, decoration, LabelMode::Display)
+    }
+
+    pub fn data_label(&mut self, text: &str) -> Result<Label, RenderError> {
+        self.measure_label(text, Decoration::Plain, LabelMode::Data)
+    }
+
+    pub fn tree_label(&mut self, text: &str) -> Result<Label, RenderError> {
+        self.measure_label(text, Decoration::Plain, LabelMode::Tree)
+    }
+
+    fn measure_label(
+        &mut self,
+        text: &str,
+        decoration: Decoration,
+        mode: LabelMode,
+    ) -> Result<Label, RenderError> {
         self.budget.charge(text.len() + 1)?;
         bound("label bytes", text.len(), 16 * 1024)?;
-        let key = (text.to_owned(), decoration);
+        let key = (text.to_owned(), decoration, mode);
         if let Some(label) = self.cache.get(&key) {
             return Ok(label.clone());
         }
-        let lines: Vec<String> = literal_label(text, 1)?
-            .replace("\\n", "\n")
-            .split('\n')
-            .map(str::to_owned)
-            .collect();
+        let normalized = match mode {
+            LabelMode::Display | LabelMode::Tree => literal_label(text, 1)?.replace("\\n", "\n"),
+            LabelMode::Data => text.to_owned(),
+        };
+        let lines: Vec<String> = normalized.split('\n').map(str::to_owned).collect();
         bound("measured lines", self.calls + lines.len(), 4096)?;
         let style = TextStyle {
-            font_family: Some("sans-serif".into()),
+            font_family: Some(mode.font_family().into()),
             font_size: 14.,
             font_style: Some(
                 if matches!(decoration, Decoration::Italic) {
@@ -87,6 +121,7 @@ impl<'a> Context<'a> {
             line_height = line_height.max(metrics.height + 4.);
         }
         let label = Label {
+            font_family: mode.font_family(),
             width,
             height: line_height * lines.len() as f64,
             lines,

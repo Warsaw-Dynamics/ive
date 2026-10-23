@@ -67,6 +67,10 @@ fn should_measure_plantuml_in_native_worker_and_release_each_cache() {
         include_str!("../../fixtures/plantuml/deployment.puml"),
         include_str!("../../fixtures/plantuml/state.puml"),
         include_str!("../../fixtures/plantuml/activity.puml"),
+        include_str!("../../fixtures/plantuml/mindmap.puml"),
+        include_str!("../../fixtures/plantuml/wbs.puml"),
+        include_str!("../../fixtures/plantuml/json.puml"),
+        include_str!("../../fixtures/plantuml/yaml.puml"),
     ] {
         let native = resources.start_render();
         let cache = Arc::downgrade(&native);

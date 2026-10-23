@@ -7,6 +7,8 @@ mod activity;
 mod activitytile;
 mod arrow;
 mod budget;
+mod data;
+mod datascene;
 mod graph;
 mod lexer;
 mod scene;
@@ -17,7 +19,10 @@ mod state;
 mod stategraph;
 mod svg;
 mod text;
+mod tree;
+mod treescene;
 mod uml;
+mod yaml;
 
 use crate::{Language, RenderError, RenderOptions, RenderedDiagram, limits, resources};
 use merman_render::environment::RenderEnvironment;
@@ -30,7 +35,7 @@ pub(crate) fn render(
     let policy = limits::resource_policy(&options.limits)?;
     let mut budget = budget::Budget::new(options);
     budget.checkpoint()?;
-    let lines = source::prepare(source, &mut budget)?;
+    let (wrapper, lines) = source::prepare_document(source, &mut budget)?;
     let session = RenderEnvironment::deterministic()
         .without_math_renderer()
         .with_resource_policy(policy)
@@ -38,7 +43,29 @@ pub(crate) fn render(
         .begin_session_with_control(budget.control.clone())
         .map_err(|e| RenderError::Backend(e.to_string()))?;
     let selection = select(&lines);
-    let (family, scene) = if selection == Selection::Activity {
+    let (family, scene) = if wrapper == source::Wrapper::Mindmap {
+        let model = tree::parse_mindmap(&lines, &mut budget)?;
+        (
+            "mindmap",
+            treescene::mindmap(&model, &mut text::Context::new(&session, &mut budget))?,
+        )
+    } else if wrapper == source::Wrapper::Wbs {
+        let model = tree::parse_wbs(&lines, &mut budget)?;
+        (
+            "wbs",
+            treescene::wbs(&model, &mut text::Context::new(&session, &mut budget))?,
+        )
+    } else if matches!(wrapper, source::Wrapper::Json | source::Wrapper::Yaml) {
+        let (family, model) = if wrapper == source::Wrapper::Json {
+            ("json", data::parse_json(&lines, &mut budget)?)
+        } else {
+            ("yaml", yaml::parse(&lines, &mut budget)?)
+        };
+        (
+            family,
+            datascene::layout(&model, &mut text::Context::new(&session, &mut budget))?,
+        )
+    } else if selection == Selection::Activity {
         let model = activity::parse(&lines, &mut budget)?;
         (
             "activity",
@@ -72,7 +99,7 @@ pub(crate) fn render(
         .into_string();
     budget.checkpoint()?;
     crate::svg::validate(&svg, &options.limits)?;
-    Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states and structured activities; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+    Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
 }
 
 #[derive(PartialEq, Eq)]

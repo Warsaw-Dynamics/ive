@@ -403,6 +403,7 @@ mod tests {
             transitions: vec![],
         };
         let label = Label {
+            font_family: "sans-serif",
             lines: vec![],
             width: 0.,
             height: 0.,

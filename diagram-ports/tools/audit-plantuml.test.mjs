@@ -38,3 +38,12 @@ test('should reject missing exact contributor credits despite colon spacing', ()
   // when / then
   assert.throws(() => audit(source), /missing source credit/);
 });
+
+test('should reject removed minimal-json copyright before accepting translated semantics', () => {
+  // given
+  const source = manifest();
+  const json = source.sourceFiles.find(file => file.path.endsWith('/json/JsonParser.java'));
+  json.copyrights = json.copyrights.filter(line => !line.includes('EclipseSource'));
+  // when / then
+  assert.throws(() => audit(source), /missing source copyright/);
+});

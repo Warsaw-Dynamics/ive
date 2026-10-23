@@ -1,0 +1,8 @@
+@startyaml
+service:
+  name: Billing
+  replicas: 2
+  zones:
+    - north
+    - south
+@endyaml

@@ -577,6 +577,7 @@ mod tests {
             height: 100.,
         };
         let label = Label {
+            font_family: "sans-serif",
             lines: vec!["wide role".into()],
             width: 160.,
             height: 20.,
