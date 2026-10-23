@@ -19,16 +19,16 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `6664c86` — tested timing/Gantt routes added; 505 combined focused tests pass; root full/native checks pending for this newer head |
+| Latest integrated product checkpoint | `3d3c35a` — tested YAML route added to timing/Gantt and prior families; root full/baseline/native checks pass |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Salt and nwdiag in isolated worktrees; tested YAML checkpoint awaits integration |
+| Current implementers | Salt, nwdiag and packetdiag in isolated worktrees; YAML integration stable |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate tested YAML, finish Salt and nwdiag, then continue remaining grammar queue |
-| Latest independent controller checks | At `435d73c`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build and five native class/activity/Chen/JSON/HCL captures plus five empty-PATH/no-display SVG exports pass; zero fallbacks and no test viewer survivors. Agent combined strict Clippy/fmt, private generator14 and 220 MIT/43 fixture/43 module audit pass. Earlier `0c5177e` completed all16 gates. |
+| Next implementation | Finish Salt, nwdiag and packetdiag; integrate tested checkpoints, then Creole/removal and remaining native family queue |
+| Latest independent controller checks | At `3d3c35a`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build, three native timing/Gantt/YAML captures and three empty-PATH/no-display exports pass; zero fallbacks and no surviving test viewer. Agent combined strict Clippy/fmt, private generator17 and 220 MIT/43 fixture/43 module audit pass. The previous `435d73c` batch passed five native class/activity/Chen/JSON/HCL captures/exports. Earlier `0c5177e` completed all16 gates. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
-| Latest native compatibility captures | Class/activity/Chen/JSON/HCL measurements9/7/11/10/21, all zero fallback; root inspected `/tmp/ive-parser-batch2-*.png`, verified empty-PATH exports and no surviving viewer. Earlier sequence/state/mindmap/WBS/files/board captures also passed. |
+| Latest native compatibility captures | Timing/Gantt/YAML measurements16/18/10, all zero fallback; root inspected `/tmp/ive-parser-batch3-*.png`, verified empty-PATH exports and no surviving viewer. Class/activity/Chen/JSON/HCL captures also passed in the previous batch. |
 
 ## Completed work
 
@@ -185,11 +185,11 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 8 | Structured activity | INTEGRATEDe9c1354 from tested1b0c234 — combined focused suite375, strict Clippy/fmt and private generator11 pass; root full serial workspace tests and seven worker faults pass; broad review deferred |
 | 9 | Mindmap/WBS/files/board | DONE —4a31cb7 integrated0c5177e; syntax/label limit fix reviewed, full combined gates/native pass |
 | 10 | JSON/HCL | INTEGRATED435d73c from tested53dbad8 —454 combined focused tests/private generator14/source audit, root full/baseline/native checks pass; depth64 positive/depth65 negative and exact retained-byte controls pass; broad review deferred |
-| 11 | PlantUML YAML | TESTED349ccb5 —375 focused tests, strict Clippy/fmt, private generator12 and source audit pass; central integration pending |
-| 12 | Timing/Gantt/assigned defects | INTEGRATED6664c86 from testedf5f07f9 —505 combined focused tests, strict Clippy/fmt, private generator16 and source audit; root full serial workspace tests and seven worker faults pass; native/baseline checks pending on this head |
+| 11 | PlantUML YAML | INTEGRATED3d3c35a from tested349ccb5 —517 combined focused tests, strict Clippy/fmt, private generator17 and source audit; root full/baseline/native checks pass; broad review deferred |
+| 12 | Timing/Gantt/assigned defects | INTEGRATED6664c86 from testedf5f07f9 —505 combined focused tests, strict Clippy/fmt, private generator16 and source audit; root full/baseline/native checks pass at later3d3c35a head; broad review deferred |
 | 13 | Salt | IN PROGRESS — isolated worktree from integrated Chen/data head; generated table/row/cell/widget grammar and first private tests pass |
 | 14 | nwdiag/contextual server-name repair | IN PROGRESS — isolated worktree from integrated timing/Gantt head |
-| 15 | Packetdiag | Pending |
+| 15 | Packetdiag | IN PROGRESS — isolated worktree from integrated YAML head |
 | 16 | Creole nesting | Pending |
 | 17 | Legacy-syntax removal/inventory/integration review | Pending |
 
