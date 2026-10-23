@@ -205,6 +205,7 @@ Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generate
 - Cargo commands share an outer build lock to avoid competing with the existing500ms test. Generator binaries use a separate target directory per checkout: their embedded checkout paths caused cross-worktree output generation when a shared executable was reused. The private targets fix that hazard; no source baseline or assertion was weakened.
 - The previous10–18hour estimate described serial parser migration and is superseded. The current estimate for remaining family increments is recorded in Current status above.
 - Read-only next-family preparation is complete for [Task 3K EBNF/regex](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3k-preparation.md) and [Task 3L charts](.superpowers/sdd/2026-10-22-diagram-ports-plan/task-3l-preparation.md). Both can now start product implementation from the verified parser checkpoint.
+- New family fixtures expose a baseline-driver scope issue: `check` currently selects every provenance fixture, which would change the frozen43 count. Task3M owns a tested selector repair using the 43 recorded baseline paths; EBNF/regex and charts keep their new fixtures in the audited provenance manifest and leave the driver untouched. The baseline file itself stays immutable.
 
 ## Completed prerequisite repair gate — Task 3J
 
