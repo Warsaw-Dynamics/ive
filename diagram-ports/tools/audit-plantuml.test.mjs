@@ -5,6 +5,18 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit exact selected Salt paths and reject unselected rendering or resource code', () => {
+  // given
+  const source = manifest();
+  source.sourceFiles[0].path = 'net/sourceforge/plantuml/salt/DataSourceImpl.java';
+  // when / then
+  assert.doesNotThrow(() => validateManifest(source));
+  for (const path of ['net/sourceforge/plantuml/salt/SaltDictionary.java', 'net/sourceforge/plantuml/salt/element/ElementImage.java', 'net/sourceforge/plantuml/salt/factory/OtherFactory.java']) {
+    source.sourceFiles[0].path = path;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should accept the exact authorized source and module inventory', () => {
   // given
   const source = manifest();

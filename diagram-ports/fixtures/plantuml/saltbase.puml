@@ -1,0 +1,7 @@
+@startsalt
+{+
+Login
+User | "sam"
+[Cancel] | [Sign in]
+}
+@endsalt

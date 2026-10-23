@@ -1,0 +1,14 @@
+@startsalt
+{#
+Account | "alice   "
+{+
+[X] Remember
+[ ] Newsletter
+(X) Standard
+( ) Express
+} | {
+[Cancel] | [Continue]
+Wide status | *
+}
+}
+@endsalt

@@ -26,6 +26,8 @@ The bounded Gantt checkpoint additionally translates the seventeen exact MIT `ga
 
 ## Licences
 
+The bounded Salt checkpoint translates the twenty-six exact MIT `salt` token/widget/table/size/control sources listed in the manifest, including rejection-only marker discovery for unimplemented tree/tab/menu/dropdown/scroll/line/region/image/dictionary constructs. Each credits `(C) Copyright 2009-2024, Arnaud Roques` and `Original Author:  Arnaud Roques`; the complete MIT grant in [provenance/LICENSE-PlantUML-MIT.txt](provenance/LICENSE-PlantUML-MIT.txt) applies. Typed escape tokens, sparse bottom-up constraint solving, immutable ownership and bounded scene glue are original native work. Plain field/button padding retains the original eight-unit character minimum; decoded visible longest-line counting is an explicit native formatted-text deviation. `saltbase.puml`, `saltwidgets.puml` and `saltliteral.puml` preserve exact independently authored original-reference inputs; `salt.puml` is an authored native viewer example. No image/dictionary/font/theme asset, resource loader or dependency was imported.
+
 - Apache License 2.0: 393 crates
 - MIT License: 129 crates
 - Unicode License v3: 19 crates

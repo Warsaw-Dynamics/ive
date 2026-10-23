@@ -10,6 +10,345 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/salt/DataSourceImpl.java",
+      "sha256": "b5f72cd4e5593b51d8508734d0500f3ea728cf2d41f4a5dc32c96c9867ae45f7",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines122-185: physical newline/pipe/brace token termination, direct shielding of escaped pipe/braces. Native uses typed structural tokens and direct escapes without the source PUA collisions; quote characters never suppress structural delimiters.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/Positionner2.java",
+      "sha256": "4a29f999c917b3b35a8b1fdaa4bc6ec86892a73f45a11be6a394aa4a32f4ee7f",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines130-164: source-ordered row/column placement and preceding-cell colspan extension. Native rejects orphan/cross-row spans and freezes positive spans instead of mutable unchecked last-cell merging.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/Cell.java",
+      "sha256": "4346ed28284c99f47da1b8d198343c09902386ac7a143c8249e03444412b25e8",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines120-159: inclusive span ownership translated to immutable zero-based cell coordinates and positive row/column lengths; only authored same-row colspans admitted.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/PSystemSalt.java",
+      "sha256": "6b3d1d5ea1a32f977296f9c8c076c541b208eb5df4ab6326452175f27c112b3f",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines292-350: nested widget factory dispatch precedence, particularly field then checkbox before button, followed by radio. Native standalone exact Salt wrapper only; no other family conversion.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryPyramid.java",
+      "sha256": "248b68a6a55ff6ad20dde32a4203048cb7e1bc2315b0cdd3ec168c3ee225cca7",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines130-183: admitted nested {/{+/{# grammar, one child per parent cell, closing-token terminator returned to parent. Other borders and tree/region requests explicitly rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryBorder.java",
+      "sha256": "5e8bde26b119cb74ecc6ca9233b68390ffa366cd20bf0a670f1b5c7ce6294e89",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines125-176: separate cardinal-region token discovery used for explicit unsupported admission only; no border-region layout is claimed.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryButton.java",
+      "sha256": "73f819d09eb5f4e308ea74feed86976434de0bf67327fff74078c08d608bd0de",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines130-155: bracket button marker and explicit leading-link exclusion; exact source dispatch order retained.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryTextField.java",
+      "sha256": "7bb24c484f97d059808708986d086c50c5c694b980bf74f375b821c8d1cbd288",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines130-144: enclosing double quotes select a field and retain its interior padding separately from trimmed painted content.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryCheckboxOn.java",
+      "sha256": "017665e54f7ccd7d1bd5f76d9d67b56db02a2fe832980659f53f6fd3b5a49f35",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines134-148: uppercase [X] prefix, including empty-label checkbox; never lower-x or button dispatch.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryCheckboxOff.java",
+      "sha256": "3df15e69efe4f14d340d0d628effd127b139bc5d8bebfc819302d9990027aba2",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines135-149: []/[ ] prefix and trimmed following checkbox caption.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryRadioOn.java",
+      "sha256": "a0bb691b1fe161706ef2ed587212520867d570eae99514682c7ed8fdb23fad8d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines134-148: uppercase (X) prefix and trimmed following selected-radio caption.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryRadioOff.java",
+      "sha256": "c4b47eb923c054e85551724348f4263e9d616788aef93c2aa10ca19a6d701711",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines134-148: ()/( ) prefix and trimmed following unselected-radio caption.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/TableStrategy.java",
+      "sha256": "dc5c87eb754b83021b9dc146ae49ba1fecf85aa8dcc6ed8bdc5fee2fbd2859e8",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs",
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines112-130: typed NONE/OUTSIDE/ALL borders admitted and drawn; horizontal/vertical/titled modes explicitly rejected.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/ElementPyramid.java",
+      "sha256": "147b63f4999c9dc65f56192c8e605395059030c5429a9563d20ffb3f173399ca",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines169-239: measured nested-cell/span width and rowheight constraints, cumulative boundaries and cell-owned borders. Native original sparse bottom-up pass uses single-column constraints then monotonically growing span widths, no dense grid or repeated suffix-array amplification.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/ElementRadioCheckbox.java",
+      "sha256": "a7e8efadf65c4e8f1227701b8581ff53a1251e40c306d85b4927f26d552c1371",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines149-191: actual 10-unit square/circle, four-unit selected-radio dot, check polygon and 20-unit caption inset. Native shared stroke/color/theme policy differs from original.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/ElementTextField.java",
+      "sha256": "e913178971760656af8ecf9d919b922fbaaa14f4ce0fe31ce05d388480736800",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines126-141: underlined field with two endstrokes and padded measured dimensions, not an input rectangle.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/ElementButton.java",
+      "sha256": "a839c17337a5460f4325e9a79fd5109277d626f8e7d94bf8be012be0a9282010",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines127-153: rounded button and centered caption with measured padding. Native twelve/ten-unit overall padding and common stroke/theme differ from source.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/element/AbstractElementText.java",
+      "sha256": "3878cf9df397465263ce7abb2b1ca3474b6e0458566808db5ad93357c695c2bf",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/saltscene.rs"
+      ],
+      "behavior": "From lines125-182: retain managed interior padding, trim painted field/button text, minimum charLength times8. Native counts UTF-16 units of decoded visible runs on the longest line after supported Creole parsing; thus formatted/hardbreak counting differs from source purge/raw counting. No font or icon asset imported.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryTree.java",
+      "sha256": "78a803ce727023d77861ab2e1a5084af5273ccaaa36efcf6f7c5b3b89217eb0c",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines200-224: T/T-plus-valid-border first-token tree discovery used only for explicit unsupported admission; tree behavior not implemented.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryTab.java",
+      "sha256": "75a4ceb1ddc91b3e1f2b35d576eb86f4b77dfbcdde7fc8200af5d51e026ed7d5",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines125-166: {/ structured tab marker used only for explicit unsupported admission.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryMenu.java",
+      "sha256": "5280583c17aeb171ee516ece80a40e3b262b4814dc437ab42cb7991c0b602343",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines125-176: {* structured menu marker used only for explicit unsupported admission.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryDroplist.java",
+      "sha256": "eecccbc408779d4fa70d176b29f943f1f024b2894b48783787c477fa28130489",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines130-144: paired-caret dropdown marker used only for explicit unsupported admission; ordinary unpaired caret text remains literal.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryImage.java",
+      "sha256": "2abee1ff4ead88590f459322068053f0ca87eccd5e56b2f0b8a942a67d7eced7",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines125-156: << image-definition marker used only for explicit resource denial; no image/dictionary resolution.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryRetrieveFromDictonnary.java",
+      "sha256": "c46edeaafdc94ea0285cc2f0d7e051ffefa80fe98f2ec17b44d8bf2c42dc6491",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines127-148: <<word>> retrieval marker used only for explicit resource denial.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryLine.java",
+      "sha256": "9eb384bd7331c486709c931f2b5f0e85872c79f8e050f298caacdcac487f191a",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines125-170: paired repeated --/==/~~/.. edge markers used only for explicit unsupported line-widget admission.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/salt/factory/ElementFactoryScroll.java",
+      "sha256": "77a12e1d002cb8405752e399479a6b255d1ecc34af11b20d12a721571fa405c0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/salt.rs"
+      ],
+      "behavior": "From lines127-168: {S/{S-/{SI marker used only for explicit unsupported admission.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/gantt/command/NaturalGanttCommand.java",
       "sha256": "f6cff4856f430fd225d8192ff62ca5a47990ff22108250ab9a62d33f6dd56aae",
       "rust": [
@@ -1492,7 +1831,7 @@
       "rust": [
         "engine/src/plantuml/source.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2170,6 +2509,30 @@
   ],
   "fixtures": [
     {
+      "path": "fixtures/plantuml/saltbase.puml",
+      "sha256": "0fba629e3bf1d9ee00505dc3ed39a9d6cdc6b585b62c5301aabb44dae1a91e41",
+      "origin": "/tmp/ive-plantuml-native-oracles/salt-form.puml",
+      "claim": "Exact independently authored original-reference input preserved; native semantic admission, not original pixel/layout parity."
+    },
+    {
+      "path": "fixtures/plantuml/saltwidgets.puml",
+      "sha256": "515f278740900fe267eaae4ea2531c8b625f752972e872c60afc8d5c4f01343b",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/salt-widgets-span.puml",
+      "claim": "Exact independently authored original-reference input preserved; native semantic admission, not original pixel/layout parity."
+    },
+    {
+      "path": "fixtures/plantuml/saltliteral.puml",
+      "sha256": "fa5e09a31c612c743b0986c1e87188195d370ff3781b2341314330fb2b7d4c47",
+      "origin": "/tmp/ive-plantuml-specialized-probes.Kf1afs/salt-literal-delimiters.puml",
+      "claim": "Exact independently authored original-reference input preserved; native semantic admission, not original pixel/layout parity."
+    },
+    {
+      "path": "fixtures/plantuml/salt.puml",
+      "sha256": "6d4ad1eb7f1814f46a447246a3491b5ee4e7d9211758b2af4b78df01b48f52b5",
+      "origin": "Independently authored native nested-widget/span/border viewer example with shared fonts/chrome/constants; not an original pixel/layout oracle.",
+      "claim": "Native viewer validation only."
+    },
+    {
       "path": "fixtures/plantuml/ganttbase.puml",
       "sha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
       "origin": "/tmp/ive-plantuml-native-oracles/gantt-dated-dependencies.puml",
@@ -2434,6 +2797,8 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/salt.rs",
+    "engine/src/plantuml/saltscene.rs",
     "engine/src/plantuml/gantt.rs",
     "engine/src/plantuml/ganttscene.rs",
     "engine/src/plantuml/timing.rs",

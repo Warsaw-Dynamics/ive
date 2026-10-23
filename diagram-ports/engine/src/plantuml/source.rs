@@ -16,6 +16,7 @@ pub(super) enum Wrapper {
     Json,
     Yaml,
     Gantt,
+    Salt,
 }
 
 pub(super) fn prepare_document(
@@ -34,6 +35,7 @@ pub(super) fn prepare_document(
         "@startjson" => (Wrapper::Json, "@endjson"),
         "@startyaml" => (Wrapper::Yaml, "@endyaml"),
         "@startgantt" => (Wrapper::Gantt, "@endgantt"),
+        "@startsalt" => (Wrapper::Salt, "@endsalt"),
         _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
     };
     budget.charge(source.len())?;

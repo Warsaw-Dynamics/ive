@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-salt",
+        source: include_str!("../../fixtures/plantuml/salt.puml"),
+    },
+    Example {
         name: "plantuml-gantt",
         source: include_str!("../../fixtures/plantuml/gantt.puml"),
     },
@@ -137,6 +141,34 @@ pub fn for_language(language: &str) -> &'static [Example] {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn should_find_native_salt_example_with_nested_controls_and_spans() {
+        // given
+        let name = "plantuml-salt";
+        // when
+        let source = super::source(name).unwrap();
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "salt");
+        for kind in [
+            "salt-table",
+            "salt-field",
+            "salt-button",
+            "salt-checkbox-on",
+            "salt-checkbox-off",
+            "salt-radio-on",
+            "salt-radio-off",
+        ] {
+            assert!(output.svg.contains(kind), "{kind}");
+        }
+    }
     #[test]
     fn should_find_native_gantt_example_with_aliases_bars_dependencies_and_milestones() {
         // given

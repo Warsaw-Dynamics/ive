@@ -79,17 +79,27 @@ impl Processor<'_> {
                 && (command.eq_ignore_ascii_case("@startuml")
                     || matches!(
                         command,
-                        "@startmindmap" | "@startwbs" | "@startjson" | "@startyaml" | "@startgantt"
+                        "@startmindmap"
+                            | "@startwbs"
+                            | "@startjson"
+                            | "@startyaml"
+                            | "@startgantt"
+                            | "@startsalt"
                     ))
             {
                 inside = true;
-                raw_data = matches!(command, "@startjson" | "@startyaml");
+                raw_data = matches!(command, "@startjson" | "@startyaml" | "@startsalt");
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if !raw_text
                 && (command.eq_ignore_ascii_case("@enduml")
                     || matches!(
                         command,
-                        "@endmindmap" | "@endwbs" | "@endjson" | "@endyaml" | "@endgantt"
+                        "@endmindmap"
+                            | "@endwbs"
+                            | "@endjson"
+                            | "@endyaml"
+                            | "@endgantt"
+                            | "@endsalt"
                     ))
             {
                 inside = false;

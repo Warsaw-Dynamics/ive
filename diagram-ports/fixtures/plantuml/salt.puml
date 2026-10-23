@@ -1,0 +1,20 @@
+@startsalt
+!define ACCOUNT alice
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize 18
+skinparam defaultFontColor #24334A
+title Account preferences
+footer Native Salt: measured nested tables and real controls
+{#
+Account | "ACCOUNT      "
+{+
+[X] Remember account
+[ ] Receive newsletter
+(X) Standard delivery
+( ) Express delivery
+} | {
+[Cancel] | [**Continue**]
+Wide status across both columns | *
+}
+}
+@endsalt
