@@ -4057,6 +4057,51 @@
       ],
       "behavior": "Balanced end branch connects the last live arm to its separate merge and resumes continuation.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/GitTextArea.java",
+      "sha256": "60ee3dac8f69d8696be70440437afea22e6c2a9b6d66545c8745c5d4aa8f096c",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Sparse raw row/column ownership and named commit discovery; generated whole-row syntax rejects unmodeled or dangling cells.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/Commit.java",
+      "sha256": "12edc7a814662c61c59fb367ec47b0aba7f4666556fa2e406a0ab6708974fed0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Typed named commits, at most two distinct downward/older parents, and source lanes; horizontal and octopus forms remain explicit rejections.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/CursorPosition.java",
+      "sha256": "0537f4a34ad1cdf29e9771ec5e59acdafcf752f0a77edc15fe7ac40a3bdf3a6e",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Literal identity/comment decoding and narrow vertical/diagonal grid transitions; iterative checked visited(row,column,direction) ancestry, no layout translation.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4529,6 +4574,49 @@
       "sha256": "d75839e3c0b6f86055f781fb5cf38f8c7dad3b27f40ec3e1ecb9b7ff5ae8c79e",
       "origin": "Exact existing local MIT original oracle bpm-events-branch.puml; implicit start, two alternatives, separate join and continuation. Source bytes retained verbatim.",
       "family": "bpm"
+    },
+    {
+      "path": "fixtures/plantuml/git.puml",
+      "sha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+      "origin": "/tmp/ive-task3m-merge-all-space.puml",
+      "expectedLabels": [
+        "merge4",
+        "side3",
+        "main2",
+        "base1"
+      ],
+      "originalEvidence": {
+        "svgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+        "endpointRecord": "/tmp/ive-task3m-merge-all-space.json",
+        "strokedAncestorEdges": [
+          [
+            "merge4",
+            "main2"
+          ],
+          [
+            "merge4",
+            "side3"
+          ],
+          [
+            "side3",
+            "base1"
+          ],
+          [
+            "main2",
+            "base1"
+          ]
+        ]
+      }
+    },
+    {
+      "path": "fixtures/plantuml/gitlinear.puml",
+      "sha256": "03dbabe21fea378aed7f4e54e765a1ebdc9fb1079cc1b787abfacceaac722e3e",
+      "origin": "/tmp/ive-plantuml-native-oracles/git-linear-history.puml",
+      "expectedLabels": [
+        "c3",
+        "b2",
+        "a1"
+      ]
     }
   ],
   "oracle": {
@@ -4600,7 +4688,9 @@
     "engine/src/plantuml/railroad.rs",
     "engine/src/plantuml/regex.rs",
     "engine/src/plantuml/bpm.rs",
-    "engine/src/plantuml/bpmscene.rs"
+    "engine/src/plantuml/bpmscene.rs",
+    "engine/src/plantuml/git.rs",
+    "engine/src/plantuml/gitscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -4617,6 +4707,7 @@
     "Task3D2 adds raw-byte Direct/Expansion origins, immutable eager definitions and compact earlier-definition lineage IDs. Statement errors keep authoritative parser lines and bounded expansion-use context; late Creole errors identify label-local locations and bounded textual candidates (including inert duplicates), not falsely precise authored spans. Existing YAML nested-flow/quote diagnostics remain line1. Columns in known source spans are one-based UTF-8 bytes.",
     "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles.",
     "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply.",
-    "Task3O adds generated legacy BPM colon events and nested balanced branch/else/end syntax, typed immutable instruction/block arenas and explicit Start/Event/Merge flow nodes/owned edges. Native sparse branch composition replaces Java grid cleaners; no matching, modern activity alias, new dependency/runtime IO, reference expansion or synthetic END syntax. Single/empty-arm, named merge/goto/resume and other unverified commands reject."
+    "Task3O adds generated legacy BPM colon events and nested balanced branch/else/end syntax, typed immutable instruction/block arenas and explicit Start/Event/Merge flow nodes/owned edges. Native sparse branch composition replaces Java grid cleaners; no matching, modern activity alias, new dependency/runtime IO, reference expansion or synthetic END syntax. Single/empty-arm, named merge/goto/resume and other unverified commands reject.",
+    "Native Git history uses generated raw row/cell/commit/comment syntax, bounded sparse typed ancestry and original measured circle/lane geometry; no SmetanaForGit source or runtime git/JVM is used. The frozen parser baseline selects its original recorded43 paths while all later family fixtures remain provenance-audited."
   ]
 }

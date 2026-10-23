@@ -19,6 +19,7 @@ pub(super) enum Wrapper {
     Board,
     Hcl,
     Chen,
+    Git,
 }
 
 #[cfg(test)]

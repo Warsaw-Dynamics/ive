@@ -19,6 +19,7 @@ pub Document: Bounds = {
     "startboard" <start:@R> <contents:Contents> <end:@L> "endboard" =>? finish(Wrapper::Board, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "starthcl" <start:@R> <contents:Contents> <end:@L> "endhcl" =>? finish(Wrapper::Hcl, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
     "startchen" <start:@R> <contents:Contents> <end:@L> "endchen" <_after:Comments> =>? finish(Wrapper::Chen, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startgit" <start:@R> <contents:Contents> <end:@L> "endgit" =>? finish(Wrapper::Git, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
 };
 Contents: usize = {
     => 0,
@@ -65,6 +66,8 @@ extern {
         "endhcl" => Token::EndHcl,
         "startchen" => Token::StartChen,
         "endchen" => Token::EndChen,
+        "startgit" => Token::StartGit,
+        "endgit" => Token::EndGit,
         "row" => Token::Row,
         "comment" => Token::Comment,
         "definition" => Token::Definition,

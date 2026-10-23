@@ -74,6 +74,14 @@ impl Lexer {
             return Ok(());
         }
         let (base, wrapper, header) = location;
+        if wrapper == Wrapper::Git {
+            self.finished = true;
+            return self.push(
+                Token::Body,
+                base..row.span(base, 0..row.text.len()).end,
+                budget,
+            );
+        }
         let text = row.text.trim();
         if text.is_empty() || (wrapper == Wrapper::Hcl && text.starts_with('#')) {
             return Ok(());

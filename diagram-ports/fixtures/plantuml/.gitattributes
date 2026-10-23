@@ -1,0 +1,2 @@
+# These end-of-row spaces are significant bytes in the verified original Git oracle.
+git.puml -whitespace

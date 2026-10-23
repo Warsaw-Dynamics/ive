@@ -10,6 +10,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const destination = path.join(root, 'fixtures/plantuml/parser-baseline.json');
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
+export function selectFixtures(manifest, recorded) {
+  assert.ok(recorded.fixtures.length > 0 && recorded.fixtures.length <= 256, 'recorded baseline fixture count exceeds bounds');
+  const paths = recorded.fixtures.map(fixture => fixture.path);
+  assert.equal(new Set(paths).size, paths.length, 'duplicate recorded baseline fixture');
+  return recorded.fixtures.map(frozen => {
+    const entries = manifest.fixtures.filter(fixture => fixture.path === frozen.path);
+    assert.equal(entries.length, 1, `recorded fixture registration changed: ${frozen.path}`);
+    assert.equal(entries[0].sha256, frozen.sourceSha256, `recorded fixture provenance hash changed: ${frozen.path}`);
+    return frozen.path;
+  });
+}
+
 export function decodeExport(output, files) {
   const [header, ...records] = output.trim().split('\n').map(line => JSON.parse(line));
   assert.ok(header?.configuration && typeof header.configuration === 'object', 'missing exporter configuration');
@@ -35,9 +47,11 @@ export function compare(currentDocument, baselineDocument) {
   }
 }
 
-function collect() {
+function collect(mode) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'provenance/plantuml-mit-1.2026.9.json')));
-  const files = manifest.fixtures.map(file => file.path).sort();
+  const files = mode === 'check'
+    ? selectFixtures(manifest, JSON.parse(fs.readFileSync(destination)))
+    : manifest.fixtures.map(file => file.path).sort();
   assert.ok(files.length > 0 && files.length <= 256, 'baseline fixture count exceeds bounds');
   const output = execFileSync('cargo', ['run', '--locked', '--offline', '-q', '-p', 'diagram-engine', '--example', 'parser_baseline', '--', ...files], {
     cwd: root, env: { ...process.env, CARGO_TARGET_DIR: '/mnt/data/Projects/ive/target' },
@@ -56,7 +70,7 @@ function collect() {
 export function run(mode) {
   assert.ok(['record', 'check'].includes(mode), 'usage: parser-baseline.mjs record|check');
   if (mode === 'record' && fs.existsSync(destination)) throw new Error(`baseline already exists: ${destination}`);
-  const current = collect();
+  const current = collect(mode);
   if (mode === 'record') fs.writeFileSync(destination, `${JSON.stringify(current, null, 2)}\n`, { flag: 'wx' });
   else compare(current, JSON.parse(fs.readFileSync(destination)));
   console.log(`Verified immutable parser baseline: ${current.fixtures.length} source/family/SVG hashes (${mode}).`);

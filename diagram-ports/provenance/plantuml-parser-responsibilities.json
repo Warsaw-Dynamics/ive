@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "da590bc plus final Task17 cleanup; all 21 generated grammars and no pending syntax or Line adapters; Task3L adds generated chart facade, lexical primitives, typed semantics and measured layout.",
+  "basis": "d3d068a plus Git; 26 generated grammars, no pending syntax or obsolete Line adapters",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -799,6 +799,109 @@
           "reason": "Focused typed topology, immutable identity, geometry and preallocation resource assertions through generated source entries.",
           "symbols": [
             "should_reject_arena_growth_before_allocation_and_measure_actual_payloads#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/git.rs",
+      "groups": [
+        {
+          "role": "infrastructure",
+          "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.",
+          "symbols": [
+            "shift#1",
+            "new#1",
+            "new#2",
+            "admit#1",
+            "retain#1",
+            "push#1",
+            "new#3"
+          ]
+        },
+        {
+          "role": "semantic",
+          "reason": "Typed sparse grid identity/ancestry resolution after generated syntax; visited directional paths, constraints and complete connector ownership.",
+          "symbols": [
+            "cell#1",
+            "blank#1",
+            "commit#1",
+            "at#1",
+            "candidates#1",
+            "next#1",
+            "trace#1",
+            "failure#1",
+            "finish#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
+          "symbols": [
+            "should_preserve_raw_rows_columns_comments_and_typed_older_ancestry#1",
+            "should_store_sparse_long_rows_without_a_width_times_height_grid#1",
+            "should_cancel_inside_sparse_parent_traversal_before_emitting_any_model#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/gitscene.rs",
+      "groups": [
+        {
+          "role": "layout",
+          "reason": "Original finite measured commit/lane/label geometry and owned ancestor links; no excluded upstream layout translation.",
+          "symbols": [
+            "layout#1",
+            "point#1",
+            "boundary#1",
+            "caption#1",
+            "push#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
+          "symbols": [
+            "should_place_newer_commits_above_older_parents_with_measured_nonoverlapping_labels#1",
+            "should_cancel_inside_git_layout_measurement_without_serializing_a_partial_scene#1"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/git.rs",
+      "groups": [
+        {
+          "role": "generated-facade",
+          "reason": "Invokes the registered generated raw Git grammar and maps structured failures once.",
+          "symbols": [
+            "parse#1",
+            "parse_body#1"
+          ]
+        },
+        {
+          "role": "infrastructure",
+          "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.",
+          "symbols": [
+            "push#1",
+            "admit#1"
+          ]
+        },
+        {
+          "role": "lexical",
+          "reason": "Bounded raw primitive cells, identifier decoding and literal comment ownership; generated productions own row structure and EOF.",
+          "symbols": [
+            "row#1",
+            "copy#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.",
+          "symbols": [
+            "should_cancel_long_raw_grid_lexing_before_retaining_a_named_token#1",
+            "should_reject_generated_suffixes_and_cancel_generated_delivery_and_eof#1"
           ]
         }
       ]

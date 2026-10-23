@@ -24,6 +24,8 @@ mod files;
 mod filesscene;
 mod gantt;
 mod ganttscene;
+mod git;
+mod gitscene;
 mod graph;
 mod hcl;
 mod lexer;
@@ -215,6 +217,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let git_model = if wrapper == source::Wrapper::Git {
+        Some(parser::git::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -225,7 +232,9 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if let Some(model) = &bpm_model {
+        let (family, scene) = if let Some(model) = &git_model {
+            ("git", gitscene::layout(model, &mut context)?)
+        } else if let Some(model) = &bpm_model {
             ("bpm", bpmscene::layout(model, &mut context)?)
         } else if let Some(model) = &ebnf_model {
             ("ebnf", railroad::layout(model, &mut context)?)

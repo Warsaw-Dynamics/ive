@@ -60,6 +60,7 @@ enum Mode {
     Outside,
     Uml,
     Literal,
+    Git,
     Other,
 }
 
@@ -77,7 +78,7 @@ impl Ownership {
                 && !self.graph
                 && !self.block
                 && raw.trim_start().starts_with(':'));
-        let literal = raw_body || matches!(self.mode, Mode::Literal);
+        let literal = raw_body || matches!(self.mode, Mode::Literal | Mode::Git);
         let (text, offsets) = if literal || (!self.block && raw.trim_start().starts_with("!define"))
         {
             (raw.to_owned(), Vec::new())
@@ -87,7 +88,10 @@ impl Ownership {
         let command = text.trim();
         let kind = match (raw_body, classify(command)) {
             (true, _) => Kind::Content,
-            (_, Kind::SheetStart | Kind::SheetEnd) if matches!(self.mode, Mode::Literal) => {
+            (_, Kind::Definition) if matches!(self.mode, Mode::Git) => Kind::Content,
+            (_, Kind::SheetStart | Kind::SheetEnd)
+                if matches!(self.mode, Mode::Literal | Mode::Git) =>
+            {
                 Kind::Content
             }
             (_, Kind::Empty) if !raw.trim().is_empty() => Kind::Trivia,
@@ -131,6 +135,7 @@ impl Ownership {
                     | Wrapper::Packet
                     | Wrapper::Board
                     | Wrapper::Hcl => Mode::Literal,
+                    Wrapper::Git => Mode::Git,
                     _ => Mode::Other,
                 };
                 self.graph = wrapper == Wrapper::Chen;
@@ -255,6 +260,7 @@ fn classify(command: &str) -> Kind {
         ("board", Wrapper::Board),
         ("hcl", Wrapper::Hcl),
         ("chen", Wrapper::Chen),
+        ("git", Wrapper::Git),
     ] {
         if command.strip_prefix("@start") == Some(name) {
             return Kind::Start(wrapper);

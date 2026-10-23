@@ -55,9 +55,9 @@
     },
     {
       "generated": "engine/src/plantuml/generated/document.rs",
-      "generatedSha256": "b47855c561f6645a0151f1c1aab53edc7ea505d77c54fa31d9b09aaf0bc54860",
+      "generatedSha256": "353bd6692ad4de15f9905609ced3a0f687fa63f0d699076405c131e057005b1c",
       "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
-      "grammarSha256": "d667adc9f46b5f8ab251ddfa8e015058d1c788aca070469ab8429064c8d75b6a"
+      "grammarSha256": "6d0ff164839deae47862ae90b103ea7a38f90a1a6e91a6876d46b789f1ad72d0"
     },
     {
       "generated": "engine/src/plantuml/generated/ebnf.rs",
@@ -76,6 +76,12 @@
       "generatedSha256": "ecc79fcca2ac4e6f6912475271169171e410478b691241baa98e10602d409f06",
       "grammar": "engine/src/plantuml/parser/grammar/gantt.lalrpop",
       "grammarSha256": "24a60c9cfe97a9d628e501f7f7a6c6688344e558bafff51722384295f49f35d8"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/git.rs",
+      "generatedSha256": "aed10addc1c82fe790f93210e3153b35aefbc857a279fb0e8deda8f68aae3b3b",
+      "grammar": "engine/src/plantuml/parser/grammar/git.lalrpop",
+      "grammarSha256": "78fa5d5b7b66142888ede5ed4d5186a9f0e979b2de53da20636e57cd3a887b08"
     },
     {
       "generated": "engine/src/plantuml/generated/hcl.rs",

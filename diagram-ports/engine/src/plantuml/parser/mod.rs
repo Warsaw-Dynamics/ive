@@ -12,6 +12,7 @@ pub(super) mod ebnf;
 pub(super) mod error;
 pub(super) mod files;
 pub(super) mod gantt;
+pub(super) mod git;
 pub(super) mod hcl;
 pub(super) mod header;
 pub(super) mod json;
@@ -181,3 +182,8 @@ mod generated_salt;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/packet.rs"]
 mod generated_packet;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/git.rs"]
+mod generated_git;
