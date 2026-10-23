@@ -101,6 +101,69 @@ fn should_preserve_primitive_command_caption_and_note_ownership() {
 }
 
 #[test]
+fn should_reject_malformed_quoted_sequence_frame_headers() {
+    // given
+    for command in [
+        "group", "alt", "opt", "loop", "par", "break", "critical", "else",
+    ] {
+        for suffix in [
+            "\"unterminated",
+            "\"bad\\q\"",
+            " \"quoted:unterminated",
+            "::\"unterminated",
+        ] {
+            let header = format!("{command}{suffix}");
+            let body = format!(
+                "participant A\nalt outer\n{header}\nA -> A : body\nend\n{}",
+                if command == "else" { "" } else { "end\n" }
+            );
+            // when
+            let result = render(&diagram(&body), &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(RenderError::InvalidSource(_) | RenderError::UnsupportedFeature(_))
+                ),
+                "accepted malformed header {header}"
+            );
+        }
+    }
+}
+
+#[test]
+fn should_keep_post_colon_sequence_frame_captions_literal() {
+    // given
+    for header in [
+        "group: \"unterminated",
+        "group\"joined\" : \"unterminated",
+        "group \"valid:quoted\" : \"unterminated",
+        "group \"escaped\\\"quote\" : \"unterminated",
+        "else : \"unterminated",
+    ] {
+        let body = format!(
+            "participant A\nalt outer\n{header}\nA -> A : body\nend\n{}",
+            if header.starts_with("else") {
+                ""
+            } else {
+                "end\n"
+            }
+        );
+        // when
+        let rendered = render(&diagram(&body), &options()).unwrap();
+        // then
+        let xml = roxmltree::Document::parse(&rendered.svg).unwrap();
+        assert!(
+            xml.descendants().any(|node| node.has_tag_name("text")
+                && node
+                    .text()
+                    .is_some_and(|text| text.contains("\"unterminated"))),
+            "{header}"
+        );
+    }
+}
+
+#[test]
 fn should_reject_else_under_a_noncanonical_frame_spelling() {
     // given
     for head in ["\"alt\" first", "alt\"joined\" first"] {

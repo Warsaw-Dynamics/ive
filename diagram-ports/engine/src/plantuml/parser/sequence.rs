@@ -203,7 +203,12 @@ impl Lexer<'_> {
     fn row(&mut self, row: &Row, base: usize) -> Result<RowMode, ParseFailure> {
         let start = row.text.len() - row.text.trim_start().len();
         let (head, first_end) = self.first_primitive(row, (base, start))?;
-        let command = match command_token(&head.text) {
+        let cursor = start + first_end;
+        let command = command_token(&head.text);
+        if matches!(command, Some(Token::Frame(_) | Token::Else)) {
+            self.validate_caption_header(row, (base, cursor))?;
+        }
+        let command = match command {
             Some(Token::Frame(kind)) => {
                 Some(Token::Frame(self.frame_kind(kind, row, (base, start))?))
             }
@@ -215,7 +220,6 @@ impl Lexer<'_> {
             Some(Token::Note) => RowMode::Note,
             _ => RowMode::Command,
         };
-        let cursor = start + first_end;
         let caption_start = match &command {
             Some(Token::Frame(kind)) => start + kind.name().len(),
             Some(Token::Else) => start + 4,
@@ -367,6 +371,64 @@ impl Lexer<'_> {
         }
         let value = self.copy(spelling, row.span(base, start..start + bytes))?;
         Ok(FrameKind::Literal(value))
+    }
+
+    fn validate_caption_header(
+        &mut self,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<(), ParseFailure> {
+        let (base, mut cursor) = location;
+        while cursor < row.text.len() {
+            let rest = &row.text[cursor..];
+            let ch = rest.chars().next().unwrap();
+            self.budget
+                .charge(ch.len_utf8())
+                .map_err(ParseFailure::terminal)?;
+            match ch {
+                ':' if !rest.starts_with("::") && !row.text[..cursor].ends_with(':') => {
+                    return Ok(());
+                }
+                '"' => cursor += self.quoted_header_end(row, (base, cursor))?,
+                _ => cursor += ch.len_utf8(),
+            }
+        }
+        Ok(())
+    }
+
+    fn quoted_header_end(
+        &mut self,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<usize, ParseFailure> {
+        let (base, cursor) = location;
+        let mut escaped = false;
+        for (index, ch) in row.text[cursor..].char_indices().skip(1) {
+            self.budget
+                .charge(ch.len_utf8())
+                .map_err(ParseFailure::terminal)?;
+            let bytes = index - 1 + usize::from(ch != '"' || escaped) * ch.len_utf8();
+            bound("label bytes", bytes, 16 * 1024).map_err(ParseFailure::terminal)?;
+            if escaped {
+                if matches!(ch, 'n' | '\\' | '~' | '"') {
+                    escaped = false;
+                    continue;
+                }
+                return Err(ParseFailure::unsupported(
+                    row.span(base, cursor + index..cursor + index + ch.len_utf8()),
+                    "quoted sequence escape",
+                ));
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => return Ok(index + 1),
+                _ => {}
+            }
+        }
+        Err(ParseFailure::syntax(
+            row.span(base, cursor..row.text.len()),
+            "unterminated quoted identifier",
+        ))
     }
 
     fn first_primitive(
@@ -710,6 +772,65 @@ mod tests {
             .unwrap();
             // then
             assert!(format!("{model:?}").contains(expected), "{body}: {model:?}");
+        }
+    }
+
+    #[test]
+    fn should_reject_malformed_quoted_sequence_frame_headers() {
+        // given
+        for command in [
+            "group", "alt", "opt", "loop", "par", "break", "critical", "else",
+        ] {
+            for suffix in [
+                "\"unterminated",
+                "\"bad\\q\"",
+                " \"quoted:unterminated",
+                "::\"unterminated",
+            ] {
+                let header = format!("{command}{suffix}");
+                let source = format!(
+                    "@startuml\nparticipant A\nalt outer\n{header}\nA -> A : body\nend\n{}@enduml",
+                    if command == "else" { "" } else { "end\n" }
+                );
+                // when
+                let result = model(&source, &RenderOptions::default());
+                // then
+                assert!(
+                    matches!(
+                        result,
+                        Err(RenderError::InvalidSource(_) | RenderError::UnsupportedFeature(_))
+                    ),
+                    "accepted malformed header {header}: {result:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn should_keep_post_colon_sequence_frame_captions_literal() {
+        // given
+        for header in [
+            "group: \"unterminated\\q",
+            "group\"joined\" : \"unterminated\\q",
+            "group \"valid:quoted\" : \"unterminated\\q",
+            "group \"escaped\\\"quote\" : \"unterminated\\q",
+            "else : \"unterminated\\q",
+        ] {
+            let source = format!(
+                "@startuml\nparticipant A\nalt outer\n{header}\nA -> A : body\nend\n{}@enduml",
+                if header.starts_with("else") {
+                    ""
+                } else {
+                    "end\n"
+                }
+            );
+            // when
+            let model = model(&source, &RenderOptions::default()).unwrap();
+            // then
+            assert!(
+                format!("{model:?}").contains("unterminated\\\\q"),
+                "{header}: {model:?}"
+            );
         }
     }
 
