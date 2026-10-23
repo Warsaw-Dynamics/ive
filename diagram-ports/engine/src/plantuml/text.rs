@@ -50,7 +50,7 @@ impl LabelMode {
         match self {
             Self::Display => "sans-serif",
             Self::Flow => "serif",
-            Self::Document => "serif",
+            Self::Document => "Times New Roman, Liberation Serif, DejaVu Serif, Noto Serif, serif",
             Self::Tree | Self::Data => "Arial, Liberation Sans, DejaVu Sans, Noto Sans, sans-serif",
         }
     }

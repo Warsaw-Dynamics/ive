@@ -38,11 +38,9 @@ fn should_render_a_standalone_document_with_real_nested_styles_and_restored_runs
         runs.iter()
             .any(|n| n.attribute("text-decoration") == Some("line-through"))
     );
-    assert!(
-        runs.iter()
-            .all(|n| n.attribute("font-family") == Some("serif")
-                && n.attribute("font-size") == Some("14"))
-    );
+    assert!(runs.iter().all(|n| n.attribute("font-family")
+        == Some("Times New Roman, Liberation Serif, DejaVu Serif, Noto Serif, serif")
+        && n.attribute("font-size") == Some("14")));
     usvg::Tree::from_str(&result.svg, &usvg::Options::default()).unwrap();
 }
 
@@ -189,7 +187,10 @@ impl diagram_engine::HostTextMeasurer for Recorder {
         &self,
         request: diagram_engine::HostTextMeasurementRequest<'_>,
     ) -> diagram_engine::HostMeasurementResult {
-        assert_eq!(request.style.font_family.as_deref(), Some("serif"));
+        assert_eq!(
+            request.style.font_family.as_deref(),
+            Some("Times New Roman, Liberation Serif, DejaVu Serif, Noto Serif, serif")
+        );
         assert_eq!(request.style.font_size, 14.);
         let weight = request.style.font_weight.clone().unwrap();
         let width = request.text.chars().count() as f64 * if weight == "700" { 12. } else { 8. };
