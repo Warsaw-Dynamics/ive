@@ -1,0 +1,36 @@
+// Ordered duplicate objects, arrays and strict numbers construct the preserved Value.
+grammar<'s>(builder: &mut crate::plantuml::parser::json::Builder<'_, '_>);
+use crate::plantuml::{data::Value, parser::{json::Token, error::ParseFailure}};
+pub Json: Value = <Value>;
+Value: Value = {
+ "{" <fields:Members> "}" => Value::Object(fields),
+ "[" <values:Elements> "]" => Value::Array(values),
+ <l:@L> <raw:"string"> <r:@R> =>? builder.string(raw, l..r).map(Value::String).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <Number>, "true" => Value::Boolean(true), "false" => Value::Boolean(false), "null" => Value::Null,
+};
+Members: Vec<(String, Value)> = { => Vec::new(), <MembersNonempty> };
+MembersNonempty: Vec<(String, Value)> = {
+ <member:Member> =>? builder.push(Vec::new(), member).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <members:MembersNonempty> "," <member:Member> =>? builder.push(members, member).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Member: (String, Value) = <key:Key> ":" <value:Value> => (key, value);
+Key: String = <l:@L> <raw:"string"> <r:@R> =>? builder.string(raw, l..r).map_err(|error| lalrpop_util::ParseError::User { error });
+Elements: Vec<Value> = { => Vec::new(), <ElementsNonempty> };
+ElementsNonempty: Vec<Value> = {
+ <value:Value> =>? builder.push(Vec::new(), value).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <values:ElementsNonempty> "," <value:Value> =>? builder.push(values, value).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Number: Value = <l:@L> <_sign:Minus?> <_integer:Integer> <_fraction:Fraction?> <_exponent:Exponent?> <r:@R> =>? builder.number(l..r).map_err(|error| lalrpop_util::ParseError::User { error });
+Minus: () = "-";
+Integer: () = { "zero", "digits" };
+Digits: () = { <Integer>, <Digits> <Integer> };
+Fraction: () = "." <Digits>;
+Exponent: () = "exponent" <Sign?> <Digits>;
+Sign: () = { "+", "-" };
+extern { type Location = usize; type Error = ParseFailure;
+ enum Token<'s> {
+ "{" => Token::Object, "}" => Token::EndObject, "[" => Token::Array, "]" => Token::EndArray, ":" => Token::Colon, "," => Token::Comma,
+ "string" => Token::String(<&'s str>), "zero" => Token::Zero, "digits" => Token::Digits, "-" => Token::Minus, "+" => Token::Plus, "." => Token::Dot, "exponent" => Token::Exponent,
+ "true" => Token::True, "false" => Token::False, "null" => Token::Null,
+ }
+}

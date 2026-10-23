@@ -1,17 +1,21 @@
 //! Original bounded parser infrastructure; semantic source traces remain in provenance.
 pub(super) mod activity;
 pub(super) mod board;
+pub(super) mod chen;
 pub(super) mod context;
 pub(super) mod definition;
 pub(super) mod document;
 pub(super) mod error;
 pub(super) mod files;
+pub(super) mod hcl;
 pub(super) mod header;
+pub(super) mod json;
 pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod preamble;
 pub(super) mod sequence;
 pub(super) mod state;
+pub(super) mod structured;
 pub(super) mod token;
 pub(super) mod tree;
 pub(super) mod uml;
@@ -94,3 +98,18 @@ mod generated_uml;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/activity.rs"]
 mod generated_activity;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/chen.rs"]
+mod generated_chen;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/json.rs"]
+mod generated_json;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/hcl.rs"]
+mod generated_hcl;

@@ -138,6 +138,25 @@ pub(crate) fn render(
     } else {
         None
     };
+    let chen_model = if wrapper == source::Wrapper::Chen {
+        Some(parser::chen::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+
+    let json_model = if wrapper == source::Wrapper::Json {
+        Some(parser::json::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+    let hcl_document = if wrapper == source::Wrapper::Hcl {
+        Some(parser::hcl::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+    let hcl_model = hcl_document
+        .map(|document| hcl::lower(document, &mut budget))
+        .transpose()?;
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -149,8 +168,10 @@ pub(crate) fn render(
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
         let (family, scene) = if wrapper == source::Wrapper::Chen {
-            let model = chen::parse(lines, context.budget)?;
-            ("chen", chenscene::layout(&model, &mut context)?)
+            let model = chen_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML Chen selection has no parsed model".into())
+            })?;
+            ("chen", chenscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Files {
             let model = files_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML files selection has no parsed model".into())
@@ -165,9 +186,10 @@ pub(crate) fn render(
             })?;
             ("board", boardscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Hcl {
-            let document = hcl::parse(lines, context.budget)?;
-            let model = hcl::lower(document, context.budget)?;
-            ("hcl", datascene::layout(&model, &mut context)?)
+            let model = hcl_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML HCL selection has no parsed model".into())
+            })?;
+            ("hcl", datascene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Nwdiag {
             let model = nwdiag::parse(lines, context.budget)?;
             ("nwdiag", nwscene::layout(&model, &mut context)?)
@@ -187,13 +209,14 @@ pub(crate) fn render(
                 RenderError::Backend("PlantUML WBS selection has no parsed model".into())
             })?;
             ("wbs", treescene::wbs(model, &mut context)?)
-        } else if matches!(wrapper, source::Wrapper::Json | source::Wrapper::Yaml) {
-            let (family, model) = if wrapper == source::Wrapper::Json {
-                ("json", data::parse_json(lines, context.budget)?)
-            } else {
-                ("yaml", yaml::parse(lines, context.budget)?)
-            };
-            (family, datascene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Json {
+            let model = json_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML JSON selection has no parsed model".into())
+            })?;
+            ("json", datascene::layout(model, &mut context)?)
+        } else if wrapper == source::Wrapper::Yaml {
+            let model = yaml::parse(lines, context.budget)?;
+            ("yaml", datascene::layout(&model, &mut context)?)
         } else if selection == Selection::Activity {
             let model = activity_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML activity selection has no parsed model".into())

@@ -83,6 +83,45 @@ fn should_keep_parallel_cyclic_disconnected_chen_associations() {
 }
 
 #[test]
+fn should_render_keyword_named_chen_endpoints_and_both_composite_spellings() {
+    // given
+    for composite in ["entity {", "entity{"] {
+        let source = format!(
+            "@startchen\nentity C {{\n{composite}\nleaf\n}}\n}}\nentity entity {{\n}}\nrelationship relationship {{\n}}\nentity -1- relationship\nrelationship =N= entity\n@endchen"
+        );
+        // when
+        let svg = draw(&source, "chen");
+        let xml = roxmltree::Document::parse(&svg).unwrap();
+        // then
+        let names = xml
+            .descendants()
+            .filter(|node| node.attribute("data-kind") == Some("chen-attribute"))
+            .map(|node| node.attribute("data-name").unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(names, ["C/entity", "C/entity/leaf"]);
+        let links = xml
+            .descendants()
+            .filter(|node| node.attribute("data-kind") == Some("chen-association"))
+            .collect::<Vec<_>>();
+        assert_eq!(links.len(), 2);
+        assert_eq!(
+            (
+                links[0].attribute("data-owner"),
+                links[0].attribute("data-target")
+            ),
+            (Some("c3"), Some("c4"))
+        );
+        assert_eq!(
+            (
+                links[1].attribute("data-owner"),
+                links[1].attribute("data-target")
+            ),
+            (Some("c4"), Some("c3"))
+        );
+    }
+}
+
+#[test]
 fn should_reject_invalid_chen_ownership_endpoints_and_unsupported_semantics() {
     // given
     for body in [

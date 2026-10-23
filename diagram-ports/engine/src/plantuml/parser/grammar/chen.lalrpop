@@ -1,0 +1,40 @@
+// Original grammar for the authorized MIT Chen subset.
+grammar(builder: &mut crate::plantuml::chen::Builder<'_>);
+use crate::plantuml::{chen::{ChenNode, Name, Participation}, parser::{chen::Token, error::ParseFailure}};
+
+pub Chen: () = <Items> =>? builder.finish().map_err(|error| lalrpop_util::ParseError::User { error });
+Items: () = { => (), <Items> <Item> => () };
+Item: () = {
+    <_open:OwnerOpen> <_attrs:Attributes> "}" "newline" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:Word> "-" <cardinality:Cardinality> "-" <right:Word> "newline" <end:@R> =>? builder.associate((left, right), (cardinality, Participation::Normal), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:Word> "=" <cardinality:Cardinality> "=" <right:Word> "newline" <end:@R> =>? builder.associate((left, right), (cardinality, Participation::Bold), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+OwnerOpen: () = <start:@L> <kind:Kind> <name:Name> "{" "newline" <end:@R> =>? builder.open(kind, name, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Kind: ChenNode = { "entity" => ChenNode::Entity, "relationship" => ChenNode::Relationship };
+Attributes: () = { => (), <Attributes> <Attribute> => () };
+Attribute: () = {
+    <start:@L> <name:Name> "newline" <end:@R> =>? builder.attribute(name, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_open:CompositeOpen> <_attrs:Attributes> "}" "newline" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+CompositeOpen: () = <start:@L> <name:Name> "{" "newline" <end:@R> =>? builder.composite(name, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Name: Name = {
+    <start:@L> <name:Word> <end:@R> =>? builder.single(name, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <display:"quoted"> "as" <alias:Word> <end:@R> =>? builder.named(alias, display, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Word: String = { <value:"word"> => value, <value:"entity"> => value, <value:"relationship"> => value, <value:"as"> => value };
+Cardinality: String = {
+    => String::new(),
+    <start:@L> <value:Word> <end:@R> =>? builder.atom(value, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "(" <left:Word> "," <space:Space> <right:Word> ")" <end:@R> =>? builder.cardinality((left, space, right), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Space: String = { => String::new(), <value:"space"> => value };
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "entity" => Token::Entity(<String>), "relationship" => Token::Relationship(<String>), "as" => Token::As(<String>),
+        "word" => Token::Word(<String>), "quoted" => Token::Quoted(<String>), "space" => Token::Space(<String>),
+        "{" => Token::Open, "}" => Token::Close, "-" => Token::Minus, "=" => Token::Equal,
+        "(" => Token::ParenOpen, ")" => Token::ParenClose, "," => Token::Comma, "newline" => Token::Newline,
+    }
+}

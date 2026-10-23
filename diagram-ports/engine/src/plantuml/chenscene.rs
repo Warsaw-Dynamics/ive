@@ -330,8 +330,7 @@ mod tests {
         for size in [6, 14, 96] {
             let source = "@startchen\nentity \"Long customer name\\nsecond row\" as C {\n\"postal address\\nsecond row\" as address\n}\nrelationship \"Long relationship\\nsecond row\" as R {\nname\n}\nC -1- R\nC =(0,N)= R\nR -- C\nC -- C\nentity Isolated {\n}\n@endchen";
             let mut budget = Budget::new(&RenderOptions::default());
-            let (_, lines) = super::super::source::prepare_document(source, &mut budget).unwrap();
-            let model = super::super::chen::parse(&lines, &mut budget).unwrap();
+            let model = super::super::chen::parse(source, &mut budget).unwrap();
             let session = RenderEnvironment::deterministic().begin_session().unwrap();
             let mut context = Context::new(&session, &mut budget);
             let mut fonts = super::super::style::Preamble::default().fonts;

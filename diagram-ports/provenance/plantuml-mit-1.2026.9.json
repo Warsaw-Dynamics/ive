@@ -139,7 +139,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/hcl.rs"
+        "engine/src/plantuml/hcl.rs",
+        "engine/src/plantuml/parser/hcl.rs",
+        "engine/src/plantuml/parser/grammar/hcl.lalrpop"
       ],
       "behavior": "Ordered textual named blocks, single-block unwrapping, duplicate fields, string scalars and quoted-string/object arrays; backslash consumes next character. Native rejects duplicate topblocks, calls/evaluation/interpolation/nested or bare arrays and retains physical line separators.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -152,7 +154,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/hcl.rs"
+        "engine/src/plantuml/hcl.rs",
+        "engine/src/plantuml/parser/hcl.rs",
+        "engine/src/plantuml/parser/grammar/hcl.lalrpop"
       ],
       "behavior": "Whole hash-comment rows omitted and quoted hashes retained. Native preserves physical newline separators instead of concatenating bare tokens.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -1517,9 +1521,11 @@
       "path": "net/sourceforge/plantuml/json/JsonParser.java",
       "sha256": "78b2c149f9d8fb76cd912525f53e2c0abec1fa606747904e96a37d319bee41e9",
       "rust": [
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/json.rs",
+        "engine/src/plantuml/parser/grammar/json.lalrpop"
       ],
-      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "behavior": "Strict bounded JSON generated structural parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1534,9 +1540,11 @@
       "path": "net/sourceforge/plantuml/json/Json.java",
       "sha256": "2fbdfa64a137ee58d8e96d8a86000d84eefd326e5bd7281cb7bdda5d34d00372",
       "rust": [
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/json.rs",
+        "engine/src/plantuml/parser/grammar/json.lalrpop"
       ],
-      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "behavior": "Strict bounded JSON generated structural parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1552,9 +1560,13 @@
       "sha256": "a2894810da21e1287c93821803a4fc03a79c1530c5ef623aedc982b04a373c63",
       "rust": [
         "engine/src/plantuml/data.rs",
-        "engine/src/plantuml/hcl.rs"
+        "engine/src/plantuml/hcl.rs",
+        "engine/src/plantuml/parser/json.rs",
+        "engine/src/plantuml/parser/grammar/json.lalrpop",
+        "engine/src/plantuml/parser/hcl.rs",
+        "engine/src/plantuml/parser/grammar/hcl.lalrpop"
       ],
-      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected. HCL duplicate fields also append in order, preserving EclipseSource MIT.",
+      "behavior": "Strict bounded JSON generated structural parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected. HCL duplicate fields also append in order, preserving EclipseSource MIT.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -3096,7 +3108,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/chen.rs"
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/parser/chen.rs",
+        "engine/src/plantuml/parser/grammar/chen.lalrpop"
       ],
       "behavior": "Lexical owner stack independent of package containment.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3109,7 +3123,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/chen.rs"
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/parser/chen.rs",
+        "engine/src/plantuml/parser/grammar/chen.lalrpop"
       ],
       "behavior": "Mandatory owner braces, display/alias and entity/relationship kinds; colors, decorations and nested declarations rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3122,7 +3138,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/chen.rs"
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/parser/chen.rs",
+        "engine/src/plantuml/parser/grammar/chen.lalrpop"
       ],
       "behavior": "Owner-qualified identities, duplicate rejection, separate composite attributes and real ownership links; identifier-only aliases.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3136,7 +3154,9 @@
       ],
       "rust": [
         "engine/src/plantuml/chen.rs",
-        "engine/src/plantuml/chenscene.rs"
+        "engine/src/plantuml/chenscene.rs",
+        "engine/src/plantuml/parser/chen.rs",
+        "engine/src/plantuml/parser/grammar/chen.lalrpop"
       ],
       "behavior": "Declared endpoints, undirected associations, central cardinalities, normal/bold participation; mismatched markers rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -3149,7 +3169,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/chen.rs"
+        "engine/src/plantuml/chen.rs",
+        "engine/src/plantuml/parser/chen.rs",
+        "engine/src/plantuml/parser/grammar/chen.lalrpop"
       ],
       "behavior": "Close lexical attribute owner; unbalanced braces rejected.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
