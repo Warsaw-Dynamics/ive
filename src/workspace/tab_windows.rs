@@ -81,7 +81,7 @@ impl Workspace {
                 self.close_stale_tab_windows(cx);
             }
             Err(error) => {
-                eprintln!("ive: cannot open a window for tab {}: {error}", id.value());
+                crate::notices::notify(cx, format!("cannot open a window for tab {}: {error}", id.value()));
                 self.tabs.attach(id);
                 cx.notify();
             }

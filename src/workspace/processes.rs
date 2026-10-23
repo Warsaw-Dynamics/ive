@@ -154,7 +154,7 @@ impl Workspace {
                         self.open_tab(Tab::Process(id), window, cx);
                     }
                 }
-                Err(error) => eprintln!("ive: cannot reattach terminal {}: {error}", session.id),
+                Err(error) => crate::notices::notify(cx, format!("cannot reattach terminal {}: {error}", session.id)),
             }
         }
         self.hosted = Some(terminals);

@@ -1109,7 +1109,7 @@ impl Workspace {
             }
             Target::Scratch(scratch) => {
                 if let Err(error) = self.open_scratch(&scratch, window, cx) {
-                    eprintln!("ive: cannot open scratch {}: {error}", scratch.name);
+                    crate::notices::notify(cx, format!("cannot open scratch {}: {error}", scratch.name));
                 }
             }
             Target::RunConfig { folder, key, .. } => {
@@ -1136,11 +1136,11 @@ impl Workspace {
     /// Shows the process's tab scrolled to the hit's line, its match selected; at its bottom when the line is gone.
     fn show_output_line(&mut self, hit: &OutputHit, window: &mut Window, cx: &mut Context<Self>) {
         let Some(process) = self.processes.get(hit.process) else {
-            eprintln!("ive: cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED);
+            crate::notices::notify(cx, format!("cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED));
             return;
         };
         if let Err(why) = process.view.reveal(|rows| output::frame_at(Some(rows), hit)) {
-            eprintln!("ive: {}:{}: {why}", hit.title, hit.line);
+            crate::notices::notify(cx, format!("{}:{}: {why}", hit.title, hit.line));
         }
         self.show_process(hit.process, window, cx);
         cx.notify();
@@ -1165,7 +1165,7 @@ impl Workspace {
                 Some(tab) => {
                     self.open_tab(tab, window, cx);
                 }
-                None => eprintln!("ive: {} cannot be opened again: what it showed is gone", saved.title()),
+                None => crate::notices::notify(cx, format!("{} cannot be opened again: what it showed is gone", saved.title())),
             },
         }
     }
@@ -1226,7 +1226,7 @@ impl Workspace {
         let names: Vec<String> = existing.into_iter().map(|info| info.name).collect();
         let scratch = ScratchRef { project, name: free_scratch_name(&names) };
         if let Err(error) = self.create_scratch(&scratch, window, cx) {
-            eprintln!("ive: cannot create scratch {}: {error}", scratch.name);
+            crate::notices::notify(cx, format!("cannot create scratch {}: {error}", scratch.name));
         }
     }
 

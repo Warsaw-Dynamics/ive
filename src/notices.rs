@@ -76,12 +76,15 @@ pub fn init(cx: &mut App) {
     cx.set_global(Notices::new(log));
 }
 
-/// Shows `text` as a notice, writes it to `ive.log` and to stderr.
+/// Shows `text` as a notice, writes it to `ive.log` and to stderr; only logs it before [`init`].
 pub fn notify(cx: &mut App, text: impl Into<String>) {
     let text = text.into();
-    eprintln!("ive: {text}");
-    cx.update_global::<Notices, _>(|notices, _| notices.add(text));
-    cx.refresh_windows();
+    if cx.has_global::<Notices>() {
+        eprintln!("ive: {text}");
+        cx.update_global::<Notices, _>(|notices, _| notices.add(text));
+        return cx.refresh_windows();
+    }
+    log_only(&text);
 }
 
 /// Writes `text` to `ive.log` and stderr, for a failure raised where no window can be reached.

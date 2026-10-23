@@ -50,11 +50,11 @@ impl HostedTerminals {
         match Self::with(registry, crate::pty_host_launcher()) {
             Ok(Some(terminals)) => Some(terminals),
             Ok(None) => {
-                eprintln!("ive: another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display()));
                 None
             }
             Err(error) => {
-                eprintln!("ive: cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display()));
                 None
             }
         }
@@ -98,7 +98,7 @@ impl HostedTerminals {
     /// Sessions running now, oldest first; an unreadable registry counts as none, reported to stderr.
     pub fn live(&self) -> Vec<SessionInfo> {
         self.registry.sessions().unwrap_or_else(|error| {
-            eprintln!("ive: cannot list running terminals in {}: {error}", self.registry.dir().display());
+            crate::notices::log_only(&format!("cannot list running terminals in {}: {error}", self.registry.dir().display()));
             Vec::new()
         })
     }

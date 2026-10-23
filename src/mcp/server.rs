@@ -54,7 +54,7 @@ pub fn start(port: u16, token: Token, calls: UnboundedSender<Call>) -> io::Resul
     let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?;
     std::thread::Builder::new().name("mcp".to_owned()).spawn(move || {
         if let Err(error) = runtime.block_on(serve(listener, token, calls)) {
-            eprintln!("ive: MCP server stopped: {error}");
+            crate::notices::log_only(&format!("MCP server stopped: {error}"));
         }
     })?;
     Ok(bound)

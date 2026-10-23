@@ -684,7 +684,7 @@ fn paste(session: &Session, kind: PasteKind, source: ClipboardTarget, cx: &App) 
     match pasted::paste_text(kind, clipboard::read_contents(source, cx), pasted::save_image) {
         Ok(Some(text)) => session.paste(&text),
         Ok(None) => {}
-        Err(error) => eprintln!("ive: cannot save the pasted image: {error}"),
+        Err(error) => crate::notices::log_only(&format!("cannot save the pasted image: {error}")),
     }
 }
 

@@ -56,7 +56,7 @@ pub fn start(launches: Vec<Launch>) {
     std::thread::spawn(move || {
         let failures: Vec<String> = launches.iter().map_while(|launch| run(launch).err()).collect();
         if failures.len() == launches.len() {
-            eprintln!("ive: cannot hand a path to the OS: {}", failures.join("; "));
+            crate::notices::log_only(&format!("cannot hand a path to the OS: {}", failures.join("; ")));
         }
     });
 }
