@@ -463,6 +463,18 @@ Appearance, Scripts, Updates and Third-Party Software; colours are set in themes
 - Dropped from the earlier proposal: the `Task:` line and starter chips, the Files table with Copy path, the Quick
   reference blocks, and `scripting.md`.
 
+## Selecting text, failed tabs and notices
+
+Added 2026-10-23 in the app (`docs/superpowers/specs/2026-10-23-selectable-text-and-errors-design.md`); the mock does
+not draw it yet.
+
+- Read-only text worth pasting elsewhere selects like a web page (drag, double click a word, triple click the
+  block); Copy is the editor's Ctrl+C. Buttons, rows, menus and tooltips do not select.
+- A failed tab: the summary in the error colour with **Copy error** at its right, a grid of details (label muted,
+  value monospace), then the program's last lines in a bordered monospace box.
+- Notices: panels stacked at the bottom right of the main window, 420 px wide, error-coloured border on the sidebar
+  colour: a muted time line with Copy and ×, then the text in the error colour. At most five.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon

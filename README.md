@@ -214,6 +214,38 @@ As a fallback, this repository also reports it: the root `.claude/settings.json`
 to Claude's terminal itself, because hooks run without a terminal and Claude Code drops `OSC 7` from a hook's
 `terminalSequence`. It needs only bash, and sends nothing when something is missing.
 
+### Selecting text, failures and notices
+
+**Selecting text.** Text you may want to paste elsewhere can be selected like text on a web page: press and drag,
+double click a word (a path or a sha counts as one), triple click the whole block, Shift+click to extend. Copy and
+Select All are your editor keys (Ctrl+C and Ctrl+A, Cmd on macOS; whatever `init.rn` binds in the `editor` scope);
+the other editing keys do nothing there. One selection at a time, inside one block; pressing anywhere else clears
+it. Selectable: the Settings pages' texts (the Scripts instructions, the build line, versions, licence texts, where
+settings are saved, errors), commit tab headers (sha, author and date, message, parents), diff tab headers (path,
+source), the Git log tab's worktrees and branches, a project overview's location (the full path), worktree list
+hints, the scratches folder, a scratch tab's header, the run values and run configurations tabs' texts, failed tabs
+and notices. Buttons, tabs, tree rows, menus and tooltips are not: a click there does what it did.
+
+**Failed tabs.** A tab that failed shows what failed, then details (`Command`, `Folder`, `Exit`, `Cause`, `Attach`,
+`Configuration`, `Worktree`…) and the last lines the program printed, all selectable. **Copy error** copies it as
+plain text with IVE's version and the OS, ready to paste into a search or hand to an agent; MCP's `list_tabs` gives
+the same text as a failed tab's `error`. A shell that fails right after start, or dies of a signal IVE did not send
+(Stop, closing the tab and quitting send theirs), keeps its tab with the command, the folder, the exit code or the
+signal by name (`SIGSEGV (11)`) and its last 40 output lines; any other exit closes the tab, as before. A lost
+terminal says why (the connection error) and how to reach it (`ive --pty-host attach <id>`). A run that cannot
+start names its command as `.run.toml` writes it (never a secret), the folder, the configuration and its file. A
+file deleted while open says which (`deleted on disk: <path>`); `.run.toml`, `vars.toml` and `settings.toml` errors
+name the file and line; git errors keep libgit2's class and code; a run's exit by signal reads
+`✕ exit 137 (SIGKILL)`.
+
+**Notices.** A failure away from any tab (a terminal that cannot be re-attached at start, edits not saved, a git
+action or Run from the tree menu that failed, a hub scratch that cannot open, IVE's state not saved) shows at the
+bottom right of the main window, with its time, Copy and ×; at most five, the oldest goes first, and they never
+take the keyboard. Every notice, and the failures no window can show (the terminal registry at start, file
+watching, the MCP server stopping, handing a path to the OS, saving a pasted image), also go to
+`~/.local/state/ive/<profile>/ive.log` (next to `scripts.log`; 1 MB, then its newer half) and stderr. MCP's
+`notices` returns the open ones, newest first, and the log's path.
+
 ### Restart
 
 To work on IVE in IVE, start it with `./restart.sh` (or a copy with your flags) from a terminal. The Restart button
@@ -746,9 +778,10 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 
 | Tool | What it does |
 |---|---|
-| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub |
+| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub, and a failed tab's `error` (the text its Copy error copies) |
 | `active_tab` | the shown tab: id, kind, checkout path; nulls when no tab is shown |
 | `script_status` | scripts from `~/.config/ive/<profile>`: whether `init.rn` loaded (`loaded`, `failed`, `no-init`), its errors with file and line, bindings made, the log file and its last 50 lines |
+| `notices` | the failures shown at the bottom right, newest first (time, text), and the path of `ive.log`, which keeps them all |
 | `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; a run also its `folder`, `config` and `live`) |
 | `list_run_configs` | a folder's `.run.toml` read now: each configuration's key, name, kind (`run`, `serve`), command (secrets as `${name}`), live state and process id; or the file's error |
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
@@ -799,7 +832,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme`, `copy-error` (a failed tab), `notice-copy:<n>`, `notice-close:<n>` (notices, newest first from 0) |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |
