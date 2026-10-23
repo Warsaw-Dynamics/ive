@@ -345,14 +345,6 @@ fn retain(accounting: (&mut usize, usize), bytes: usize) -> Result<(), ParseFail
 }
 
 #[cfg(test)]
-pub(super) fn parse(source: &str, budget: &mut Budget) -> Result<Salt, crate::RenderError> {
-    let document = super::preprocess::prepare(source, budget)?;
-    let mut prepared = super::parser::document::parse(&document, budget)?;
-    super::parser::preamble::parse(&mut prepared, budget)?;
-    super::parser::salt::parse(prepared.body, budget)
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
@@ -363,7 +355,12 @@ mod tests {
         let mut budget = Budget::new(&RenderOptions::default());
         let source = "@startsalt\n{#\nA | {+\n[X] | (X)\nWide | *\n}\n}\n@endsalt";
         // when
-        let model = parse(source, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::parse(
+            source,
+            &mut budget,
+            crate::plantuml::parser::salt::parse,
+        )
+        .unwrap();
         // then
         let Kind::Table(root) = &model.widgets[model.root].kind else {
             panic!()

@@ -448,8 +448,12 @@ mod tests {
 
     fn inspect(source: &str, verify: impl FnOnce(NwDiagram, Layout, Scene)) {
         let mut budget = Budget::new(&RenderOptions::default());
-        let (preamble, lines) = super::super::source::prepare_styled(source, &mut budget).unwrap();
-        let model = super::super::nwdiag::parse(&lines, &mut budget).unwrap();
+        let (preamble, model) = crate::plantuml::parser::test_support::styled(
+            source,
+            &mut budget,
+            crate::plantuml::parser::nwdiag::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget).with_fonts(preamble.fonts);
         let measured = measure(&model, &mut context).unwrap();

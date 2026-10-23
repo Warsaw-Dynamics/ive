@@ -40,24 +40,16 @@ mod tests {
     use super::*;
     use crate::{
         RenderOptions,
-        plantuml::{
-            budget::Budget,
-            parser::{json::parse, outline::test_parse},
-            source::Line,
-        },
+        plantuml::{budget::Budget, parser::json::parse},
     };
 
     #[test]
     fn should_keep_ordered_duplicate_members_and_exact_scalar_identities() {
         // given
-        let lines = [Line {
-            number: 7,
-            text: r#"{"z":1,"a":[null,true,"2",{},[]],"z":3}"#.into(),
-        }];
+        let lines = [r#"{"z":1,"a":[null,true,"2",{},[]],"z":3}"#.to_owned()].join("\n");
         // when
-        let value = test_parse(
-            &lines,
-            "json",
+        let value = crate::plantuml::parser::test_support::body(
+            (&lines, "json"),
             &mut Budget::new(&RenderOptions::default()),
             parse,
         )
@@ -86,14 +78,10 @@ mod tests {
     fn should_bound_numeric_lexemes_before_copying_and_report_original_line() {
         // given
         let source = format!("[\n{}]", "9".repeat(200));
-        let lines = [Line {
-            number: 13,
-            text: source,
-        }];
+        let lines = [source].join("\n");
         // when
-        let error = test_parse(
-            &lines,
-            "json",
+        let error = crate::plantuml::parser::test_support::body(
+            (&lines, "json"),
             &mut Budget::new(&RenderOptions::default()),
             parse,
         )

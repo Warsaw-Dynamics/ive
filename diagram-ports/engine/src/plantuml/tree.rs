@@ -280,31 +280,11 @@ fn smart_level(
     ))
 }
 #[cfg(test)]
-use super::source::Line;
-#[cfg(test)]
-pub(super) fn parse_mindmap(
-    lines: &[Line],
-    budget: &mut Budget,
-) -> Result<Mindmap, crate::RenderError> {
-    super::parser::outline::test_parse(lines, "mindmap", budget, super::parser::tree::parse_mindmap)
-}
-#[cfg(test)]
-pub(super) fn parse_wbs(lines: &[Line], budget: &mut Budget) -> Result<Wbs, crate::RenderError> {
-    super::parser::outline::test_parse(lines, "wbs", budget, super::parser::tree::parse_wbs)
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
-    fn lines(source: &str) -> Vec<Line> {
-        source
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 2,
-                text: s.into(),
-            })
-            .collect()
+    fn lines(source: &str) -> String {
+        source.to_owned()
     }
 
     #[test]
@@ -315,7 +295,12 @@ mod tests {
         );
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let model = parse_mindmap(&source, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&source, "mindmap"),
+            &mut budget,
+            crate::plantuml::parser::tree::parse_mindmap,
+        )
+        .unwrap();
         // then
         assert_eq!(model.roots, [0, 5]);
         assert_eq!(
@@ -344,7 +329,12 @@ mod tests {
         );
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let model = parse_wbs(&source, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&source, "wbs"),
+            &mut budget,
+            crate::plantuml::parser::tree::parse_wbs,
+        )
+        .unwrap();
         // then
         assert_eq!(
             model.nodes.iter().map(|n| n.parent).collect::<Vec<_>>(),
@@ -371,8 +361,16 @@ mod tests {
         // given
         let source = lines("* Root\n*** Child\n***** Grandchild");
         // when
-        let mindmap = parse_mindmap(&source, &mut Budget::new(&RenderOptions::default()));
-        let wbs = parse_wbs(&source, &mut Budget::new(&RenderOptions::default()));
+        let mindmap = crate::plantuml::parser::test_support::body(
+            (&source, "mindmap"),
+            &mut Budget::new(&RenderOptions::default()),
+            crate::plantuml::parser::tree::parse_mindmap,
+        );
+        let wbs = crate::plantuml::parser::test_support::body(
+            (&source, "wbs"),
+            &mut Budget::new(&RenderOptions::default()),
+            crate::plantuml::parser::tree::parse_wbs,
+        );
         // then
         assert!(mindmap.is_ok());
         assert!(wbs.is_err());

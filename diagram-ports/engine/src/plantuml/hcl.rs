@@ -63,24 +63,17 @@ fn lower_value(value: HclValue, depth: usize, budget: &mut Budget) -> Result<Val
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        RenderOptions,
-        plantuml::{
-            parser::{hcl::parse, outline::test_parse},
-            source::Line,
-        },
-    };
+    use crate::{RenderOptions, plantuml::parser::hcl::parse};
 
     #[test]
     fn should_preserve_hcl_block_field_types_order_and_duplicates() {
         // given
-        let lines = vec![Line {
-            number: 2,
-            text: "service \"billing\" { x=3 x=true y=[\"north\",{}] }".into(),
-        }];
+        let lines = ["service \"billing\" { x=3 x=true y=[\"north\",{}] }".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let document = test_parse(&lines, "hcl", &mut budget, parse).unwrap();
+        let document =
+            crate::plantuml::parser::test_support::body((&lines, "hcl"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(document.blocks[0].name, "service \"billing\"");
         assert_eq!(

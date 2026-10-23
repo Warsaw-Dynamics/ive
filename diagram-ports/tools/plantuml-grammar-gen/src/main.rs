@@ -13,20 +13,52 @@ const GRAMMARS: &str = "engine/src/plantuml/parser/grammar";
 const GENERATED: &str = "engine/src/plantuml/generated";
 
 fn main() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap();
     let arguments: Vec<_> = std::env::args().skip(1).collect();
     let result = match arguments.as_slice() {
-        [mode] => run(root, mode),
-        _ => Err("usage: plantuml-grammar-gen generate|check".into()),
+        [mode, flag, root] if flag == "--root" => match validate_root(Path::new(root)) {
+            Ok(()) => run(Path::new(root), mode),
+            Err(error) => Err(format!("invalid generation root {root:?}: {error}").into()),
+        },
+        _ => Err(
+            "usage: plantuml-grammar-gen generate|check --root ABSOLUTE_DIAGRAM_PORTS_ROOT".into(),
+        ),
     };
     if let Err(error) = result {
         eprintln!("PlantUML generation failed: {error}");
         std::process::exit(1);
     }
+}
+
+fn validate_root(root: &Path) -> Result<()> {
+    if root.is_absolute() && fs::canonicalize(root)? == root {
+        for (relative, marker) in [
+            ("Cargo.toml", "[workspace]"),
+            ("engine/Cargo.toml", "name = \"diagram-engine\""),
+            (
+                "tools/plantuml-grammar-gen/Cargo.toml",
+                "name = \"plantuml-grammar-gen\"",
+            ),
+        ] {
+            let file = root.join(relative);
+            if fs::canonicalize(&file)? != file
+                || !std::str::from_utf8(&read_bounded(&file, 262144)?)?.contains(marker)
+            {
+                return Err(format!("invalid diagram-ports root marker: {file:?}").into());
+            }
+        }
+        for relative in [GRAMMARS, "engine/src/plantuml"] {
+            let directory = root.join(relative);
+            if fs::canonicalize(&directory)? != directory || !directory.is_dir() {
+                return Err(format!("invalid diagram-ports root directory: {directory:?}").into());
+            }
+        }
+        let output = root.join(GENERATED);
+        if output.exists() && (fs::canonicalize(&output)? != output || !output.is_dir()) {
+            return Err(format!("invalid generated output directory: {output:?}").into());
+        }
+        return Ok(());
+    }
+    Err(format!("diagram-ports root must be an absolute canonical directory: {root:?}").into())
 }
 
 fn settings() -> Value {

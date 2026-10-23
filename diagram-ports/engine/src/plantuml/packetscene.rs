@@ -115,7 +115,7 @@ pub(super) fn layout(model: &Packet, context: &mut Context<'_>) -> Result<Scene,
 
 #[cfg(test)]
 mod tests {
-    use super::super::{budget::Budget, source::Line};
+    use super::super::budget::Budget;
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
@@ -123,17 +123,15 @@ mod tests {
     #[test]
     fn should_conserve_fragment_widths_and_retain_inclusive_field_identity() {
         // given
-        let lines: Vec<_> = "colwidth=8\n0-2: P\n3-22: Data"
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 1,
-                text: s.into(),
-            })
-            .collect();
+        let lines = "colwidth=8\n0-2: P\n3-22: Data".to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let model = super::super::packet::parse(&lines, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&lines, "packetdiag"),
+            &mut budget,
+            crate::plantuml::parser::packet::parse,
+        )
+        .unwrap();
         // then
         assert_eq!(model.fields[1].start, 3);
         assert_eq!(model.fields[1].end, 22);
@@ -154,16 +152,14 @@ mod tests {
             let input = format!(
                 "colwidth=12\nscale_interval=4\nscale_direction={direction}\nnode_height=50\nsame_height=true\n0-3: Four\n4-11: Eight [height=2]\n12-15: Next"
             );
-            let lines: Vec<_> = input
-                .lines()
-                .enumerate()
-                .map(|(i, s)| Line {
-                    number: i + 1,
-                    text: s.into(),
-                })
-                .collect();
+            let lines = input.to_owned();
             let mut budget = Budget::new(&RenderOptions::default());
-            let model = super::super::packet::parse(&lines, &mut budget).unwrap();
+            let model = crate::plantuml::parser::test_support::body(
+                (&lines, "packetdiag"),
+                &mut budget,
+                crate::plantuml::parser::packet::parse,
+            )
+            .unwrap();
             let session = RenderEnvironment::deterministic().begin_session().unwrap();
             // when
             let scene = layout(&model, &mut Context::new(&session, &mut budget)).unwrap();
@@ -218,9 +214,14 @@ mod tests {
     #[test]
     fn should_reserve_variable_row_maximum_when_the_last_cell_is_shorter() {
         // given
-        let lines:Vec<_>="colwidth=8\nnode_height=50\nsame_height=false\n0-3: Tall [height=3]\n4-7: Short\n8-11: Next".lines().enumerate().map(|(i,s)|Line{number:i+1,text:s.into()}).collect();
+        let lines="colwidth=8\nnode_height=50\nsame_height=false\n0-3: Tall [height=3]\n4-7: Short\n8-11: Next".to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = super::super::packet::parse(&lines, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&lines, "packetdiag"),
+            &mut budget,
+            crate::plantuml::parser::packet::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         // when
         let scene = layout(&model, &mut Context::new(&session, &mut budget)).unwrap();

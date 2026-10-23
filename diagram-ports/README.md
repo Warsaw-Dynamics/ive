@@ -2,17 +2,18 @@
 
 An independent Rust workspace for a headless diagram engine and a standalone native pgui viewer. IVE's root workspace is unchanged.
 
-PlantUML uses checked-in LALRPOP grammars for supported same-line literal `!define` declarations, paired documents/directive placement, typed family headers, preambles/styles/chrome, the complete supported sequence syntax, scoped state declarations/composites/descriptions/transitions, separate mindmap/WBS markers, files paths/raw notes and board stage rows. Generated entries construct the preserved Sequence, State, Mindmap, Wbs, Files and Board models directly. One shared lexical owner protects authored and expanded comments, quotes and raw payloads; structured failures map expanded byte spans once through the origin document. The immutable evaluator/registry, semantic models, layouts and Creole remain. Other family parsers temporarily receive materialized physical lines pending their syntax migrations. Ordinary builds/renders require no generator. Developer regeneration and read-only checks use an independent pinned closure:
+PlantUML uses 21 checked-in LALRPOP grammars for definitions, documents, headers, preambles/styles/chrome, sequence, state, UML, activity, Chen, mindmap/WBS, files, board, JSON/HCL/YAML, timing/Gantt, Salt, nwdiag, packetdiag and Creole. Generated entries construct the preserved models. One shared lexical owner protects authored and expanded comments, quotes and raw payloads; structured failures map expanded byte spans once through the origin document. Production frontends borrow body spans without a materialized physical-line adapter. The immutable evaluator/registry, semantic models and layouts remain. Ordinary builds/renders require no generator. Developer regeneration and read-only checks use an independent pinned closure; run from this directory:
 
 ```sh
-CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- generate
-CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- check
-python3 tools/audit-plantuml-generator.py check
+diagram_root="$(pwd -P)"
+(cd /tmp && CARGO_TARGET_DIR=/mnt/data/Projects/ive/target/diagram-generator-local cargo run --locked --offline --manifest-path "$diagram_root/tools/plantuml-grammar-gen/Cargo.toml" -- generate --root "$diagram_root")
+(cd /tmp && CARGO_TARGET_DIR=/mnt/data/Projects/ive/target/diagram-generator-local cargo run --locked --offline --manifest-path "$diagram_root/tools/plantuml-grammar-gen/Cargo.toml" -- check --root "$diagram_root")
+(cd /tmp && python3 "$diagram_root/tools/audit-plantuml-generator.py" check)
 python3 -B tools/audit-plantuml-generator.test.py
 node tools/parser-baseline.mjs check
 ```
 
-Generation uses LALRPOP 0.23.2, no default features, explicit empty grammar features and fresh temporary input/output mirrors. `check` byte-compares generated Rust and the deterministic inventory without writing tracked outputs. Never edit or format generated files. The immutable 43-fixture baseline was recorded from the public render API before this cutover; `record` refuses an existing baseline. It retains exact source, family and deterministic SVG hashes, independently of parser internals. [Parser admission evidence](provenance/plantuml-parser-admission.md) documents the actual generated stack/reduction and cancellation bounds.
+Generation uses LALRPOP 0.23.2, no default features, explicit empty grammar features and fresh temporary input/output mirrors. Both commands require an absolute canonical `--root` with valid workspace/engine/generator markers; neither the binary's compiled checkout nor its working directory selects an input/output root. `check` byte-compares generated Rust and the deterministic inventory without writing tracked outputs. Never edit or format generated files. The immutable 43-fixture baseline was recorded from the public render API before this cutover; `record` refuses an existing baseline. The exporter reports its actual render limits and verifies its deterministic measurement route, so configuration drift fails alongside source, family and SVG hash drift. [Parser admission evidence](provenance/plantuml-parser-admission.md) documents the actual generated stack/reduction and cancellation bounds. [The residual inventory](provenance/plantuml-parser-residuals.md) records complete current syntax ownership and retained lexical/model helpers; the source audit checks all authored function classifications and exact generated hashes/registration.
 
 From this directory:
 

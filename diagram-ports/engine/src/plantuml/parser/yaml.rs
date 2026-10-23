@@ -597,10 +597,7 @@ pub(in crate::plantuml) fn test_flow(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        RenderOptions,
-        plantuml::{parser::outline::test_parse, source::Line},
-    };
+    use crate::RenderOptions;
 
     fn document(source: &str, budget: &mut Budget) -> crate::plantuml::origin::Document {
         crate::plantuml::preprocess::prepare(source, budget).unwrap()
@@ -902,15 +899,16 @@ mod tests {
     #[test]
     fn should_generate_ordered_yaml_maps_lists_and_duplicate_replacement() {
         // given
-        let lines = [Line {
-            number: 2,
-            text:
-                "z: first\na: 2\nz: last\npeople:\n\t- name: one\n\t  age: true\n\t-\n\t  name: two"
-                    .into(),
-        }];
+        let lines = [
+            "z: first\na: 2\nz: last\npeople:\n\t- name: one\n\t  age: true\n\t-\n\t  name: two"
+                .to_owned(),
+        ]
+        .join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let actual = test_parse(&lines, "yaml", &mut budget, parse).unwrap();
+        let actual =
+            crate::plantuml::parser::test_support::body((&lines, "yaml"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(
             actual,
@@ -934,10 +932,12 @@ mod tests {
     #[test]
     fn should_generate_literal_chunks_and_narrow_escaped_flow_fields() {
         // given
-        let lines = [Line { number: 2, text: "a: |\n  first  \nplain\n  second: value\n\nb: [one, \"two,three\", 'x\\ny',]\nempty: []".into() }];
+        let lines = ["a: |\n  first  \nplain\n  second: value\n\nb: [one, \"two,three\", 'x\\ny',]\nempty: []".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let actual = test_parse(&lines, "yaml", &mut budget, parse).unwrap();
+        let actual =
+            crate::plantuml::parser::test_support::body((&lines, "yaml"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(
             actual,
@@ -974,13 +974,11 @@ mod tests {
             "-\n  - nested",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: text.into(),
-            }];
+            let lines = [text.to_owned()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "yaml", &mut budget, parse);
+            let result =
+                crate::plantuml::parser::test_support::body((&lines, "yaml"), &mut budget, parse);
             // then
             assert!(result.is_err(), "{text}");
         }

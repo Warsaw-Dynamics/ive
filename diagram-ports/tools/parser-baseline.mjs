@@ -8,12 +8,19 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const destination = path.join(root, 'fixtures/plantuml/parser-baseline.json');
-const configuration = Object.freeze({
-  language: 'PlantUml', measurement: 'default deterministic', sourceBytes: 262144,
-  svgBytes: 16777216, modelItems: 10000, nestingDepth: 64,
-  layoutWork: 5000000, timeoutMilliseconds: 10000,
-});
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+
+export function decodeExport(output, files) {
+  const [header, ...records] = output.trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(header?.configuration && typeof header.configuration === 'object', 'missing exporter configuration');
+  assert.equal(records.length, files.length, 'exporter fixture count changed');
+  records.forEach((record, index) => {
+    assert.equal(record.path, files[index], 'exporter fixture order changed');
+    assert.equal(typeof record.family, 'string');
+    assert.equal(typeof record.svg, 'string');
+  });
+  return { configuration: header.configuration, records };
+}
 
 export function compare(currentDocument, baselineDocument) {
   assert.deepEqual(currentDocument.configuration, baselineDocument.configuration);
@@ -36,8 +43,7 @@ function collect() {
     cwd: root, env: { ...process.env, CARGO_TARGET_DIR: '/mnt/data/Projects/ive/target' },
     maxBuffer: 32 * 1024 * 1024, timeout: 300000,
   }).toString();
-  const records = output.trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(records.length, files.length);
+  const { configuration, records } = decodeExport(output, files);
   const fixtures = records.map((record, index) => {
     assert.equal(record.path, files[index]);
     const sourceSha256 = sha256(fs.readFileSync(path.join(root, record.path)));

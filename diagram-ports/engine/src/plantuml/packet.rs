@@ -254,14 +254,6 @@ fn positive(value: usize, span: &std::ops::Range<usize>) -> Result<usize, ParseF
     Ok(value)
 }
 
-#[cfg(test)]
-pub(super) fn parse(
-    lines: &[super::source::Line],
-    budget: &mut Budget,
-) -> Result<Packet, RenderError> {
-    super::parser::outline::test_parse(lines, "packetdiag", budget, super::parser::packet::parse)
-}
-
 fn fragment(
     fields: &[Field],
     config: &Config,
@@ -295,18 +287,19 @@ fn fragment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RenderOptions, plantuml::source::Line};
+    use crate::RenderOptions;
 
     #[test]
     fn should_reject_oversized_packet_label_before_fragment_generation() {
         // given
-        let lines = vec![Line {
-            number: 3,
-            text: format!("0: {}", "x".repeat(16_385)),
-        }];
+        let lines = [format!("0: {}", "x".repeat(16_385))].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let result = parse(&lines, &mut budget);
+        let result = crate::plantuml::parser::test_support::body(
+            (&lines, "packetdiag"),
+            &mut budget,
+            crate::plantuml::parser::packet::parse,
+        );
         // then
         assert!(
             result.is_err(),

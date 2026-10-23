@@ -418,10 +418,7 @@ fn word(raw: &str, mode: Mode, lexer: &mut Lexer<'_, Token>) -> Result<Token, Pa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        RenderOptions,
-        plantuml::{packet::Direction, parser::outline::test_parse, source::Line},
-    };
+    use crate::{RenderOptions, plantuml::packet::Direction};
 
     fn prepared_source(source: &str, budget: &mut Budget) -> crate::plantuml::origin::Document {
         crate::plantuml::preprocess::prepare(source, budget).unwrap()
@@ -456,13 +453,12 @@ mod tests {
     #[test]
     fn should_preserve_sparse_maximum_bit_identity_without_expanding_gaps() {
         // given
-        let lines = [Line {
-            number: 2,
-            text: "9999999: Sparse".into(),
-        }];
+        let lines = ["9999999: Sparse".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let model = test_parse(&lines, "packetdiag", &mut budget, parse).unwrap();
+        let model =
+            crate::plantuml::parser::test_support::body((&lines, "packetdiag"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(
             (model.fields[0].start, model.fields[0].end),
@@ -561,17 +557,15 @@ mod tests {
     #[test]
     fn should_stop_huge_packet_projection_at_the_existing_model_budget() {
         // given
-        let lines = [Line {
-            number: 2,
-            text: "colwidth=1\n0-9999999: Huge".into(),
-        }];
+        let lines = ["colwidth=1\n0-9999999: Huge".to_owned()].join("\n");
         let mut options = RenderOptions::default();
         options.limits.model_items = 3;
         let mut budget = Budget::new(&options);
         // when
-        let error = test_parse(&lines, "packetdiag", &mut budget, parse)
-            .err()
-            .unwrap();
+        let error =
+            crate::plantuml::parser::test_support::body((&lines, "packetdiag"), &mut budget, parse)
+                .err()
+                .unwrap();
         // then
         assert!(
             error
@@ -751,16 +745,14 @@ mod tests {
     #[test]
     fn should_report_the_offending_packet_configuration_value() {
         // given
-        let lines = [Line {
-            number: 2,
-            text: "scale_direction=sideways\n0: X".into(),
-        }];
+        let lines = ["scale_direction=sideways\n0: X".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let error = test_parse(&lines, "packetdiag", &mut budget, parse)
-            .err()
-            .unwrap()
-            .to_string();
+        let error =
+            crate::plantuml::parser::test_support::body((&lines, "packetdiag"), &mut budget, parse)
+                .err()
+                .unwrap()
+                .to_string();
         // then
         assert!(error.contains("sideways"), "{error}");
         assert!(error.contains("at line 2,"), "{error}");
@@ -779,15 +771,16 @@ mod tests {
             "bogus",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: format!("{key}=1\n0: X"),
-            }];
+            let lines = [format!("{key}=1\n0: X")].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let error = test_parse(&lines, "packetdiag", &mut budget, parse)
-                .err()
-                .unwrap();
+            let error = crate::plantuml::parser::test_support::body(
+                (&lines, "packetdiag"),
+                &mut budget,
+                parse,
+            )
+            .err()
+            .unwrap();
             // then
             assert!(
                 matches!(error, RenderError::UnsupportedFeature(_)),
@@ -824,13 +817,15 @@ mod tests {
             "packetdiag {\ncolwidth=8;\n0-2: Prefix\n3-22: Payload\n* Flags [len=2,height=3]\n}",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: text.into(),
-            }];
+            let lines = [text.to_owned()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let model = test_parse(&lines, "packetdiag", &mut budget, parse).unwrap();
+            let model = crate::plantuml::parser::test_support::body(
+                (&lines, "packetdiag"),
+                &mut budget,
+                parse,
+            )
+            .unwrap();
             // then
             assert_eq!(
                 model
@@ -859,10 +854,12 @@ mod tests {
     #[test]
     fn should_generate_final_configuration_effects_and_literal_packet_labels() {
         // given
-        let lines = [Line { number: 2, text: "0-3: title **literal** /' # !include = value\n4-11: Eight [height=2]\ncolwidth=12\nscale_interval=9999999\nscale_direction=rtl\nnode_height=50\nsame_height=true".into() }];
+        let lines = ["0-3: title **literal** /' # !include = value\n4-11: Eight [height=2]\ncolwidth=12\nscale_interval=9999999\nscale_direction=rtl\nnode_height=50\nsame_height=true".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let model = test_parse(&lines, "packetdiag", &mut budget, parse).unwrap();
+        let model =
+            crate::plantuml::parser::test_support::body((&lines, "packetdiag"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(
             (
@@ -910,13 +907,14 @@ mod tests {
             "packetdiag\n{\n0: X\n}",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: text.into(),
-            }];
+            let lines = [text.to_owned()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "packetdiag", &mut budget, parse);
+            let result = crate::plantuml::parser::test_support::body(
+                (&lines, "packetdiag"),
+                &mut budget,
+                parse,
+            );
             // then
             assert!(result.is_err(), "{text}");
         }

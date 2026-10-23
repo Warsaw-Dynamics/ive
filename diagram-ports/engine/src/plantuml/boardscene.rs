@@ -78,7 +78,7 @@ pub(super) fn layout(model: &Board, context: &mut Context<'_>) -> Result<Scene, 
 
 #[cfg(test)]
 mod tests {
-    use super::super::{budget::Budget, source::Line};
+    use super::super::budget::Budget;
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
@@ -86,16 +86,15 @@ mod tests {
     #[test]
     fn should_project_nearest_lower_ancestors_to_dfs_columns_and_empty_stages() {
         // given
-        let lines: Vec<_> = "Checkout\n+ Draft\n++ Validate\n+ Submit\n+++ Ship\nAudit\n+ Record"
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 1,
-                text: s.into(),
-            })
-            .collect();
+        let lines =
+            "Checkout\n+ Draft\n++ Validate\n+ Submit\n+++ Ship\nAudit\n+ Record".to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = super::super::board::parse(&lines, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&lines, "board"),
+            &mut budget,
+            crate::plantuml::parser::board::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget);
         // when
@@ -141,18 +140,18 @@ mod tests {
     #[test]
     fn should_contain_long_board_labels_with_measured_card_pitches() {
         // given
-        let lines = vec![
-            Line {
-                number: 1,
-                text: "A long card title with significant measured width".into(),
-            },
-            Line {
-                number: 2,
-                text: "+ Child".into(),
-            },
-        ];
+        let lines = [
+            "A long card title with significant measured width".to_owned(),
+            "+ Child".to_owned(),
+        ]
+        .join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = super::super::board::parse(&lines, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&lines, "board"),
+            &mut budget,
+            crate::plantuml::parser::board::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget);
         // when

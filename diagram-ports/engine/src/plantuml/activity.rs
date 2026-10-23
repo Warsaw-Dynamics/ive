@@ -56,33 +56,7 @@ pub(super) enum GroupKind {
 }
 
 #[cfg(test)]
-pub(super) fn parse(
-    source: &str,
-    budget: &mut super::budget::Budget,
-) -> Result<Block, crate::RenderError> {
-    use super::origin::{Document, Origin, Segment, SourceSpan};
-    budget.text(source.len())?;
-    let document = Document {
-        text: source.to_owned(),
-        segments: vec![Segment {
-            output: 0..source.len(),
-            origin: Origin::Direct(SourceSpan {
-                start_byte: 0,
-                end_byte: source.len(),
-                line: 1,
-                column: 1,
-            }),
-        }],
-        definitions: Vec::new(),
-    };
-    let mut prepared = super::parser::document::parse(&document, budget)?;
-    super::parser::preamble::parse(&mut prepared, budget)?;
-    super::parser::activity::parse(prepared.body, budget)
-}
-
-#[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{RenderError, plantuml::budget::Budget};
     #[test]
     fn should_scan_whitespace_only_multiline_actions_once() {
@@ -92,7 +66,11 @@ mod tests {
         options.limits.timeout = std::time::Duration::from_millis(500);
         let mut budget = Budget::new(&options);
         // when
-        let result = parse(&source, &mut budget);
+        let result = crate::plantuml::parser::test_support::literal(
+            &source,
+            &mut budget,
+            crate::plantuml::parser::activity::parse,
+        );
         // then
         assert!(
             matches!(result, Err(RenderError::Backend(ref message)) if message == "PlantUML label bytes value 16385 exceeds limit 16384"),
@@ -108,9 +86,17 @@ mod tests {
         let options = crate::RenderOptions::default();
         let mut budget = Budget::new(&options);
         // when
-        let result = parse(&source, &mut budget);
+        let result = crate::plantuml::parser::test_support::literal(
+            &source,
+            &mut budget,
+            crate::plantuml::parser::activity::parse,
+        );
         options.control.cancel();
-        let cancelled = parse(&source, &mut budget);
+        let cancelled = crate::plantuml::parser::test_support::literal(
+            &source,
+            &mut budget,
+            crate::plantuml::parser::activity::parse,
+        );
         // then
         assert!(result.is_ok(), "{result:?}");
         assert!(budget.work < source.len() * 8);

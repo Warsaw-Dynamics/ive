@@ -103,12 +103,6 @@ impl<'b> Builder<'b> {
     }
 }
 #[cfg(test)]
-use super::source::Line;
-#[cfg(test)]
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Board, crate::RenderError> {
-    super::parser::outline::test_parse(lines, "board", budget, super::parser::board::parse)
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
@@ -116,13 +110,14 @@ mod tests {
     #[test]
     fn should_reject_oversized_board_label_during_model_construction() {
         // given
-        let lines = vec![Line {
-            number: 3,
-            text: "x".repeat(16_385),
-        }];
+        let lines = ["x".repeat(16_385)].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let result = parse(&lines, &mut budget);
+        let result = crate::plantuml::parser::test_support::body(
+            (&lines, "board"),
+            &mut budget,
+            crate::plantuml::parser::board::parse,
+        );
         // then
         assert!(result.is_err(), "oversized card retained before layout");
     }

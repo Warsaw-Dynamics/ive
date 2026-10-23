@@ -3,9 +3,6 @@ use super::{
     budget::{Budget, bound},
     parser::{context, error::ParseFailure},
 };
-#[cfg(test)]
-use crate::RenderError;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum AttributeOwner {
     Entity(usize),
@@ -421,14 +418,6 @@ fn push<T>(
 }
 
 #[cfg(test)]
-pub(super) fn parse(source: &str, budget: &mut Budget) -> Result<Chen, RenderError> {
-    let document = super::preprocess::prepare(source, budget)?;
-    let mut parsed = super::parser::document::parse(&document, budget)?;
-    super::parser::preamble::parse(&mut parsed, budget)?;
-    super::parser::chen::parse(parsed.body, budget)
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
@@ -446,7 +435,12 @@ mod tests {
             &mut budget,
         );
         // when
-        let model = parse(&input, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::parse(
+            &input,
+            &mut budget,
+            crate::plantuml::parser::chen::parse,
+        )
+        .unwrap();
         // then
         assert_eq!(
             model
@@ -472,7 +466,12 @@ mod tests {
                 &mut budget,
             );
             // when
-            let model = parse(&input, &mut budget).unwrap();
+            let model = crate::plantuml::parser::test_support::parse(
+                &input,
+                &mut budget,
+                crate::plantuml::parser::chen::parse,
+            )
+            .unwrap();
             // then
             assert_eq!(
                 model
@@ -498,7 +497,12 @@ mod tests {
             &mut budget,
         );
         // when
-        let model = parse(&input, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::parse(
+            &input,
+            &mut budget,
+            crate::plantuml::parser::chen::parse,
+        )
+        .unwrap();
         // then
         assert_eq!(
             model
@@ -561,7 +565,12 @@ mod tests {
         let mut budget = Budget::new(&options);
         let input = lines(&body, &mut budget);
         // when
-        let error = parse(&input, &mut budget).unwrap_err();
+        let error = crate::plantuml::parser::test_support::parse(
+            &input,
+            &mut budget,
+            crate::plantuml::parser::chen::parse,
+        )
+        .unwrap_err();
         // then
         assert!(
             error.to_string().contains("expanded model text bytes"),
@@ -594,7 +603,12 @@ mod tests {
         options.limits.model_items = 1;
         let mut budget = Budget::new(&options);
         // when
-        let error = parse("@startchen\nentity \"unterminated\n@endchen", &mut budget).unwrap_err();
+        let error = crate::plantuml::parser::test_support::parse(
+            "@startchen\nentity \"unterminated\n@endchen",
+            &mut budget,
+            crate::plantuml::parser::chen::parse,
+        )
+        .unwrap_err();
         // then
         assert!(
             error

@@ -740,9 +740,12 @@ mod tests {
 
     fn draw(body: &str) -> Scene {
         let mut budget = Budget::new(&RenderOptions::default());
-        let model =
-            super::super::activity::parse(&format!("@startuml\n{body}\n@enduml"), &mut budget)
-                .unwrap();
+        let model = crate::plantuml::parser::test_support::literal(
+            &format!("@startuml\n{body}\n@enduml"),
+            &mut budget,
+            crate::plantuml::parser::activity::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         layout(&model, &mut Context::new(&session, &mut budget)).unwrap()
     }
@@ -1001,9 +1004,10 @@ mod tests {
     fn should_stop_activity_composition_when_work_is_exhausted() {
         // given
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = super::super::activity::parse(
+        let model = crate::plantuml::parser::test_support::literal(
             "@startuml\nstart\nif (x)\n:A;\nelse\n:B;\nendif\nstop\n@enduml",
             &mut budget,
+            crate::plantuml::parser::activity::parse,
         )
         .unwrap();
         budget.limits.layout_work = budget.work + 10;

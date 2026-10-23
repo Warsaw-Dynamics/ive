@@ -223,25 +223,6 @@ pub(in crate::plantuml) enum Syntax {
 }
 
 #[cfg(test)]
-pub(in crate::plantuml) fn test_parse<T>(
-    lines: &[crate::plantuml::source::Line],
-    wrapper: &str,
-    budget: &mut Budget,
-    parse: impl FnOnce(BodySource<'_>, &mut Budget) -> Result<T, RenderError>,
-) -> Result<T, RenderError> {
-    let body = lines
-        .iter()
-        .map(|line| line.text.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    let source = format!("@start{wrapper}\n{body}\n@end{wrapper}");
-    let document = crate::plantuml::preprocess::prepare(&source, budget)?;
-    let mut prepared = super::document::parse(&document, budget)?;
-    super::preamble::parse(&mut prepared, budget)?;
-    parse(prepared.body, budget)
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
@@ -332,7 +313,7 @@ mod tests {
         super::super::preamble::parse(&mut prepared, &mut budget).unwrap();
         budget.control.cancel_after_checkpoints(4);
         // when
-        let result = super::super::files::parse(prepared.body, &mut budget);
+        let result = crate::plantuml::parser::files::parse(prepared.body, &mut budget);
         // then
         assert!(matches!(result, Err(RenderError::Cancelled(_))));
     }
