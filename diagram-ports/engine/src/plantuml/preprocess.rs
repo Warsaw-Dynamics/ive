@@ -94,6 +94,7 @@ impl Processor<'_> {
                     ))
             {
                 inside = true;
+                graph |= command == "@startchen";
                 raw_data = matches!(
                     command,
                     "@startjson"
@@ -103,7 +104,6 @@ impl Processor<'_> {
                         | "@startpacketdiag"
                         | "@startboard"
                         | "@starthcl"
-                        | "@startchen"
                 );
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if !raw_text
@@ -288,7 +288,9 @@ impl Processor<'_> {
         while cursor < raw.len() {
             self.budget.charge(1)?;
             let ch = raw[cursor..].chars().next().unwrap();
-            if target.is_some() || self.literal_input || capability.allows(&raw[cursor..]) {
+            let active =
+                target.is_some() || self.literal_input || capability.allows(&raw[cursor..]);
+            if active {
                 reject_capability(&raw[cursor..], span.line)?;
             }
             let end = word_end(raw, cursor);
@@ -296,7 +298,7 @@ impl Processor<'_> {
             self.budget.charge(
                 name.len().max(1) * (self.names.len().checked_ilog2().unwrap_or(0) as usize + 1),
             )?;
-            if let Some(&id) = self.names.get(name) {
+            if active && let Some(&id) = self.names.get(name) {
                 check_boundary(raw, cursor..end, span.line)?;
                 if raw[..cursor].ends_with("##") || raw[end..].starts_with("##") {
                     return Err(unsupported(span.line, "## constant concatenation"));

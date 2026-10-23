@@ -282,6 +282,100 @@ fn should_preserve_inert_comments_without_preprocessor_execution() {
 }
 
 #[test]
+fn should_keep_chen_commented_definitions_inert_without_changing_identity() {
+    // given
+    let source = "@startchen\n/'\n!define A B\n'/\nentity A {\n}\n@endchen";
+    // when
+    let output = render(source, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&output.svg).unwrap();
+    let entity = xml
+        .descendants()
+        .find(|n| n.attribute("data-kind") == Some("chen-entity"))
+        .unwrap();
+    // then
+    assert_eq!(output.family, "chen");
+    assert_eq!(entity.attribute("data-name"), Some("A"));
+    assert!(
+        entity
+            .descendants()
+            .any(|n| n.has_tag_name("text") && n.text() == Some("A"))
+    );
+}
+
+#[test]
+fn should_accept_chen_comment_owned_directives_and_wrappers() {
+    // given
+    let source = "@startchen\n/'\n!include inert-comment.puml\n%getenv(\"HOME\")\n$function()\n@endchen\n<style>\n'/\nentity A {\n}\n@endchen";
+    // when
+    let output = render(source, &options()).unwrap();
+    // then
+    assert_eq!(output.family, "chen");
+    assert!(output.svg.contains("data-name=\"A\""));
+}
+
+#[test]
+fn should_keep_chen_comments_inert_around_active_constants_and_shared_preamble() {
+    // given
+    let source = "@startchen\n/'\n!define ENTITY Hidden\n<style>\n'/\n!define ENTITY Account\n!define LABEL Ready\nskinparam defaultFontName Liberation Sans\ntitle LABEL\nentity \"LABEL --> text\" as ENTITY {\n}\n@endchen";
+    // when
+    let output = render(source, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&output.svg).unwrap();
+    // then
+    assert_eq!(output.family, "chen");
+    assert!(
+        xml.descendants()
+            .any(|n| n.attribute("data-kind") == Some("chen-entity")
+                && n.attribute("data-name") == Some("Account"))
+    );
+    for text in ["Ready", "Ready --> text"] {
+        assert!(
+            xml.descendants()
+                .any(|n| n.has_tag_name("text") && n.text() == Some(text)),
+            "missing {text}"
+        );
+    }
+}
+
+#[test]
+fn should_retain_chen_stylesheet_ownership_of_active_definitions() {
+    // given
+    let source = "@startchen\n<style>\nroot {\n!define X Ready\nFontColor #112233\n}\n</style>\nentity A {\n}\n@endchen";
+    // when
+    let error = render(source, &options()).unwrap_err();
+    // then
+    let message = error.to_string();
+    assert!(
+        message.contains("definition")
+            && message.contains("stylesheet")
+            && message.contains("line 4"),
+        "{error}"
+    );
+}
+
+#[test]
+fn should_avoid_constant_expansion_inside_chen_inline_block_comments() {
+    // given
+    let source = "@startchen\n!define END '/\nentity A /' END '/ {\n}\n@endchen";
+    // when
+    let output = render(source, &options()).unwrap();
+    // then
+    assert_eq!(output.family, "chen");
+    assert!(output.svg.contains("data-name=\"A\""));
+}
+
+#[test]
+fn should_deny_active_chen_resources_after_comment_ownership_ends() {
+    // given
+    for command in ["!include active.puml", "%getenv(\"HOME\")", "$function()"] {
+        let source = format!("@startchen\n/' inert '/\n{command}\nentity A {{\n}}\n@endchen");
+        // when
+        let error = render(&source, &options()).unwrap_err();
+        // then
+        assert!(error.to_string().contains("line 3"), "{error}");
+    }
+}
+
+#[test]
 fn should_keep_case_insensitive_uml_wrappers_and_unknown_names() {
     // given
     let source = "@STARTUML\n!define X Ready\nA -> B : X Unknown $X %X $other %other\n@ENDUML";

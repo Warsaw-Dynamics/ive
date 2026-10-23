@@ -248,6 +248,12 @@ impl Parser {
             },
             budget,
         )?;
+        if tokens
+            .iter()
+            .any(|token| !token.quoted && lexer::arrow_at(&token.text).is_some())
+        {
+            return self.relation(line, &tokens, label, budget);
+        }
         if let Some(first) = tokens.first()
             && (kind(&first.text).is_some() || first.text == "abstract")
         {

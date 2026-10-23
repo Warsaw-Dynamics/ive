@@ -148,6 +148,44 @@ fn should_extend_description_with_colored_icon_free_archimate() {
 }
 
 #[test]
+fn should_link_an_archimate_declaration_with_arrow_looking_quoted_display() {
+    // given
+    let source = "@startuml\narchimate #LightBlue \"Order --> service\" as archimate\nrectangle \"Target --> record\" as B\narchimate \"source role\" --> \"target role\" B : reads --> literal\n@enduml";
+    // when
+    let svg = draw(source, "description");
+    let xml = roxmltree::Document::parse(&svg).unwrap();
+    let node = xml
+        .descendants()
+        .find(|n| n.attribute("data-kind") == Some("archimate"))
+        .unwrap();
+    let edge = xml
+        .descendants()
+        .find(|n| n.attribute("data-kind") == Some("relation"))
+        .unwrap();
+    // then
+    assert_eq!(node.attribute("data-name"), Some("archimate"));
+    assert!(
+        node.descendants()
+            .any(|n| n.has_tag_name("rect") && n.attribute("fill") == Some("#add8e6"))
+    );
+    assert_eq!(edge.attribute("data-owner"), Some("n0"));
+    assert_eq!(edge.attribute("data-target"), Some("n1"));
+    for text in [
+        "Order --> service",
+        "Target --> record",
+        "source role",
+        "target role",
+        "reads --> literal",
+    ] {
+        assert!(
+            xml.descendants()
+                .any(|n| n.has_tag_name("text") && n.text() == Some(text)),
+            "missing {text}"
+        );
+    }
+}
+
+#[test]
 fn should_reject_archimate_icons_colors_groups_and_invented_wrapper() {
     // given
     for body in [

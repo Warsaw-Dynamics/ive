@@ -289,6 +289,36 @@ fn should_keep_sequence_keywords_as_class_member_text() {
 }
 
 #[test]
+fn should_keep_existing_description_relations_from_an_archimate_alias() {
+    // given
+    for relation in [
+        "archimate --> B",
+        "archimate \"one\" --> \"many\" B : keeps --> literal text",
+        "\"archimate\" --> B",
+    ] {
+        let source = diagram(&format!("rectangle archimate\nrectangle B\n{relation}"));
+        // when
+        let actual = render(&source, &options()).unwrap();
+        let xml = roxmltree::Document::parse(&actual.svg).unwrap();
+        let edge = xml
+            .descendants()
+            .find(|n| n.attribute("data-kind") == Some("relation"))
+            .unwrap();
+        // then
+        assert_eq!(actual.family, "description");
+        assert_eq!(edge.attribute("data-owner"), Some("n0"));
+        assert_eq!(edge.attribute("data-target"), Some("n1"));
+        assert_eq!(
+            xml.descendants()
+                .filter(|n| n.attribute("data-kind") == Some("rectangle"))
+                .count(),
+            2
+        );
+        assert!(edge.descendants().any(|n| n.has_tag_name("polygon")));
+    }
+}
+
+#[test]
 fn should_reject_unimplemented_quoted_escape_instead_of_changing_label() {
     // given
     let source = diagram("participant \"A\\tB\" as A\nA -> B : Hello");
