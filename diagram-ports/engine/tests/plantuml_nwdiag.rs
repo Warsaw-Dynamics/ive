@@ -17,6 +17,33 @@ fn svg(body: &str) -> String {
 }
 
 #[test]
+fn should_accept_spaced_keyword_named_servers_like_compact_property_forms() {
+    // given
+    for gap in ["", " ", "\t"] {
+        let body = format!(
+            "network edge {{\ntitle{gap}[address=\"10.0.0.1\",description=\"Title server\"];\n}}\nnetwork core {{\ntitle{gap}[address=\"10.1.0.1\"];\n}}"
+        );
+        // when
+        let result = render(&input(&body), &options()).unwrap();
+        let xml = roxmltree::Document::parse(&result.svg).unwrap();
+        // then
+        assert_eq!(
+            xml.descendants()
+                .filter(|node| node.attribute("data-kind") == Some("nwdiag-server"))
+                .count(),
+            1
+        );
+        assert_eq!(
+            xml.descendants()
+                .filter(|node| node.attribute("data-kind") == Some("nwdiag-membership"))
+                .count(),
+            2
+        );
+        assert!(result.svg.contains("Title server"));
+    }
+}
+
+#[test]
 fn should_render_one_global_server_and_exact_owned_memberships() {
     // given
     let body = "network edge {\naddress = \"198.51.100.0/24\";\nrouter [address=\"198.51.100.1\",description=\"Edge router\"];\nweb;\n}\nnetwork core {\naddress=\"10.23.0.0/24\";\nrouter [address=\"10.23.0.1\"];\nstore;\n}";

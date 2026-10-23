@@ -329,7 +329,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines132-136: explicit nwdiag opener; native deliberately requires one balanced canonical nwdiag block.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -342,7 +344,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines132-139: named network identifier letters/numbers/hyphen/dot/underscore. Native rejects unnamed/duplicate networks and nesting.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -355,7 +359,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines135-147: global server name and optional bracket properties/semicolon. Native consumes the complete property grammar rather than regex-find skipping.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -368,7 +374,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines134-152: container address/description/color/width syntax. Native accepts quoted strings or single unquoted atoms; spaces require quotes. Only painted values admitted.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -381,7 +389,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines132-139: simple group identifiers (letters/numbers/underscore); native requires explicit names and rejects nested/empty groups.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -394,7 +404,9 @@
         "* Original Author:  Arnaud Roques"
       ],
       "rust": [
-        "engine/src/plantuml/nwdiag.rs"
+        "engine/src/plantuml/nwdiag.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines132-147: closing-brace command. Native rejects unmatched extra closes or missing braces rather than accepting an empty stack.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -408,7 +420,9 @@
       ],
       "rust": [
         "engine/src/plantuml/nwdiag.rs",
-        "engine/src/plantuml/nwscene.rs"
+        "engine/src/plantuml/nwscene.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines197-245,307-375,459-491,507-526: global server reuse, independent network memberships, per-declaration networks, group ownership and active-network groups. Native rejects standalone/hidden networks, links, duplicate network names and top-level group references to undeclared servers; fully consumes property lists. Sparse layout and crossing gaps are original native geometry.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -422,7 +436,9 @@
       ],
       "rust": [
         "engine/src/plantuml/nwdiag.rs",
-        "engine/src/plantuml/nwscene.rs"
+        "engine/src/plantuml/nwscene.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines142-149,211-250,256-286: one global name/display, interface address per network, nonempty repeat replacement/empty preservation, server description/color, comma-space line splitting and rectangle default. Shapes remain explicit unsupported. Native typed #RRGGBB fills only, no asset/symbol infrastructure.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -436,7 +452,9 @@
       ],
       "rust": [
         "engine/src/plantuml/nwdiag.rs",
-        "engine/src/plantuml/nwscene.rs"
+        "engine/src/plantuml/nwscene.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines156-202: distinct bus display and own address, typed color and width=full; native member-width buses versus actual full column span. Native geometry is original.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
@@ -450,7 +468,9 @@
       ],
       "rust": [
         "engine/src/plantuml/nwdiag.rs",
-        "engine/src/plantuml/nwscene.rs"
+        "engine/src/plantuml/nwscene.rs",
+        "engine/src/plantuml/parser/nwdiag.rs",
+        "engine/src/plantuml/parser/grammar/nwdiag.lalrpop"
       ],
       "behavior": "From lines150-245: group member identity independent of network membership; color fill, measured enclosure/header only from description. Native contiguous grouped columns and reserved header/cable gutters are original geometry.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"

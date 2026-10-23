@@ -11,6 +11,7 @@ pub(super) mod gantt;
 pub(super) mod hcl;
 pub(super) mod header;
 pub(super) mod json;
+pub(super) mod nwdiag;
 pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod preamble;
@@ -107,6 +108,11 @@ mod generated_timing;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/gantt.rs"]
 mod generated_gantt;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/nwdiag.rs"]
+mod generated_nwdiag;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]

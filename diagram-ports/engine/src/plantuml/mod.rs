@@ -181,6 +181,14 @@ pub(crate) fn render(
     } else {
         None
     };
+    let nwdiag_model = if wrapper == source::Wrapper::Nwdiag {
+        Some(parser::nwdiag::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -215,8 +223,10 @@ pub(crate) fn render(
             })?;
             ("hcl", datascene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Nwdiag {
-            let model = nwdiag::parse(lines, context.budget)?;
-            ("nwdiag", nwscene::layout(&model, &mut context)?)
+            let model = nwdiag_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML nwdiag selection has no parsed model".into())
+            })?;
+            ("nwdiag", nwscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Salt {
             let model = salt_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML Salt selection has no parsed model".into())

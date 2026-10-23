@@ -72,6 +72,12 @@
       "grammarSha256": "2a380b127a3ec90f980b8383d7509b08084c518dfd4e7e9cb1ea80e9b374fb50"
     },
     {
+      "generated": "engine/src/plantuml/generated/nwdiag.rs",
+      "generatedSha256": "a944654e6d741eddbaf3e04a16330553e52a9e03ddfa8f39fc1576e2e3f7ea2b",
+      "grammar": "engine/src/plantuml/parser/grammar/nwdiag.lalrpop",
+      "grammarSha256": "bd1ce0474533f5d7b2a43c719b90906c9e6219c860a58931b70290e2b5edface"
+    },
+    {
       "generated": "engine/src/plantuml/generated/preamble.rs",
       "generatedSha256": "a16dc15721bda29480c780df9678560765de6edcd4f550c0a984678674bff879",
       "grammar": "engine/src/plantuml/parser/grammar/preamble.lalrpop",
