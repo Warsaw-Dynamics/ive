@@ -19,12 +19,12 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `a796711` — tested Creole nesting added; 577 combined focused tests pass; root full/native checks pending |
+| Latest integrated product checkpoint | `da590bc` — tested packetdiag added to Creole and all other migrated parser families; 593 combined focused tests pass; root full/native checks pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Tested packetdiag and Task17 tooling checkpoints await integration; Creole integration stable |
+| Current implementers | Final Task17 parser removal and tooling union in a fresh isolated worktree; central packet integration stable |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate tested packetdiag, then Task17 tooling and final parser removal; resume remaining native family queue |
+| Next implementation | Finish and integrate Task17 removal/tooling, run final parser gates/native/baseline and one broad review, then resume remaining native family queue |
 | Latest independent controller checks | At `e4ace61`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build, two native Salt/nwdiag captures and two empty-PATH/no-display exports pass; zero fallbacks and no surviving viewer. Agent combined strict Clippy/fmt, private generator19 and 220 MIT/43 fixture/43 module audit pass. Previous batches passed native timing/Gantt/YAML and class/activity/Chen/JSON/HCL captures/exports. Earlier `0c5177e` completed all16 gates. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -189,9 +189,9 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 12 | Timing/Gantt/assigned defects | INTEGRATED6664c86 from testedf5f07f9 —505 combined focused tests, strict Clippy/fmt, private generator16 and source audit; root full/baseline/native checks pass at later3d3c35a head; broad review deferred |
 | 13 | Salt | INTEGRATED86593cf from tested0b9f4a6 —507 combined focused tests, strict Clippy/fmt, private generator18 and source audit; root full/baseline/native checks pass at latere4ace61 head; broad review deferred |
 | 14 | nwdiag/contextual server-name repair | INTEGRATEDe4ace61 from testeddc29c48 —489 combined focused tests, strict Clippy/fmt, private generator19 and source audit; root full/baseline/native checks pass; broad review deferred |
-| 15 | Packetdiag | TESTEDa08bf48 —418 focused tests, strict Clippy/fmt, private generator18 and source audit pass; central integration pending |
+| 15 | Packetdiag | INTEGRATEDda590bc from testeda08bf48 —593 combined focused tests, strict Clippy/fmt, private generator21 and source audit pass; root full/native checks pending |
 | 16 | Creole nesting | INTEGRATEDa796711 from testedd398ee6 —577 combined focused tests, strict Clippy/fmt, private generator20 and source audit pass; root full/native checks pending |
-| 17 | Legacy-syntax removal/inventory/integration review | TOOLING TESTEDd29b746 — generator explicit-root/two-checkout, actual baseline config drift and exact function inventory controls pass; integration/final parser removal wait for packetdiag |
+| 17 | Legacy-syntax removal/inventory/integration review | FINAL REMOVAL IN PROGRESS — isolated branch from da590bc; tested toolingd29b746 being unioned,21 grammars/71 modules/1,111 functions to classify and obsolete Line/adapter syntax to remove |
 
 Tasks1–3 are approved throughf5a10a0 after one scoped fix round each. Generated definitions, wrappers, shared ownership, typed headers, origin/body spans and preamble/style/skinparam/region grammar are active. That checkpoint passed544 Rust+seven faults/all16 gates,18Node,generator3/notice5/67-package audit/four reproducible outputs and unchanged43-fixture baseline SHA a14d47f73af4f7c78c67dc746ac5c51eb96d89e54db1b52425cc1b8e08fafafe. Empty-value errors are typed; repeated500 sheets pass with/without definitions and identical SVGs. Actual styled/constants20/22/12/14 and font6/14/96 each8 native,all zero fallback, are inspected/hash-verified; exports/cleanup pass. The table above tracks subsequent cutover reviews and pending combined verification.
 
