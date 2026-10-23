@@ -26,7 +26,8 @@ use super::keymap::Keymap;
 use super::menus::Menus;
 use super::temporary_tabs::TemporaryTabs;
 use crate::theme::Fonts;
-use crate::theme_config::ThemeSpec;
+use crate::settings::ThemeChoice;
+use crate::theme_config::{self, ThemeSpec, user};
 use super::log::ScriptLog;
 use crate::api::{self, Call, Request};
 
@@ -44,6 +45,8 @@ pub enum ScriptEvent {
         quit_countdown: QuitCountdown,
         open_folders: OpenFolders,
         has_init: bool,
+        /// the user themes to pick from, by name
+        themes: Vec<String>,
     },
     /// the load failed (the log says why); the previous bindings stay
     LoadFailed { message: String, errors: usize },
@@ -56,8 +59,10 @@ pub enum ScriptEvent {
 /// What the gpui thread asks of the script thread.
 #[derive(Debug)]
 pub enum ScriptCommand {
-    /// the scripts folder changed: load again when a `.rn` file did
+    /// the scripts folder changed: load again when a `.rn` file or a theme did
     Reload,
+    /// the user picked this theme: load again with it
+    UseTheme(ThemeChoice),
     /// a trigger bound to function `function` of load `generation` fired; `context` is what it fired on, `None`
     /// for the shown tab
     Invoke { generation: u64, function: usize, context: Option<serde_json::Value> },
@@ -73,13 +78,21 @@ pub struct Scripts {
     pub log: ScriptLog,
 }
 
-/// Starts the script thread on `dir` (none: the OS has no config folder), writing to `log`, and loads `init.rn` once
-/// at start. The copies of `ive.rn` and `theme.toml` are written before it returns, so tabs restored next show them.
-pub fn start(dir: Option<PathBuf>, log: ScriptLog, calls: UnboundedSender<Call>) -> Scripts {
+/// Where the scripts are, and the theme picked at start.
+pub struct Setup {
+    /// the profile folder; none when the OS reports no config folder
+    pub dir: Option<PathBuf>,
+    pub theme: ThemeChoice,
+}
+
+/// Starts the script thread on `setup`, writing to `log`, and loads `init.rn` once at start. The copies of `ive.rn`
+/// and `theme.toml` are written before it returns, so tabs restored next show them.
+pub fn start(setup: Setup, log: ScriptLog, calls: UnboundedSender<Call>) -> Scripts {
+    let Setup { dir, theme } = setup;
     write_defaults(dir.as_deref(), &log);
     let (events, event_receiver) = unbounded();
     let (commands, command_receiver) = unbounded();
-    let thread = Thread { dir, log: log.clone(), calls, events };
+    let thread = Thread { dir, theme, log: log.clone(), calls, events };
     let spawned = std::thread::Builder::new().name("ive-scripts".to_owned()).spawn(move || run(thread, command_receiver));
     if let Err(error) = spawned {
         eprintln!("ive: cannot start the script thread: {error}; scripts are off");
@@ -90,6 +103,7 @@ pub fn start(dir: Option<PathBuf>, log: ScriptLog, calls: UnboundedSender<Call>)
 /// What the script thread is given.
 struct Thread {
     dir: Option<PathBuf>,
+    theme: ThemeChoice,
     log: ScriptLog,
     calls: UnboundedSender<Call>,
     events: UnboundedSender<ScriptEvent>,
@@ -106,8 +120,8 @@ fn run(thread: Thread, commands: UnboundedReceiver<ScriptCommand>) {
         // a load that could not happen; the bindings stay empty
         Err(message) => return fail_start(&thread, message),
     };
-    let Thread { dir, log, calls, events } = thread;
-    let mut runner = Runner { dir, engine: Rc::new(engine), log, calls, events, current: None, fingerprint: BTreeMap::new(), loads: 0 };
+    let Thread { dir, theme, log, calls, events } = thread;
+    let mut runner = Runner { dir, theme, engine: Rc::new(engine), log, calls, events, current: None, fingerprint: BTreeMap::new(), loads: 0 };
     let local = tokio::task::LocalSet::new();
     local.block_on(&runtime, runner.serve(commands));
 }
@@ -132,6 +146,8 @@ fn fail_start(thread: &Thread, message: String) {
 /// The loaded scripts and what the thread needs to load them again.
 struct Runner {
     dir: Option<PathBuf>,
+    /// the picked theme, under `ive.rn` and `init.rn`
+    theme: ThemeChoice,
     engine: Rc<Engine>,
     log: ScriptLog,
     calls: UnboundedSender<Call>,
@@ -148,6 +164,10 @@ impl Runner {
         while let Some(command) = commands.next().await {
             match command {
                 ScriptCommand::Reload => self.reload(),
+                ScriptCommand::UseTheme(theme) => {
+                    self.theme = theme;
+                    self.load();
+                }
                 ScriptCommand::Invoke { generation, function, context } => self.invoke(generation, function, context),
                 ScriptCommand::Test { generation, function, context, request, timeout } => self.test(Asked { generation, function, request, timeout }, context),
             }
@@ -168,13 +188,42 @@ impl Runner {
             self.fingerprint = fingerprint(dir);
         }
         self.loads += 1;
-        let loaded = self.engine.load(dir.as_deref(), self.loads);
+        match self.theme_base(dir.as_deref()) {
+            Ok(theme) => self.load_with(dir.as_deref(), theme),
+            Err(message) => self.theme_failed(dir.as_deref(), message),
+        }
+    }
+
+    fn load_with(&mut self, dir: Option<&Path>, theme: Value) {
+        let loaded = self.engine.load(dir, theme, self.loads);
         // what init printed comes before what came of it
         self.drain_output();
         match loaded {
             Ok(loaded) => self.apply(loaded),
             Err(message) => self.fail(message),
         }
+    }
+
+    /// A broken theme fails the load; at start there is nothing to keep, so the scripts load over the default theme.
+    fn theme_failed(&mut self, dir: Option<&Path>, message: String) {
+        if self.current.is_some() {
+            return self.fail(message);
+        }
+        self.log.append(&message);
+        self.load_with(dir, theme_config::default_value());
+        self.send(ScriptEvent::LoadFailed { errors: message.lines().count(), message });
+    }
+
+    /// `config.theme` before the scripts run: the default with the picked theme merged over it.
+    fn theme_base(&self, dir: Option<&Path>) -> Result<Value, String> {
+        let Some(dir) = dir else {
+            return Ok(theme_config::default_value());
+        };
+        let base = user::base(dir, &self.theme)?;
+        if let (user::Base::Missing, ThemeChoice::File(name)) = (&base, &self.theme) {
+            self.log.append(&format!("theme \"{name}\": no file {}/{name}.toml; using the default", user::THEMES_DIR));
+        }
+        Ok(base.value())
     }
 
     fn apply(&mut self, loaded: Loaded) {
@@ -191,16 +240,19 @@ impl Runner {
             quit_countdown: loaded.quit_countdown,
             open_folders: loaded.open_folders.clone(),
             has_init: loaded.has_init,
+            themes: self.dir.as_deref().map(user::names).unwrap_or_default(),
         };
         self.current = Some((self.loads, loaded));
         self.send(event);
     }
 
-    /// A failed load keeps the bindings in effect; at start there are none yet, so `ive.rn`'s alone apply.
+    /// A failed load keeps the bindings in effect; at start there are none yet, so `ive.rn`'s alone apply, over the
+    /// picked theme when it loads.
     fn fail(&mut self, message: String) {
         self.log.append(&message);
         if self.current.is_none() {
-            match self.engine.load(None, self.loads) {
+            let theme = self.theme_base(self.dir.clone().as_deref()).unwrap_or_else(|_| theme_config::default_value());
+            match self.engine.load(None, theme, self.loads) {
                 Ok(defaults) => self.apply(defaults),
                 Err(defaults_error) => self.log.append(&format!("IVE's own ive.rn did not load, so there are no bindings: {defaults_error}")),
             }
@@ -355,6 +407,8 @@ mod tests {
     use super::*;
     use crate::script::keymap::Place;
     use crate::api::{Call, Reply, Request, WindowInput};
+    use crate::theme_config::Rgb;
+    use crate::theme_config::user::THEMES_DIR;
 
     const WAIT: Duration = Duration::from_secs(5);
 
@@ -424,11 +478,15 @@ mod tests {
         ScriptLog::new(dir.join("log").join("scripts.log"), 64 * 1024)
     }
 
+    fn builtin(dir: &Path) -> Setup {
+        Setup { dir: Some(dir.to_path_buf()), theme: ThemeChoice::Builtin }
+    }
+
     fn start_with(dir: &Path, init: &str, answer: fn(&Request) -> Reply) -> (Scripts, Arc<Mutex<Vec<String>>>, ScriptLog) {
         fs::write(dir.join("init.rn"), init).unwrap();
         let (calls, seen) = responder(answer);
         let log = log_in(dir);
-        let mut scripts = start(Some(dir.to_path_buf()), log.clone(), calls);
+        let mut scripts = start(builtin(dir), log.clone(), calls);
         assert!(matches!(next_load(&mut scripts), ScriptEvent::Loaded { .. }));
         (scripts, seen, log)
     }
@@ -459,7 +517,7 @@ mod tests {
     }
 
     fn defaults_functions() -> usize {
-        super::super::engine::Engine::new(unbounded().0).unwrap().load(None, 1).unwrap().functions.len()
+        super::super::engine::Engine::new(unbounded().0).unwrap().load(None, crate::theme_config::default_value(), 1).unwrap().functions.len()
     }
 
     fn wait_for(seen: &Arc<Mutex<Vec<String>>>, needle: &str) -> bool {
@@ -531,13 +589,138 @@ mod tests {
         let (calls, _) = responder(answer_terminal);
 
         // when
-        let mut scripts = start(Some(dir.path().to_path_buf()), log_in(dir.path()), calls);
+        let mut scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
 
         // then
         match next_load(&mut scripts) {
             ScriptEvent::Loaded { theme, .. } => assert_eq!(theme.dark.tree, crate::theme_config::Rgb(0x202124)),
             _ => panic!("load failed"),
         }
+    }
+
+    fn start_themed(dir: &Path, theme: &str) -> Scripts {
+        let (calls, _) = responder(answer_terminal);
+        let setup = Setup { dir: Some(dir.to_path_buf()), theme: ThemeChoice::File(theme.to_owned()) };
+        start(setup, log_in(dir), calls)
+    }
+
+    fn write_theme(dir: &Path, name: &str, text: &str) {
+        fs::create_dir_all(dir.join(THEMES_DIR)).unwrap();
+        fs::write(dir.join(THEMES_DIR).join(format!("{name}.toml")), text).unwrap();
+    }
+
+    fn loaded_tree(event: ScriptEvent) -> Rgb {
+        match event {
+            ScriptEvent::Loaded { theme, .. } => theme.dark.tree,
+            event => panic!("expected a load, got {event:?}"),
+        }
+    }
+
+    const NORD: &str = "[dark]\ntree = \"#112233\"\n";
+    const BROKEN: &str = "[dark]\ntre = \"#000000\"\n";
+    const DEFAULT_TREE: Rgb = Rgb(0x191a1c);
+
+    #[test]
+    fn should_start_with_picked_theme() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", NORD);
+
+        // when
+        let mut scripts = start_themed(dir.path(), "nord");
+
+        // then
+        match next_load(&mut scripts) {
+            ScriptEvent::Loaded { theme, themes, .. } => {
+                assert_eq!(theme.dark.tree, Rgb(0x112233));
+                assert_eq!(themes, ["nord"]);
+            }
+            event => panic!("expected a load, got {event:?}"),
+        }
+    }
+
+    #[test]
+    fn should_let_init_override_picked_theme() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", NORD);
+        fs::write(dir.path().join("init.rn"), r##"pub fn init(config) { config.theme.dark.tree = "#202124"; }"##).unwrap();
+
+        // when
+        let mut scripts = start_themed(dir.path(), "nord");
+
+        // then
+        assert_eq!(loaded_tree(next_load(&mut scripts)), Rgb(0x202124));
+    }
+
+    #[test]
+    fn should_keep_init_bindings_when_theme_broken_at_start() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", BROKEN);
+        fs::write(dir.path().join("init.rn"), r#"pub fn init(config) { config.keys = [#{ key: "F5", action: act::SendString("a") }]; }"#).unwrap();
+
+        // when
+        let mut scripts = start_themed(dir.path(), "nord");
+
+        // then
+        match next_load(&mut scripts) {
+            ScriptEvent::Loaded { keymap, theme, .. } => {
+                assert!(keymap.find_key(&gpui::Keystroke::parse("f5").unwrap(), Place::Elsewhere).is_some());
+                assert_eq!(theme.dark.tree, DEFAULT_TREE);
+            }
+            event => panic!("expected a load, got {event:?}"),
+        }
+        match next_load(&mut scripts) {
+            ScriptEvent::LoadFailed { message, .. } => assert!(message.starts_with("themes/nord.toml: "), "{message}"),
+            event => panic!("expected the theme's failure, got {event:?}"),
+        }
+    }
+
+    #[test]
+    fn should_keep_previous_theme_when_theme_breaks_on_reload() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", NORD);
+        let mut scripts = start_themed(dir.path(), "nord");
+        assert_eq!(loaded_tree(next_load(&mut scripts)), Rgb(0x112233));
+
+        // when
+        write_theme(dir.path(), "nord", BROKEN);
+        scripts.commands.unbounded_send(ScriptCommand::Reload).unwrap();
+
+        // then
+        assert!(matches!(next_load(&mut scripts), ScriptEvent::LoadFailed { .. }));
+        assert!(next_event(&mut scripts, Duration::from_millis(500)).is_none());
+    }
+
+    #[test]
+    fn should_load_picked_theme_on_use_theme() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        write_theme(dir.path(), "nord", NORD);
+        let (calls, _) = responder(answer_terminal);
+        let mut scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
+        assert_eq!(loaded_tree(next_load(&mut scripts)), DEFAULT_TREE);
+
+        // when
+        scripts.commands.unbounded_send(ScriptCommand::UseTheme(ThemeChoice::File("nord".to_owned()))).unwrap();
+
+        // then
+        assert_eq!(loaded_tree(next_load(&mut scripts)), Rgb(0x112233));
+    }
+
+    #[test]
+    fn should_use_default_when_picked_theme_missing() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let mut scripts = start_themed(dir.path(), "gone");
+
+        // then
+        assert_eq!(loaded_tree(next_load(&mut scripts)), DEFAULT_TREE);
+        logged(&log_in(dir.path()), "theme \"gone\": no file themes/gone.toml; using the default");
     }
 
     #[test]
@@ -734,7 +917,7 @@ mod tests {
         let (calls, _) = responder(answer_terminal);
 
         // when
-        let _scripts = start(Some(dir.path().to_path_buf()), log_in(dir.path()), calls);
+        let _scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
 
         // then
         let written = fs::read_to_string(dir.path().join(super::super::engine::IVE_RN_NAME)).unwrap();
@@ -749,7 +932,7 @@ mod tests {
         let (calls, _) = responder(answer_terminal);
 
         // when
-        let mut scripts = start(Some(dir.path().to_path_buf()), log_in(dir.path()), calls);
+        let mut scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
 
         // then
         let event = next_load(&mut scripts);
@@ -765,7 +948,7 @@ mod tests {
         let (calls, _) = responder(answer_terminal);
 
         // when
-        let mut scripts = start(Some(dir.path().to_path_buf()), log_in(dir.path()), calls);
+        let mut scripts = start(builtin(dir.path()), log_in(dir.path()), calls);
 
         // then
         assert!(has_open_terminal(&next_load(&mut scripts)));
@@ -826,7 +1009,7 @@ mod tests {
         let log = log_in(dir.path());
 
         // when
-        let mut scripts = start(Some(dir.path().to_path_buf()), log.clone(), calls);
+        let mut scripts = start(builtin(dir.path()), log.clone(), calls);
 
         // then
         assert!(matches!(next_load(&mut scripts), ScriptEvent::Loaded { has_init: false, .. }));

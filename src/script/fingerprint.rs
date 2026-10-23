@@ -6,25 +6,30 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::Path;
 
 use super::engine::IVE_RN_NAME;
+use crate::theme_config::user::THEMES_DIR;
 
-/// File name → content hash of each `*.rn` file directly in `dir` but IVE's own `ive.rn`; empty when the folder
-/// cannot be read.
+/// File name → content hash of each `*.rn` file directly in `dir` but IVE's own `ive.rn`, and of each theme as
+/// `themes/<file>`; empty when the folder cannot be read.
 pub fn fingerprint(dir: &Path) -> BTreeMap<String, u64> {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return BTreeMap::new();
-    };
-    entries
+    let scripts = hashed(dir, "rn").filter(|(name, _)| name != IVE_RN_NAME);
+    let themes = hashed(&dir.join(THEMES_DIR), "toml").map(|(name, hash)| (format!("{THEMES_DIR}/{name}"), hash));
+    scripts.chain(themes).collect()
+}
+
+/// File name and content hash of each file with `extension` directly in `dir`.
+fn hashed(dir: &Path, extension: &'static str) -> impl Iterator<Item = (String, u64)> + use<> {
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|extension| extension == "rn"))
-        .filter(|path| path.file_name().is_some_and(|name| name != IVE_RN_NAME))
+        .filter(move |path| path.extension().is_some_and(|found| found == extension))
         .filter_map(|path| {
             let name = path.file_name()?.to_string_lossy().into_owned();
             let mut hasher = DefaultHasher::new();
             std::fs::read(&path).ok()?.hash(&mut hasher);
             Some((name, hasher.finish()))
         })
-        .collect()
 }
 
 #[cfg(test)]
@@ -45,6 +50,20 @@ mod tests {
 
         // then
         assert_eq!(fingerprint(dir.path()), before);
+    }
+
+    #[test]
+    fn should_reload_when_theme_file_changes() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join("themes")).unwrap();
+        let before = fingerprint(dir.path());
+
+        // when
+        fs::write(dir.path().join("themes").join("a.toml"), "[dark]").unwrap();
+
+        // then
+        assert_ne!(fingerprint(dir.path()), before);
     }
 
     #[test]

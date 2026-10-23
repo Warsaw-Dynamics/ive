@@ -150,6 +150,7 @@ mod tests {
             quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
             open_folders: Default::default(),
             has_init: true,
+            themes: Vec::new(),
         }
     }
 
