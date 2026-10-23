@@ -1,8 +1,16 @@
 # Diagram-port evidence archive
 
-This archive separates historical implementation/review/research evidence from the CURRENT structured addendum at product `3478bbdf5d11865414817e5f6a01eb81cd2336da`. Historical payloads remain exact snapshots from archive base `1b0c1edadadefe76676206340dedf477b6067cf0`. Current corpus execution, advanced-state reports and controller gate/capture facts are retained without creating an independent whole-branch approval. Final chronological Rulings consolidation and whole-branch review remain pending.
+This archive separates historical implementation/review/research evidence from the CURRENT structured addendum at product `3478bbdf5d11865414817e5f6a01eb81cd2336da`. Historical payloads remain exact snapshots from archive base `1b0c1edadadefe76676206340dedf477b6067cf0`. Current corpus execution, advanced-state reports and controller gate/capture facts are retained without creating an independent whole-branch approval. The [twelve-ruling consolidation](current/RULINGS.md) and two scoped independent final reviews are now retained. Both final reviews of `ffd44a569850d05e0359bff8ea6267982342c6fc` found no concrete Important or Blocker; no fix wave is required. Their scopes do not establish full upstream compatibility, original pixel parity or macOS runtime equivalence.
 
 Start with the [catalog](catalog.md), [recorded review verdict index](verdict-index.md), and [machine-readable manifest](manifest.json). The manifest maps every old source path to its durable copy, records source and archived SHA-256/byte counts, and preserves exact reported base/head lines and verdict excerpts. The report text itself remains the authority for those historical claims; extracted identifiers are not a newly approved product-head list.
+
+## Final scoped reviews and rulings
+
+- [Whole-branch product review](current/reviews/ive-final-whole-branch-review.md): bounded implementation inspection; no Important/Blocker. The optional binary probe was rejected by automatic approval review and was not executed.
+- [Evidence/provenance review](current/reviews/ive-final-evidence-review.md): exact hashes, source audits and selected external artifacts checked; broad gates and some capture comparisons remain attributed controller evidence. No Important/Blocker in this scope.
+- [Chronological Rulings](current/RULINGS.md): twelve ruling/cost blocks preserved verbatim from the controller draft; top/closing status updated after the two reviews. The source draft hash and distinct archived hash are recorded in the manifest.
+
+The earlier17 current payloads, including the controller summary, remain exact historical snapshots. Any final-review-pending text inside them describes their capture time, not the current closeout status.
 
 ## CURRENT evidence at 3478bbd
 
@@ -25,9 +33,10 @@ Raw SVGs, PNGs, logs, JARs and vendor source are deliberately not duplicated. St
 | Required preparatory research and accompanying source ledgers | 12 | Original/source semantics, architectural preparation and historical oracle work; not current native support. |
 | Historical controller ledgers | 2 | Exact old events/rulings, including stale checkboxes and superseded orchestration notes. |
 | Generator/provenance snapshots | 5 | Exact dependency/notice/admission/residual/generated-hash metadata at this archive's product base. |
-| CURRENT corpus/gallery/state/controller addendum | 17 | Final structured artifacts and distinctly attributed implementation/controller evidence at3478bbd; final review remains pending. |
+| CURRENT corpus/gallery/state/controller addendum | 17 | Final structured artifacts and distinctly attributed implementation/controller evidence at3478bbd; captured before final reviews. |
+| Final Rulings and scoped independent reviews | 3 | Twelve controller ruling/cost blocks and two exact final reports reviewingffd44a5, with no Important/Blocker in their stated scopes. |
 
-The **114 historical payloads contain 1,844,096 bytes** and remain unchanged. The **17 current payloads contain 411,317 bytes**, for **131 payloads /2,255,413 bytes** total. Indexes, manifest and checksum file are separate archive metadata. All copied payloads are byte-identical to their captured sources; the controller summary is newly authored and explicitly attributed. Preservation checks do not mean this job reran runtime tests or visual/review gates.
+The **114 historical payloads contain 1,844,096 bytes** and remain unchanged. The earlier **17 current payloads contain 411,317 bytes** and remain unchanged. The **3 final closeout payloads contain 45,810 bytes**, for **134 payloads /2,301,223 bytes** total. Indexes, manifest and checksum file are separate archive metadata. All copied payloads are byte-identical to their captured sources; the controller summary is newly authored and explicitly attributed. Preservation checks do not mean this job reran runtime tests or visual/review gates.
 
 An implementation report is **reported evidence** even when it describes independent controller checks. A review document is **historical independent review evidence**, limited to its stated range and scope. A later family with a tested checkpoint and deferred broad review is not upgraded to independent approval. Read the final scoped rereview together with its earlier findings and implementation fixes; do not interpret an old needs-fixes review as a new finding against the current branch.
 
@@ -51,16 +60,13 @@ These remain outside the historical archive and may evolve after this snapshot. 
 - [Current parser registration/provenance](../provenance/plantuml-parser.json), [admission evidence](../provenance/plantuml-parser-admission.md) and [residual inventory](../provenance/plantuml-parser-residuals.md).
 - [Generator dependency grants](../provenance/LICENSE-PlantUML-Generator-Dependencies.md) and [supplement](../provenance/LICENSE-PlantUML-Generator-Supplement.md). The archive preserves dependency/notice mappings without copying these legal texts again.
 - [Parent implementation plan](../../docs/superpowers/plans/2026-10-22-diagram-ports-plan.md) and [LALRPOP migration plan](../../docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md).
-- [Current coverage and residuals](../COVERAGE.md), read alongside the precise evidence scope and pending final review. Historical `liveReferences` hashes retain their original base; current reference hashes are recorded separately.
+- [Current coverage and residuals](../COVERAGE.md), read alongside the precise evidence scope and completed scoped final reviews. Historical `liveReferences` hashes retain their original base; current reference hashes are recorded separately.
 
 Historical [native](history/native-controller-ledger.md) and [migration](history/migration-controller-ledger.md) ledgers preserve the controller's old rulings/events, not the owner's current checklist. The controller owns the canonical `progress.md`, final chronological Rulings handoff and any link updates before SDD cleanup. This archive job does not edit them.
 
-## Pending controller additions
+## Completed final closeout and remaining limits
 
-| Entry | Status |
-| --- | --- |
-| Final chronological Rulings handoff | Pending controller-owned consolidation from the exact historical records. |
-| Whole-branch final independent review and dispositions | Pending; the 44 historical documents are scoped earlier reviews. |
+The twelve-ruling handoff and two independent final reviews are retained here. Both scoped verdicts are complete with no Important/Blocker and no fix wave required. Central archive integration and local handoff remain controller-owned. Full upstream syntax/style/geometry/assets compatibility, original-versus-native pixel parity and macOS runtime/capture verification remain outside this evidence. Historical review findings and pending-at-the-time payload wording remain unaltered.
 
 Future evidence should be added as a new, explicitly dated/current entry with its actual source identity and checks. Preserve existing payloads verbatim. Update the catalog, manifest and checksum inventory when adding evidence; do not silently rewrite old reports or promote a placeholder into approval.
 

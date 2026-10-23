@@ -4,11 +4,8 @@
   "sourceWorktree": "/mnt/data/Projects/ive/.worktree/diagram-ports",
   "capturedAt": "2026-10-23T17:00:06.845464+00:00",
   "preservationPolicy": "source/archived SHA and bytes verified; absolute and /tmp origins remain historical machine references, not runtime inputs",
-  "evidencePolicy": "preservation verified only; implementation reports, historical independent reviews, original research, ledgers and provenance snapshots are distinct; no new behavioral review or final approval",
-  "pending": [
-    "controller final chronological Rulings handoff",
-    "whole-branch final independent review and dispositions"
-  ],
+  "evidencePolicy": "exact preservation verified; implementation/controller facts, historical reviews, original research and two completed final scoped independent reviews remain distinct; no full upstream/pixel/macOS equivalence",
+  "pending": [],
   "files": [
     {
       "path": "native/reports/task-1-report.md",
@@ -616,7 +613,7 @@
       ],
       "title": "Task4B scoped developer-tooling repairs",
       "category": "tooling-implementation-report",
-      "evidenceStatus": "reported scoped tooling checkpoint; final Task4B evidence/review remains pending",
+      "evidenceStatus": "reported scoped tooling checkpoint; final evidence/review was pending at this historical checkpoint; see current closeout",
       "reportedBaseHeadEvidence": [
         {
           "line": 3,
@@ -2615,7 +2612,7 @@
       ],
       "title": "SDD ledger — plan: docs/superpowers/plans/2026-10-22-diagram-ports-plan.md",
       "category": "historical-controller-ledger",
-      "evidenceStatus": "verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final chronological handoff pending"
+      "evidenceStatus": "verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final twelve-ruling handoff now retained in current/RULINGS.md"
     },
     {
       "path": "history/migration-controller-ledger.md",
@@ -2627,7 +2624,7 @@
       ],
       "title": "SDD ledger — plan: docs/superpowers/plans/2026-10-23-plantuml-lalrpop-plan.md",
       "category": "historical-controller-ledger",
-      "evidenceStatus": "verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final chronological handoff pending"
+      "evidenceStatus": "verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final twelve-ruling handoff now retained in current/RULINGS.md"
     },
     {
       "path": "migration/provenance/plantuml-generator-dependencies.json",
@@ -2699,7 +2696,7 @@
       ],
       "title": "Task4B native corpus driver — private tested checkpoint",
       "category": "tooling-implementation-report",
-      "evidenceStatus": "reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review remains pending",
+      "evidenceStatus": "reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review was pending at this historical checkpoint; see current closeout",
       "reportedBaseHeadEvidence": [
         {
           "line": 3,
@@ -2717,7 +2714,7 @@
       ],
       "title": "Native corpus deadline reproducibility fix",
       "category": "tooling-implementation-report",
-      "evidenceStatus": "reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review remains pending",
+      "evidenceStatus": "reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review was pending at this historical checkpoint; see current closeout",
       "reportedBaseHeadEvidence": [
         {
           "line": 3,
@@ -2927,7 +2924,7 @@
       ],
       "title": "Task3B2 advanced-state tested checkpoint",
       "category": "current-state-implementation-report",
-      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending",
+      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, final scoped reviews now complete; report wording remains historical",
       "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
       "reportedBaseHeadEvidence": [
         {
@@ -2946,7 +2943,7 @@
       ],
       "title": "Task3B2 integration and finite-name follow-up",
       "category": "current-state-implementation-report",
-      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending",
+      "evidenceStatus": "reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, final scoped reviews now complete; report wording remains historical",
       "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
       "reportedBaseHeadEvidence": [
         {
@@ -2977,6 +2974,48 @@
       "title": "Controller gate and capture evidence at3478bbd",
       "category": "current-controller-gate-capture-report",
       "evidenceStatus": "authored controller-reported gate/capture summary; archive worker did not rerun gates or visually review captures",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/RULINGS.md",
+      "bytes": 37496,
+      "sourceSha256": "4d4933e5a2745b0327d21d4afc530ffaef17dbd9b014b7eab6a1480e54f7eced",
+      "archivedSha256": "7db02f7335802df970cd866aca7bd00e7ac10d756b3d72973e008bb5e7f974dc",
+      "originPaths": [
+        "/tmp/ive-final-rulings-portable.md"
+      ],
+      "title": "Diagram ports — chronological directions and rulings",
+      "category": "current-final-rulings",
+      "evidenceStatus": "controller consolidation; twelve ruling/cost blocks verbatim; top/closing status updated after final reviews; source draft and archived bytes intentionally differ",
+      "reviewedHead": "ffd44a569850d05e0359bff8ea6267982342c6fc",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/reviews/ive-final-whole-branch-review.md",
+      "bytes": 3590,
+      "sourceSha256": "b58a7051018dca97dd278333967a18a560d6ccfb49e80937372808d108a79141",
+      "archivedSha256": "b58a7051018dca97dd278333967a18a560d6ccfb49e80937372808d108a79141",
+      "originPaths": [
+        "/tmp/ive-final-whole-branch-review.md"
+      ],
+      "title": "Independent whole-branch product review",
+      "category": "current-final-independent-review",
+      "evidenceStatus": "verbatim scoped final product review; no Important/Blocker; optional binary probe auto-review-rejected and not executed",
+      "reviewedHead": "ffd44a569850d05e0359bff8ea6267982342c6fc",
+      "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
+    },
+    {
+      "path": "current/reviews/ive-final-evidence-review.md",
+      "bytes": 4724,
+      "sourceSha256": "b7ef3d734f398833b7034003209a3d0ea8562cd07c52b6bad494d08502eccbf4",
+      "archivedSha256": "b7ef3d734f398833b7034003209a3d0ea8562cd07c52b6bad494d08502eccbf4",
+      "originPaths": [
+        "/tmp/ive-final-evidence-review.md"
+      ],
+      "title": "Final evidence/provenance review — `ffd44a569850d05e0359bff8ea6267982342c6fc`",
+      "category": "current-final-independent-review",
+      "evidenceStatus": "verbatim scoped final evidence/provenance review; no Important/Blocker; broad gates remain attributed controller evidence",
+      "reviewedHead": "ffd44a569850d05e0359bff8ea6267982342c6fc",
       "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da"
     }
   ],
@@ -3037,12 +3076,12 @@
     }
   ],
   "summary": {
-    "payloadFiles": 131,
-    "payloadBytes": 2255413,
+    "payloadFiles": 134,
+    "payloadBytes": 2301223,
     "historicalPayloadFiles": 114,
     "historicalPayloadBytes": 1844096,
-    "currentPayloadFiles": 17,
-    "currentPayloadBytes": 411317,
+    "currentPayloadFiles": 20,
+    "currentPayloadBytes": 457127,
     "categories": {
       "native-implementation-report": 25,
       "tooling-implementation-report": 3,
@@ -3058,15 +3097,19 @@
       "current-corpus-structured-artifact": 12,
       "current-gallery-structured-artifact": 1,
       "current-state-implementation-report": 2,
-      "current-controller-gate-capture-report": 1
-    }
+      "current-controller-gate-capture-report": 1,
+      "current-final-rulings": 1,
+      "current-final-independent-review": 2
+    },
+    "finalCloseoutPayloadFiles": 3,
+    "finalCloseoutPayloadBytes": 45810
   },
   "currentEvidence": {
     "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
     "archiveWorktree": "/mnt/data/Projects/ive/.worktree/diagram-current-evidence",
     "capturedAt": "2026-10-23T17:34:09.243343+00:00",
     "releaseViewerSha256": "0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d",
-    "status": "current corpus/capture/controller gates; distinct from historical snapshots; final review and Rulings pending",
+    "status": "current corpus/capture/controller gates retained; two final scoped independent reviews and twelve-ruling consolidation complete; no Important/Blocker or fix wave in those scopes",
     "controllerSummary": "current/controller-gates-and-captures.md",
     "rawArtifactPolicy": "no raw SVG/PNG/JAR/vendor duplication; retained manifests preserve historical /tmp paths and hashes",
     "archiveWorkerChecks": {
@@ -3142,5 +3185,24 @@
       "sha256": "9161b09750ce1b52bccf3babc2891a78cefa974b6fba47b91c0c84faa03f8596",
       "status": "existing live document/provenance at current product snapshot; not duplicated"
     }
-  ]
+  ],
+  "finalCloseout": {
+    "reviewedHead": "ffd44a569850d05e0359bff8ea6267982342c6fc",
+    "productHead": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+    "status": "two final scoped independent reviews complete; no concrete Important/Blocker; no fix wave required",
+    "reviewPaths": [
+      "current/reviews/ive-final-whole-branch-review.md",
+      "current/reviews/ive-final-evidence-review.md"
+    ],
+    "rulingsPath": "current/RULINGS.md",
+    "rulingsPreservation": "all twelve ruling/cost blockquotes verbatim; top/closing and related current status updated from source draft after reviews",
+    "priorPayloadPreservation": "all114 historical and17 prior current payloads unchanged",
+    "controllerSummaryStatus": "current/controller-gates-and-captures.md retained unchanged as captured controller-reported snapshot; final status is this closeout and exact final reviews",
+    "remainingLimits": [
+      "full upstream compatibility",
+      "original-versus-native pixel parity",
+      "macOS runtime/capture verification"
+    ],
+    "integration": "private closeout; controller owns central integration and local handoff; no publication"
+  }
 }

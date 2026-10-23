@@ -1,6 +1,15 @@
-# Recorded historical review verdicts
+# Recorded final and historical review verdicts
 
-These are excerpts from preserved independent review documents, not fresh findings or final branch approval. Earlier needs-fixes rounds remain linked alongside rereviews. Full exact wording, reviewed ranges and qualifications are in the linked originals; full source SHA and untruncated excerpts are in [manifest.json](manifest.json).
+Two final scoped independent reviews of `ffd44a569850d05e0359bff8ea6267982342c6fc` are complete with no concrete Important or Blocker; no fix wave is required. Their exact reports preserve all limits. The product review's optional release-binary probe was rejected by automatic approval review and was not run; the evidence review attributes broad controller gates rather than claiming to reproduce them. Neither establishes full upstream/pixel/macOS equivalence.
+
+| Final scoped review | Recorded verdict |
+| --- | --- |
+| [Product implementation](current/reviews/ive-final-whole-branch-review.md) | No concrete Blocker or Important product bug found in the inspected standalone port. |
+| [Evidence/provenance](current/reviews/ive-final-evidence-review.md) | No Important or Blocker finding in this read-only evidence/provenance scope. |
+
+See [Rulings and final dispositions](current/RULINGS.md).
+
+The following44 historical entries are excerpts from preserved independent review documents, not fresh findings or universal branch approval. Earlier needs-fixes rounds remain linked alongside rereviews. Full exact wording, reviewed ranges and qualifications are in the linked originals; full source SHA and untruncated excerpts are in [manifest.json](manifest.json).
 
 | Historical review | Recorded excerpt |
 | --- | --- |

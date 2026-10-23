@@ -1,6 +1,6 @@
 # Evidence catalog
 
-Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT product evidence `3478bbdf5d11865414817e5f6a01eb81cd2336da` are distinct. Exact file/source hashes, origins, reported base/head lines and review excerpts are in [manifest.json](manifest.json). Preservation does not create independent runtime/visual approval. Final whole-branch review and Rulings remain pending.
+Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT product evidence `3478bbdf5d11865414817e5f6a01eb81cd2336da` are distinct. Exact file/source hashes, origins, reported base/head lines and review excerpts are in [manifest.json](manifest.json). Preservation does not create independent runtime/visual approval. The final Rulings and two scoped independent reviews are retained below; both reviews offfd44a5 found no Important/Blocker, with no fix wave required. Full upstream/pixel/macOS equivalence remains unverified.
 
 ## architecture-preparation
 
@@ -49,8 +49,8 @@ Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT 
 
 | Archived document | Evidence status |
 | --- | --- |
-| [current/state/task-3b2-report.md](current/state/task-3b2-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending |
-| [current/state/task-3b2-integration-followup-report.md](current/state/task-3b2-integration-followup-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, broad review pending |
+| [current/state/task-3b2-report.md](current/state/task-3b2-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, final scoped reviews now complete; report wording remains historical |
+| [current/state/task-3b2-integration-followup-report.md](current/state/task-3b2-integration-followup-report.md) | reported private/integration checkpoint; historical pending wording preserved; controller reports completed integration3478bbd, final scoped reviews now complete; report wording remains historical |
 
 ## generator-provenance-snapshot
 
@@ -66,8 +66,8 @@ Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT 
 
 | Archived document | Evidence status |
 | --- | --- |
-| [history/native-controller-ledger.md](history/native-controller-ledger.md) | verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final chronological handoff pending |
-| [history/migration-controller-ledger.md](history/migration-controller-ledger.md) | verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final chronological handoff pending |
+| [history/native-controller-ledger.md](history/native-controller-ledger.md) | verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final twelve-ruling handoff now retained in current/RULINGS.md |
+| [history/migration-controller-ledger.md](history/migration-controller-ledger.md) | verbatim historical controller rulings/events snapshot; stale checkboxes and old paths are not current progress; final twelve-ruling handoff now retained in current/RULINGS.md |
 
 ## historical-independent-review
 
@@ -204,6 +204,14 @@ Historical snapshot base `1b0c1edadadefe76676206340dedf477b6067cf0` and CURRENT 
 
 | Archived document | Evidence status |
 | --- | --- |
-| [tooling/reports/task-4b-import-oracle-report.md](tooling/reports/task-4b-import-oracle-report.md) | reported scoped tooling checkpoint; final Task4B evidence/review remains pending |
-| [tooling/reports/ive-task4b-native-driver-report.md](tooling/reports/ive-task4b-native-driver-report.md) | reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review remains pending |
-| [tooling/reports/ive-task4b-native-driver-deadline-report.md](tooling/reports/ive-task4b-native-driver-deadline-report.md) | reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review remains pending |
+| [tooling/reports/task-4b-import-oracle-report.md](tooling/reports/task-4b-import-oracle-report.md) | reported scoped tooling checkpoint; final evidence/review was pending at this historical checkpoint; see current closeout |
+| [tooling/reports/ive-task4b-native-driver-report.md](tooling/reports/ive-task4b-native-driver-report.md) | reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review was pending at this historical checkpoint; see current closeout |
+| [tooling/reports/ive-task4b-native-driver-deadline-report.md](tooling/reports/ive-task4b-native-driver-deadline-report.md) | reported completed developer-only corpus tooling checkpoint; final corpus/coverage/review was pending at this historical checkpoint; see current closeout |
+
+## final-closeout
+
+| Archived document | Evidence status |
+| --- | --- |
+| [current/RULINGS.md](current/RULINGS.md) | controller consolidation; twelve ruling/cost blocks verbatim; top/closing status updated after scoped final reviews |
+| [current/reviews/ive-final-whole-branch-review.md](current/reviews/ive-final-whole-branch-review.md) | verbatim final independent product review offfd44a5; no Important/Blocker; optional binary probe auto-review-rejected, not executed |
+| [current/reviews/ive-final-evidence-review.md](current/reviews/ive-final-evidence-review.md) | verbatim final independent evidence/provenance review offfd44a5; no Important/Blocker; broad gates remain attributed |
