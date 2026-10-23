@@ -43,7 +43,6 @@ impl Workspace {
     }
 
     /// The first tab whose edits are not saved: a save failed or waits for the user.
-    #[cfg(target_os = "macos")]
     pub(super) fn unsaved_tab(&self, cx: &App) -> Option<TabId> {
         self.unsaved_tabs(cx).into_iter().next()
     }
@@ -72,12 +71,13 @@ impl Workspace {
 
     fn quit_unless_unsaved(&mut self, ticket: Ticket, window: &mut Window, cx: &mut Context<Self>) {
         if !self.waits.is_live(ticket) {
-            return;
+            return self.restart_cancelled();
         }
         let unsaved = self.unsaved_tabs(cx);
         let Some(first) = unsaved.first().copied() else {
             return cx.quit();
         };
+        self.restart_cancelled();
         self.quit_prompt = None;
         cx.cancel_quit();
         self.waits.quit_stopped(ticket, unsaved.clone());

@@ -5,6 +5,7 @@
 //! ptyhost attach ID                                              attach this terminal; Ctrl-] detaches
 //! ptyhost ls                                                     list live sessions
 //! ptyhost kill ID                                                hang up the session's program, kill it after 2 s
+//! ptyhost protocol                                               the protocol version this build's hosts speak
 //! ```
 
 use std::io;
@@ -14,13 +15,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::client::{self, Client, Ending};
 use crate::host::{self, HostConfig, Launcher};
-use crate::protocol::Size;
+use crate::protocol::{PROTOCOL, Size};
 use crate::registry::Registry;
 
 /// The host's hang-up grace plus time to clean up.
 const KILL_WAIT: Duration = Duration::from_secs(4);
 
-/// Runs one verb (`new | attach ID | ls | kill ID | serve …`); `launcher` starts hosts for `new`.
+/// Runs one verb (`new | attach ID | ls | kill ID | protocol | serve …`); `launcher` starts hosts for `new`.
 pub fn main(args: &[String], launcher: &Launcher) -> ExitCode {
     match run(args, launcher) {
         Ok(code) => code,
@@ -38,8 +39,13 @@ fn run(args: &[String], launcher: &Launcher) -> io::Result<ExitCode> {
         Some((verb, [id])) if verb == "attach" => attach(&registry, id),
         Some((verb, [])) if verb == "ls" => list(&registry),
         Some((verb, [id])) if verb == "kill" => kill(&registry, id),
+        // an update asks a staged build this, to know whether the running terminals carry over to it
+        Some((verb, [])) if verb == "protocol" => {
+            println!("{PROTOCOL}");
+            Ok(ExitCode::SUCCESS)
+        }
         Some((verb, rest)) if verb == "serve" => serve(&registry, Options::parse(rest)?),
-        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, format!("usage: new | attach ID | ls | kill ID, got {args:?}"))),
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, format!("usage: new | attach ID | ls | kill ID | protocol, got {args:?}"))),
     }
 }
 
@@ -155,4 +161,22 @@ fn key_value(text: &str) -> io::Result<(String, String)> {
 
 fn invalid(message: String) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidInput, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_answer_the_protocol_verb() {
+        // given
+        let args = ["protocol".to_owned()];
+        let launcher = Launcher { exe: PathBuf::from("ptyhost"), args: Vec::new() };
+
+        // when
+        let answered = run(&args, &launcher);
+
+        // then
+        assert!(answered.is_ok(), "{answered:?}");
+    }
 }

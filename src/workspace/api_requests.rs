@@ -37,6 +37,8 @@ const FRAME_WAIT: Duration = Duration::from_millis(500);
 pub(super) fn answer_calls(mut calls: UnboundedReceiver<Call>, window: &mut Window, cx: &mut Context<Workspace>) -> Task<()> {
     cx.spawn_in(window, async move |workspace, cx| {
         while let Some(Call { request, reply }) = calls.next().await {
+            // an agent at work: an update restart would cut its connection
+            let _ = workspace.update(cx, |workspace, _| workspace.note_activity());
             if let Request::NextFrame = request {
                 // answered from the frame callback; if the window is gone, dropping `reply` tells the server
                 let _ = workspace.update_in(cx, |_, window, _| answer_after_next_frame(reply, window));

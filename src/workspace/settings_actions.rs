@@ -2,7 +2,7 @@ use gpui::{Context, Window, prelude::*};
 
 use super::Workspace;
 use crate::editor::Tab;
-use crate::settings::{SettingsError, SettingsStore, ThemePreference};
+use crate::settings::{AutoUpdate, SettingsError, SettingsStore, ThemePreference};
 use crate::settings_page::{SettingsPage, SettingsView};
 use crate::theme;
 
@@ -23,6 +23,15 @@ impl Workspace {
             store.replace(settings)
         });
         theme::apply(window.appearance(), cx);
+        self.after_settings_change(saved, cx);
+    }
+
+    pub fn set_auto_update(&mut self, auto_update: AutoUpdate, cx: &mut Context<Self>) {
+        let saved = cx.update_global::<SettingsStore, _>(|store, _| {
+            let settings = store.current().with_auto_update(auto_update);
+            store.replace(settings)
+        });
+        self.auto_update_changed(auto_update, cx);
         self.after_settings_change(saved, cx);
     }
 

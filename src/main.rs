@@ -65,6 +65,7 @@ mod text_input;
 mod theme;
 mod theme_config;
 mod tooltip;
+mod update;
 mod watch;
 mod window_capture;
 mod window_controls;
@@ -114,8 +115,14 @@ fn main() -> ExitCode {
     delete_old_pastes();
     #[cfg(target_os = "linux")]
     memory_watch::start();
+    #[cfg(windows)]
+    update::install::delete_set_aside_exe();
+    if let Some(pid) = args.replacing {
+        wait_for_replaced(pid);
+    }
+    let start = Start::of(&args);
     let (calls, api_calls) = unbounded();
-    if let Err(error) = tracing::info_span!("serve_mcp").in_scope(|| serve_mcp(args.mcp, args.restart.as_deref(), &calls)) {
+    if let Err(error) = tracing::info_span!("serve_mcp").in_scope(|| serve_mcp(args.mcp, start, &calls)) {
         eprintln!("ive: {error}");
         return ExitCode::FAILURE;
     }
@@ -130,7 +137,7 @@ fn main() -> ExitCode {
         api_calls,
         scripts,
         #[cfg(unix)]
-        hosted: tracing::info_span!("claim_terminals").in_scope(|| claim_terminals(args.restart.as_deref())),
+        hosted: tracing::info_span!("claim_terminals").in_scope(|| claim_terminals(start)),
         signals: forward_signals(),
         restart_script: args.restart.and_then(|script| std::fs::canonicalize(script).ok()),
         on_quit: if args.stop_processes_on_quit { OnQuit::StopProcesses } else { OnQuit::Ask },
@@ -267,18 +274,43 @@ fn check_restart(script: Option<&std::path::Path>) -> Result<(), String> {
     Err(format!("--restart {} needs SIGUSR1, which only Unix has", script.display()))
 }
 
-/// With `--restart`, IVE may be the restarted one: it waits for the one it replaces to let go of the terminals.
-#[cfg(unix)]
-fn claim_terminals(restart_script: Option<&std::path::Path>) -> Option<terminal::hosted::HostedTerminals> {
-    match restart_script {
-        Some(_) => terminal::hosted::HostedTerminals::claim_after_restart(profile::current()),
-        None => terminal::hosted::HostedTerminals::claim(profile::current()),
+/// An update restart starts this IVE at once; the one it replaces saves its tabs as it quits, which this one reads.
+fn wait_for_replaced(pid: u32) {
+    let limit = retry::RESTART_INTERVAL * retry::RESTART_ATTEMPTS;
+    if update::restart::wait_for_exit(pid, limit) == update::restart::Exit::StillRunning {
+        eprintln!("ive: IVE {pid}, which this one replaces, still runs after {} s; starting anyway", limit.as_secs());
     }
 }
 
-/// Serves MCP unless `--no-mcp`, printing how to connect; `Err` when IVE must not start without it. With
-/// `--restart`, IVE waits up to 10 s for the one it replaces to free the port.
-fn serve_mcp(mcp: McpPort, restart_script: Option<&std::path::Path>, calls: &UnboundedSender<Call>) -> Result<(), String> {
+/// Whether this IVE may be replacing another, which still holds the terminals and the MCP port for a moment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Start {
+    Fresh,
+    /// `--restart` (the restart script may have started this IVE) or `--replacing` (an update restart did)
+    Replacing,
+}
+
+impl Start {
+    fn of(args: &Args) -> Self {
+        match (&args.restart, args.replacing) {
+            (None, None) => Self::Fresh,
+            _ => Self::Replacing,
+        }
+    }
+}
+
+/// An IVE replacing another waits for it to let go of the terminals.
+#[cfg(unix)]
+fn claim_terminals(start: Start) -> Option<terminal::hosted::HostedTerminals> {
+    match start {
+        Start::Replacing => terminal::hosted::HostedTerminals::claim_after_restart(profile::current()),
+        Start::Fresh => terminal::hosted::HostedTerminals::claim(profile::current()),
+    }
+}
+
+/// Serves MCP unless `--no-mcp`, printing how to connect; `Err` when IVE must not start without it. An IVE replacing
+/// another waits up to 10 s for it to free the port.
+fn serve_mcp(mcp: McpPort, start: Start, calls: &UnboundedSender<Call>) -> Result<(), String> {
     let given = match mcp {
         McpPort::Off => return Ok(()),
         McpPort::Remembered => None,
@@ -286,7 +318,10 @@ fn serve_mcp(mcp: McpPort, restart_script: Option<&std::path::Path>, calls: &Unb
     };
     let env_token = Token::from_env().transpose().map_err(|error| format!("{}: {error}", mcp::TOKEN_ENV))?;
     let path = profile::current().mcp_path();
-    let attempts = restart_script.map_or(1, |_| retry::RESTART_ATTEMPTS);
+    let attempts = match start {
+        Start::Replacing => retry::RESTART_ATTEMPTS,
+        Start::Fresh => 1,
+    };
     let request = mcp::endpoint::Request { given, path: path.as_deref(), env_token, attempts };
     let opened = mcp::endpoint::open(request, |port, token| mcp::start(port, token.clone(), calls.clone()))?;
     for line in opened.lines {

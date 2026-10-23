@@ -90,6 +90,8 @@ impl Render for TabWindow {
             .flex_col()
             .size_full()
             .child(content.flex_1().min_h_0())
+            // input here counts against the update restart's idle time as the main window's does
+            .child(crate::workspace::activity_watcher(self.workspace.clone()))
             .track_focus(&self.focus_handle)
             .bg(rgb(theme.background))
             .font_family(theme::ui_font(cx))

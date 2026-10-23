@@ -1,12 +1,14 @@
-//! The Settings tab: Appearance, Scripts, and Third-Party Software.
+//! The Settings tab: Appearance, Scripts, Updates, and Third-Party Software.
 
 mod appearance;
 mod scripts;
 mod third_party;
+mod updates;
 
 use gpui::{Context, Div, SharedString, Stateful, div, prelude::*, rgb};
 
 pub use third_party::TITLE as THIRD_PARTY_TITLE;
+pub use updates::TITLE as UPDATES_TITLE;
 
 use crate::click_targets::target;
 use crate::settings::SettingsStore;
@@ -18,6 +20,7 @@ use crate::workspace::Workspace;
 pub enum SettingsPage {
     Appearance,
     Scripts,
+    Updates,
     ThirdParty,
 }
 
@@ -42,6 +45,7 @@ impl SettingsView {
         match self.page {
             SettingsPage::Appearance => "Appearance",
             SettingsPage::Scripts => "Scripts",
+            SettingsPage::Updates => updates::TITLE,
             SettingsPage::ThirdParty => third_party::TITLE,
         }
     }
@@ -62,11 +66,19 @@ impl SettingsView {
     }
 }
 
-pub fn render(view: &SettingsView, theme: Theme, cx: &mut Context<Workspace>) -> Div {
+/// What the Settings tab draws from: its own view, and what the workspace says about updates.
+pub struct Page<'a> {
+    pub view: &'a SettingsView,
+    pub update_status: String,
+}
+
+pub fn render(page: Page, theme: Theme, cx: &mut Context<Workspace>) -> Div {
+    let view = page.view;
     let saved_to = cx.global::<SettingsStore>().path().map(|path| format!("Saved to {}", path.display()));
     let content = match view.page {
         SettingsPage::Appearance => appearance::render(theme, cx),
         SettingsPage::Scripts => scripts::render(theme, cx),
+        SettingsPage::Updates => updates::render(page.update_status, theme, cx),
         SettingsPage::ThirdParty => third_party::render(&view.third_party, theme, cx),
     };
     let body = div()
@@ -95,6 +107,7 @@ fn render_nav(current: SettingsPage, theme: Theme, cx: &mut Context<Workspace>) 
         .border_color(rgb(theme.border))
         .child(nav_item("Appearance", SettingsPage::Appearance, current, theme, cx))
         .child(nav_item("Scripts", SettingsPage::Scripts, current, theme, cx))
+        .child(nav_item(updates::TITLE, SettingsPage::Updates, current, theme, cx))
         .child(nav_item(third_party::TITLE, SettingsPage::ThirdParty, current, theme, cx))
 }
 

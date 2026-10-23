@@ -66,6 +66,7 @@ mod tab_state;
 mod tab_windows;
 mod tree_git;
 mod tree_status;
+mod updates;
 mod drag_preview;
 mod worktree_list;
 
@@ -77,6 +78,7 @@ pub use processes::ProgramEnding;
 pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 pub use path_actions::is_path_action;
+pub use updates::activity_watcher;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -170,6 +172,7 @@ pub struct Workspace {
     /// the tab opened from the hub a moment ago, while it is the one shown
     hub_return: Option<hub::HubReturn>,
     _signals: Option<Task<()>>,
+    updates: updates::Updates,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -251,6 +254,7 @@ impl Workspace {
             worktree_list_keys(cx),
             cx.on_app_quit(|workspace, cx| {
                 workspace.flush_state(cx);
+                workspace.apply_update_on_quit(cx);
                 async {}
             }),
         ];
@@ -315,6 +319,7 @@ impl Workspace {
             worktree_creations: crate::hub::creations::Creations::default(),
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
+            updates: updates::start(window, cx),
         };
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
         // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
@@ -937,6 +942,7 @@ impl Render for Workspace {
             .size_full()
             .child(content.flex_1().min_h_0())
             .children(quit_prompt)
+            .child(updates::activity_watcher(cx.entity().downgrade()))
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.close_menu_on_escape(event, window, cx)))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.run_window_binding(event, window, cx)))

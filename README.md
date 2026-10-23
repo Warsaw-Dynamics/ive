@@ -807,6 +807,31 @@ publishes nothing.
 git push origin HEAD:release
 ```
 
+The release also has `SHA256SUMS`, and each build knows its tag (`IVE_RELEASE_TAG` at build time).
+
+### Updates
+
+A release build updates itself, the way a browser does. A minute after it starts, and every 6 hours after that, it
+looks at the [latest release](https://api.github.com/repos/Warsaw-Dynamics/ive/releases/latest). When that release
+has a different tag, IVE downloads the release's asset for its OS and CPU, checks it against `SHA256SUMS`, and unpacks
+it into `.ive-update/` beside the install (the `ive` binary, or `IVE.app`). Nothing changes while you work:
+
+- **On quit**, the staged release replaces the install, so the next start runs it.
+- **After 30 minutes without a key, click or MCP call**, IVE restarts onto it: tabs come back, terminals and
+  their programs keep running. It waits while a file has unsaved edits, while another IVE runs from the same
+  install, and while running processes would end (another IVE of the profile keeps its terminals).
+- **Restart to update** in the tab row restarts at once, after saving edits.
+
+An update whose terminals cannot carry over (the terminal host's protocol changed) is applied on quit only.
+Settings → Updates shows the version and the state, and turns updates off (`auto_update = "off"` in
+`settings.toml`, per profile); off, IVE does not look and drops what it staged. A release removed from GitHub rolls
+builds back to the one that is latest again. Problems (no network, an install folder IVE cannot write) are printed
+to stderr and shown on that page; IVE tries again at the next check. Builds from source never update themselves.
+
+To try it without GitHub: `IVE_UPDATE_FEED` names another URL for the latest release's description (`file://`
+works), `IVE_UPDATE_IDLE_SECONDS` another idle time (10 to 86400), and building with `IVE_RELEASE_TAG=<tag>` makes a
+build from source act as that release.
+
 ## Troubleshooting
 
 **Black band around the window (Linux X11).** IVE draws its own frame: a 10 px transparent band around the
@@ -852,7 +877,7 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 | `src/syntax/` | language registry (`registry.rs`), parsing into embedded-code layers (`parse.rs`, `injection.rs`) and highlight spans (`highlight.rs`); queries in `assets/queries/` |
 | `vendor/grammars/` | generated tree-sitter parsers without a usable crate, compiled by `build.rs` |
 | `src/colors/` | colour keys, built-in schemes (`assets/schemes/`, from `tools/port_intellij_schemes.py`), user overrides; checkout colours |
-| `src/settings_page/` | Settings tab: Appearance, Scripts and Third-Party Software |
+| `src/settings_page/` | Settings tab: Appearance, Scripts, Updates and Third-Party Software |
 | `src/terminal/` | terminal: PTY session (`alacritty_terminal`), foreground program (Claude Code), keyboard and mouse encoding, colours, drawing |
 | `src/api/` | what MCP and scripts may ask of the workspace; `src/workspace/api_requests.rs` answers it on the UI thread |
 | `src/mcp/` | MCP server, a caller of `src/api/` |
@@ -863,5 +888,6 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 | `src/mouse_binding.rs` | gpui mouse events as binding triggers, for tabs and tree rows |
 | `mock/` | static HTML mock of the UI |
 | `.github/workflows/` | the release build |
+| `src/update/`, `src/workspace/updates.rs` | updating a release build: the latest release, download and checksum, staging beside the install, the swap, when to restart; the workspace's timers, the button and quit |
 | `deny.toml`, `about.toml`, `tools/third-party-*`, `tools/third_party_json.py` | licence and source checks; the generators of `THIRD-PARTY-NOTICES.md` and of `assets/licenses/third-party.json`, which `src/third_party.rs` reads for Settings → Third-Party Software |
 | `desktop/` | the app icon in task bar sizes and `install.sh`, which installs it (and a desktop entry) on Linux |
