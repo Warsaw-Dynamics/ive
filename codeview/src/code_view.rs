@@ -9,16 +9,18 @@ use std::sync::Arc;
 
 use gpui::{
     App, Context, CursorStyle, DispatchPhase, Div, Entity, FocusHandle, Focusable, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString, Stateful, StyledText, Window, canvas, div, prelude::*, px, rgb,
+    MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString, Stateful, StyledText, Window, canvas, div, prelude::*, px, rgb, rgba,
 };
 
 use crate::colors::{ColorKey, ResolvedScheme};
 use crate::document::DisplayLine;
+use crate::find::FindText;
+use crate::find::marks::{FindMarks, Mark};
 use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::line_view::{self, LineScroll, Metrics};
 use crate::panel::{Failed, LineSource, ParseJob, ParseTarget, Previous};
 use crate::position::ScrollPosition;
-use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
+use crate::scrollbar::{ScrollState, Tick, horizontal_scrollbar, vertical_scrollbar_with_ticks};
 use crate::style::ViewStyle;
 use crate::syntax::{self, Cancel, Highlight, Language, Syntax};
 use crate::text_editor::Motion;
@@ -61,6 +63,8 @@ struct State {
     marked: Option<usize>,
     /// file bytes to scroll sideways into view once the viewport's width is known
     pending_reveal: Cell<Option<Range<usize>>>,
+    /// the find box's matches, while it is open
+    find_marks: Option<FindMarks>,
 }
 
 /// The view's top-left corner in the window and its font metrics, as last painted.
@@ -169,6 +173,45 @@ impl CodeView {
         }
     }
 
+    // ---- the find box: see `crate::panel::find` ----
+
+    pub fn find_text(&self) -> FindText {
+        FindText::Shared(self.state.source.clone())
+    }
+
+    /// The selection when on one line, and the byte it starts at; a view has no caret, so no word.
+    pub fn find_prefill(&self) -> Option<(String, usize)> {
+        let range = self.state.selection?.range();
+        let text = self.selected_text().filter(|text| !text.is_empty() && !text.contains('\n'))?;
+        Some((text, range.start))
+    }
+
+    /// The selection's bytes, else the start of the top line.
+    pub fn find_anchor(&self) -> Range<usize> {
+        let top = self.state.source.line_start(self.state.scroll.top().floor() as usize) as usize;
+        self.state.selection.map_or(top..top, |selection| selection.range())
+    }
+
+    /// Selects bytes `bytes` and scrolls them into view.
+    pub fn show_match(&mut self, bytes: Range<usize>, cx: &mut Context<Self>) {
+        self.state.show_match(bytes);
+        cx.notify();
+    }
+
+    pub fn set_find_marks(&mut self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
+        self.state.find_marks = marks;
+        cx.notify();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn has_find_marks(&self) -> bool {
+        self.state.find_marks.is_some()
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        self.state.selection?.text(&self.state.text()).ok()
+    }
+
     /// A left press takes the keys, so the host's Copy and Select All reach the view.
     fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
@@ -211,6 +254,7 @@ impl State {
             placed: Rc::default(),
             marked: None,
             pending_reveal: Cell::new(None),
+            find_marks: None,
         }
     }
 
@@ -259,6 +303,23 @@ impl State {
         // the end first, so a range wider than the view shows its start
         self.scroll.reveal_x(char_width * line.column_of(range.end) as f64, margin);
         self.scroll.reveal_x(char_width * line.column_of(range.start) as f64, margin);
+    }
+
+    /// Selects `bytes`, and scrolls the least to show where they start; past a line's cut, its line.
+    fn show_match(&mut self, bytes: Range<usize>) {
+        let line = self.source.line_of(bytes.start as u64);
+        self.scroll.reveal_line(line);
+        if let (Some(shown), Some(placed)) = (self.source.lines(line..line + 1).pop(), self.placed.get()) {
+            let char_width = f64::from(f32::from(placed.metrics.char_width));
+            self.scroll.reveal_x(char_width * shown.column_of(bytes.start) as f64, char_width * DRAG_MARGIN_CHARS as f64);
+        }
+        self.selection = Some(TextSelection::of(bytes));
+        self.marked = None;
+    }
+
+    fn find_ticks(&self) -> Rc<[Tick]> {
+        let lines = self.source.line_count().max(1) as f32;
+        self.find_marks.as_ref().map_or_else(|| Rc::from([]), |marks| marks.ticks(|line| line as f32 / lines))
     }
 
     /// Scrolls to the last line, where a log's newest lines are.
@@ -402,7 +463,8 @@ impl State {
                 let text = styled_line(line, &self.highlights_of(line), scheme);
                 let selected = self.selection.and_then(|selection| selection.columns_on(line));
                 let marked = self.marked == Some(first + offset);
-                render_line(first + offset, Row { text, selected, marked }, shift, &metrics, theme)
+                let found = self.find_marks.as_ref().map_or_else(Vec::new, |marks| mark_columns(line, marks));
+                render_line(first + offset, Row { text, selected, marked, found }, shift, &metrics, theme)
             })
             .collect();
         let wheel_scroll = self.scroll.clone();
@@ -428,7 +490,7 @@ impl State {
                     .top(-metrics.line_height * (top - first as f64) as f32)
                     .children(rows),
             )
-            .child(vertical_scrollbar(&self.scrollbars, theme))
+            .child(vertical_scrollbar_with_ticks(&self.scrollbars, theme, self.find_ticks()))
             .child(horizontal_scrollbar(&self.scrollbars, theme));
         let notice = self.notice.clone().map(|notice| {
             div()
@@ -541,6 +603,8 @@ struct Row {
     selected: Option<Range<usize>>,
     /// the line `file:42` went to
     marked: bool,
+    /// the find box's matches on the line, by display columns
+    found: Vec<(Range<usize>, Mark)>,
 }
 
 fn render_line(index: usize, row: Row, shift: Pixels, metrics: &Metrics, theme: &ViewStyle) -> Div {
@@ -562,19 +626,46 @@ fn render_line(index: usize, row: Row, shift: Pixels, metrics: &Metrics, theme: 
                 .flex_1()
                 .min_w_0()
                 .overflow_hidden()
-                .child(div().relative().left(-shift).whitespace_nowrap().children(row.selected.map(|columns| selection_bar(columns, metrics, theme))).child(row.text)),
+                .child(
+                    div()
+                        .relative()
+                        .left(-shift)
+                        .whitespace_nowrap()
+                        // the matches under the selection, the current one over it
+                        .children(marks_of(&row.found, Mark::Match).map(|columns| bar(columns, rgba(theme.find_match), metrics)))
+                        .children(row.selected.map(|columns| bar(columns, rgb(theme.selected), metrics)))
+                        .children(marks_of(&row.found, Mark::Current).map(|columns| bar(columns, rgba(theme.find_current), metrics)))
+                        .child(row.text),
+                ),
         )
 }
 
-/// The selection's background behind `columns` of a line; glyphs of the monospace font sit on the column grid.
-fn selection_bar(columns: Range<usize>, metrics: &Metrics, theme: &ViewStyle) -> Div {
+/// A background behind `columns` of a line (the selection, a match); glyphs of the monospace font sit on the
+/// column grid.
+fn bar(columns: Range<usize>, colour: gpui::Rgba, metrics: &Metrics) -> Div {
     div()
         .absolute()
         .top_0()
         .h(metrics.line_height)
         .left(metrics.char_width * columns.start as f32)
         .w(metrics.char_width * columns.len() as f32)
-        .bg(rgb(theme.selected))
+        .bg(colour)
+}
+
+fn marks_of(found: &[(Range<usize>, Mark)], mark: Mark) -> impl Iterator<Item = Range<usize>> + '_ {
+    found.iter().filter(move |(_, kind)| *kind == mark).map(|(columns, _)| columns.clone())
+}
+
+/// The display columns of `line` that `marks` cover, as a selection of those bytes would mark them: of the bytes it
+/// shows, and of its line break unless it is cut.
+fn mark_columns(line: &DisplayLine, marks: &FindMarks) -> Vec<(Range<usize>, Mark)> {
+    let shown = line.file_bytes();
+    let cut = shown.end < line.end();
+    let end = if cut { shown.end } else { line.end() + 1 };
+    let (column, past) = (line.columns(), line.text.chars().count() + 1);
+    let found = marks.on_bytes(shown.start..end).into_iter();
+    let marked = found.map(|(bytes, mark)| (column(bytes.start)..if bytes.end > line.end() { past } else { column(bytes.end) }, mark));
+    marked.filter(|(columns, _)| !columns.is_empty()).collect()
 }
 
 #[cfg(test)]
@@ -801,6 +892,53 @@ mod tests {
 
         // then
         assert_eq!(editor.marked_line(), None);
+    }
+
+    #[test]
+        fn should_select_and_reveal_a_match_far_down() {
+        // given
+        let source: Arc<dyn LineSource> = Arc::new(crate::document::TextSource::new(&(1..=100).map(|line| format!("line {line}\n")).collect::<String>()));
+        let mut state = State::new(source.clone(), None);
+        let start = source.line_start(79) as usize;
+
+        // when
+        state.show_match(start..start + 7);
+
+        // then
+        let top = state.scroll_position().top_line;
+        assert_eq!(state.selection.map(|selection| selection.range()), Some(start..start + 7));
+        assert!(top <= 79. && 79. < top + state.scroll.viewport_lines(), "top {top}");
+    }
+
+    #[test]
+    fn should_mark_display_columns_after_a_tab() {
+        // given
+        let line = DisplayLine::of(b"\tab", 0);
+        let ab = 1..3;
+        let marks = FindMarks { ranges: Arc::from(vec![ab]), lines: Arc::from([0]), current: Some(0) };
+
+        // when
+        let columns = mark_columns(&line, &marks);
+
+        // then
+        assert_eq!(columns, [(4..6, Mark::Current)]);
+    }
+
+    #[test]
+    fn should_mark_only_the_shown_part_of_a_long_cut_line_quickly() {
+        // given
+        let text = "e ".repeat(100_000);
+        let line = DisplayLine::of(text.as_bytes(), 0);
+        let ranges: Vec<Range<usize>> = (0..100_000).map(|at| 2 * at..2 * at + 1).collect();
+        let marks = FindMarks { lines: vec![0; ranges.len()].into(), ranges: ranges.into(), current: None };
+
+        // when
+        let started = std::time::Instant::now();
+        let columns = mark_columns(&line, &marks);
+
+        // then
+        assert_eq!((columns.len(), columns.last().cloned()), (crate::document::MAX_LINE_CHARS / 2, Some((9_998..9_999, Mark::Match))));
+        assert!(started.elapsed() < std::time::Duration::from_millis(50), "{:?}", started.elapsed());
     }
 
     #[test]

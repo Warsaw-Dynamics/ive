@@ -39,6 +39,8 @@ pub struct Theme {
     /// backgrounds of added and removed diff lines, 0xRRGGBBAA
     pub diff_added: u32,
     pub diff_removed: u32,
+    pub find_match: u32,
+    pub find_current: u32,
     /// change marks: A and ?, D and U, the rest
     pub mark_added: u32,
     pub mark_removed: u32,
@@ -189,6 +191,8 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         error: palette.error.0,
         diff_added: palette.diff_added.0,
         diff_removed: palette.diff_removed.0,
+        find_match: palette.find_match.0,
+        find_current: palette.find_current.0,
         mark_added: palette.mark_added.0,
         mark_removed: palette.mark_removed.0,
         mark_modified: palette.mark_modified.0,
@@ -240,6 +244,8 @@ pub fn view_style(theme: &Theme) -> ViewStyle {
         tab_active_border: theme.tab_active_border,
         diff_added: theme.diff_added,
         diff_removed: theme.diff_removed,
+        find_match: theme.find_match,
+        find_current: theme.find_current,
         change_added: theme.change_added,
         change_modified: theme.change_modified,
         change_deleted: theme.change_deleted,
@@ -451,6 +457,7 @@ mod tests {
         // then
         assert_eq!(style.text, theme.text);
         assert_eq!(style.diff_added, theme.diff_added);
+        assert_eq!((style.find_match, style.find_current), (theme.find_match, theme.find_current));
         assert_eq!(style.editor_text_size, theme.sizes.editor.text_size.0);
     }
 

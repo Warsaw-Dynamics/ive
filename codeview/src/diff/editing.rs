@@ -311,6 +311,7 @@ impl DiffView {
         self.colours = HighlightCache::default();
         self.measure_numbers();
         self.rebuild();
+        self.find_revision += 1;
         cx.notify();
     }
 
@@ -360,6 +361,7 @@ impl DiffView {
         self.files = vec![diff];
         self.measure_numbers();
         self.rebuild();
+        self.find_revision += 1;
         cx.notify();
     }
 
@@ -427,6 +429,8 @@ impl DiffView {
                 cx,
             ),
             Command::Copy(_) | Command::SelectAll | Command::ToggleLayout | Command::Flush => {}
+            // the panel's
+            Command::Find | Command::FindNext | Command::FindPrevious => {}
         }
     }
 
@@ -487,6 +491,8 @@ impl DiffView {
     /// Keys while editing: the host's bindings as in an editor, then the editing and moving keys.
     pub(crate) fn on_editing_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
         let command = match Host::key_outcome(event, KeyScope::Editor, cx) {
+            // the panel around the diff runs the find box
+            KeyOutcome::Command(command) if command.is_find() => return,
             KeyOutcome::Command(command) => command,
             KeyOutcome::Handled => return cx.stop_propagation(),
             // a window action is the workspace's to run

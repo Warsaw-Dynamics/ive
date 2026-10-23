@@ -28,6 +28,9 @@ pub struct ViewStyle {
     /// backgrounds of added and removed diff lines, 0xRRGGBBAA
     pub diff_added: u32,
     pub diff_removed: u32,
+    /// the find box's matches and the current one, 0xRRGGBBAA
+    pub find_match: u32,
+    pub find_current: u32,
     /// the editor's change markers: bars on added and changed lines, triangles where lines were deleted
     pub change_added: u32,
     pub change_modified: u32,
@@ -89,6 +92,12 @@ impl ViewStyle {
     /// A style for tests that build views: plain colours and sizes, set as the global.
     #[cfg(test)]
     pub fn set_for_test(cx: &mut App) {
+        cx.set_global(Self::for_test());
+    }
+
+    /// Plain colours and sizes, for tests.
+    #[cfg(test)]
+    pub fn for_test() -> Self {
         let diff = DiffSizes {
             row_height: 20.,
             text_size: 14.,
@@ -99,7 +108,7 @@ impl ViewStyle {
             header_weight: FontWeight::BOLD,
             number_padding_right: 4.,
         };
-        cx.set_global(ViewStyle {
+        ViewStyle {
             appearance: Appearance::Dark,
             text: 0xffffff,
             muted: 0x888888,
@@ -114,6 +123,8 @@ impl ViewStyle {
             tab_active_border: 0x3366ff,
             diff_added: 0x00ff0020,
             diff_removed: 0xff000020,
+            find_match: 0xffc43c47,
+            find_current: 0xe8a33dcc,
             change_added: 0x00ff00,
             change_modified: 0x0000ff,
             change_deleted: 0x888888,
@@ -133,7 +144,7 @@ impl ViewStyle {
             mono_font: "monospace".into(),
             icon_size: 14.,
             diff,
-        });
+        }
     }
 
     pub fn get(cx: &App) -> &ViewStyle {

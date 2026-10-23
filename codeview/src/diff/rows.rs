@@ -121,7 +121,7 @@ fn line_rows(file: usize, (hunk, content): (usize, &Hunk), layout: DiffLayout) -
 }
 
 /// `20,000`.
-fn grouped(number: usize) -> String {
+pub(crate) fn grouped(number: usize) -> String {
     let digits = number.to_string();
     let mut out = String::with_capacity(digits.len() + digits.len() / 3);
     for (index, digit) in digits.chars().enumerate() {

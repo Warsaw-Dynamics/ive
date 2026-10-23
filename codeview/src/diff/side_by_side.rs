@@ -11,7 +11,7 @@ pub enum Side {
 }
 
 /// Line `line` of hunk `hunk` of a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DiffLineRef {
     pub hunk: usize,
     pub line: usize,

@@ -223,25 +223,78 @@ fn scroll_for(thumb_start: f32, thumb: Thumb, track: f32, max_scroll: f64) -> f6
     f64::from((thumb_start / travel).clamp(0., 1.)) * max_scroll
 }
 
+/// A mark on a vertical scrollbar's track: where a find match is, as a share of the content from its top.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tick {
+    pub at: f32,
+    pub current: bool,
+}
+
+/// The ticks' rows on a `track` pixels long track: one per pixel row, the current one winning.
+pub(crate) fn tick_rows(ticks: &[Tick], track: f32) -> Vec<(f32, bool)> {
+    let mut rows: Vec<(f32, bool)> = Vec::new();
+    for tick in ticks {
+        let row = (tick.at.clamp(0., 1.) * track).floor();
+        match rows.last_mut() {
+            Some((last, current)) if *last == row => *current |= tick.current,
+            _ => rows.push((row, tick.current)),
+        }
+    }
+    rows
+}
+
 /// A vertical scrollbar overlaid on the right edge of its parent, which must be `relative()`.
 pub fn vertical_scrollbar(state: &ScrollState, style: &ViewStyle) -> impl IntoElement {
-    scrollbar(state, Axis::Vertical, style).top_0().right_0().h_full().w(px(style.scrollbar_thickness))
+    vertical_scrollbar_with_ticks(state, style, Rc::from([]))
+}
+
+/// A vertical scrollbar with `ticks` (in content order) on its track, under the thumb.
+pub fn vertical_scrollbar_with_ticks(state: &ScrollState, style: &ViewStyle, ticks: Rc<[Tick]>) -> impl IntoElement {
+    scrollbar(state, Bar { axis: Axis::Vertical, ticks }, style).top_0().right_0().h_full().w(px(style.scrollbar_thickness))
 }
 
 /// A horizontal scrollbar overlaid on the bottom edge of its parent, which must be `relative()`.
 pub fn horizontal_scrollbar(state: &ScrollState, style: &ViewStyle) -> impl IntoElement {
     // stops short of the right edge so it never covers the vertical scrollbar's thumb
     let thickness = px(style.scrollbar_thickness);
-    scrollbar(state, Axis::Horizontal, style).bottom_0().left_0().right(thickness).h(thickness)
+    scrollbar(state, Bar { axis: Axis::Horizontal, ticks: Rc::from([]) }, style).bottom_0().left_0().right(thickness).h(thickness)
 }
 
-fn scrollbar(state: &ScrollState, axis: Axis, style: &ViewStyle) -> gpui::Canvas<Hitbox> {
+/// Which scrollbar, and the ticks on its track.
+struct Bar {
+    axis: Axis,
+    ticks: Rc<[Tick]>,
+}
+
+fn scrollbar(state: &ScrollState, bar: Bar, style: &ViewStyle) -> gpui::Canvas<Hitbox> {
     let (state, style) = (state.clone(), style.clone());
     canvas(
         |bounds, window, _cx| window.insert_hitbox(bounds, HitboxBehavior::BlockMouseExceptScroll),
-        move |bounds, hitbox, window, _cx| paint(&state, axis, Track { bounds, hitbox, style: style.clone() }, window),
+        move |bounds, hitbox, window, _cx| {
+            paint_ticks(&bar.ticks, bounds, &style, window);
+            paint(&state, bar.axis, Track { bounds, hitbox, style: style.clone() }, window);
+        },
     )
     .absolute()
+}
+
+/// Tick height, in pixels.
+const TICK: f32 = 2.;
+
+/// A tick's colour: the match colours of the text, opaque enough to see on the track.
+fn tick_colour(style: &ViewStyle, (_, current): (f32, bool)) -> u32 {
+    if current { style.find_current | 0xff } else { (style.find_match & !0xff) | 0xcc }
+}
+
+/// The find box's matches on a vertical track: the current one solid, the others fainter.
+fn paint_ticks(ticks: &[Tick], track: Bounds<Pixels>, style: &ViewStyle, window: &mut Window) {
+    let across = px(style.scrollbar_thickness - 2. * style.scrollbar_inset);
+    let room = (f32::from(track.size.height) - TICK).max(0.);
+    for (row, current) in tick_rows(ticks, room) {
+        let colour = tick_colour(style, (row, current));
+        let at = track.origin + point(px(style.scrollbar_inset), px(row));
+        window.paint_quad(fill(Bounds::new(at, gpui::size(across, px(TICK))), rgba(colour)));
+    }
 }
 
 struct Track {
@@ -360,6 +413,30 @@ mod tests {
         // then
         assert_eq!(at_start, Thumb { start: 0., length: 100. });
         assert_eq!(halfway, Thumb { start: 150., length: 100. });
+    }
+
+    #[test]
+    fn should_draw_close_ticks_once_and_keep_the_current_one() {
+        // given
+        let ticks = [Tick { at: 0.1, current: false }, Tick { at: 0.1001, current: true }, Tick { at: 0.5, current: false }];
+
+        // when
+        let rows = tick_rows(&ticks, 100.);
+
+        // then
+        assert_eq!(rows, [(10., true), (50., false)]);
+    }
+
+    #[test]
+    fn should_colour_ticks_as_the_matches_in_the_text_only_more_opaque() {
+        // given
+        let style = ViewStyle { find_match: 0xffc43c47, find_current: 0xe8a33dcc, ..ViewStyle::for_test() };
+
+        // when
+        let colours = [(10., false), (20., true)].map(|row| tick_colour(&style, row));
+
+        // then
+        assert_eq!(colours, [0xffc43ccc, 0xe8a33dff]);
     }
 
     #[test]

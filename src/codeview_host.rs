@@ -87,6 +87,9 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Undo => Command::Undo,
         Builtin::Redo => Command::Redo,
         Builtin::ToggleDiffLayout => Command::ToggleLayout,
+        Builtin::Find => Command::Find,
+        Builtin::FindNext => Command::FindNext,
+        Builtin::FindPrevious => Command::FindPrevious,
         _ => return None,
     })
 }
@@ -264,6 +267,19 @@ mod tests {
 
         // then
         assert_eq!(decision, Decision::Done(KeyOutcome::Command(Command::ToggleLayout)));
+    }
+
+    #[test]
+    fn should_map_the_find_builtins_to_commands_in_every_code_view() {
+        // given
+        let finds = [Builtin::Find, Builtin::FindNext, Builtin::FindPrevious];
+
+        // when
+        let decisions = [KeyScope::Editor, KeyScope::Viewer].map(|scope| finds.map(|find| decide(Some(Action::Builtin(find)), scope)));
+
+        // then
+        let commands = || [Command::Find, Command::FindNext, Command::FindPrevious].map(|command| Decision::Done(KeyOutcome::Command(command)));
+        assert_eq!(decisions, [commands(), commands()]);
     }
 
     /// A diff panel showing one line added to a file, as a diff tab opens it.

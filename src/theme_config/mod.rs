@@ -83,6 +83,9 @@ pub struct Palette {
     pub error: Rgb,
     pub diff_added: Rgba,
     pub diff_removed: Rgba,
+    /// the find box's matches, and the current one
+    pub find_match: Rgba,
+    pub find_current: Rgba,
     pub mark_added: Rgb,
     pub mark_removed: Rgb,
     pub mark_modified: Rgb,
@@ -288,6 +291,7 @@ mod tests {
         assert_eq!(spec.dark.background, Rgb(0x1e1f22));
         assert_eq!(spec.dark.tree, Rgb(0x191a1c));
         assert_eq!(spec.dark.diff_added, Rgba(0x39ac6024));
+        assert_eq!((spec.dark.find_match, spec.light.find_current), (Rgba(0xffc43c47), Rgba(0xf2a33acc)));
         assert_eq!(spec.light.text, Rgb(0x000000));
     }
 

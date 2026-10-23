@@ -36,6 +36,8 @@ const INSTRUCTIONS: &str = "Drives the IVE editor window. Tab ids come from list
 and processes from list_projects. Process tabs (terminals, Claude Code) take send_text (end with \\r to press \
 Enter), send_keys (e.g. [\"ctrl-c\"]) and send_mouse (clicks, drags, wheel on screen cells); read_screen returns \
 their visible text, read_output all they printed (or its last lines). Scratch, file and uncommitted diff tabs take send_text too (\\r is a line break; the text saves itself 500 ms later). \
+In file, scratch, diff and commit tabs, click find:open opens the find box (Ctrl+F); while its query has the keyboard, \
+send_text types the query, and find:next / find:previous step through the matches. \
 screenshot shows the whole window. list_targets names what click can press on screen \
 (tree rows, overview sections and cards, git views and their rows, scratch rows and buttons, prompt buttons); \
 window_keys and window_text type into whatever has the keyboard (click new-worktree first to type a branch). \
