@@ -183,6 +183,91 @@ fn drag(id: &SharedString, index: usize, window: &mut Window, cx: &mut App) {
 mod tests {
     use super::*;
 
+    use gpui::{Modifiers, MouseUpEvent, Point, TestAppContext, VisualTestContext, point, px, size};
+
+    use crate::theme::Appearance;
+
+    const SHOWN: &str = "hello world, read /a/b.rs";
+
+    /// `SHOWN` as selectable block `t` above an empty area.
+    struct Shown;
+
+    impl Render for Shown {
+        fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+            div().size_full().child(selectable("t", SHOWN, cx)).child(div().id("below").h(px(100.)))
+        }
+    }
+
+    /// A window showing [`Shown`], with the theme and selection set up.
+    fn window(cx: &mut TestAppContext) -> &mut VisualTestContext {
+        cx.update(|cx| {
+            cx.set_global(Theme::of(Appearance::Dark));
+            let selection = TextSelection::new(cx);
+            cx.set_global(selection);
+        });
+        let (_, cx) = cx.add_window_view(|_window, _cx| Shown);
+        redraw(cx);
+        cx
+    }
+
+    fn redraw(cx: &mut VisualTestContext) {
+        cx.update(|window, _cx| window.refresh());
+        cx.run_until_parked();
+    }
+
+    fn press(at: Point<gpui::Pixels>, click_count: usize, cx: &mut VisualTestContext) {
+        cx.simulate_event(MouseDownEvent { button: MouseButton::Left, position: at, modifiers: Modifiers::default(), click_count, first_mouse: false });
+    }
+
+    fn release(at: Point<gpui::Pixels>, cx: &mut VisualTestContext) {
+        cx.simulate_event(MouseUpEvent { button: MouseButton::Left, position: at, modifiers: Modifiers::default(), click_count: 1 });
+    }
+
+    fn copied(cx: &mut VisualTestContext) -> Option<String> {
+        cx.read(|cx| cx.global::<TextSelection>().selection.copy_text().map(str::to_owned))
+    }
+
+    #[gpui::test]
+    fn should_select_text_dragged_over(cx: &mut TestAppContext) {
+        // given
+        let cx = window(cx);
+
+        // when
+        press(point(px(1.), px(5.)), 1, cx);
+        cx.simulate_event(MouseMoveEvent { position: point(px(60.), px(5.)), pressed_button: Some(MouseButton::Left), modifiers: Modifiers::default() });
+        release(point(px(60.), px(5.)), cx);
+
+        // then
+        let text = copied(cx).expect("a selection");
+        assert!(SHOWN.starts_with(&text) && text.len() > 3, "{text:?}");
+    }
+
+    #[gpui::test]
+    fn should_select_word_on_double_click(cx: &mut TestAppContext) {
+        // given
+        let cx = window(cx);
+
+        // when
+        press(point(px(5.), px(5.)), 2, cx);
+
+        // then
+        assert_eq!(copied(cx).as_deref(), Some("hello"));
+    }
+
+    #[gpui::test]
+    fn should_clear_selection_on_press_elsewhere(cx: &mut TestAppContext) {
+        // given
+        let cx = window(cx);
+        press(point(px(5.), px(5.)), 3, cx);
+        redraw(cx);
+
+        // when
+        press(point(px(5.), px(150.)), 1, cx);
+
+        // then
+        assert_eq!(copied(cx), None);
+    }
+
     #[test]
     fn should_select_word_around_index() {
         // given

@@ -6,6 +6,7 @@ use std::ops::Range;
 use gpui::{AnyElement, Context, Div, Stateful, div, prelude::*, rgb, uniform_list};
 
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::scrollbar::{ListScroll, ScrollState, vertical_scrollbar};
 use crate::theme::{self, Theme};
 use crate::third_party::{self, Software};
@@ -88,7 +89,7 @@ fn render_row(row: usize, software: &'static Software, theme: Theme, cx: &mut Co
         .overflow_hidden()
         .whitespace_nowrap()
         .child(name)
-        .child(div().text_color(rgb(theme.muted)).child(software.version.clone()));
+        .child(div().text_color(rgb(theme.muted)).child(selectable(format!("third-party-version-{row}"), software.version.clone(), cx)));
     div().w_full().flex().gap(theme.sizes.settings.table_gap.px()).py(theme.sizes.settings.row_padding_y.px()).pr(theme.sizes.settings.table_padding_right.px()).child(named).child(div().flex_none().w(theme.sizes.settings.licence_width.px()).overflow_hidden().whitespace_nowrap().child(licence))
 }
 
@@ -104,9 +105,9 @@ fn render_licence(software: &'static Software, theme: Theme, cx: &mut Context<Wo
         .hover(|style| style.underline())
         .child(format!("← {TITLE}"))
         .on_click(target("third-party-back".to_owned(), cx.listener(|workspace, _event, _window, cx| workspace.show_licence(None, cx)), cx));
-    let texts = third_party::bundled().texts_of(software).into_iter().map(|text| {
-        div().pb(theme.sizes.settings.licence_text_padding_bottom.px()).mb(theme.sizes.settings.licence_text_margin_bottom.px()).border_b(theme.sizes.settings.licence_text_border.px()).border_color(rgb(theme.border)).font_family(theme::mono_font(cx)).text_size(theme.sizes.settings.text_size.px()).child(text.to_owned())
-    });
+    let texts: Vec<Div> = third_party::bundled().texts_of(software).into_iter().enumerate().map(|(index, text)| {
+        div().pb(theme.sizes.settings.licence_text_padding_bottom.px()).mb(theme.sizes.settings.licence_text_margin_bottom.px()).border_b(theme.sizes.settings.licence_text_border.px()).border_color(rgb(theme.border)).font_family(theme::mono_font(cx)).text_size(theme.sizes.settings.text_size.px()).child(selectable(format!("licence-text-{index}"), text.to_owned(), cx))
+    }).collect();
     let heading = format!("{} {}", software.name, software.version);
     div()
         .flex()
@@ -115,7 +116,7 @@ fn render_licence(software: &'static Software, theme: Theme, cx: &mut Context<Wo
         .min_h_0()
         .gap(theme.sizes.settings.list_gap.px())
         .child(back)
-        .child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child(heading.trim_end().to_owned()))
-        .child(div().text_color(rgb(theme.muted)).child(format!("{} · {}", software.license, software.url)))
+        .child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child(selectable("licence-heading", heading.trim_end().to_owned(), cx)))
+        .child(div().text_color(rgb(theme.muted)).child(selectable("licence-source", format!("{} · {}", software.license, software.url), cx)))
         .child(div().id("third-party-licence-text").flex_1().min_h_0().overflow_y_scroll().pr(theme.sizes.settings.table_padding_right.px()).children(texts))
 }

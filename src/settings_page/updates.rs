@@ -1,6 +1,7 @@
 use gpui::{Context, Div, Stateful, div, prelude::*, rgb};
 
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::settings::{AutoUpdate, SettingsStore};
 use crate::theme::Theme;
 use crate::update::RELEASE_TAG;
@@ -16,8 +17,8 @@ pub fn render(status: String, theme: Theme, cx: &mut Context<Workspace>) -> Div 
         .flex_col()
         .gap(theme.sizes.settings.appearance_gap.px())
         .child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child(TITLE))
-        .child(row("Version", div().child(RELEASE_TAG.unwrap_or("built from source")), theme))
-        .child(row("Status", div().child(status), theme));
+        .child(row("Version", div().child(selectable("updates-version", RELEASE_TAG.unwrap_or("built from source"), cx)), theme))
+        .child(row("Status", div().child(selectable("updates-status", status, cx)), theme));
     let Some(_) = RELEASE_TAG else {
         return page;
     };
