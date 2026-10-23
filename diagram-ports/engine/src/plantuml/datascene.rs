@@ -261,11 +261,7 @@ fn row_kind(kind: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        budget::Budget,
-        parser::{json::parse, outline::test_parse},
-        source::Line,
-    };
+    use super::super::{budget::Budget, parser::json::parse};
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
@@ -274,14 +270,15 @@ mod tests {
     fn should_connect_actual_container_rows_without_compressing_scalar_placeholders() {
         // given
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = test_parse(
-            &[Line {
-                number: 2,
-                text:
+        let model = crate::plantuml::parser::test_support::body(
+            (
+                &[
                     r#"{"first":{"x":"a long long label"},"scalar":1,"second":[2,3],"end":false}"#
-                        .into(),
-            }],
-            "json",
+                        .to_owned(),
+                ]
+                .join("\n"),
+                "json",
+            ),
             &mut budget,
             parse,
         )

@@ -8,7 +8,6 @@ use super::{
         gantt::{Command, Schedule},
         timing::Site,
     },
-    source::Line,
 };
 use crate::RenderError;
 use std::collections::BTreeMap;
@@ -19,7 +18,7 @@ const MAX_DAY: i32 = 3_652_058; // 9999-12-31, with 0001-01-01 at zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct CivilDay(pub i32);
 impl CivilDay {
-    pub fn parse(text: &str, line: &Line) -> Result<Self, RenderError> {
+    pub fn parse(text: &str, line: usize) -> Result<Self, RenderError> {
         let bytes = text.as_bytes();
         if bytes.len() != 10
             || bytes[4] != b'-'
@@ -30,8 +29,8 @@ impl CivilDay {
                 .any(|(i, c)| i != 4 && i != 7 && !c.is_ascii_digit())
         {
             return Err(super::budget::invalid(
-                line.number,
-                format!("expected ISO civil date YYYY-MM-DD in {:?}", line.text),
+                line,
+                format!("expected ISO civil date YYYY-MM-DD in {text:?}"),
             ));
         }
         let year = text[..4].parse::<i32>().unwrap();
@@ -40,8 +39,8 @@ impl CivilDay {
         if year == 0 || !(1..=12).contains(&month) || !(1..=month_days(year, month)).contains(&day)
         {
             return Err(super::budget::invalid(
-                line.number,
-                format!("invalid civil date {text:?} in {:?}", line.text),
+                line,
+                format!("invalid civil date {text:?}"),
             ));
         }
         let prior = year - 1;
@@ -420,18 +419,18 @@ fn search_cost(len: usize) -> usize {
     len.checked_ilog2().unwrap_or(0) as usize + 1
 }
 #[cfg(test)]
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Gantt, RenderError> {
-    super::parser::gantt::parse_test(lines, budget)
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
 
     fn model(source: &str) -> Gantt {
         let mut budget = Budget::new(&RenderOptions::default());
-        let (_, lines) = super::super::source::prepare_document(source, &mut budget).unwrap();
-        parse(&lines, &mut budget).unwrap()
+        crate::plantuml::parser::test_support::parse(
+            source,
+            &mut budget,
+            crate::plantuml::parser::gantt::parse,
+        )
+        .unwrap()
     }
     #[test]
     fn should_keep_typed_task_identity_row_order_and_reference_ownership() {
@@ -470,10 +469,6 @@ mod tests {
     #[test]
     fn should_round_trip_bounded_civil_ordinals_and_gregorian_centuries() {
         // given
-        let row = Line {
-            number: 1,
-            text: String::new(),
-        };
         for (date, ordinal) in [
             ("0001-01-01", 0),
             ("2000-01-01", 730119),
@@ -481,13 +476,13 @@ mod tests {
             ("9999-12-31", 3652058),
         ] {
             // when
-            let day = CivilDay::parse(date, &row).unwrap();
+            let day = CivilDay::parse(date, 1).unwrap();
             // then
             assert_eq!(day.0, ordinal);
             assert_eq!(day.iso(), date);
         }
         assert_eq!(
-            CivilDay::parse("1900-02-28", &row)
+            CivilDay::parse("1900-02-28", 1)
                 .unwrap()
                 .shift(1, 1)
                 .unwrap()
@@ -505,9 +500,13 @@ mod tests {
                 "@startgantt\nProject starts 2026-11-02\n[A] lasts 2 days\n[B] starts at [A]'s end\n{edit}\n@endgantt"
             );
             let mut budget = Budget::new(&RenderOptions::default());
-            let (_, lines) = super::super::source::prepare_document(&source, &mut budget).unwrap();
+
             // when
-            let error = match parse(&lines, &mut budget) {
+            let error = match crate::plantuml::parser::test_support::parse(
+                &source,
+                &mut budget,
+                crate::plantuml::parser::gantt::parse,
+            ) {
                 Err(e) => e.to_string(),
                 Ok(_) => panic!("late mutation admitted"),
             };

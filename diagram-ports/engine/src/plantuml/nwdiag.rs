@@ -1,7 +1,5 @@
 //! PlantUML MIT nwdiag model with typed global-server and membership construction.
 //! Copyright 2009-2024 Arnaud Roques; exact source traces/notices in provenance.
-#[cfg(test)]
-use super::source::Line;
 use super::{
     budget::{Budget, bound},
     parser::{
@@ -11,8 +9,6 @@ use super::{
     },
     style::Color,
 };
-#[cfg(test)]
-use crate::RenderError;
 use std::{collections::BTreeMap, ops::Range};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct NetworkId(pub usize);
@@ -383,10 +379,6 @@ fn parse_fill(value: &str, span: Range<usize>) -> Result<Fill, ParseFailure> {
         ));
     };
     Ok(Fill::Color(Color(u32::from_str_radix(hex, 16).unwrap())))
-}
-#[cfg(test)]
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<NwDiagram, RenderError> {
-    super::parser::nwdiag::parse_test(lines, budget)
 }
 #[cfg(test)]
 mod tests {

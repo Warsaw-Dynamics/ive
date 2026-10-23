@@ -289,10 +289,7 @@ impl Builder<'_, '_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        RenderOptions,
-        plantuml::{parser::outline::test_parse, source::Line},
-    };
+    use crate::RenderOptions;
 
     fn body(input: &str) -> (crate::plantuml::origin::Document, Range<usize>) {
         let mut budget = Budget::new(&RenderOptions::default());
@@ -498,13 +495,12 @@ mod tests {
     #[test]
     fn should_generate_ordered_duplicate_members_and_exact_numbers() {
         // given
-        let lines = [Line {
-            number: 2,
-            text: r#"{"z":-0.00e+02,"a":[null,true,"2",{},[]],"z":3}"#.into(),
-        }];
+        let lines = [r#"{"z":-0.00e+02,"a":[null,true,"2",{},[]],"z":3}"#.to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let value = test_parse(&lines, "json", &mut budget, parse).unwrap();
+        let value =
+            crate::plantuml::parser::test_support::body((&lines, "json"), &mut budget, parse)
+                .unwrap();
         // then
         assert_eq!(
             value,
@@ -539,13 +535,11 @@ mod tests {
             ("1.2 3".into(), false),
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: input.clone(),
-            }];
+            let lines = [input.clone()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "json", &mut budget, parse);
+            let result =
+                crate::plantuml::parser::test_support::body((&lines, "json"), &mut budget, parse);
             // then
             assert_eq!(result.is_ok(), accepted, "{input:?}");
         }
@@ -580,13 +574,11 @@ mod tests {
             "1e+",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: text.into(),
-            }];
+            let lines = [text.to_owned()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "json", &mut budget, parse);
+            let result =
+                crate::plantuml::parser::test_support::body((&lines, "json"), &mut budget, parse);
             // then
             assert!(result.is_err(), "{text}");
         }

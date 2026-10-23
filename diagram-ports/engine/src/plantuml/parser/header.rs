@@ -1,8 +1,5 @@
 use super::{context, error::ParseFailure};
-use crate::{
-    RenderError,
-    plantuml::{budget::Budget, source::Line},
-};
+use crate::{RenderError, plantuml::budget::Budget};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(in crate::plantuml) enum Selection {
@@ -360,24 +357,30 @@ fn punctuation(rest: &str) -> (Atom, usize) {
 
 pub(in crate::plantuml) fn select(
     body: &super::BodySource<'_>,
-    lines: &[Line],
     budget: &mut Budget,
 ) -> Result<Selection, RenderError> {
     crate::plantuml::budget::bound(
         "family body bytes",
-        body.document.text[body.range.clone()].len(),
+        body.range.len(),
         budget.limits.source_bytes,
     )?;
     let mut candidate = Selection::Sequence;
     let mut graph = None;
-    let mut rows = PhysicalRows {
-        rows: body.document.text.split_inclusive('\n').enumerate(),
-        offset: 0,
-    };
-    for line in lines {
-        let range = rows.locate(line.number, budget)?;
-        let evidence = parse(&line.text, range.start, budget).map_err(|mut error| {
-            // Normalization removed trivia; the row is the truthful source extent.
+    let mut ownership = body.ownership;
+    let mut offset = body.range.start;
+    for physical in body.document.text[body.range.clone()].split_inclusive('\n') {
+        let range = offset..offset + physical.len();
+        offset = range.end;
+        let raw = physical.strip_suffix('\n').unwrap_or(physical);
+        let raw = raw.strip_suffix('\r').unwrap_or(raw);
+        let evidence = (|| {
+            let row = ownership.classify(raw, budget)?;
+            if row.opening_action {
+                return parse(row.text.trim_start(), range.start, budget);
+            }
+            ownership.advance(&row, &row.text, budget)
+        })()
+        .map_err(|mut error: ParseFailure| {
             error.span = range;
             error.into_document(body.document, budget)
         })?;
@@ -403,32 +406,6 @@ pub(in crate::plantuml) fn select(
     } else {
         Selection::Sequence
     })
-}
-
-struct PhysicalRows<'s> {
-    rows: std::iter::Enumerate<std::str::SplitInclusive<'s, char>>,
-    offset: usize,
-}
-
-impl PhysicalRows<'_> {
-    fn locate(
-        &mut self,
-        number: usize,
-        budget: &mut Budget,
-    ) -> Result<std::ops::Range<usize>, RenderError> {
-        for (index, raw) in self.rows.by_ref() {
-            budget.charge(raw.len())?;
-            let start = self.offset;
-            self.offset += raw.len();
-            if index + 1 == number {
-                return Ok(start..self.offset);
-            }
-        }
-        Err(crate::plantuml::budget::invalid(
-            number,
-            "header physical row is outside the expanded document",
-        ))
-    }
 }
 
 #[cfg(test)]

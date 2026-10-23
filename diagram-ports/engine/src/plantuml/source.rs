@@ -1,14 +1,4 @@
-//! Wrapper values and a temporary Line adapter for unmigrated family parser tests.
-#[cfg(test)]
-use super::budget::Budget;
-#[cfg(test)]
-use crate::RenderError;
-
-#[derive(Clone, Debug)]
-pub(super) struct Line {
-    pub number: usize,
-    pub text: String,
-}
+//! Generated-document wrapper identities.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Wrapper {
@@ -27,61 +17,23 @@ pub(super) enum Wrapper {
     Chen,
 }
 
-// Transitional materialization for unmigrated family parser tests.
-#[cfg(test)]
-pub(super) fn prepare_document(
-    source: &str,
-    budget: &mut Budget,
-) -> Result<(Wrapper, Vec<Line>), RenderError> {
-    use super::origin::{Document, Origin, Segment, SourceSpan};
-    super::budget::bound(
-        "document source bytes",
-        source.len(),
-        budget.limits.source_bytes,
-    )?;
-    budget.text(source.len())?;
-    let document = Document {
-        text: source.to_owned(),
-        segments: vec![Segment {
-            output: 0..source.len(),
-            origin: Origin::Direct(SourceSpan {
-                start_byte: 0,
-                end_byte: source.len(),
-                line: 1,
-                column: 1,
-            }),
-        }],
-        definitions: Vec::new(),
-    };
-    super::parser::document::parse(&document, budget).map(|parsed| (parsed.wrapper, parsed.lines))
-}
-
-#[cfg(test)]
-pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, RenderError> {
-    prepare_document(source, budget).map(|(_, lines)| lines)
-}
-
-#[cfg(test)]
-pub(super) fn prepare_styled(
-    source: &str,
-    budget: &mut Budget,
-) -> Result<(super::style::Preamble, Vec<Line>), RenderError> {
-    let document = super::preprocess::prepare(source, budget)?;
-    let mut parsed = super::parser::document::parse(&document, budget)?;
-    let (preamble, body) = super::parser::preamble::parse(&mut parsed, budget)?;
-    let first = document.text[..body.start]
-        .bytes()
-        .filter(|&byte| byte == b'\n')
-        .count()
-        + 1;
-    parsed.lines.retain(|line| line.number >= first);
-    Ok((preamble, parsed.lines))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RenderOptions;
+    use crate::{RenderError, RenderOptions, plantuml::budget::Budget};
+
+    fn inspect(source: &str, budget: &mut Budget) -> Result<(Wrapper, String, usize), RenderError> {
+        let document = crate::plantuml::parser::test_support::document(source, budget)?;
+        let parsed = crate::plantuml::parser::document::parse(&document, budget)?;
+        let body = &document.text[parsed.body.range.clone()];
+        let content = parsed.body.range.start + body.len() - body.trim_start().len();
+        let line = document.text[..content]
+            .bytes()
+            .filter(|byte| *byte == b'\n')
+            .count()
+            + 1;
+        Ok((parsed.wrapper, body.to_owned(), line))
+    }
 
     #[test]
     fn should_consume_exactly_one_generated_document_and_validate_lexical_eof() {
@@ -105,21 +57,21 @@ mod tests {
             for suffix in ["", " \r\n"] {
                 let mut budget = Budget::new(&RenderOptions::default());
                 // when
-                let (_, lines) =
-                    prepare_document(&format!("{complete}{suffix}"), &mut budget).unwrap();
+                let (_, body, line) = inspect(&format!("{complete}{suffix}"), &mut budget).unwrap();
                 // then
-                assert_eq!((lines[0].number, lines[0].text.as_str()), (2, "A"));
+                assert_eq!(body.trim(), "A");
+                assert_eq!(line, 2);
             }
             let accepts_comments = matches!(start, "uml" | "gantt" | "nwdiag" | "chen");
             let mut budget = Budget::new(&RenderOptions::default());
             assert_eq!(
-                prepare_document(&format!("{complete}/' closed '/\n"), &mut budget).is_ok(),
+                inspect(&format!("{complete}/' closed '/\n"), &mut budget).is_ok(),
                 accepts_comments,
                 "{start}"
             );
             let mut budget = Budget::new(&RenderOptions::default());
             assert_eq!(
-                prepare_document(
+                inspect(
                     &format!("/' prefix '/\n{}", complete.trim_start_matches('\u{feff}')),
                     &mut budget
                 )
@@ -136,7 +88,7 @@ mod tests {
             ] {
                 let mut budget = Budget::new(&RenderOptions::default());
                 // when
-                let result = prepare_document(&input, &mut budget);
+                let result = inspect(&input, &mut budget);
                 // then
                 assert!(result.is_err(), "accepted {input:?}");
             }
@@ -146,7 +98,7 @@ mod tests {
             ("@STARTGANTT\nA\n@ENDGANTT", false),
         ] {
             let mut budget = Budget::new(&RenderOptions::default());
-            assert_eq!(prepare_document(source, &mut budget).is_ok(), accepted);
+            assert_eq!(inspect(source, &mut budget).is_ok(), accepted);
         }
     }
 
@@ -156,10 +108,10 @@ mod tests {
         let source = "@startuml\n:opening ! literal\n  body ! literal  \n\nending;\n@enduml";
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let lines = prepare(source, &mut budget).unwrap();
+        let (_, body, _) = inspect(source, &mut budget).unwrap();
         // then
         assert_eq!(
-            lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>(),
+            body.trim_matches('\n').split('\n').collect::<Vec<_>>(),
             [":opening ! literal", "  body ! literal  ", "", "ending;"]
         );
     }
@@ -176,7 +128,7 @@ mod tests {
         config.limits.layout_work = source.len() + 512;
         let mut budget = Budget::new(&config);
         // when
-        let result = prepare(&source, &mut budget);
+        let result = inspect(&source, &mut budget);
         // then
         assert!(
             result.is_err(),

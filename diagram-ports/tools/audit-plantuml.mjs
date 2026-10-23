@@ -108,11 +108,13 @@ function auditResponsibilities(directory, inventory) {
   const nativeFiles = fs.readdirSync(path.join(directory, 'engine/src/plantuml'), { withFileTypes: true }).filter(entry => !entry.isDirectory()).map(entry => `engine/src/plantuml/${entry.name}`).sort();
   if (JSON.stringify(nativeFiles) !== JSON.stringify([...provenance.nativeModules].sort())) throw new Error('native module inventory changed');
   if (JSON.stringify(ledger.modules.map(module => module.path).sort()) !== JSON.stringify(expectedFiles)) throw new Error('function responsibility file inventory changed');
-  const roles = new Set(['generated-facade', 'lexical', 'semantic', 'layout', 'infrastructure', 'pending-syntax', 'test-adapter']);
+  const roles = new Set(['generated-facade', 'lexical', 'semantic', 'layout', 'infrastructure', 'test-adapter']);
   for (const module of ledger.modules) {
     const file = path.join(directory, module.path);
     if (!fs.lstatSync(file).isFile()) throw new Error(`invalid responsibility source: ${module.path}`);
-    const actual = functionSymbols(fs.readFileSync(file, 'utf8')).sort();
+    const source = fs.readFileSync(file, 'utf8');
+    if (/\b(?:struct|enum|type)\s+Line\b|\bsource::Line\b/.test(source)) throw new Error(`obsolete physical-line parser adapter: ${module.path}`);
+    const actual = functionSymbols(source).sort();
     const classified = module.groups.flatMap(group => {
       if (!roles.has(group.role) || !group.reason?.trim()) throw new Error(`invalid function responsibility: ${module.path}`);
       return group.symbols;

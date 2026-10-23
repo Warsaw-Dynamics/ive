@@ -7,8 +7,6 @@ use super::{
         timing::{Command, Site, Target, Time, TimeChoice, fail},
     },
 };
-#[cfg(test)]
-use crate::RenderError;
 use std::collections::{BTreeMap, BTreeSet};
 pub(super) const TIME_LIMIT: i64 = 1_000_000_000;
 
@@ -395,23 +393,18 @@ pub(super) fn search_cost(len: usize) -> usize {
     len.checked_ilog2().unwrap_or(0) as usize + 1
 }
 #[cfg(test)]
-pub(super) fn parse(
-    lines: &[super::source::Line],
-    budget: &mut Budget,
-) -> Result<Timing, RenderError> {
-    super::parser::timing::parse_test(lines, budget)
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
 
     fn model(body: &str) -> Timing {
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines =
-            super::super::source::prepare(&format!("@startuml\n{body}\n@enduml"), &mut budget)
-                .unwrap();
-        parse(&lines, &mut budget).unwrap()
+        crate::plantuml::parser::test_support::body(
+            (body, "uml"),
+            &mut budget,
+            crate::plantuml::parser::timing::parse,
+        )
+        .unwrap()
     }
 
     #[test]

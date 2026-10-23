@@ -367,7 +367,7 @@ mod tests {
     use super::*;
     use crate::{
         RenderOptions,
-        plantuml::{data::Value, hcl::lower, parser::outline::test_parse, source::Line},
+        plantuml::{data::Value, hcl::lower},
     };
 
     #[test]
@@ -423,13 +423,11 @@ mod tests {
         for depth in [64usize, 65] {
             // given
             let input = format!("a{{{}{}", "x={".repeat(depth - 1), "}".repeat(depth));
-            let lines = [Line {
-                number: 2,
-                text: input.clone(),
-            }];
+            let lines = [input.clone()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "hcl", &mut budget, parse);
+            let result =
+                crate::plantuml::parser::test_support::body((&lines, "hcl"), &mut budget, parse);
             // then
             assert_eq!(result.is_ok(), depth == 64);
             if depth == 65 {
@@ -584,10 +582,12 @@ mod tests {
     #[test]
     fn should_generate_named_blocks_and_ordered_literal_fields() {
         // given
-        let lines = [Line { number: 2, text: "title \"billing\" { x=3 x=true y=[\"north\",{ inside=\"yes\" },] }\nskinparam { duplicate=one duplicate=two }".into() }];
+        let lines = ["title \"billing\" { x=3 x=true y=[\"north\",{ inside=\"yes\" },] }\nskinparam { duplicate=one duplicate=two }".to_owned()].join("\n");
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let document = test_parse(&lines, "hcl", &mut budget, parse).unwrap();
+        let document =
+            crate::plantuml::parser::test_support::body((&lines, "hcl"), &mut budget, parse)
+                .unwrap();
         let model = lower(document, &mut budget).unwrap();
         // then
         assert_eq!(
@@ -627,13 +627,11 @@ mod tests {
             ("\\a".repeat(16_385), false),
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: format!("a {{ x=\"{raw}\" }}"),
-            }];
+            let lines = [format!("a {{ x=\"{raw}\" }}")].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let document = test_parse(&lines, "hcl", &mut budget, parse);
+            let document =
+                crate::plantuml::parser::test_support::body((&lines, "hcl"), &mut budget, parse);
             // then
             assert_eq!(document.is_ok(), accepted);
             if let Ok(document) = document {
@@ -676,13 +674,11 @@ mod tests {
             "service { x=[\"a\" \"b\"] }",
         ] {
             // given
-            let lines = [Line {
-                number: 2,
-                text: text.into(),
-            }];
+            let lines = [text.to_owned()].join("\n");
             let mut budget = Budget::new(&RenderOptions::default());
             // when
-            let result = test_parse(&lines, "hcl", &mut budget, parse);
+            let result =
+                crate::plantuml::parser::test_support::body((&lines, "hcl"), &mut budget, parse);
             // then
             assert!(result.is_err(), "{text}");
         }

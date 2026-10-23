@@ -346,27 +346,30 @@ fn paint_nodes(
 
 #[cfg(test)]
 mod tests {
-    use super::super::{budget::Budget, source::Line, tree};
+    use super::super::budget::Budget;
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
 
     fn scene(source: &str, family: &str) -> Scene {
-        let lines: Vec<_> = source
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 2,
-                text: s.into(),
-            })
-            .collect();
+        let lines = source.to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         if family == "mindmap" {
-            let model = tree::parse_mindmap(&lines, &mut budget).unwrap();
+            let model = crate::plantuml::parser::test_support::body(
+                (&lines, "mindmap"),
+                &mut budget,
+                crate::plantuml::parser::tree::parse_mindmap,
+            )
+            .unwrap();
             mindmap(&model, &mut Context::new(&session, &mut budget)).unwrap()
         } else {
-            let model = tree::parse_wbs(&lines, &mut budget).unwrap();
+            let model = crate::plantuml::parser::test_support::body(
+                (&lines, "wbs"),
+                &mut budget,
+                crate::plantuml::parser::tree::parse_wbs,
+            )
+            .unwrap();
             wbs(&model, &mut Context::new(&session, &mut budget)).unwrap()
         }
     }

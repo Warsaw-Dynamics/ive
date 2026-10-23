@@ -1,14 +1,14 @@
 use super::{
     BodySource, context,
     error::{ParseFailure, generated_failure},
-    ownership::{Kind, Ownership, Row},
+    ownership::{Kind, Ownership},
 };
 use crate::{
     RenderError,
     plantuml::{
         budget::{Budget, bound},
         origin::Document,
-        source::{Line, Wrapper},
+        source::Wrapper,
     },
 };
 use std::ops::Range;
@@ -72,7 +72,6 @@ pub(in crate::plantuml) fn finish(
 pub(in crate::plantuml) struct ParsedDocument<'s> {
     pub wrapper: Wrapper,
     pub body: BodySource<'s>,
-    pub lines: Vec<Line>,
     pub preamble_tokens: Vec<super::preamble::Spanned>,
 }
 
@@ -176,13 +175,12 @@ fn scan<'s>(
     let mut ownership = Ownership::default();
     let mut body_ownership = ownership;
     let mut tokens = Vec::new();
-    let mut lines = Vec::new();
     let mut preamble = super::preamble::Lexer::default();
     let mut wrapper = Wrapper::Uml;
     let mut offset = 0;
     let mut timing_at = 0;
     let mut timing_declaration = false;
-    for (index, physical) in document.text.split_inclusive('\n').enumerate() {
+    for physical in document.text.split_inclusive('\n') {
         let raw = physical
             .strip_suffix('\n')
             .map_or(physical, |line| line.strip_suffix('\r').unwrap_or(line));
@@ -200,8 +198,6 @@ fn scan<'s>(
                 "active preprocessing or generated directive",
             ));
         }
-        // A raw continuation belongs to the lexical payload opened by an earlier
-        // row. Family parsers still receive each physical row through the adapter.
         if row.annotated_start {
             emit(
                 Kind::Trivia,
@@ -232,18 +228,13 @@ fn scan<'s>(
                     budget.charge(1).map_err(ParseFailure::terminal)?;
                     body_ownership = checkpoint;
                 }
-                append_line(row, (index + 1, wrapper, raw), &mut lines, budget)?
             }
             _ => {}
         }
         offset += physical.len();
     }
     ownership.finish(offset)?;
-    let adapters = lines
-        .capacity()
-        .saturating_mul(std::mem::size_of::<Line>())
-        .saturating_add(document.text.len().saturating_mul(2))
-        .saturating_add(std::mem::size_of::<BodySource<'_>>());
+    let adapters = std::mem::size_of::<BodySource<'_>>();
     let retained = adapters.saturating_add(preamble.retained_bytes());
     let bounds = validate_retained(tokens, (offset, retained), budget)?;
     if timing_at > 0 && !timing_declaration {
@@ -260,33 +251,8 @@ fn scan<'s>(
             ownership: body_ownership,
             adapters,
         },
-        lines,
         preamble_tokens: preamble.tokens,
     })
-}
-
-fn append_line(
-    row: Row,
-    location: (usize, Wrapper, &str),
-    lines: &mut Vec<Line>,
-    budget: &mut Budget,
-) -> Result<(), ParseFailure> {
-    let (number, wrapper, raw) = location;
-    let text = match wrapper {
-        Wrapper::Uml if row.literal && row.text.trim() == "end note" => "end note".to_owned(),
-        Wrapper::Uml if row.literal && row.opening_action => row.text.trim_start().to_owned(),
-        Wrapper::Uml if row.literal => row.text,
-        Wrapper::Uml | Wrapper::Gantt | Wrapper::Nwdiag | Wrapper::Chen => {
-            row.text.trim().to_owned()
-        }
-        Wrapper::Mindmap | Wrapper::Wbs => raw.to_owned(),
-        _ => row.text,
-    };
-    if text.is_empty() && !row.literal {
-        return Ok(());
-    }
-    budget.text(text.len()).map_err(ParseFailure::terminal)?;
-    context::push(lines, Line { number, text }, budget)
 }
 
 #[cfg(test)]
@@ -300,33 +266,19 @@ mod tests {
         for (source, expected) in [
             (
                 "@startuml\n!define FIN ;\n!define X Ready\nstart\n:open /' literal\n' X\nending FIN\n' !include inert\n:next X;\nstop\n@enduml",
-                vec![
-                    "start",
-                    ":open /' literal",
-                    "' Ready",
-                    "ending ;",
-                    ":next Ready;",
-                    "stop",
-                ],
+                "\n\nstart\n:open /' literal\n' Ready\nending ;\n' !include inert\n:next Ready;\nstop\n",
             ),
             (
                 "@startuml\n!define OPEN note over A\n!define CLOSE end note\n!define note body\n!define X Ready\nparticipant A\nOPEN\nend note\n' X\nCLOSE\nA -> B : X\n@enduml",
-                vec![
-                    "participant A",
-                    "note over A",
-                    "end body",
-                    "' Ready",
-                    "end note",
-                    "A -> B : Ready",
-                ],
+                "\n\n\n\nparticipant A\nnote over A\nend body\n' Ready\nend note\nA -> B : Ready\n",
             ),
             (
                 "@startuml\n!define X Ready\n/'\n!define X ignored\n!include inert\n<style>\n@enduml\n'/\nA -> B : X\n@enduml",
-                vec!["A -> B : Ready"],
+                "\n/'\n!define X ignored\n!include inert\n<style>\n@enduml\n'/\nA -> B : Ready\n",
             ),
             (
                 "@startyaml\n!define X Ready\nlabel: '\"/' X @enduml\"'\n@endyaml",
-                vec!["", "label: '\"/' Ready @enduml\"'"],
+                "\nlabel: '\"/' Ready @enduml\"'\n",
             ),
         ] {
             let mut budget = Budget::new(&RenderOptions::default());
@@ -335,11 +287,7 @@ mod tests {
             let parsed = parse(&document, &mut budget).unwrap();
             // then
             assert_eq!(
-                parsed
-                    .lines
-                    .iter()
-                    .map(|line| line.text.as_str())
-                    .collect::<Vec<_>>(),
+                &parsed.body.document.text[parsed.body.range.clone()],
                 expected
             );
         }
@@ -461,10 +409,19 @@ mod tests {
         // then
         assert!(matches!(parsed.wrapper, Wrapper::Uml));
         assert_eq!(
-            &parsed.body.document.text[parsed.body.range],
+            &parsed.body.document.text[parsed.body.range.clone()],
             "\r\n  A -> B : Ω\r\n"
         );
-        assert_eq!(parsed.lines[0].number, 3);
-        assert_eq!(parsed.lines[0].text, "A -> B : Ω");
+        let raw = &document.text[parsed.body.range.clone()];
+        let message = parsed.body.range.start + raw.find('A').unwrap();
+        assert_eq!(
+            document.text[..message]
+                .bytes()
+                .filter(|byte| *byte == b'\n')
+                .count()
+                + 1,
+            3
+        );
+        assert_eq!(parsed.body.adapters, std::mem::size_of::<BodySource<'_>>());
     }
 }

@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "basis": "e4ace61405c0cb5670df02b2879a44160f085fab; Task17 preparation while packetdiag/Creole are in flight",
+  "basis": "da590bc plus final Task17 cleanup; all 21 generated grammars and no pending syntax or Line adapters",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
       "path": "engine/src/plantuml/activity.rs",
       "groups": [
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "should_scan_whitespace_only_multiline_actions_once#1", "should_parse_below_cap_multiline_actions_and_check_cancellation#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_scan_whitespace_only_multiline_actions_once#1", "should_parse_below_cap_multiline_actions_and_check_cancellation#1"]}
       ]
     },
     {
@@ -19,15 +19,15 @@
     {
       "path": "engine/src/plantuml/arrow.rs",
       "groups": [
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["parse#1"]},
-        {"role": "layout", "reason": "Preserved arrow geometry and marker drawing after finite lexical arrow recognition.", "symbols": ["draw#1", "marker#1"]}
+        {"role": "layout", "reason": "Preserved arrow geometry and marker drawing after finite lexical arrow recognition.", "symbols": ["draw#1", "marker#1"]},
+        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["parse#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/board.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["new#1", "card#1", "finish#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "should_reject_oversized_board_label_during_model_construction#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_reject_oversized_board_label_during_model_construction#1"]}
       ]
     },
     {
@@ -47,7 +47,7 @@
       "path": "engine/src/plantuml/chen.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["id#1", "endpoints#1", "cardinality#1", "new#1", "control#1", "into_model#1", "finish#1", "single#1", "named#1", "open#1", "composite#1", "attribute#1", "add_attribute#1", "close#1", "insert#1", "associate#1", "resolve#1", "atom#1", "cardinality#2", "retain#1", "validate_alias#1", "retain#2", "push#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "lines#1", "should_resolve_keyword_named_chen_endpoints#1", "should_keep_spaced_and_compact_keyword_composites_identical#1", "should_keep_typed_owners_and_distinct_scoped_attribute_ids#1", "should_check_owner_depth_before_retaining_composite_node_or_link#1", "should_bound_expanded_owner_keys_before_deep_amplification#1", "should_reject_oversized_attribute_before_retaining_any_attribute#1", "should_charge_tokens_before_scanning_the_next_token_or_retaining_nodes#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["lines#1", "should_resolve_keyword_named_chen_endpoints#1", "should_keep_spaced_and_compact_keyword_composites_identical#1", "should_keep_typed_owners_and_distinct_scoped_attribute_ids#1", "should_check_owner_depth_before_retaining_composite_node_or_link#1", "should_bound_expanded_owner_keys_before_deep_amplification#1", "should_reject_oversized_attribute_before_retaining_any_attribute#1", "should_charge_tokens_before_scanning_the_next_token_or_retaining_nodes#1"]}
       ]
     },
     {
@@ -66,9 +66,9 @@
     {
       "path": "engine/src/plantuml/creole.rs",
       "groups": [
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["symbol#1", "literal#1", "push#1"]},
-        {"role": "pending-syntax", "reason": "Retained production Creole tag, delimiter, marker-pairing and styled-span stack recognition pending Task16 cutover.", "symbols": ["parse#1", "lex#1", "tag#1", "reject_block#1", "rich_tag#1", "activate#1", "runs#1"]},
-        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["append#1"]}
+        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1"]},
+        {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["symbol#1", "lex#1", "literal#1", "push#1", "tag#1", "reject_block#1", "activate#1", "rich_tag#1"]},
+        {"role": "semantic", "reason": "Preserved typed model, constraints, identity and run/fragment construction after generated syntax.", "symbols": ["new#1", "tick#1", "open#1", "close#1", "text#1", "literal#2", "line#1", "finish#1", "append_text#1"]}
       ]
     },
     {
@@ -89,7 +89,7 @@
       "path": "engine/src/plantuml/files.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["new#1", "begin_path#1", "folder#1", "file#1", "folder_only#1", "begin_note#1", "note_row#1", "finish_note#1", "append#1", "finish#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["with_test_model#1", "restore_test_model#1", "parse#1", "add_test_path#1", "should_keep_stable_parents_distinct_kinds_and_note_rows#1", "should_bound_file_depth_items_names_and_wide_lookup_work#1", "should_charge_wide_sibling_lookup_before_retaining_a_new_folder#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["with_test_model#1", "restore_test_model#1", "add_test_path#1", "should_keep_stable_parents_distinct_kinds_and_note_rows#1", "should_bound_file_depth_items_names_and_wide_lookup_work#1", "should_charge_wide_sibling_lookup_before_retaining_a_new_folder#1"]}
       ]
     },
     {
@@ -104,7 +104,7 @@
       "groups": [
         {"role": "lexical", "reason": "Finite ISO date spelling/validation used as a primitive by generated Gantt syntax.", "symbols": ["parse#1"]},
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["shift#1", "parts#1", "iso#1", "month_days#1", "name#1", "invalid#1", "unsupported#1", "shift#2", "retained_bytes#1", "tick#1", "new#1", "project#1", "apply#1", "task_id#1", "duration#1", "set_start#1", "reference#1", "check_cycle#1", "check_frozen#1", "finish#1", "search_cost#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#2", "model#1", "should_keep_typed_task_identity_row_order_and_reference_ownership#1", "should_round_trip_bounded_civil_ordinals_and_gregorian_centuries#1", "should_freeze_predecessor_fields_without_reactive_rescheduling#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["model#1", "should_keep_typed_task_identity_row_order_and_reference_ownership#1", "should_round_trip_bounded_civil_ordinals_and_gregorian_centuries#1", "should_freeze_predecessor_fields_without_reactive_rescheduling#1"]}
       ]
     },
     {
@@ -144,7 +144,7 @@
       "path": "engine/src/plantuml/nwdiag.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["network#1", "group#1", "new#1", "retained_bytes#1", "tick#1", "root#1", "scope#1", "value#1", "network#2", "group#2", "close#1", "property#1", "server#1", "connect#1", "finish#1", "lookup_steps#1", "parse_fill#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "should_bound_servers_and_memberships_before_retaining_them#1", "should_bound_token_retention_and_property_text_before_allocating_values#1", "should_check_network_depth_before_retaining_the_block#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_bound_servers_and_memberships_before_retaining_them#1", "should_bound_token_retention_and_property_text_before_allocating_values#1", "should_check_network_depth_before_retaining_the_block#1"]}
       ]
     },
     {
@@ -164,10 +164,8 @@
     {
       "path": "engine/src/plantuml/packet.rs",
       "groups": [
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["number#1", "positive#1"]},
-        {"role": "pending-syntax", "reason": "Retained production syntax pending Task15 packetdiag cutover.", "symbols": ["parse#1", "configure#1", "field#1", "attributes#1"]},
-        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["fragment#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_reject_oversized_packet_label_before_fragment_generation#1"]}
+        {"role": "semantic", "reason": "Preserved typed model, constraints, identity and run/fragment construction after generated syntax.", "symbols": ["new#1", "configure#1", "attribute#1", "field#1", "resolve#1", "unknown#1", "unknown_attribute#1", "reject#1", "finish#1", "positive#1", "fragment#1"]},
+        {"role": "test-adapter", "reason": "Test assertions and setup through generated entries; no production syntax authority.", "symbols": ["should_reject_oversized_packet_label_before_fragment_generation#1"]}
       ]
     },
     {
@@ -211,6 +209,15 @@
       ]
     },
     {
+      "path": "engine/src/plantuml/parser/creole.rs",
+      "groups": [
+        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_text#1"]},
+        {"role": "infrastructure", "reason": "Checked storage/work/stack admission and structured error mapping.", "symbols": ["label_failure#1", "admit#1"]},
+        {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["convert#1"]},
+        {"role": "test-adapter", "reason": "Test assertions and setup through generated entries; no production syntax authority.", "symbols": ["base#1", "should_build_generated_nested_tag_symbol_styles_hard_and_blank_lines#1", "should_reject_crossed_empty_duplicate_unclosed_and_unsupported_spans#1", "should_keep_unmatched_symbols_url_escapes_and_line_local_pair_eligibility_literal#1", "should_coalesce_equivalent_run_styles_and_restore_authored_base_font#1", "should_report_truthful_label_local_utf8_spans_without_authored_document_claims#1", "should_reject_direct_generated_suffix_eof_and_cancel_delivery_and_scope_actions#1", "should_admit_exact_four_style_depth_and_bound_run_text_work_and_cancellation#1"]}
+      ]
+    },
+    {
       "path": "engine/src/plantuml/parser/definition.rs",
       "groups": [
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse_definition#1"]},
@@ -223,7 +230,7 @@
       "groups": [
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["scan#1"]},
-        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["finish#1", "emit#1", "validate_retained#1", "validate#1", "append_line#1"]},
+        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["finish#1", "emit#1", "validate_retained#1", "validate#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_preserve_authored_raw_rows_and_follow_expanded_next_row_terminators#1", "should_let_generated_productions_own_pairing_placement_and_complete_eof#1", "should_admit_stacks_and_preserve_cancellation_in_delivery_reductions_and_eof#1", "should_map_generated_document_failures_to_one_frozen_definition_use#1", "should_borrow_body_bytes_and_preserve_physical_utf8_lines#1"]}
       ]
     },
@@ -248,7 +255,7 @@
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["duration#1", "lex#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse_test#1", "should_build_generated_aliases_half_open_dependencies_and_milestones#1", "should_reject_attached_gantt_alias_and_verb_primitives#1", "should_reject_generated_gantt_eof_and_cancel_delivery_and_actions#1", "should_map_gantt_semantic_and_syntax_failures_with_full_statement_once#1", "should_bound_gantt_tokens_depth_work_and_mid_lex_cancellation#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_build_generated_aliases_half_open_dependencies_and_milestones#1", "should_reject_attached_gantt_alias_and_verb_primitives#1", "should_reject_generated_gantt_eof_and_cancel_delivery_and_actions#1", "should_map_gantt_semantic_and_syntax_failures_with_full_statement_once#1", "should_bound_gantt_tokens_depth_work_and_mid_lex_cancellation#1"]}
       ]
     },
     {
@@ -264,8 +271,8 @@
     {
       "path": "engine/src/plantuml/parser/header.rs",
       "groups": [
-        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1"]},
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["empty#1", "append#1", "empty#2", "finish#1", "word#1", "primitive#1", "starts_arrow#1", "scan_arrow#1", "scan_word#1", "quote#1", "punctuation#1", "select#1", "locate#1"]},
+        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "select#1"]},
+        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["empty#1", "append#1", "empty#2", "finish#1", "word#1", "primitive#1", "starts_arrow#1", "scan_arrow#1", "scan_word#1", "quote#1", "punctuation#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_freeze_state_header_facts_before_literal_label_payload#1", "should_preserve_complete_keyword_prefixed_endpoint_names_in_header_evidence#1", "should_admit_header_source_and_interrupt_primitive_scans_before_retention#1", "should_derive_typed_headers_without_confusing_keyword_endpoints_or_empty_rows#1"]}
       ]
     },
@@ -291,14 +298,14 @@
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["append#1", "admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["key#1", "name#1", "lex#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["tokenize_test#1", "parse_test#1", "model#1", "should_build_generated_global_servers_addresses_and_group_references#1", "should_own_property_terminators_and_block_nonnesting_through_full_eof#1", "should_reject_direct_generated_unclosed_blocks_properties_and_cancel_actions#1", "should_map_generated_and_semantic_expansion_failures_once_with_full_statement#1", "should_bound_nwdiag_parser_work_and_mid_lex_cancellation#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["tokenize_test#1", "model#1", "should_build_generated_global_servers_addresses_and_group_references#1", "should_own_property_terminators_and_block_nonnesting_through_full_eof#1", "should_reject_direct_generated_unclosed_blocks_properties_and_cancel_actions#1", "should_map_generated_and_semantic_expansion_failures_once_with_full_statement#1", "should_bound_nwdiag_parser_work_and_mid_lex_cancellation#1"]}
       ]
     },
     {
       "path": "engine/src/plantuml/parser/outline.rs",
       "groups": [
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["push#1", "copy_label#1", "copy_syntax#1", "lex#1", "for_stream#1", "admit#1", "push#2"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["for_test#1", "test_parse#1", "should_copy_long_syntax_with_source_literal_and_work_admission#1", "should_admit_actual_generated_stacks_and_arenas_before_allocation#1", "should_cancel_shared_row_lexing_before_owning_long_literals#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["for_test#1", "should_copy_long_syntax_with_source_literal_and_work_admission#1", "should_admit_actual_generated_stacks_and_arenas_before_allocation#1", "should_cancel_shared_row_lexing_before_owning_long_literals#1"]}
       ]
     },
     {
@@ -306,6 +313,15 @@
       "groups": [
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["default#1", "classify#1", "advance#1", "advance_body#1", "finish#1", "span#1", "classify#2", "new#1", "consume#1", "strip#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_check_cancellation_during_comment_ownership_before_retaining_text#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/packet.rs",
+      "groups": [
+        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
+        {"role": "infrastructure", "reason": "Checked storage/work/stack admission and structured error mapping.", "symbols": ["describe_failure#1", "admit#1", "measure_symbol#1"]},
+        {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["span#1", "row_tokens#1", "field_tokens#1", "syntax_tokens#1", "word#1"]},
+        {"role": "test-adapter", "reason": "Test assertions and setup through generated entries; no production syntax authority.", "symbols": ["prepared_source#1", "should_admit_exact_source_quota_and_flat_packet_nesting#1", "should_preserve_sparse_maximum_bit_identity_without_expanding_gaps#1", "should_reject_eight_digit_ranges_before_scanning_or_retaining_the_label#1", "should_bound_packet_token_growth_before_retaining_a_fifth_token#1", "should_reject_packet_work_before_generated_entry_and_bound_actual_payloads#1", "should_stop_huge_packet_projection_at_the_existing_model_budget#1", "should_let_generated_packet_structure_reject_malformed_primitive_streams#1", "should_cancel_generated_packet_delivery_and_retaining_field_actions#1", "should_cancel_packet_literal_lexing_and_fragment_projection#1", "should_map_packet_attribute_failure_once_to_a_frozen_definition_use#1", "should_report_the_offending_packet_configuration_value#1", "should_keep_value_keywords_unsupported_as_configuration_names#1", "should_reject_packet_tick_work_and_output_limits_without_partial_output#1", "should_generate_inclusive_auto_fields_and_conserved_payload_fragments#1", "should_generate_final_configuration_effects_and_literal_packet_labels#1", "should_reject_packet_range_attribute_config_and_wrapper_suffixes#1"]}
       ]
     },
     {
@@ -355,13 +371,19 @@
       ]
     },
     {
+      "path": "engine/src/plantuml/parser/test_support.rs",
+      "groups": [
+        {"role": "test-adapter", "reason": "Test assertions and direct generated-entry setup; no materialized physical-line adapter or production syntax authority.", "symbols": ["parse#1", "body#1", "styled#1", "literal#1", "document#1"]}
+      ]
+    },
+    {
       "path": "engine/src/plantuml/parser/timing.rs",
       "groups": [
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["copy#1", "admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["fail#1", "code#1", "is_code#1", "time#1", "state#1", "check_is#1", "diagnose#1", "lex#1"]},
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["resolve#1", "declare#1", "named_at#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse_test#1", "model#1", "should_build_generated_timing_with_contextual_track_names_and_separate_cursors#1", "should_reject_whitespace_inside_timing_endpoint_primitives#1", "should_reject_generated_timing_eof_and_cancel_delivery_and_actions#1", "should_preserve_full_offending_statement_and_map_expansion_once#1", "should_bound_timing_tokens_depth_work_and_mid_lex_cancellation#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["model#1", "should_build_generated_timing_with_contextual_track_names_and_separate_cursors#1", "should_reject_whitespace_inside_timing_endpoint_primitives#1", "should_reject_generated_timing_eof_and_cancel_delivery_and_actions#1", "should_preserve_full_offending_statement_and_map_expansion_once#1", "should_bound_timing_tokens_depth_work_and_mid_lex_cancellation#1"]}
       ]
     },
     {
@@ -411,7 +433,7 @@
       "path": "engine/src/plantuml/salt.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["name#1", "name#2", "new#1", "control#1", "finish#1", "open#1", "close#1", "start_cell#1", "cell#1", "span#1", "tree#1", "leaf#1", "advance#1", "push#1", "retain#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "should_freeze_distinct_widget_ids_nested_ownership_and_positive_spans#1", "should_bound_salt_model_items_and_depth_before_retaining_children#1", "should_reject_salt_arena_growth_before_allocating_a_leaf_widget#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_freeze_distinct_widget_ids_nested_ownership_and_positive_spans#1", "should_bound_salt_model_items_and_depth_before_retaining_children#1", "should_reject_salt_arena_growth_before_allocating_a_leaf_widget#1"]}
       ]
     },
     {
@@ -445,7 +467,7 @@
     {
       "path": "engine/src/plantuml/source.rs",
       "groups": [
-        {"role": "test-adapter", "reason": "cfg(test) document-only and preprocessed setup adapters retained for existing assertions/deadlines; Line/Wrapper types remain separately pending final adapter cleanup.", "symbols": ["prepare_document#1", "prepare#1", "prepare_styled#1", "should_consume_exactly_one_generated_document_and_validate_lexical_eof#1", "should_preserve_literal_raw_rows_around_nonleading_exclamation_marks#1", "should_charge_long_line_scanning_before_finishing_the_line#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and direct generated-entry setup; no materialized physical-line adapter or production syntax authority.", "symbols": ["inspect#1", "should_consume_exactly_one_generated_document_and_validate_lexical_eof#1", "should_preserve_literal_raw_rows_around_nonleading_exclamation_marks#1", "should_charge_long_line_scanning_before_finishing_the_line#1"]}
       ]
     },
     {
@@ -487,7 +509,7 @@
       "path": "engine/src/plantuml/timing.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["value#1", "retained_bytes#1", "tick#1", "new#1", "apply#1", "declare#1", "player_id#1", "current_player#1", "select_time#1", "change#1", "intern_state#1", "constraint#1", "endpoint#1", "message#1", "finish#1", "state_at#1", "search_cost#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse#1", "model#1", "should_retain_typed_track_identity_initial_state_and_exact_sorted_changes#1", "should_own_constraint_and_message_endpoints_without_mutating_cursors#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["model#1", "should_retain_typed_track_identity_initial_state_and_exact_sorted_changes#1", "should_own_constraint_and_message_endpoints_without_mutating_cursors#1"]}
       ]
     },
     {
@@ -501,7 +523,7 @@
       "path": "engine/src/plantuml/tree.rs",
       "groups": [
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["new#1", "set_side#1", "node#1", "finish#1", "new#2", "node#2", "finish#2", "find_parent#1", "make_node#1", "smart_level#1"]},
-        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["parse_mindmap#1", "parse_wbs#1", "lines#1", "should_resolve_side_specific_mindmap_parents_and_depths#1", "should_use_wbs_global_chain_across_sides_and_retain_aliases#1", "should_reject_wbs_smart_depth_that_mindmap_normalizes#1"]}
+        {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["lines#1", "should_resolve_side_specific_mindmap_parents_and_depths#1", "should_use_wbs_global_chain_across_sides_and_retain_aliases#1", "should_reject_wbs_smart_depth_that_mindmap_normalizes#1"]}
       ]
     },
     {

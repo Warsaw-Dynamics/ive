@@ -21,6 +21,8 @@ pub(super) mod salt;
 pub(super) mod sequence;
 pub(super) mod state;
 pub(super) mod structured;
+#[cfg(test)]
+pub(super) mod test_support;
 pub(super) mod timing;
 pub(super) mod token;
 pub(super) mod tree;

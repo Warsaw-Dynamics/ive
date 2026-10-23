@@ -96,25 +96,13 @@ mod tests {
         RenderOptions,
         plantuml::{
             data::Value,
-            parser::{
-                outline::test_parse,
-                yaml::{parse, test_flow},
-            },
-            source::Line,
+            parser::yaml::{parse, test_flow},
         },
     };
     fn value(text: &str) -> Value {
-        let lines: Vec<_> = text
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 2,
-                text: s.into(),
-            })
-            .collect();
-        test_parse(
-            &lines,
-            "yaml",
+        let lines = text.to_owned();
+        crate::plantuml::parser::test_support::body(
+            (&lines, "yaml"),
             &mut Budget::new(&RenderOptions::default()),
             parse,
         )

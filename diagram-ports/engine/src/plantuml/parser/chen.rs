@@ -415,9 +415,10 @@ mod tests {
     };
 
     fn model(body: &str, options: &RenderOptions) -> Result<Chen, RenderError> {
-        crate::plantuml::chen::parse(
+        crate::plantuml::parser::test_support::parse(
             &format!("@startchen\n{body}\n@endchen"),
             &mut Budget::new(options),
+            crate::plantuml::parser::chen::parse,
         )
     }
 

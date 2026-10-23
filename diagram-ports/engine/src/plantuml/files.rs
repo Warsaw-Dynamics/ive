@@ -184,12 +184,6 @@ impl<'b> Builder<'b> {
     }
 }
 #[cfg(test)]
-use super::source::Line;
-#[cfg(test)]
-pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Files, crate::RenderError> {
-    super::parser::outline::test_parse(lines, "files", budget, super::parser::files::parse)
-}
-#[cfg(test)]
 fn add_test_path(
     model: &mut Files,
     path: (usize, &str),
@@ -235,17 +229,15 @@ mod tests {
     fn should_keep_stable_parents_distinct_kinds_and_note_rows() {
         // given
         let input = "/a\n/a/x\n/a/x\n<note>\n\nline\n</note>\n/empty/\n<note>\nroot\n</note>";
-        let lines: Vec<_> = input
-            .lines()
-            .enumerate()
-            .map(|(i, s)| Line {
-                number: i + 1,
-                text: s.into(),
-            })
-            .collect();
+        let lines = input.to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
         // when
-        let files = parse(&lines, &mut budget).unwrap();
+        let files = crate::plantuml::parser::test_support::body(
+            (&lines, "files"),
+            &mut budget,
+            crate::plantuml::parser::files::parse,
+        )
+        .unwrap();
         // then
         assert_eq!(files.entries[0].children, [1, 2, 6, 7]);
         assert_eq!(files.entries[1].kind, Kind::File);
@@ -292,13 +284,16 @@ mod tests {
     fn should_charge_wide_sibling_lookup_before_retaining_a_new_folder() {
         // given
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines: Vec<_> = (0..40)
-            .map(|n| Line {
-                number: n + 1,
-                text: format!("/folder{n}/"),
-            })
-            .collect();
-        let mut model = parse(&lines, &mut budget).unwrap();
+        let lines = (0..40)
+            .map(|n| format!("/folder{n}/"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut model = crate::plantuml::parser::test_support::body(
+            (&lines, "files"),
+            &mut budget,
+            crate::plantuml::parser::files::parse,
+        )
+        .unwrap();
         let mut options = RenderOptions::default();
         options.limits.layout_work = 32;
         let mut budget = Budget::new(&options);

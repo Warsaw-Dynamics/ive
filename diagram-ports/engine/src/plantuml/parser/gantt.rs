@@ -9,7 +9,6 @@ use crate::{
     plantuml::{
         budget::{Budget, bound},
         gantt::{Builder, CivilDay, Endpoint, Gantt, Kind, MAX_SPAN},
-        source::Line,
     },
 };
 #[derive(Clone, Debug)]
@@ -184,11 +183,7 @@ fn lex(
                         .next()
                         .is_some_and(|byte| byte.is_ascii_digit()) =>
                 {
-                    let diagnostic = Line {
-                        number: line,
-                        text: String::new(),
-                    };
-                    let day = CivilDay::parse(value, &diagnostic).map_err(|_| {
+                    let day = CivilDay::parse(value, line).map_err(|_| {
                         ParseFailure::syntax(
                             row.span(base, cursor..cursor + used),
                             "invalid explicit ISO civil date",
@@ -288,24 +283,6 @@ fn admit(
     Ok(())
 }
 
-#[cfg(test)]
-pub(in crate::plantuml) fn parse_test(
-    lines: &[Line],
-    budget: &mut Budget,
-) -> Result<Gantt, RenderError> {
-    let text = format!(
-        "@startgantt\n{}\n@endgantt",
-        lines
-            .iter()
-            .map(|line| line.text.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    let document = crate::plantuml::preprocess::prepare(&text, budget)?;
-    let mut prepared = super::document::parse(&document, budget)?;
-    super::preamble::parse(&mut prepared, budget)?;
-    parse(prepared.body, budget)
-}
 #[cfg(test)]
 mod tests {
     use super::*;

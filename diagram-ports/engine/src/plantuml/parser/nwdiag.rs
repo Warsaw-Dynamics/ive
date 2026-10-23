@@ -287,24 +287,6 @@ pub(in crate::plantuml) fn tokenize_test(
     lex(&row, 0, (&mut Vec::new(), budget))
 }
 #[cfg(test)]
-pub(in crate::plantuml) fn parse_test(
-    lines: &[crate::plantuml::source::Line],
-    budget: &mut Budget,
-) -> Result<NwDiagram, RenderError> {
-    let text = format!(
-        "@startnwdiag\n{}\n@endnwdiag",
-        lines
-            .iter()
-            .map(|line| line.text.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    let document = crate::plantuml::preprocess::prepare(&text, budget)?;
-    let mut prepared = super::document::parse(&document, budget)?;
-    super::preamble::parse(&mut prepared, budget)?;
-    parse(prepared.body, budget)
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;

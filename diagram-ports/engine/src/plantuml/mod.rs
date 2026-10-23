@@ -62,18 +62,9 @@ pub(crate) fn render(
     let expanded = preprocess::prepare(source, &mut budget)?;
     let mut prepared = parser::document::parse(&expanded, &mut budget)?;
     let wrapper = prepared.wrapper;
-    let (preamble, body) = parser::preamble::parse(&mut prepared, &mut budget)?;
-    let first_body = expanded.text[..body.start]
-        .bytes()
-        .filter(|&byte| byte == b'\n')
-        .count()
-        + 1;
-    let start = prepared
-        .lines
-        .partition_point(|line| line.number < first_body);
-    let lines = &prepared.lines[start..];
+    let (preamble, _) = parser::preamble::parse(&mut prepared, &mut budget)?;
     let selection = if wrapper == source::Wrapper::Uml {
-        parser::header::select(&prepared.body, lines, &mut budget)?
+        parser::header::select(&prepared.body, &mut budget)?
     } else {
         Selection::Sequence
     };

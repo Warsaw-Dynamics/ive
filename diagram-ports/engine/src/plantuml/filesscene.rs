@@ -118,7 +118,7 @@ fn symbol(kind: &Kind, p: Point) -> Vec<Shape> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{budget::Budget, source::Line};
+    use super::super::budget::Budget;
     use super::*;
     use crate::RenderOptions;
     use merman_render::environment::RenderEnvironment;
@@ -126,17 +126,15 @@ mod tests {
     #[test]
     fn should_clear_complete_note_height_and_indent_preorder_rows() {
         // given
-        let lines: Vec<_> =
-            "/app/src/main.rs\n<note>\nfirst\nsecond\nthird\n</note>\n/app/src/next.rs"
-                .lines()
-                .enumerate()
-                .map(|(i, s)| Line {
-                    number: i + 1,
-                    text: s.into(),
-                })
-                .collect();
+        let lines =
+            "/app/src/main.rs\n<note>\nfirst\nsecond\nthird\n</note>\n/app/src/next.rs".to_owned();
         let mut budget = Budget::new(&RenderOptions::default());
-        let model = super::super::files::parse(&lines, &mut budget).unwrap();
+        let model = crate::plantuml::parser::test_support::body(
+            (&lines, "files"),
+            &mut budget,
+            crate::plantuml::parser::files::parse,
+        )
+        .unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         let mut context = Context::new(&session, &mut budget);
         // when

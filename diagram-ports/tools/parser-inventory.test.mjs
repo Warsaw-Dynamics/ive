@@ -51,3 +51,22 @@ test('should reject an unclassified function in an existing native module', t =>
   // when / then
   assert.throws(() => auditParserInventory(root), /unclassified function/);
 });
+
+test('should reject a pending handwritten syntax exemption in the completed migration', t => {
+  // given
+  const root = checkout(t);
+  const file = path.join(root, 'provenance/plantuml-parser-responsibilities.json');
+  const ledger = JSON.parse(fs.readFileSync(file));
+  ledger.modules[0].groups[0].role = 'pending-syntax';
+  fs.writeFileSync(file, JSON.stringify(ledger));
+  // when / then
+  assert.throws(() => auditParserInventory(root), /invalid function responsibility/);
+});
+
+test('should reject restoration of the obsolete physical-line input adapter', t => {
+  // given
+  const root = checkout(t);
+  fs.appendFileSync(path.join(root, 'engine/src/plantuml/source.rs'), '\npub(super) struct Line { pub number: usize, pub text: String }\n');
+  // when / then
+  assert.throws(() => auditParserInventory(root), /obsolete physical-line parser adapter/);
+});
