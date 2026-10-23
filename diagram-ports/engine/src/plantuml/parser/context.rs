@@ -119,7 +119,7 @@ impl Admission {
     }
 }
 
-pub(super) fn push<T>(
+pub(in crate::plantuml) fn push<T>(
     tokens: &mut Vec<T>,
     token: T,
     budget: &mut Budget,

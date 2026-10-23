@@ -13,6 +13,7 @@ pub(super) mod sequence;
 pub(super) mod state;
 pub(super) mod token;
 pub(super) mod tree;
+pub(super) mod uml;
 
 pub(super) use definition::parse_definition;
 
@@ -82,3 +83,8 @@ mod generated_sequence;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/state.rs"]
 mod generated_state;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/uml.rs"]
+mod generated_uml;

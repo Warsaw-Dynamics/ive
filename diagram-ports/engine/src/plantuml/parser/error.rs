@@ -1,11 +1,12 @@
 use super::super::origin::SourceSpan;
 use crate::RenderError;
+use std::borrow::Cow;
 use std::ops::Range;
 
 #[derive(Debug)]
 pub(in crate::plantuml) enum FailureKind {
-    Syntax(&'static str),
-    Unsupported(&'static str),
+    Syntax(Cow<'static, str>),
+    Unsupported(Cow<'static, str>),
     Terminal(RenderError),
 }
 
@@ -19,14 +20,14 @@ impl ParseFailure {
     pub fn syntax(span: Range<usize>, detail: &'static str) -> Self {
         Self {
             span,
-            kind: FailureKind::Syntax(detail),
+            kind: FailureKind::Syntax(detail.into()),
         }
     }
 
     pub fn unsupported(span: Range<usize>, detail: &'static str) -> Self {
         Self {
             span,
-            kind: FailureKind::Unsupported(detail),
+            kind: FailureKind::Unsupported(detail.into()),
         }
     }
 
@@ -34,6 +35,13 @@ impl ParseFailure {
         Self {
             span: 0..0,
             kind: FailureKind::Terminal(error),
+        }
+    }
+
+    pub fn owned_syntax(span: Range<usize>, detail: String) -> Self {
+        Self {
+            span,
+            kind: FailureKind::Syntax(detail.into()),
         }
     }
 
@@ -49,8 +57,10 @@ impl ParseFailure {
             )
         };
         match self.kind {
-            FailureKind::Syntax(message) => RenderError::InvalidSource(detail(message)),
-            FailureKind::Unsupported(message) => RenderError::UnsupportedFeature(detail(message)),
+            FailureKind::Syntax(message) => RenderError::InvalidSource(detail(message.as_ref())),
+            FailureKind::Unsupported(message) => {
+                RenderError::UnsupportedFeature(detail(message.as_ref()))
+            }
             FailureKind::Terminal(error) => error,
         }
     }
@@ -58,7 +68,7 @@ impl ParseFailure {
     pub fn into_line(self, line: usize) -> RenderError {
         match self.kind {
             FailureKind::Syntax(message) => super::super::budget::invalid(line, message),
-            FailureKind::Unsupported(message) => super::super::budget::unsupported(line, message),
+            FailureKind::Unsupported(message) => super::super::budget::unsupported(line, &message),
             FailureKind::Terminal(error) => error,
         }
     }
@@ -85,8 +95,10 @@ impl ParseFailure {
             )
         };
         match self.kind {
-            FailureKind::Syntax(detail) => RenderError::InvalidSource(message(detail)),
-            FailureKind::Unsupported(detail) => RenderError::UnsupportedFeature(message(detail)),
+            FailureKind::Syntax(detail) => RenderError::InvalidSource(message(detail.as_ref())),
+            FailureKind::Unsupported(detail) => {
+                RenderError::UnsupportedFeature(message(detail.as_ref()))
+            }
             FailureKind::Terminal(error) => error,
         }
     }

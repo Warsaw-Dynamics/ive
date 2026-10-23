@@ -12,6 +12,35 @@ fn diagram(body: &str) -> String {
 }
 
 #[test]
+fn should_reject_uml_quoted_tokens_beyond_raw_byte_limit() {
+    // given
+    let raw = "\\\"".repeat(8193);
+    let mut accepted_over_limit = Vec::new();
+    for (context, body) in [
+        ("declaration", format!("class \"{raw}\" as A")),
+        ("endpoint", format!("class A\nA --> \"{raw}\"")),
+        ("left role", format!("class A\nclass B\nA \"{raw}\" --> B")),
+        ("right role", format!("class A\nclass B\nA --> \"{raw}\" B")),
+    ] {
+        // when
+        let result = render(&diagram(&body), &options());
+        // then
+        match result {
+            Ok(_) => accepted_over_limit.push(context),
+            Err(error) => assert!(
+                matches!(error, RenderError::Backend(_))
+                    && error.to_string().contains("label bytes"),
+                "{context}: {error}"
+            ),
+        }
+    }
+    assert!(
+        accepted_over_limit.is_empty(),
+        "accepted 16,386 raw interior bytes in {accepted_over_limit:?}"
+    );
+}
+
+#[test]
 fn should_render_adjacent_quoted_sequence_command_primitives() {
     // given
     for body in [

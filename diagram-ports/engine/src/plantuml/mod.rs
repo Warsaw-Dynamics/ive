@@ -125,6 +125,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let uml_model = if wrapper == source::Wrapper::Uml && selection == Selection::Uml {
+        Some(parser::uml::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -190,9 +195,11 @@ pub(crate) fn render(
             })?;
             ("state", stategraph::layout(model, &mut context)?)
         } else if selection == Selection::Uml {
-            let model = uml::parse(lines, context.budget)?;
+            let model = uml_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML UML selection has no parsed model".into())
+            })?;
             let family = model.family;
-            (family, graph::layout(&model, &mut context)?)
+            (family, graph::layout(model, &mut context)?)
         } else if selection == Selection::Timing {
             let model = timing::parse(lines, context.budget)?;
             ("timing", timingscene::layout(&model, &mut context)?)

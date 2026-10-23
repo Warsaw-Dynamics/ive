@@ -64,6 +64,12 @@
       "generatedSha256": "46efd9c392b300833e8fa021f7f5dbb691f30d0e04c8445f18819495175a04c3",
       "grammar": "engine/src/plantuml/parser/grammar/tree.lalrpop",
       "grammarSha256": "c47f9fbb39ed28311ebd348608f9de3693032fe13c68813e494b44bd29c6008a"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/uml.rs",
+      "generatedSha256": "20ba6dca03dc4b42ae98666dd90431c132254a4dfb1bbfa80775982a5398d8ef",
+      "grammar": "engine/src/plantuml/parser/grammar/uml.lalrpop",
+      "grammarSha256": "4454c4ab05bfc5ae7ff9af1af3aebb4fd2b81c6d6c5c11cfd7509a589650010c"
     }
   ],
   "schema": 1

@@ -536,7 +536,9 @@ mod tests {
         // then
         assert!(matches!(
             result.unwrap_err().kind,
-            super::super::parser::error::FailureKind::Unsupported("cross-ownership state endpoint")
+            super::super::parser::error::FailureKind::Unsupported(std::borrow::Cow::Borrowed(
+                "cross-ownership state endpoint"
+            ))
         ));
         assert_eq!(builder.model.nodes.len(), 3);
         assert_eq!(

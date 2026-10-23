@@ -1,0 +1,162 @@
+// Original grammar for the admitted MIT class/object/description command subset.
+grammar(builder: &mut crate::plantuml::uml::Builder<'_>);
+use crate::plantuml::{uml::{Kind, Direction, Member}, lexer::Token as Name, arrow::Arrow, parser::{uml::{Token, Keyword, Word, Declaration, Link, single, declaration, archimate, direction}, error::ParseFailure}};
+
+pub Uml: () = <Items>;
+Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+Item: () = {
+    <value:MemberDeclaration> "newline" =>? builder.declare(value).map(|_| ()).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_open:MemberOpen> <_members:Members> "}" "newline" => (),
+    <value:GroupDeclaration> "newline" =>? builder.declare(value).map(|_| ()).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_open:GroupOpen> <_items:Items> "}" "newline" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <_keyword:ArchimateWord> <color:"color"> <name:DeclarationName> "newline" <end:@R> =>? archimate(color, name, start..end).and_then(|value| builder.declare(value)).map(|_| ()).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <_keyword:NoteWord> <left:QuotedName> <_join:AsWord> <right:UnquotedName> "newline" <end:@R> =>? declaration(Kind::Note, (right.text, left.text), start..end).and_then(|value| builder.declare(value)).map(|_| ()).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:LeftEndpoint> <arrow:"arrow"> <right:RightEndpoint> <label:Label> "newline" <end:@R> =>? builder.relate(Link { from: left.0, left: left.1, to: right.0, right: right.1, arrow, label }, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:"left"> <to:"to"> <right:"right"> <word:"direction"> "newline" <end:@R> =>? direction((Direction::Right, [left, to, right, word]), start..end).and_then(|value| builder.direct(value)).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <top:"top"> <to:"to"> <bottom:"bottom"> <word:"direction"> "newline" <end:@R> =>? direction((Direction::Down, [top, to, bottom, word]), start..end).and_then(|value| builder.direct(value)).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+MemberDeclaration: Declaration = <start:@L> <kind:MemberKind> <name:DeclarationName> <end:@R> =>? declaration(kind, name, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+GroupDeclaration: Declaration = <start:@L> <kind:GroupKeyword> <name:DeclarationName> <end:@R> =>? declaration(kind.kind, name, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+#[inline]
+MemberKind: Kind = {
+    <key:"member kind"> => key.kind, <key:"quoted member kind"> => key.kind,
+    "class" => Kind::Class, "quoted class" => Kind::Class,
+    <_abstract:AbstractWord> <_class:ClassWord> => Kind::Abstract,
+};
+#[inline]
+AbstractWord: () = { "abstract" => (), "quoted abstract" => () };
+#[inline]
+ClassWord: () = { "class" => (), "quoted class" => () };
+#[inline]
+GroupKeyword: Keyword = { <key:"group kind"> => key, <key:"quoted group kind"> => key };
+#[inline]
+ArchimateWord: () = { "archimate" => (), "quoted archimate" => () };
+#[inline]
+NoteWord: () = { "note" => (), "quoted note" => () };
+AsWord: () = { "as" => (), "quoted as" => () };
+
+MemberOpen: () = <value:MemberDeclaration> "{" "newline" =>? builder.open(value).map_err(|error| lalrpop_util::ParseError::User { error });
+GroupOpen: () = <value:GroupDeclaration> "{" "newline" =>? builder.open(value).map_err(|error| lalrpop_util::ParseError::User { error });
+Members: () = { => (), <_members:Members> <member:"member"> "newline" =>? builder.append(member).map_err(|error| lalrpop_util::ParseError::User { error }) };
+DeclarationName: (String, String) = {
+    <one:Name> => single(one),
+    <left:Name> <_join:AsWord> <right:UnquotedName> => (right.text, left.text),
+    <left:Name> <_join:AsWord> <right:QuotedName> => (left.text, right.text),
+};
+#[inline]
+LeftEndpoint: (String, String) = {
+    <one:FirstName> => (one.text, String::new()),
+    <left:FirstName> <right:QuotedName> => (left.text, right.text),
+};
+RightEndpoint: (String, String) = {
+    <one:Name> => (one.text, String::new()),
+    <left:UnquotedName> <right:QuotedName> => (left.text, right.text),
+    <left:QuotedName> <right:Name> => (right.text, left.text),
+};
+Label: String = { => String::new(), ":" <value:"label"> => value };
+Name: Name = { <value:UnquotedName> => value, <value:QuotedName> => value };
+UnquotedName: Name = {
+    <value:"name"> => value,
+    <value:"class"> => value,
+    <key:"member kind"> => key.name,
+    <key:"group kind"> => key.name,
+    <value:"archimate"> => value,
+    <value:"note"> => value,
+    <value:"abstract"> => value,
+    <value:"as"> => value,
+    <value:"left"> => value.name,
+    <value:"right"> => value.name,
+    <value:"top"> => value.name,
+    <value:"bottom"> => value.name,
+    <value:"to"> => value.name,
+    <value:"direction"> => value.name,
+};
+QuotedName: Name = {
+    <value:"quoted name"> => value,
+    <value:"quoted class"> => value,
+    <key:"quoted member kind"> => key.name,
+    <key:"quoted group kind"> => key.name,
+    <value:"quoted archimate"> => value,
+    <value:"quoted note"> => value,
+    <value:"quoted abstract"> => value,
+    <value:"quoted as"> => value,
+    <value:"quoted left"> => value.name,
+    <value:"quoted right"> => value.name,
+    <value:"quoted top"> => value.name,
+    <value:"quoted bottom"> => value.name,
+    <value:"quoted to"> => value.name,
+    <value:"quoted direction"> => value.name,
+};
+#[inline]
+FirstName: Name = {
+    <value:"name"> => value,
+    <value:"class"> => value,
+    <key:"member kind"> => key.name,
+    <key:"group kind"> => key.name,
+    <value:"archimate"> => value,
+    <value:"note"> => value,
+    <value:"abstract"> => value,
+    <value:"as"> => value,
+    <value:"left"> => value.name,
+    <value:"right"> => value.name,
+    <value:"top"> => value.name,
+    <value:"bottom"> => value.name,
+    <value:"to"> => value.name,
+    <value:"direction"> => value.name,
+    <value:"quoted name"> => value,
+    <value:"quoted class"> => value,
+    <key:"quoted member kind"> => key.name,
+    <key:"quoted group kind"> => key.name,
+    <value:"quoted archimate"> => value,
+    <value:"quoted note"> => value,
+    <value:"quoted abstract"> => value,
+    <value:"quoted as"> => value,
+    <value:"quoted left"> => value.name,
+    <value:"quoted right"> => value.name,
+    <value:"quoted top"> => value.name,
+    <value:"quoted bottom"> => value.name,
+    <value:"quoted to"> => value.name,
+    <value:"quoted direction"> => value.name,
+};
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "class" => Token::Class(<Name>),
+        "quoted name" => Token::QuotedName(<Name>),
+        "quoted class" => Token::QuotedClass(<Name>),
+        "quoted member kind" => Token::QuotedMemberKind(<Keyword>),
+        "quoted group kind" => Token::QuotedGroupKind(<Keyword>),
+        "quoted archimate" => Token::QuotedArchimate(<Name>),
+        "quoted note" => Token::QuotedNote(<Name>),
+        "quoted abstract" => Token::QuotedAbstract(<Name>),
+        "quoted as" => Token::QuotedAs(<Name>),
+        "quoted left" => Token::QuotedLeft(<Word>),
+        "quoted right" => Token::QuotedRight(<Word>),
+        "quoted top" => Token::QuotedTop(<Word>),
+        "quoted bottom" => Token::QuotedBottom(<Word>),
+        "quoted to" => Token::QuotedTo(<Word>),
+        "quoted direction" => Token::QuotedDirection(<Word>),
+        "member kind" => Token::MemberKind(<Keyword>),
+        "group kind" => Token::GroupKind(<Keyword>),
+        "archimate" => Token::Archimate(<Name>),
+        "note" => Token::Note(<Name>),
+        "abstract" => Token::Abstract(<Name>),
+        "as" => Token::As(<Name>),
+        "name" => Token::Name(<Name>),
+        "color" => Token::Color(<Name>),
+        "arrow" => Token::Arrow(<Arrow>),
+        "label" => Token::Label(<String>),
+        "member" => Token::Member(<Member>),
+        "left" => Token::Left(<Word>),
+        "right" => Token::Right(<Word>),
+        "top" => Token::Top(<Word>),
+        "bottom" => Token::Bottom(<Word>),
+        "to" => Token::To(<Word>),
+        "direction" => Token::Direction(<Word>),
+        "{" => Token::Open,
+        "}" => Token::Close,
+        ":" => Token::Colon,
+        "newline" => Token::Newline,
+    }
+}
