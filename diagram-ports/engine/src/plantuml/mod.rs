@@ -19,6 +19,8 @@ mod files;
 mod filesscene;
 mod gantt;
 mod ganttscene;
+mod git;
+mod gitscene;
 mod graph;
 mod hcl;
 mod lexer;
@@ -188,6 +190,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let git_model = if wrapper == source::Wrapper::Git {
+        Some(parser::git::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -198,7 +205,12 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if wrapper == source::Wrapper::Chen {
+        let (family, scene) = if wrapper == source::Wrapper::Git {
+            let model = git_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML Git selection has no parsed model".into())
+            })?;
+            ("git", gitscene::layout(model, &mut context)?)
+        } else if wrapper == source::Wrapper::Chen {
             let model = chen_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML Chen selection has no parsed model".into())
             })?;

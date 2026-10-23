@@ -1,5 +1,5 @@
 // auto-generated: "lalrpop 0.23.2"
-// sha3: bc6414fa3a1b52a17e6b962f48ee551b47d198e62cefbe53a7d3abd4e494e8bc
+// sha3: c8cabe11167163941fb3bb66f14c755aa34eccaa57902998289c6cc9da6ab06c
 // features: 
 use crate::plantuml::{parser::{document::{Token, Bounds, finish}, error::ParseFailure}, source::Wrapper};
 #[allow(unused_extern_crates)]
@@ -31,120 +31,126 @@ mod __parse__Document {
     }
     const __ACTION: &[i8] = &[
         // State 0
-        -3, 0, 8, 0, 12, 0, 7, 0, 13, 0, 5, 0, 11, 0, 9, 0, 4, 0, 10, 0, 2, 0, 6, 0, 3, 0, 0, -3, 0, 0, 0,
+        -3, 0, 9, 0, 13, 0, 8, 0, 14, 0, 5, 0, 12, 0, 10, 0, 4, 0, 11, 0, 2, 0, 7, 0, 3, 0, 6, 0, 0, -3, 0, 0, 0,
         // State 1
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 2
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, -5, -5, -5, -5, 0,
         // State 3
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 4
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 5
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, -5, 0,
         // State 6
-        0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 7
-        0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 8
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 9
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 10
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 11
-        0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 12
-        0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 13
-        0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 14
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, -5, -5, -5, 0,
         // State 15
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 16
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 42, 39, 40, 30, 0,
         // State 17
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 18
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 19
-        0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 42, 39, 40, 30, 0,
         // State 20
-        0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 21
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 22
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 23
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 24
-        0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 25
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 26
-        0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 37, 38, 28, 0,
+        0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 27
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -24, -24, 0, 0, -24,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 28
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
+        0, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 39, 40, 30, 0,
         // State 29
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -25, -25, 0, 0, -25,
         // State 30
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
         // State 31
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
         // State 32
-        14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
         // State 33
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0,
         // State 34
-        -4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0, 0,
+        15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
         // State 35
-        0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, -6, -6, -6, -6, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 36
-        0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, 0, -20, -20, -20, -20, -20, 0,
+        -4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0, 0,
         // State 37
-        0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, -22, -22, -22, -22, 0,
+        0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, 0, -6, -6, -6, -6, -6, 0,
         // State 38
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, -21, -21, -21, -21, 0,
         // State 39
-        0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, 0, -21, -21, -21, -21, -21, 0,
+        0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, -23, -23, -23, -23, 0,
         // State 40
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 41
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, 0, -22, -22, -22, -22, -22, 0,
         // State 42
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 43
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 44
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 45
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 46
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 47
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 48
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 55, 54, 0, 0, 56,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 49
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 50
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         // State 51
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 57, 0, 0, 59,
         // State 52
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
         // State 53
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -25, -25, 0, 0, -25,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
         // State 54
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -26, -26, 0, 0, -26,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
         // State 55
-        0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, 0, -23, -23, -23, -23, -23, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
+        // State 56
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -26, -26, 0, 0, -26,
+        // State 57
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -27, -27, 0, 0, -27,
+        // State 58
+        0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, 0, -24, -24, -24, -24, -24, 0,
     ];
     fn __action(state: i8, integer: usize) -> i8 {
-        __ACTION[(state as usize) * 31 + integer]
+        __ACTION[(state as usize) * 33 + integer]
     }
     const __EOF_ACTION: &[i8] = &[
         // State 0
@@ -204,89 +210,96 @@ mod __parse__Document {
         // State 27
         0,
         // State 28
-        -3,
+        0,
         // State 29
-        -3,
+        0,
         // State 30
         -3,
         // State 31
         -3,
         // State 32
-        0,
+        -3,
         // State 33
-        -27,
+        -3,
         // State 34
-        -4,
+        0,
         // State 35
-        0,
+        -28,
         // State 36
-        0,
+        -4,
         // State 37
         0,
         // State 38
-        -17,
+        0,
         // State 39
         0,
         // State 40
-        -15,
+        -17,
         // State 41
-        -18,
+        0,
         // State 42
-        -10,
+        -15,
         // State 43
-        -8,
+        -20,
         // State 44
-        -16,
+        -18,
         // State 45
-        -13,
+        -10,
         // State 46
-        -9,
+        -8,
         // State 47
-        -11,
+        -16,
         // State 48
-        0,
+        -13,
         // State 49
-        -19,
+        -9,
         // State 50
-        -12,
+        -11,
         // State 51
-        -14,
+        0,
         // State 52
-        -7,
+        -19,
         // State 53
-        0,
+        -12,
         // State 54
-        0,
+        -14,
         // State 55
+        -7,
+        // State 56
+        0,
+        // State 57
+        0,
+        // State 58
         0,
     ];
     fn __goto(state: i8, nt: usize) -> i8 {
         match nt {
             2 => match state {
-                28 => 49,
-                29 => 50,
-                30 => 51,
-                31 => 52,
-                _ => 32,
+                30 => 52,
+                31 => 53,
+                32 => 54,
+                33 => 55,
+                _ => 34,
             },
             3 => match state {
-                2 => 15,
-                3 => 16,
-                4 => 17,
-                5 => 18,
-                6 => 19,
-                7 => 20,
-                8 => 21,
-                9 => 22,
-                10 => 23,
-                11 => 24,
-                12 => 25,
-                13 => 26,
-                _ => 14,
+                2 => 16,
+                3 => 17,
+                4 => 18,
+                5 => 19,
+                6 => 20,
+                7 => 21,
+                8 => 22,
+                9 => 23,
+                10 => 24,
+                11 => 25,
+                12 => 26,
+                13 => 27,
+                14 => 28,
+                _ => 15,
             },
-            4 => 33,
-            5 => 35,
-            6 => 48,
+            4 => 35,
+            5 => 37,
+            6 => 51,
             _ => 0,
         }
     }
@@ -318,6 +331,8 @@ mod __parse__Document {
         r###""endhcl""###,
         r###""startchen""###,
         r###""endchen""###,
+        r###""startgit""###,
+        r###""endgit""###,
         r###""row""###,
         r###""comment""###,
         r###""definition""###,
@@ -391,7 +406,7 @@ mod __parse__Document {
 
         #[inline]
         fn error_action(&self, state: i8) -> i8 {
-            __action(state, 31 - 1)
+            __action(state, 33 - 1)
         }
 
         #[inline]
@@ -484,11 +499,13 @@ mod __parse__Document {
             Token::EndHcl if true => Some(23),
             Token::StartChen if true => Some(24),
             Token::EndChen if true => Some(25),
-            Token::Row if true => Some(26),
-            Token::Comment if true => Some(27),
-            Token::Definition if true => Some(28),
-            Token::SheetStart if true => Some(29),
-            Token::SheetEnd if true => Some(30),
+            Token::StartGit if true => Some(26),
+            Token::EndGit if true => Some(27),
+            Token::Row if true => Some(28),
+            Token::Comment if true => Some(29),
+            Token::Definition if true => Some(30),
+            Token::SheetStart if true => Some(31),
+            Token::SheetEnd if true => Some(32),
             _ => None,
         }
     }
@@ -500,7 +517,7 @@ mod __parse__Document {
     ) -> __Symbol<>
     {
         #[allow(clippy::manual_range_patterns)]match __token_index {
-            0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 => __Symbol::Variant0(__token),
+            0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 => __Symbol::Variant0(__token),
             _ => unreachable!(),
         }
     }
@@ -628,8 +645,8 @@ mod __parse__Document {
             }
             19 => {
                 __state_machine::SimulatedReduce::Reduce {
-                    states_to_pop: 1,
-                    nonterminal_produced: 5,
+                    states_to_pop: 3,
+                    nonterminal_produced: 4,
                 }
             }
             20 => {
@@ -646,19 +663,19 @@ mod __parse__Document {
             }
             22 => {
                 __state_machine::SimulatedReduce::Reduce {
-                    states_to_pop: 3,
+                    states_to_pop: 1,
                     nonterminal_produced: 5,
                 }
             }
             23 => {
                 __state_machine::SimulatedReduce::Reduce {
-                    states_to_pop: 0,
-                    nonterminal_produced: 6,
+                    states_to_pop: 3,
+                    nonterminal_produced: 5,
                 }
             }
             24 => {
                 __state_machine::SimulatedReduce::Reduce {
-                    states_to_pop: 2,
+                    states_to_pop: 0,
                     nonterminal_produced: 6,
                 }
             }
@@ -668,7 +685,13 @@ mod __parse__Document {
                     nonterminal_produced: 6,
                 }
             }
-            26 => __state_machine::SimulatedReduce::Accept,
+            26 => {
+                __state_machine::SimulatedReduce::Reduce {
+                    states_to_pop: 2,
+                    nonterminal_produced: 6,
+                }
+            }
+            27 => __state_machine::SimulatedReduce::Accept,
             _ => panic!("invalid reduction index {__reduce_index}")
         }
     }
@@ -759,13 +782,13 @@ mod __parse__Document {
                 __reduce2(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             3 => {
-                // Comments = Comments, "comment" => ActionFn(24);
+                // Comments = Comments, "comment" => ActionFn(25);
                 assert!(__symbols.len() >= 2);
                 let __sym1 = __pop_Variant0(__symbols);
                 let __sym0 = __pop_Variant2(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym1.2.clone();
-                let __nt = match super::__action24::<>(budget, __sym0, __sym1) {
+                let __nt = match super::__action25::<>(budget, __sym0, __sym1) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -776,13 +799,13 @@ mod __parse__Document {
                 __reduce4(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             5 => {
-                // Contents = Contents, Item => ActionFn(15);
+                // Contents = Contents, Item => ActionFn(16);
                 assert!(__symbols.len() >= 2);
                 let __sym1 = __pop_Variant1(__symbols);
                 let __sym0 = __pop_Variant1(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym1.2.clone();
-                let __nt = match super::__action15::<>(budget, __sym0, __sym1) {
+                let __nt = match super::__action16::<>(budget, __sym0, __sym1) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -790,7 +813,7 @@ mod __parse__Document {
                 (2, 3)
             }
             6 => {
-                // Document = Comments, "startuml", Contents, "enduml", Comments => ActionFn(40);
+                // Document = Comments, "startuml", Contents, "enduml", Comments => ActionFn(42);
                 assert!(__symbols.len() >= 5);
                 let __sym4 = __pop_Variant2(__symbols);
                 let __sym3 = __pop_Variant0(__symbols);
@@ -799,7 +822,7 @@ mod __parse__Document {
                 let __sym0 = __pop_Variant2(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym4.2.clone();
-                let __nt = match super::__action40::<>(budget, __sym0, __sym1, __sym2, __sym3, __sym4) {
+                let __nt = match super::__action42::<>(budget, __sym0, __sym1, __sym2, __sym3, __sym4) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -807,37 +830,7 @@ mod __parse__Document {
                 (5, 4)
             }
             7 => {
-                // Document = "startmindmap", Contents, "endmindmap" => ActionFn(41);
-                assert!(__symbols.len() >= 3);
-                let __sym2 = __pop_Variant0(__symbols);
-                let __sym1 = __pop_Variant1(__symbols);
-                let __sym0 = __pop_Variant0(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym2.2.clone();
-                let __nt = match super::__action41::<>(budget, __sym0, __sym1, __sym2) {
-                    Ok(v) => v,
-                    Err(e) => return Some(Err(e)),
-                };
-                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
-                (3, 4)
-            }
-            8 => {
-                // Document = "startwbs", Contents, "endwbs" => ActionFn(42);
-                assert!(__symbols.len() >= 3);
-                let __sym2 = __pop_Variant0(__symbols);
-                let __sym1 = __pop_Variant1(__symbols);
-                let __sym0 = __pop_Variant0(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym2.2.clone();
-                let __nt = match super::__action42::<>(budget, __sym0, __sym1, __sym2) {
-                    Ok(v) => v,
-                    Err(e) => return Some(Err(e)),
-                };
-                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
-                (3, 4)
-            }
-            9 => {
-                // Document = "startjson", Contents, "endjson" => ActionFn(43);
+                // Document = "startmindmap", Contents, "endmindmap" => ActionFn(43);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -851,8 +844,8 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
-            10 => {
-                // Document = "startyaml", Contents, "endyaml" => ActionFn(44);
+            8 => {
+                // Document = "startwbs", Contents, "endwbs" => ActionFn(44);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -866,24 +859,23 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
-            11 => {
-                // Document = "startgantt", Contents, "endgantt", Comments => ActionFn(45);
-                assert!(__symbols.len() >= 4);
-                let __sym3 = __pop_Variant2(__symbols);
+            9 => {
+                // Document = "startjson", Contents, "endjson" => ActionFn(45);
+                assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
                 let __sym0 = __pop_Variant0(__symbols);
                 let __start = __sym0.0.clone();
-                let __end = __sym3.2.clone();
-                let __nt = match super::__action45::<>(budget, __sym0, __sym1, __sym2, __sym3) {
+                let __end = __sym2.2.clone();
+                let __nt = match super::__action45::<>(budget, __sym0, __sym1, __sym2) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
-                (4, 4)
+                (3, 4)
             }
-            12 => {
-                // Document = "startsalt", Contents, "endsalt" => ActionFn(46);
+            10 => {
+                // Document = "startyaml", Contents, "endyaml" => ActionFn(46);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -897,8 +889,8 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
-            13 => {
-                // Document = "startnwdiag", Contents, "endnwdiag", Comments => ActionFn(47);
+            11 => {
+                // Document = "startgantt", Contents, "endgantt", Comments => ActionFn(47);
                 assert!(__symbols.len() >= 4);
                 let __sym3 = __pop_Variant2(__symbols);
                 let __sym2 = __pop_Variant0(__symbols);
@@ -913,8 +905,8 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (4, 4)
             }
-            14 => {
-                // Document = "startfiles", Contents, "endfiles" => ActionFn(48);
+            12 => {
+                // Document = "startsalt", Contents, "endsalt" => ActionFn(48);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -928,23 +920,24 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
-            15 => {
-                // Document = "startpacketdiag", Contents, "endpacketdiag" => ActionFn(49);
-                assert!(__symbols.len() >= 3);
+            13 => {
+                // Document = "startnwdiag", Contents, "endnwdiag", Comments => ActionFn(49);
+                assert!(__symbols.len() >= 4);
+                let __sym3 = __pop_Variant2(__symbols);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
                 let __sym0 = __pop_Variant0(__symbols);
                 let __start = __sym0.0.clone();
-                let __end = __sym2.2.clone();
-                let __nt = match super::__action49::<>(budget, __sym0, __sym1, __sym2) {
+                let __end = __sym3.2.clone();
+                let __nt = match super::__action49::<>(budget, __sym0, __sym1, __sym2, __sym3) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
-                (3, 4)
+                (4, 4)
             }
-            16 => {
-                // Document = "startboard", Contents, "endboard" => ActionFn(50);
+            14 => {
+                // Document = "startfiles", Contents, "endfiles" => ActionFn(50);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -958,8 +951,8 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
-            17 => {
-                // Document = "starthcl", Contents, "endhcl" => ActionFn(51);
+            15 => {
+                // Document = "startpacketdiag", Contents, "endpacketdiag" => ActionFn(51);
                 assert!(__symbols.len() >= 3);
                 let __sym2 = __pop_Variant0(__symbols);
                 let __sym1 = __pop_Variant1(__symbols);
@@ -973,8 +966,38 @@ mod __parse__Document {
                 __symbols.push((__start, __Symbol::Variant3(__nt), __end));
                 (3, 4)
             }
+            16 => {
+                // Document = "startboard", Contents, "endboard" => ActionFn(52);
+                assert!(__symbols.len() >= 3);
+                let __sym2 = __pop_Variant0(__symbols);
+                let __sym1 = __pop_Variant1(__symbols);
+                let __sym0 = __pop_Variant0(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym2.2.clone();
+                let __nt = match super::__action52::<>(budget, __sym0, __sym1, __sym2) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
+                (3, 4)
+            }
+            17 => {
+                // Document = "starthcl", Contents, "endhcl" => ActionFn(53);
+                assert!(__symbols.len() >= 3);
+                let __sym2 = __pop_Variant0(__symbols);
+                let __sym1 = __pop_Variant1(__symbols);
+                let __sym0 = __pop_Variant0(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym2.2.clone();
+                let __nt = match super::__action53::<>(budget, __sym0, __sym1, __sym2) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
+                (3, 4)
+            }
             18 => {
-                // Document = "startchen", Contents, "endchen", Comments => ActionFn(52);
+                // Document = "startchen", Contents, "endchen", Comments => ActionFn(54);
                 assert!(__symbols.len() >= 4);
                 let __sym3 = __pop_Variant2(__symbols);
                 let __sym2 = __pop_Variant0(__symbols);
@@ -982,7 +1005,7 @@ mod __parse__Document {
                 let __sym0 = __pop_Variant0(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym3.2.clone();
-                let __nt = match super::__action52::<>(budget, __sym0, __sym1, __sym2, __sym3) {
+                let __nt = match super::__action54::<>(budget, __sym0, __sym1, __sym2, __sym3) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
@@ -990,7 +1013,19 @@ mod __parse__Document {
                 (4, 4)
             }
             19 => {
-                __reduce19(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
+                // Document = "startgit", Contents, "endgit" => ActionFn(55);
+                assert!(__symbols.len() >= 3);
+                let __sym2 = __pop_Variant0(__symbols);
+                let __sym1 = __pop_Variant1(__symbols);
+                let __sym0 = __pop_Variant0(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym2.2.clone();
+                let __nt = match super::__action55::<>(budget, __sym0, __sym1, __sym2) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant3(__nt), __end));
+                (3, 4)
             }
             20 => {
                 __reduce20(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
@@ -1005,21 +1040,10 @@ mod __parse__Document {
                 __reduce23(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             24 => {
-                // Sheet = Sheet, "comment" => ActionFn(21);
-                assert!(__symbols.len() >= 2);
-                let __sym1 = __pop_Variant0(__symbols);
-                let __sym0 = __pop_Variant2(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym1.2.clone();
-                let __nt = match super::__action21::<>(budget, __sym0, __sym1) {
-                    Ok(v) => v,
-                    Err(e) => return Some(Err(e)),
-                };
-                __symbols.push((__start, __Symbol::Variant2(__nt), __end));
-                (2, 6)
+                __reduce24(budget, __lookahead_start, __symbols, core::marker::PhantomData::<()>)
             }
             25 => {
-                // Sheet = Sheet, "row" => ActionFn(22);
+                // Sheet = Sheet, "comment" => ActionFn(22);
                 assert!(__symbols.len() >= 2);
                 let __sym1 = __pop_Variant0(__symbols);
                 let __sym0 = __pop_Variant2(__symbols);
@@ -1033,6 +1057,20 @@ mod __parse__Document {
                 (2, 6)
             }
             26 => {
+                // Sheet = Sheet, "row" => ActionFn(23);
+                assert!(__symbols.len() >= 2);
+                let __sym1 = __pop_Variant0(__symbols);
+                let __sym0 = __pop_Variant2(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym1.2.clone();
+                let __nt = match super::__action23::<>(budget, __sym0, __sym1) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
+                __symbols.push((__start, __Symbol::Variant2(__nt), __end));
+                (2, 6)
+            }
+            27 => {
                 // __Document = Document => ActionFn(0);
                 let __sym0 = __pop_Variant3(__symbols);
                 let __start = __sym0.0.clone();
@@ -1101,10 +1139,10 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // @L =  => ActionFn(25);
+        // @L =  => ActionFn(26);
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
-        let __nt = super::__action25::<>(budget, &__start, &__end);
+        let __nt = super::__action26::<>(budget, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (0, 0)
     }
@@ -1116,10 +1154,10 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // @R =  => ActionFn(26);
+        // @R =  => ActionFn(27);
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
-        let __nt = super::__action26::<>(budget, &__start, &__end);
+        let __nt = super::__action27::<>(budget, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (0, 1)
     }
@@ -1131,10 +1169,10 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Comments =  => ActionFn(23);
+        // Comments =  => ActionFn(24);
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
-        let __nt = super::__action23::<>(budget, &__start, &__end);
+        let __nt = super::__action24::<>(budget, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (0, 2)
     }
@@ -1146,28 +1184,12 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Contents =  => ActionFn(14);
+        // Contents =  => ActionFn(15);
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
-        let __nt = super::__action14::<>(budget, &__start, &__end);
+        let __nt = super::__action15::<>(budget, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (0, 3)
-    }
-    fn __reduce19<
-    >(
-        budget: &mut crate::plantuml::budget::Budget,
-        __lookahead_start: Option<&usize>,
-        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>,
-        _: core::marker::PhantomData<()>,
-    ) -> (usize, usize)
-    {
-        // Item = "comment" => ActionFn(16);
-        let __sym0 = __pop_Variant0(__symbols);
-        let __start = __sym0.0.clone();
-        let __end = __sym0.2.clone();
-        let __nt = super::__action16::<>(budget, __sym0);
-        __symbols.push((__start, __Symbol::Variant1(__nt), __end));
-        (1, 5)
     }
     fn __reduce20<
     >(
@@ -1177,7 +1199,7 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Item = "row" => ActionFn(17);
+        // Item = "comment" => ActionFn(17);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
@@ -1193,7 +1215,7 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Item = "definition" => ActionFn(18);
+        // Item = "row" => ActionFn(18);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
         let __end = __sym0.2.clone();
@@ -1209,16 +1231,13 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Item = "sheet start", Sheet, "sheet end" => ActionFn(19);
-        assert!(__symbols.len() >= 3);
-        let __sym2 = __pop_Variant0(__symbols);
-        let __sym1 = __pop_Variant2(__symbols);
+        // Item = "definition" => ActionFn(19);
         let __sym0 = __pop_Variant0(__symbols);
         let __start = __sym0.0.clone();
-        let __end = __sym2.2.clone();
-        let __nt = super::__action19::<>(budget, __sym0, __sym1, __sym2);
+        let __end = __sym0.2.clone();
+        let __nt = super::__action19::<>(budget, __sym0);
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
-        (3, 5)
+        (1, 5)
     }
     fn __reduce23<
     >(
@@ -1228,10 +1247,29 @@ mod __parse__Document {
         _: core::marker::PhantomData<()>,
     ) -> (usize, usize)
     {
-        // Sheet =  => ActionFn(20);
+        // Item = "sheet start", Sheet, "sheet end" => ActionFn(20);
+        assert!(__symbols.len() >= 3);
+        let __sym2 = __pop_Variant0(__symbols);
+        let __sym1 = __pop_Variant2(__symbols);
+        let __sym0 = __pop_Variant0(__symbols);
+        let __start = __sym0.0.clone();
+        let __end = __sym2.2.clone();
+        let __nt = super::__action20::<>(budget, __sym0, __sym1, __sym2);
+        __symbols.push((__start, __Symbol::Variant1(__nt), __end));
+        (3, 5)
+    }
+    fn __reduce24<
+    >(
+        budget: &mut crate::plantuml::budget::Budget,
+        __lookahead_start: Option<&usize>,
+        __symbols: &mut alloc::vec::Vec<(usize,__Symbol<>,usize)>,
+        _: core::marker::PhantomData<()>,
+    ) -> (usize, usize)
+    {
+        // Sheet =  => ActionFn(21);
         let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
         let __end = __start.clone();
-        let __nt = super::__action20::<>(budget, &__start, &__end);
+        let __nt = super::__action21::<>(budget, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (0, 6)
     }
@@ -1455,6 +1493,21 @@ fn __action13<
 fn __action14<
 >(
     budget: &mut crate::plantuml::budget::Budget,
+    (_, _, _): (usize, Token, usize),
+    (_, start, _): (usize, usize, usize),
+    (_, contents, _): (usize, usize, usize),
+    (_, end, _): (usize, usize, usize),
+    (_, _, _): (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    finish(Wrapper::Git, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error })
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
+fn __action15<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
     __lookbehind: &usize,
     __lookahead: &usize,
 ) -> usize
@@ -1464,7 +1517,7 @@ fn __action14<
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
-fn __action15<
+fn __action16<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     (_, count, _): (usize, usize, usize),
@@ -1476,24 +1529,13 @@ fn __action15<
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
-fn __action16<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    (_, __0, _): (usize, Token, usize),
-) -> usize
-{
-    0
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
 fn __action17<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     (_, __0, _): (usize, Token, usize),
 ) -> usize
 {
-    1
+    0
 }
 
 #[allow(unused_variables)]
@@ -1504,12 +1546,23 @@ fn __action18<
     (_, __0, _): (usize, Token, usize),
 ) -> usize
 {
-    0
+    1
 }
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
 fn __action19<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    (_, __0, _): (usize, Token, usize),
+) -> usize
+{
+    0
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
+fn __action20<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     (_, _, _): (usize, Token, usize),
@@ -1522,25 +1575,13 @@ fn __action19<
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
-fn __action20<
+fn __action21<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __lookbehind: &usize,
     __lookahead: &usize,
 )
 {
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
-fn __action21<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    (_, __0, _): (usize, (), usize),
-    (_, _, _): (usize, Token, usize),
-) -> Result<(),__lalrpop_util::ParseError<usize,Token,ParseFailure>>
-{
-    budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) })
 }
 
 #[allow(unused_variables)]
@@ -1560,6 +1601,18 @@ fn __action22<
 fn __action23<
 >(
     budget: &mut crate::plantuml::budget::Budget,
+    (_, __0, _): (usize, (), usize),
+    (_, _, _): (usize, Token, usize),
+) -> Result<(),__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) })
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
+fn __action24<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
     __lookbehind: &usize,
     __lookahead: &usize,
 )
@@ -1568,7 +1621,7 @@ fn __action23<
 
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits, clippy::extra_unused_type_parameters)]
-fn __action24<
+fn __action25<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     (_, __0, _): (usize, (), usize),
@@ -1580,7 +1633,7 @@ fn __action24<
 
 #[allow(unused_variables)]
 #[allow(clippy::needless_lifetimes)]
-fn __action25<
+fn __action26<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __lookbehind: &usize,
@@ -1592,7 +1645,7 @@ fn __action25<
 
 #[allow(unused_variables)]
 #[allow(clippy::needless_lifetimes)]
-fn __action26<
+fn __action27<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __lookbehind: &usize,
@@ -1605,7 +1658,7 @@ fn __action26<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action27<
+fn __action28<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __0: (usize, (), usize),
@@ -1618,7 +1671,7 @@ fn __action27<
 {
     let __start0 = __3.2.clone();
     let __end0 = __4.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
@@ -1639,36 +1692,6 @@ fn __action27<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action28<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    __0: (usize, Token, usize),
-    __1: (usize, usize, usize),
-    __2: (usize, usize, usize),
-    __3: (usize, Token, usize),
-) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
-{
-    let __start0 = __2.2.clone();
-    let __end0 = __3.0.clone();
-    let __temp0 = __action25(
-        budget,
-        &__start0,
-        &__end0,
-    );
-    let __temp0 = (__start0, __temp0, __end0);
-    __action2(
-        budget,
-        __0,
-        __1,
-        __2,
-        __temp0,
-        __3,
-    )
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
-    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
 fn __action29<
 >(
     budget: &mut crate::plantuml::budget::Budget,
@@ -1680,13 +1703,13 @@ fn __action29<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action3(
+    __action2(
         budget,
         __0,
         __1,
@@ -1710,13 +1733,13 @@ fn __action30<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action4(
+    __action3(
         budget,
         __0,
         __1,
@@ -1740,13 +1763,13 @@ fn __action31<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action5(
+    __action4(
         budget,
         __0,
         __1,
@@ -1766,12 +1789,42 @@ fn __action32<
     __1: (usize, usize, usize),
     __2: (usize, usize, usize),
     __3: (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __2.2.clone();
+    let __end0 = __3.0.clone();
+    let __temp0 = __action26(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action5(
+        budget,
+        __0,
+        __1,
+        __2,
+        __temp0,
+        __3,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action33<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, usize, usize),
+    __3: (usize, Token, usize),
     __4: (usize, (), usize),
 ) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
@@ -1791,7 +1844,7 @@ fn __action32<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action33<
+fn __action34<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __0: (usize, Token, usize),
@@ -1802,7 +1855,7 @@ fn __action33<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
@@ -1821,7 +1874,7 @@ fn __action33<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action34<
+fn __action35<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __0: (usize, Token, usize),
@@ -1833,7 +1886,7 @@ fn __action34<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
@@ -1853,36 +1906,6 @@ fn __action34<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action35<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    __0: (usize, Token, usize),
-    __1: (usize, usize, usize),
-    __2: (usize, usize, usize),
-    __3: (usize, Token, usize),
-) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
-{
-    let __start0 = __2.2.clone();
-    let __end0 = __3.0.clone();
-    let __temp0 = __action25(
-        budget,
-        &__start0,
-        &__end0,
-    );
-    let __temp0 = (__start0, __temp0, __end0);
-    __action9(
-        budget,
-        __0,
-        __1,
-        __2,
-        __temp0,
-        __3,
-    )
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
-    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
 fn __action36<
 >(
     budget: &mut crate::plantuml::budget::Budget,
@@ -1894,13 +1917,13 @@ fn __action36<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action10(
+    __action9(
         budget,
         __0,
         __1,
@@ -1924,13 +1947,13 @@ fn __action37<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action11(
+    __action10(
         budget,
         __0,
         __1,
@@ -1954,13 +1977,13 @@ fn __action38<
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action12(
+    __action11(
         budget,
         __0,
         __1,
@@ -1980,12 +2003,42 @@ fn __action39<
     __1: (usize, usize, usize),
     __2: (usize, usize, usize),
     __3: (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __2.2.clone();
+    let __end0 = __3.0.clone();
+    let __temp0 = __action26(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action12(
+        budget,
+        __0,
+        __1,
+        __2,
+        __temp0,
+        __3,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action40<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, usize, usize),
+    __3: (usize, Token, usize),
     __4: (usize, (), usize),
 ) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
     let __start0 = __2.2.clone();
     let __end0 = __3.0.clone();
-    let __temp0 = __action25(
+    let __temp0 = __action26(
         budget,
         &__start0,
         &__end0,
@@ -2005,7 +2058,37 @@ fn __action39<
 #[allow(unused_variables)]
 #[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
     clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action40<
+fn __action41<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, usize, usize),
+    __3: (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __2.2.clone();
+    let __end0 = __3.0.clone();
+    let __temp0 = __action26(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action14(
+        budget,
+        __0,
+        __1,
+        __2,
+        __temp0,
+        __3,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action42<
 >(
     budget: &mut crate::plantuml::budget::Budget,
     __0: (usize, (), usize),
@@ -2017,37 +2100,7 @@ fn __action40<
 {
     let __start0 = __1.2.clone();
     let __end0 = __2.0.clone();
-    let __temp0 = __action26(
-        budget,
-        &__start0,
-        &__end0,
-    );
-    let __temp0 = (__start0, __temp0, __end0);
-    __action27(
-        budget,
-        __0,
-        __1,
-        __temp0,
-        __2,
-        __3,
-        __4,
-    )
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
-    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action41<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    __0: (usize, Token, usize),
-    __1: (usize, usize, usize),
-    __2: (usize, Token, usize),
-) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
-{
-    let __start0 = __0.2.clone();
-    let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
@@ -2056,37 +2109,11 @@ fn __action41<
     __action28(
         budget,
         __0,
-        __temp0,
         __1,
-        __2,
-    )
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
-    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
-fn __action42<
->(
-    budget: &mut crate::plantuml::budget::Budget,
-    __0: (usize, Token, usize),
-    __1: (usize, usize, usize),
-    __2: (usize, Token, usize),
-) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
-{
-    let __start0 = __0.2.clone();
-    let __end0 = __1.0.clone();
-    let __temp0 = __action26(
-        budget,
-        &__start0,
-        &__end0,
-    );
-    let __temp0 = (__start0, __temp0, __end0);
-    __action29(
-        budget,
-        __0,
         __temp0,
-        __1,
         __2,
+        __3,
+        __4,
     )
 }
 
@@ -2103,13 +2130,13 @@ fn __action43<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action30(
+    __action29(
         budget,
         __0,
         __temp0,
@@ -2131,13 +2158,13 @@ fn __action44<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action31(
+    __action30(
         budget,
         __0,
         __temp0,
@@ -2155,24 +2182,22 @@ fn __action45<
     __0: (usize, Token, usize),
     __1: (usize, usize, usize),
     __2: (usize, Token, usize),
-    __3: (usize, (), usize),
 ) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action32(
+    __action31(
         budget,
         __0,
         __temp0,
         __1,
         __2,
-        __3,
     )
 }
 
@@ -2189,13 +2214,13 @@ fn __action46<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action33(
+    __action32(
         budget,
         __0,
         __temp0,
@@ -2218,13 +2243,13 @@ fn __action47<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action34(
+    __action33(
         budget,
         __0,
         __temp0,
@@ -2247,13 +2272,13 @@ fn __action48<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action35(
+    __action34(
         budget,
         __0,
         __temp0,
@@ -2271,22 +2296,24 @@ fn __action49<
     __0: (usize, Token, usize),
     __1: (usize, usize, usize),
     __2: (usize, Token, usize),
+    __3: (usize, (), usize),
 ) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action36(
+    __action35(
         budget,
         __0,
         __temp0,
         __1,
         __2,
+        __3,
     )
 }
 
@@ -2303,13 +2330,13 @@ fn __action50<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action37(
+    __action36(
         budget,
         __0,
         __temp0,
@@ -2331,13 +2358,13 @@ fn __action51<
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
     );
     let __temp0 = (__start0, __temp0, __end0);
-    __action38(
+    __action37(
         budget,
         __0,
         __temp0,
@@ -2355,12 +2382,39 @@ fn __action52<
     __0: (usize, Token, usize),
     __1: (usize, usize, usize),
     __2: (usize, Token, usize),
-    __3: (usize, (), usize),
 ) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
 {
     let __start0 = __0.2.clone();
     let __end0 = __1.0.clone();
-    let __temp0 = __action26(
+    let __temp0 = __action27(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action38(
+        budget,
+        __0,
+        __temp0,
+        __1,
+        __2,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action53<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
+    let __temp0 = __action27(
         budget,
         &__start0,
         &__end0,
@@ -2372,7 +2426,64 @@ fn __action52<
         __temp0,
         __1,
         __2,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action54<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, Token, usize),
+    __3: (usize, (), usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
+    let __temp0 = __action27(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action40(
+        budget,
+        __0,
+        __temp0,
+        __1,
+        __2,
         __3,
+    )
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits, clippy::clone_on_copy, clippy::unit_arg)]
+fn __action55<
+>(
+    budget: &mut crate::plantuml::budget::Budget,
+    __0: (usize, Token, usize),
+    __1: (usize, usize, usize),
+    __2: (usize, Token, usize),
+) -> Result<Bounds,__lalrpop_util::ParseError<usize,Token,ParseFailure>>
+{
+    let __start0 = __0.2.clone();
+    let __end0 = __1.0.clone();
+    let __temp0 = __action27(
+        budget,
+        &__start0,
+        &__end0,
+    );
+    let __temp0 = (__start0, __temp0, __end0);
+    __action41(
+        budget,
+        __0,
+        __temp0,
+        __1,
+        __2,
     )
 }
 

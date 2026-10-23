@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "basis": "da590bc plus final Task17 cleanup; all 21 generated grammars and no pending syntax or Line adapters",
+  "basis": "683d693 plus native Git history; 22 generated grammars, no pending syntax or obsolete Line adapters",
   "symbolIdentity": "Every authored Rust fn declaration, including methods and test helpers, identified by name#occurrence in source order. No native directory exemption. Generated Rust is covered by exact grammar/output hashes and module registration. Classification does not replace semantic review.",
   "modules": [
     {
@@ -112,6 +112,21 @@
       "groups": [
         {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["x#1", "center#1", "layout#1", "measure#1", "tick_text#1", "paint_axis#1", "paint_task#1", "paint_dependencies#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["inspect#1", "should_project_duration_bars_and_civil_day_diamonds_on_one_axis#1", "should_reserve_large_multiline_labels_ticks_and_rows_without_overlap#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/git.rs",
+      "groups": [
+        {"role": "infrastructure", "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.", "symbols": ["shift#1", "new#1", "new#2", "admit#1", "retain#1", "push#1", "new#3"]},
+        {"role": "semantic", "reason": "Typed sparse grid identity/ancestry resolution after generated syntax; visited directional paths, constraints and complete connector ownership.", "symbols": ["cell#1", "blank#1", "commit#1", "at#1", "candidates#1", "next#1", "trace#1", "failure#1", "finish#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_preserve_raw_rows_columns_comments_and_typed_older_ancestry#1", "should_store_sparse_long_rows_without_a_width_times_height_grid#1", "should_cancel_inside_sparse_parent_traversal_before_emitting_any_model#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/gitscene.rs",
+      "groups": [
+        {"role": "layout", "reason": "Original finite measured commit/lane/label geometry and owned ancestor links; no excluded upstream layout translation.", "symbols": ["layout#1", "point#1", "boundary#1", "caption#1", "push#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_place_newer_commits_above_older_parents_with_measured_nonoverlapping_labels#1", "should_cancel_inside_git_layout_measurement_without_serializing_a_partial_scene#1"]}
       ]
     },
     {
@@ -256,6 +271,15 @@
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["duration#1", "lex#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_build_generated_aliases_half_open_dependencies_and_milestones#1", "should_reject_attached_gantt_alias_and_verb_primitives#1", "should_reject_generated_gantt_eof_and_cancel_delivery_and_actions#1", "should_map_gantt_semantic_and_syntax_failures_with_full_statement_once#1", "should_bound_gantt_tokens_depth_work_and_mid_lex_cancellation#1"]}
+      ]
+    },
+    {
+      "path": "engine/src/plantuml/parser/git.rs",
+      "groups": [
+        {"role": "generated-facade", "reason": "Invokes the registered generated raw Git grammar and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
+        {"role": "infrastructure", "reason": "Fallible checked growth, actual retained storage, work/depth/stack admission and cancellation.", "symbols": ["push#1", "admit#1"]},
+        {"role": "lexical", "reason": "Bounded raw primitive cells, identifier decoding and literal comment ownership; generated productions own row structure and EOF.", "symbols": ["row#1", "copy#1"]},
+        {"role": "test-adapter", "reason": "Meaningful semantic/geometry/bounds/cancellation assertions over generated entries or typed semantic actions.", "symbols": ["should_cancel_long_raw_grid_lexing_before_retaining_a_named_token#1", "should_reject_generated_suffixes_and_cancel_generated_delivery_and_eof#1"]}
       ]
     },
     {

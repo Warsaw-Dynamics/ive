@@ -1,0 +1,38 @@
+// Original generated ASCII grid row/column, commit identity and comment syntax.
+grammar(builder: &mut crate::plantuml::git::Builder<'_>);
+use crate::plantuml::{git::{Cell, Comment, CommitRow}, parser::{git::Token, error::ParseFailure}};
+pub History: () = { <Rows> };
+Rows: () = {
+    => (),
+    <Rows> <Row> => (),
+};
+Row: () = {
+    <cells:Cells> <end:"newline"> =>? builder.blank(cells, end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <before:Cells> <column:"star"> "blank" <after:Cells> <name:"name"> <comment:Tail> <end:"newline"> =>? builder.commit(CommitRow { before, after, column, name, comment }, end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Cells: Vec<Cell> = {
+    => Vec::new(),
+    <cells:Cells> "blank" => cells,
+    <cells:Cells> <cell:Cell> =>? builder.cell(cells, cell).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Cell: Cell = { <cell:"pipe"> => cell, <cell:"slash"> => cell, <cell:"backslash"> => cell };
+Tail: Comment = {
+    => Comment::Absent,
+    "blank" => Comment::Absent,
+    "blank" <value:"comment"> => Comment::Text(value),
+    "blank" <value:"comment"> "blank" => Comment::Text(value),
+};
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "blank" => Token::Blank,
+        "pipe" => Token::Pipe(<Cell>),
+        "slash" => Token::Slash(<Cell>),
+        "backslash" => Token::Backslash(<Cell>),
+        "star" => Token::Star(<usize>),
+        "name" => Token::Name(<crate::plantuml::git::Name>),
+        "comment" => Token::Comment(<String>),
+        "newline" => Token::Newline(<crate::plantuml::git::RowInfo>),
+    }
+}

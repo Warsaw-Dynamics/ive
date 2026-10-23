@@ -5,6 +5,20 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit only the selected Git grid semantics and reject excluded layout sources', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const name of ['GitTextArea', 'Commit', 'CursorPosition']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/gitlog/${name}.java`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const path of ['gitlog/SmetanaForGit.java', 'gitlog/GNode.java', 'smetana/GitTextArea.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should admit registered parser and grammar destinations and reject unregistered destinations', () => {
   // given
   const source = manifest();

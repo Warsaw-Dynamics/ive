@@ -3457,6 +3457,51 @@
       ],
       "behavior": "Only LightBlue=ADD8E6 and LightGreen=90EE90 constants; no other table, trie algorithm or assets.",
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/GitTextArea.java",
+      "sha256": "60ee3dac8f69d8696be70440437afea22e6c2a9b6d66545c8745c5d4aa8f096c",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Sparse raw row/column ownership and named commit discovery; generated whole-row syntax rejects unmodeled or dangling cells.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/Commit.java",
+      "sha256": "12edc7a814662c61c59fb367ec47b0aba7f4666556fa2e406a0ab6708974fed0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Typed named commits, at most two distinct downward/older parents, and source lanes; horizontal and octopus forms remain explicit rejections.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/gitlog/CursorPosition.java",
+      "sha256": "0537f4a34ad1cdf29e9771ec5e59acdafcf752f0a77edc15fe7ac40a3bdf3a6e",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/git.rs",
+        "engine/src/plantuml/parser/git.rs",
+        "engine/src/plantuml/parser/grammar/git.lalrpop"
+      ],
+      "behavior": "Literal identity/comment decoding and narrow vertical/diagonal grid transitions; iterative checked visited(row,column,direction) ancestry, no layout translation.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -3896,6 +3941,49 @@
       "path": "fixtures/plantuml/archimatebase.puml",
       "sha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
       "origin": "/tmp/ive-plantuml-native-oracles/archimate-authentic-uml.puml (exact bytes; original unchanged)"
+    },
+    {
+      "path": "fixtures/plantuml/git.puml",
+      "sha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+      "origin": "/tmp/ive-task3m-merge-all-space.puml",
+      "expectedLabels": [
+        "merge4",
+        "side3",
+        "main2",
+        "base1"
+      ],
+      "originalEvidence": {
+        "svgSha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+        "endpointRecord": "/tmp/ive-task3m-merge-all-space.json",
+        "strokedAncestorEdges": [
+          [
+            "merge4",
+            "main2"
+          ],
+          [
+            "merge4",
+            "side3"
+          ],
+          [
+            "side3",
+            "base1"
+          ],
+          [
+            "main2",
+            "base1"
+          ]
+        ]
+      }
+    },
+    {
+      "path": "fixtures/plantuml/gitlinear.puml",
+      "sha256": "03dbabe21fea378aed7f4e54e765a1ebdc9fb1079cc1b787abfacceaac722e3e",
+      "origin": "/tmp/ive-plantuml-native-oracles/git-linear-history.puml",
+      "expectedLabels": [
+        "c3",
+        "b2",
+        "a1"
+      ]
     }
   ],
   "oracle": {
@@ -3918,49 +4006,51 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
-    "engine/src/plantuml/files.rs",
-    "engine/src/plantuml/filesscene.rs",
-    "engine/src/plantuml/board.rs",
-    "engine/src/plantuml/boardscene.rs",
-    "engine/src/plantuml/packet.rs",
-    "engine/src/plantuml/packetscene.rs",
-    "engine/src/plantuml/hcl.rs",
-    "engine/src/plantuml/nwdiag.rs",
-    "engine/src/plantuml/nwscene.rs",
-    "engine/src/plantuml/salt.rs",
-    "engine/src/plantuml/saltscene.rs",
-    "engine/src/plantuml/gantt.rs",
-    "engine/src/plantuml/ganttscene.rs",
-    "engine/src/plantuml/timing.rs",
-    "engine/src/plantuml/timingscene.rs",
-    "engine/src/plantuml/preprocess.rs",
-    "engine/src/plantuml/origin.rs",
-    "engine/src/plantuml/tree.rs",
-    "engine/src/plantuml/treescene.rs",
-    "engine/src/plantuml/data.rs",
-    "engine/src/plantuml/datascene.rs",
-    "engine/src/plantuml/yaml.rs",
-    "engine/src/plantuml/state.rs",
-    "engine/src/plantuml/stategraph.rs",
     "engine/src/plantuml/activity.rs",
     "engine/src/plantuml/activitytile.rs",
-    "engine/src/plantuml/mod.rs",
-    "engine/src/plantuml/source.rs",
-    "engine/src/plantuml/lexer.rs",
-    "engine/src/plantuml/budget.rs",
-    "engine/src/plantuml/text.rs",
-    "engine/src/plantuml/scene.rs",
-    "engine/src/plantuml/svg.rs",
     "engine/src/plantuml/arrow.rs",
-    "engine/src/plantuml/sequence.rs",
-    "engine/src/plantuml/uml.rs",
-    "engine/src/plantuml/graph.rs",
-    "engine/src/plantuml/shapes.rs",
-    "engine/src/plantuml/style.rs",
-    "engine/src/plantuml/creole.rs",
-    "engine/src/plantuml/chrome.rs",
+    "engine/src/plantuml/board.rs",
+    "engine/src/plantuml/boardscene.rs",
+    "engine/src/plantuml/budget.rs",
     "engine/src/plantuml/chen.rs",
-    "engine/src/plantuml/chenscene.rs"
+    "engine/src/plantuml/chenscene.rs",
+    "engine/src/plantuml/chrome.rs",
+    "engine/src/plantuml/creole.rs",
+    "engine/src/plantuml/data.rs",
+    "engine/src/plantuml/datascene.rs",
+    "engine/src/plantuml/files.rs",
+    "engine/src/plantuml/filesscene.rs",
+    "engine/src/plantuml/gantt.rs",
+    "engine/src/plantuml/ganttscene.rs",
+    "engine/src/plantuml/git.rs",
+    "engine/src/plantuml/gitscene.rs",
+    "engine/src/plantuml/graph.rs",
+    "engine/src/plantuml/hcl.rs",
+    "engine/src/plantuml/lexer.rs",
+    "engine/src/plantuml/mod.rs",
+    "engine/src/plantuml/nwdiag.rs",
+    "engine/src/plantuml/nwscene.rs",
+    "engine/src/plantuml/origin.rs",
+    "engine/src/plantuml/packet.rs",
+    "engine/src/plantuml/packetscene.rs",
+    "engine/src/plantuml/preprocess.rs",
+    "engine/src/plantuml/salt.rs",
+    "engine/src/plantuml/saltscene.rs",
+    "engine/src/plantuml/scene.rs",
+    "engine/src/plantuml/sequence.rs",
+    "engine/src/plantuml/shapes.rs",
+    "engine/src/plantuml/source.rs",
+    "engine/src/plantuml/state.rs",
+    "engine/src/plantuml/stategraph.rs",
+    "engine/src/plantuml/style.rs",
+    "engine/src/plantuml/svg.rs",
+    "engine/src/plantuml/text.rs",
+    "engine/src/plantuml/timing.rs",
+    "engine/src/plantuml/timingscene.rs",
+    "engine/src/plantuml/tree.rs",
+    "engine/src/plantuml/treescene.rs",
+    "engine/src/plantuml/uml.rs",
+    "engine/src/plantuml/yaml.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -3975,6 +4065,7 @@
     "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",
     "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
     "Task3D2 adds raw-byte Direct/Expansion origins, immutable eager definitions and compact earlier-definition lineage IDs. Statement errors keep authoritative parser lines and bounded expansion-use context; late Creole errors identify label-local locations and bounded textual candidates (including inert duplicates), not falsely precise authored spans. Existing YAML nested-flow/quote diagnostics remain line1. Columns in known source spans are one-based UTF-8 bytes.",
-    "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles."
+    "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles.",
+    "Native Git history uses generated raw row/cell/commit/comment syntax, bounded sparse typed ancestry and original measured circle/lane geometry; no SmetanaForGit source or runtime git/JVM is used. The frozen parser baseline selects its original recorded43 paths while all later family fixtures remain provenance-audited."
   ]
 }

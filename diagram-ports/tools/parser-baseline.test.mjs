@@ -2,7 +2,30 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { compare, decodeExport } from './parser-baseline.mjs';
+import { compare, decodeExport, selectFixtures } from './parser-baseline.mjs';
+
+test('should keep the immutable 43 selected paths when later family fixtures are registered', () => {
+  // given
+  const recorded = JSON.parse(fs.readFileSync(new URL('../fixtures/plantuml/parser-baseline.json', import.meta.url)));
+  const manifest = JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
+  manifest.fixtures.push({ path: 'fixtures/plantuml/future.puml', sha256: '0'.repeat(64) });
+  // when
+  const selected = selectFixtures(manifest, recorded);
+  // then
+  assert.equal(selected.length, 43);
+  assert.deepEqual(selected, recorded.fixtures.map(fixture => fixture.path));
+});
+
+test('should reject missing duplicate or hash-tampered recorded fixture provenance', () => {
+  // given
+  const recorded = { fixtures: [{ path: 'fixtures/plantuml/kept.puml', sourceSha256: 'a'.repeat(64) }] };
+  const fixture = { path: recorded.fixtures[0].path, sha256: recorded.fixtures[0].sourceSha256 };
+  // when / then
+  assert.deepEqual(selectFixtures({ fixtures: [fixture] }, recorded), [fixture.path]);
+  for (const fixtures of [[], [fixture, fixture], [{ ...fixture, sha256: 'b'.repeat(64) }]]) {
+    assert.throws(() => selectFixtures({ fixtures }, recorded));
+  }
+});
 
 test('should compare actual exporter configuration and reject actual default drift', () => {
   // given

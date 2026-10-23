@@ -84,6 +84,11 @@ impl Ownership {
         let command = text.trim();
         let kind = match (raw_body, classify(command)) {
             (true, _) => Kind::Content,
+            (_, Kind::Definition)
+                if self.wrapper == Wrapper::Git && matches!(self.mode, Mode::Literal) =>
+            {
+                Kind::Content
+            }
             (_, Kind::SheetStart | Kind::SheetEnd) if matches!(self.mode, Mode::Literal) => {
                 Kind::Content
             }
@@ -125,6 +130,7 @@ impl Ownership {
                     | Wrapper::Packet
                     | Wrapper::Board
                     | Wrapper::Hcl => Mode::Literal,
+                    Wrapper::Git => Mode::Literal,
                     _ => Mode::Other,
                 };
                 self.graph = wrapper == Wrapper::Chen;
@@ -245,6 +251,7 @@ fn classify(command: &str) -> Kind {
         ("board", Wrapper::Board),
         ("hcl", Wrapper::Hcl),
         ("chen", Wrapper::Chen),
+        ("git", Wrapper::Git),
     ] {
         if command.strip_prefix("@start") == Some(name) {
             return Kind::Start(wrapper);

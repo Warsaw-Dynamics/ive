@@ -58,6 +58,10 @@ pub fn source(name: &str) -> Result<&'static str, String> {
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
+        name: "plantuml-git",
+        source: include_str!("../../fixtures/plantuml/git.puml"),
+    },
+    Example {
         name: "plantuml-chen",
         source: include_str!("../../fixtures/plantuml/chen.puml"),
     },
@@ -292,6 +296,25 @@ mod tests {
         for kind in ["gantt-bar", "gantt-milestone", "gantt-dependency"] {
             assert!(output.svg.contains(kind));
         }
+    }
+
+    #[test]
+    fn should_find_native_git_example_with_both_merge_ancestry_branches() {
+        // given
+        let source = super::source("plantuml-git").unwrap();
+        // when
+        let output = diagram_engine::render(
+            source,
+            &diagram_engine::RenderOptions {
+                language: diagram_engine::Language::PlantUml,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // then
+        assert_eq!(output.family, "git");
+        assert_eq!(output.svg.matches("data-kind=\"git-commit\"").count(), 4);
+        assert_eq!(output.svg.matches("data-kind=\"git-parent\"").count(), 4);
     }
     #[test]
     fn should_find_substantive_native_timing_example() {
