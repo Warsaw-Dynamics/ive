@@ -41,6 +41,7 @@ write_bundle() {
     <key>CFBundleIconFile</key><string>ive</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSMicrophoneUsageDescription</key><string>Programs running in IVE terminals (e.g. Claude Code voice input) need microphone access.</string>
 </dict>
 </plist>
 EOF
