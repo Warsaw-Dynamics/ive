@@ -128,44 +128,6 @@ struct Parser {
     pending: Vec<PendingRelation>,
 }
 
-pub(super) fn is_graph(lines: &[Line]) -> bool {
-    for line in lines {
-        if super::has_identifier_arrow(line) {
-            continue;
-        }
-        let word = line.text.split_whitespace().next().unwrap_or("");
-        if word == "note" {
-            return line
-                .text
-                .strip_prefix("note ")
-                .is_some_and(|rest| rest.starts_with('"'));
-        }
-        if matches!(
-            word,
-            "participant"
-                | "activate"
-                | "deactivate"
-                | "group"
-                | "alt"
-                | "loop"
-                | "opt"
-                | "create"
-                | "destroy"
-        ) {
-            return false;
-        }
-        if kind(word).is_some_and(|kind| !matches!(kind, Kind::Actor | Kind::Database))
-            || word == "abstract"
-            || word.starts_with('[')
-            || word == "left"
-            || word == "top"
-        {
-            return true;
-        }
-    }
-    false
-}
-
 pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Uml, RenderError> {
     let mut parser = Parser {
         model: Uml {

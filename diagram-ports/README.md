@@ -2,7 +2,7 @@
 
 An independent Rust workspace for a headless diagram engine and a standalone native pgui viewer. IVE's root workspace is unchanged.
 
-PlantUML parser migration currently replaces supported same-line literal `!define` declaration syntax with a genuine checked-in LALRPOP grammar. Its immutable evaluator/registry, other family parsers and layouts remain unchanged; the full current-family rewrite is pending. Ordinary builds/renders require no generator. Developer regeneration and read-only checks use an independent pinned closure:
+PlantUML parser migration currently uses checked-in LALRPOP grammars for supported same-line literal `!define` declarations, complete paired documents/directive placement and typed family header evidence. One shared lexical owner protects authored and expanded comments, quotes and raw payloads; structured front-end failures map expanded byte spans through the origin document. The immutable evaluator/registry, preamble/style and family parsers, Creole and layouts remain; family parsers temporarily receive materialized physical lines. Their full syntax rewrite is pending. Ordinary builds/renders require no generator. Developer regeneration and read-only checks use an independent pinned closure:
 
 ```sh
 CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- generate

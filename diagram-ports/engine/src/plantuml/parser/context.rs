@@ -118,3 +118,135 @@ impl Admission {
         )
     }
 }
+
+pub(super) fn push<T>(
+    tokens: &mut Vec<T>,
+    token: T,
+    budget: &mut Budget,
+) -> Result<(), ParseFailure> {
+    bound(
+        "front-end buffered tokens",
+        tokens.len() + 1,
+        budget.limits.source_bytes,
+    )
+    .map_err(ParseFailure::terminal)?;
+    budget.charge(1).map_err(ParseFailure::terminal)?;
+    if tokens.len() == tokens.capacity() {
+        let capacity = tokens.capacity().saturating_mul(2).max(4);
+        bound(
+            "front-end buffered bytes",
+            capacity
+                .saturating_add(tokens.capacity())
+                .saturating_mul(std::mem::size_of::<T>()),
+            budget.limits.source_bytes.saturating_mul(256),
+        )
+        .map_err(ParseFailure::terminal)?;
+        budget
+            .charge(tokens.len())
+            .map_err(ParseFailure::terminal)?;
+        tokens
+            .try_reserve_exact(capacity - tokens.len())
+            .map_err(|error| {
+                ParseFailure::terminal(crate::RenderError::Backend(format!(
+                    "PlantUML front-end token allocation for capacity {capacity} failed: {error}"
+                )))
+            })?;
+        bound(
+            "front-end actual buffer bytes",
+            tokens.capacity().saturating_mul(std::mem::size_of::<T>()),
+            budget.limits.source_bytes.saturating_mul(256),
+        )
+        .map_err(ParseFailure::terminal)?;
+    }
+    tokens.push(token);
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum Frontend {
+    Document,
+    Header,
+}
+
+pub(super) fn admit_frontend(
+    kind: Frontend,
+    count: usize,
+    capacity: usize,
+    token_bytes: usize,
+    budget: &mut Budget,
+) -> Result<(), ParseFailure> {
+    let (terminals, symbol_slots, live_states, reductions, symbol_bytes) = match kind {
+        Frontend::Document => (
+            31usize,
+            8usize,
+            7usize,
+            4usize,
+            std::mem::size_of::<super::document::Bounds>()
+                + std::mem::size_of::<super::document::Token>(),
+        ),
+        Frontend::Header => (
+            25,
+            4,
+            4,
+            4,
+            std::mem::size_of::<super::header::Tail>()
+                + std::mem::size_of::<super::header::Head>()
+                + std::mem::size_of::<super::header::Evidence>()
+                + std::mem::size_of::<super::header::Atom>(),
+        ),
+    };
+    let diagnostic_capacity = terminals.next_power_of_two().max(4);
+    let retained = capacity
+        .saturating_mul(token_bytes)
+        .saturating_add(symbol_slots * (symbol_bytes + 3 * std::mem::size_of::<usize>()))
+        // Include old+new vectors during diagnostic growth and generated stack growth.
+        .saturating_add(40 + symbol_slots / 2 * (symbol_bytes + 3 * std::mem::size_of::<usize>()))
+        .saturating_add(diagnostic_capacity * 2 * std::mem::size_of::<String>())
+        .saturating_add(terminals * 32);
+    bound(
+        "front-end parser retained bytes",
+        retained,
+        budget.limits.source_bytes.saturating_mul(256),
+    )
+    .map_err(ParseFailure::terminal)?;
+    let slots = 8 + symbol_slots + 16 + diagnostic_capacity * 2;
+    bound(
+        "front-end parser stack slots",
+        slots,
+        budget.limits.layout_work,
+    )
+    .map_err(ParseFailure::terminal)?;
+    budget
+        .charge(
+            count
+                .saturating_mul(reductions + 1)
+                .saturating_add(reductions + slots + terminals * (live_states + reductions)),
+        )
+        .map_err(ParseFailure::terminal)
+}
+
+pub(super) struct Checked<T> {
+    tokens: std::vec::IntoIter<T>,
+    control: crate::RenderControl,
+}
+
+impl<T> Checked<T> {
+    pub fn new(tokens: Vec<T>, control: crate::RenderControl) -> Self {
+        Self {
+            tokens: tokens.into_iter(),
+            control,
+        }
+    }
+}
+
+impl<T> Iterator for Checked<T> {
+    type Item = Result<T, ParseFailure>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.control.checkpoint() {
+            Ok(()) => self.tokens.next().map(Ok),
+            Err(error) => Some(Err(ParseFailure::terminal(crate::RenderError::Cancelled(
+                error.to_string(),
+            )))),
+        }
+    }
+}

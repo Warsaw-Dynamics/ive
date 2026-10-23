@@ -466,3 +466,17 @@ fn should_cancel_gantt_at_the_first_real_host_measurement() {
     assert!(result.unwrap_err().to_string().contains("cancel"));
     assert_eq!(calls.load(Ordering::Relaxed), 1);
 }
+#[test]
+fn should_reject_unterminated_trailing_block_comment_after_gantt_wrapper() {
+    // given
+    let source = "@startgantt\nProject starts 2025-01-01\n[Task] lasts 1 day\n@endgantt\n";
+    // when
+    let invalid = render(&format!("{source}/' unterminated"), &options());
+    let valid = render(&format!("{source}/' closed '/"), &options());
+    // then
+    assert!(matches!(
+        invalid,
+        Err(diagram_engine::RenderError::InvalidSource(_))
+    ));
+    assert!(valid.is_ok(), "{valid:?}");
+}

@@ -2274,9 +2274,11 @@
       "path": "net/sourceforge/plantuml/BlockUmlBuilder.java",
       "sha256": "2552980806b3267d81af99191723c110c46240816277b6fe6d5efca06994b0b1",
       "rust": [
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/parser/document.rs",
+        "engine/src/plantuml/parser/grammar/document.lalrpop",
+        "engine/src/plantuml/parser/ownership.rs"
       ],
-      "behavior": "Single-block source admission and comment/wrapper boundaries; preprocessing/includes deliberately rejected.",
+      "behavior": "Single-block admission and atomic comment/wrapper lexical ownership; generated productions own exact paired wrappers, directive placement and EOF. Literal definitions remain the separately traced eager immutable subset; active includes remain denied.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2287,9 +2289,11 @@
       "path": "net/sourceforge/plantuml/core/DiagramType.java",
       "sha256": "590d9685e213d5ad51bf6113239081c7a55973715a306f6f16a2a78480659483",
       "rust": [
-        "engine/src/plantuml/source.rs"
+        "engine/src/plantuml/parser/document.rs",
+        "engine/src/plantuml/parser/grammar/document.lalrpop",
+        "engine/src/plantuml/parser/ownership.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames. Task 3J: exact Chen wrapper; ArchiMate remains DESCRIPTION, without separate wrapper/family. Task 2 moves wrapper classification/pairing into shared lexical ownership and generated document productions, retaining UML-only case insensitivity and rejecting output filenames.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2300,9 +2304,11 @@
       "path": "net/sourceforge/plantuml/PSystemBuilder.java",
       "sha256": "00383dd63082f93e471900cb70f44daee20899a862e4c3590fd95660b5d6e679",
       "rust": [
-        "engine/src/plantuml/uml.rs"
+        "engine/src/plantuml/uml.rs",
+        "engine/src/plantuml/parser/header.rs",
+        "engine/src/plantuml/parser/grammar/header.lalrpop"
       ],
-      "behavior": "Sequence-before-class/description factory precedence informs ambiguous actor/database admission.",
+      "behavior": "Sequence-before-class/description factory precedence informs ambiguous actor/database admission. Task 2 expresses deterministic first-header roles in generated typed evidence, with explicit arrow endpoints, actor/database, notes and pseudostate ambiguity; no parser retry.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"

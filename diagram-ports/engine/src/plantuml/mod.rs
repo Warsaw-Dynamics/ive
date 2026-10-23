@@ -49,6 +49,7 @@ mod yaml;
 
 use crate::{Language, RenderError, RenderOptions, RenderedDiagram, limits, resources};
 use merman_render::environment::RenderEnvironment;
+use parser::header::Selection;
 
 pub(crate) fn render(
     source: &str,
@@ -59,18 +60,27 @@ pub(crate) fn render(
     let mut budget = budget::Budget::new(options);
     budget.checkpoint()?;
     let expanded = preprocess::prepare(source, &mut budget)?;
+    let prepared = parser::document::parse(&expanded, &mut budget)?;
+    let wrapper = prepared.wrapper;
+    let lines = &prepared.lines;
+    let preamble = style::prepare(lines, wrapper, &mut budget)
+        .map_err(|error| expanded.map_error(error, &mut budget))?;
+    expanded
+        .check_preamble(lines, preamble.start, &mut budget)
+        .map_err(|error| expanded.map_error(error, &mut budget))?;
+    let lines = &lines[preamble.start..];
+    let selection = if wrapper == source::Wrapper::Uml {
+        parser::header::select(&prepared.body, lines, &mut budget)?
+    } else {
+        Selection::Sequence
+    };
     let result = (|| {
-        let (wrapper, lines) = source::prepare_document(&expanded.text, &mut budget)?;
-        let preamble = style::prepare(&lines, wrapper, &mut budget)?;
-        expanded.check_preamble(&lines, preamble.start, &mut budget)?;
-        let lines = &lines[preamble.start..];
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
             .with_resource_policy(policy)
             .with_text_measurement_policy(options.text_measurement.clone())
             .begin_session_with_control(budget.control.clone())
             .map_err(|e| RenderError::Backend(e.to_string()))?;
-        let selection = select(lines);
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
@@ -141,99 +151,6 @@ pub(crate) fn render(
         Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs including icon-free ArchiMate description rectangles, Chen entity/relationship/attribute graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
-}
-
-#[derive(PartialEq, Eq)]
-enum Selection {
-    Sequence,
-    Uml,
-    State,
-    Activity,
-    Timing,
-}
-
-fn select(lines: &[source::Line]) -> Selection {
-    let mut candidate = Selection::Sequence;
-    for line in lines {
-        if has_identifier_arrow(line) {
-            continue;
-        }
-        let word = line.text.split_whitespace().next().unwrap_or("");
-        if matches!(word, "robust" | "concise") {
-            return Selection::Timing;
-        }
-        if matches!(
-            word,
-            "class"
-                | "abstract"
-                | "object"
-                | "interface"
-                | "enum"
-                | "annotation"
-                | "component"
-                | "node"
-                | "rectangle"
-                | "package"
-                | "namespace"
-                | "usecase"
-                | "archimate"
-        ) {
-            return Selection::Uml;
-        }
-        if word == "state" {
-            return Selection::State;
-        }
-        if line.text.starts_with(':')
-            || matches!(
-                word.trim_end_matches(';'),
-                "start" | "stop" | "repeat" | "fork" | "partition"
-            )
-            || line.text.starts_with("if(")
-            || line.text.starts_with("if (")
-            || line.text.starts_with("while(")
-            || line.text.starts_with("while (")
-        {
-            return Selection::Activity;
-        }
-        if word == "note" {
-            return if uml::is_graph(std::slice::from_ref(line)) {
-                Selection::Uml
-            } else {
-                Selection::Sequence
-            };
-        }
-        if matches!(
-            word,
-            "participant"
-                | "activate"
-                | "deactivate"
-                | "alt"
-                | "loop"
-                | "opt"
-                | "create"
-                | "destroy"
-        ) {
-            return Selection::Sequence;
-        }
-        let (head, _) = lexer::split_label(line);
-        if head.starts_with("[*]") || head.ends_with("[*]") {
-            return Selection::State;
-        }
-        if head != line.text
-            && !head.contains(['-', '<', '>'])
-            && !matches!(word, "actor" | "database")
-        {
-            candidate = Selection::State;
-        }
-    }
-    if candidate == Selection::State {
-        return candidate;
-    }
-    if uml::is_graph(lines) {
-        Selection::Uml
-    } else {
-        Selection::Sequence
-    }
 }
 
 fn has_identifier_arrow(line: &source::Line) -> bool {

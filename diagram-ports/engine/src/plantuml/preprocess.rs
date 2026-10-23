@@ -31,19 +31,20 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Document, Ren
 
 impl Processor<'_> {
     fn scan(&mut self, source: &str) -> Result<(), RenderError> {
+        use super::parser::{
+            document,
+            ownership::{Kind, Ownership},
+        };
+        bound(
+            "authored document source bytes",
+            source.len(),
+            self.budget.limits.source_bytes,
+        )?;
+        self.budget.checkpoint()?;
+        let mut ownership = Ownership::default();
+        let mut tokens = Vec::new();
         let mut offset = 0;
-        let mut inside = false;
-        let mut block = false;
-        let mut raw_data = false;
-        let mut sheet = false;
-        let mut body = super::source::TextBody::None;
-        let mut graph = false;
         for (index, physical) in source.split_inclusive('\n').enumerate() {
-            // Precharge the bounded lexical/classification passes before their
-            // temporary strings or any retained output can be allocated.
-            for chunk in physical.as_bytes().chunks(512) {
-                self.budget.charge(chunk.len() * 4)?;
-            }
             let raw = physical
                 .strip_suffix('\n')
                 .map_or(physical, |line| line.strip_suffix('\r').unwrap_or(line));
@@ -53,143 +54,80 @@ impl Processor<'_> {
                 line: index + 1,
                 column: 1,
             };
-            self.source_comment = block;
-            let raw_text = (body != super::source::TextBody::None
-                || (inside && !graph && !block && !raw_data))
-                && body.consume_raw(raw).is_some();
-            self.literal_input = raw_text || raw_data;
-            let classified =
-                if self.literal_input || (!block && raw.trim_start().starts_with("!define")) {
-                    std::borrow::Cow::Borrowed(raw)
-                } else {
-                    std::borrow::Cow::Owned(super::source::strip_comments(
-                        raw,
-                        &mut block,
-                        self.budget,
-                    )?)
-                };
-            let command = classified.trim().trim_start_matches('\u{feff}');
-            if !self.literal_input && command.eq_ignore_ascii_case("<style>") {
-                sheet = true;
-            }
-            if !self.literal_input && command.eq_ignore_ascii_case("</style>") {
-                sheet = false;
-            }
-            if !self.literal_input
-                && (command.eq_ignore_ascii_case("@startuml")
-                    || matches!(
-                        command,
-                        "@startmindmap"
-                            | "@startwbs"
-                            | "@startjson"
-                            | "@startyaml"
-                            | "@startgantt"
-                            | "@startsalt"
-                            | "@startnwdiag"
-                            | "@startfiles"
-                            | "@startpacketdiag"
-                            | "@startboard"
-                            | "@starthcl"
-                            | "@startchen"
-                    ))
-            {
-                inside = true;
-                graph |= command == "@startchen";
-                raw_data = matches!(
-                    command,
-                    "@startjson"
-                        | "@startyaml"
-                        | "@startsalt"
-                        | "@startfiles"
-                        | "@startpacketdiag"
-                        | "@startboard"
-                        | "@starthcl"
-                );
-                self.direct(physical, span.slice(0..physical.len()))?;
-            } else if !raw_text
-                && (command.eq_ignore_ascii_case("@enduml")
-                    || matches!(
-                        command,
-                        "@endmindmap"
-                            | "@endwbs"
-                            | "@endjson"
-                            | "@endyaml"
-                            | "@endgantt"
-                            | "@endsalt"
-                            | "@endnwdiag"
-                            | "@endfiles"
-                            | "@endpacketdiag"
-                            | "@endboard"
-                            | "@endhcl"
-                            | "@endchen"
-                    ))
-            {
-                inside = false;
-                self.direct(physical, span.slice(0..physical.len()))?;
-            } else if command.is_empty() {
-                self.direct(physical, span.slice(0..physical.len()))?;
-            } else if command.starts_with("!define ") || command.starts_with("!define\t") {
-                if !inside {
-                    return Err(invalid(
-                        span.line,
-                        "definition must be inside a single wrapper",
-                    ));
-                }
-                if sheet {
-                    return Err(unsupported(
-                        span.line,
-                        "!define definition inside a stylesheet",
-                    ));
-                }
-                raw.trim_start()
-                    .strip_prefix("!define")
-                    .ok_or_else(|| unsupported(span.line, "definition after inline comment"))?;
-                self.define(raw, span)?;
-                self.direct(
-                    &physical[raw.len()..],
-                    span.slice(raw.len()..physical.len()),
-                )?;
+            let lexical = if offset == 0 {
+                raw.trim_start_matches('\u{feff}')
             } else {
-                if command.starts_with('!') {
-                    super::source::reject_active_preprocessor(command, span.line)?;
-                }
-                let start = self.document.text.len();
-                self.expand(raw, span, None)?;
-                let expanded = self.document.text[start..].trim_start();
-                if !raw_text
-                    && (expanded.starts_with('!') || expanded.starts_with('@'))
-                    && expanded != raw.trim_start()
-                {
-                    return Err(self.document.map_error(
-                        unsupported(span.line, "generated directive or wrapper"),
-                        self.budget,
-                    ));
-                }
-                if raw_text {
-                    // Current-row ownership precedes normalization; next-row
-                    // ownership follows the expanded terminator seen by parsing.
-                    self.budget.charge(expanded.len())?;
-                    body = body
-                        .consume_raw(expanded)
-                        .unwrap_or(super::source::TextBody::None);
-                } else if !raw_data && inside && !block {
-                    self.budget.text(expanded.len())?;
-                    let statement = super::source::Line {
-                        number: span.line,
-                        text: expanded.trim().to_owned(),
-                    };
-                    graph |= super::source::graph_declaration(&statement);
-                    if !graph {
-                        body = super::source::text_body(&statement);
-                    }
-                }
-                self.direct(
-                    &physical[raw.len()..],
-                    span.slice(raw.len()..physical.len()),
-                )?;
+                raw
+            };
+            let row = ownership
+                .classify(lexical, self.budget)
+                .map_err(|error| error.into_line(span.line))?;
+            self.source_comment = row.source_comment;
+            self.literal_input = row.literal;
+            if row.annotated_start {
+                document::emit(
+                    Kind::Trivia,
+                    offset..offset + raw.len(),
+                    &mut tokens,
+                    self.budget,
+                )
+                .map_err(|error| error.into_line(span.line))?;
             }
+            if !row.continuation {
+                document::emit(
+                    row.kind,
+                    offset..offset + physical.len(),
+                    &mut tokens,
+                    self.budget,
+                )
+                .map_err(|error| error.into_line(span.line))?;
+            }
+            match row.kind {
+                Kind::Definition => {
+                    raw.trim_start()
+                        .strip_prefix("!define")
+                        .ok_or_else(|| unsupported(span.line, "definition after inline comment"))?;
+                    self.define(raw, span)?;
+                }
+                Kind::Content => {
+                    if row.text.trim_start().starts_with('!') {
+                        return Err(unsupported(span.line, &row.text));
+                    }
+                    let start = self.document.text.len();
+                    self.expand(raw, span, None)?;
+                    let expanded = &self.document.text[start..];
+                    if !row.literal
+                        && (expanded.trim_start().starts_with('!')
+                            || expanded.trim_start().starts_with('@'))
+                        && expanded.trim_start() != raw.trim_start()
+                    {
+                        return Err(self.document.map_error(
+                            unsupported(span.line, "generated directive or wrapper"),
+                            self.budget,
+                        ));
+                    }
+                    ownership
+                        .advance(&row, expanded, self.budget)
+                        .map_err(|error| error.into_line(span.line))?;
+                }
+                _ => {
+                    self.direct(raw, span)?;
+                    ownership
+                        .advance(&row, &row.text, self.budget)
+                        .map_err(|error| error.into_line(span.line))?;
+                }
+            }
+            self.direct(
+                &physical[raw.len()..],
+                span.slice(raw.len()..physical.len()),
+            )?;
             offset += physical.len();
         }
+        ownership
+            .finish(offset)
+            .map_err(|error| error.into_line(source.lines().count()))?;
+        document::validate(tokens, offset, self.budget)
+            .map_err(|error| error.into_source(source, self.budget))?;
         Ok(())
     }
 
@@ -227,25 +165,21 @@ impl Processor<'_> {
     ) -> Result<(), RenderError> {
         let mut cursor = 0;
         let mut direct = 0;
-        let mut capability = CapabilityScan {
-            comment: self.source_comment,
-            quoted: false,
-            escaped: false,
-        };
+        let mut capability = super::parser::ownership::ByteScan::new(self.source_comment);
         while cursor < raw.len() {
             self.budget.charge(1)?;
             let ch = raw[cursor..].chars().next().unwrap();
             let step = if target.is_some() || self.literal_input {
-                ScanStep::Active
+                super::parser::ownership::Step::Active
             } else {
                 capability.consume(&raw[cursor..])
             };
-            if let ScanStep::Delimiter(bytes) = step {
+            if let super::parser::ownership::Step::Delimiter(bytes) = step {
                 self.budget.charge(bytes)?;
                 cursor += bytes;
                 continue;
             }
-            let active = matches!(step, ScanStep::Active);
+            let active = matches!(step, super::parser::ownership::Step::Active);
             if active {
                 reject_capability(&raw[cursor..], span.line)?;
             }
@@ -381,47 +315,6 @@ fn word_end(raw: &str, start: usize) -> usize {
         .take_while(|c| c.is_ascii_alphanumeric() || *c == b'_')
         .count();
     start + length
-}
-
-struct CapabilityScan {
-    comment: bool,
-    quoted: bool,
-    escaped: bool,
-}
-
-#[derive(Clone, Copy)]
-enum ScanStep {
-    Active,
-    Comment,
-    Delimiter(usize),
-}
-
-impl CapabilityScan {
-    fn consume(&mut self, rest: &str) -> ScanStep {
-        if self.comment {
-            if rest.starts_with("'/") {
-                self.comment = false;
-                return ScanStep::Delimiter(2);
-            }
-            return ScanStep::Comment;
-        }
-        if self.quoted && self.escaped {
-            self.escaped = false;
-            return ScanStep::Active;
-        }
-        if self.quoted && rest.starts_with('\\') {
-            self.escaped = true;
-            return ScanStep::Active;
-        }
-        if rest.starts_with('"') {
-            self.quoted = !self.quoted;
-        }
-        if !self.quoted && rest.starts_with("/'") {
-            self.comment = true;
-            return ScanStep::Delimiter(2);
-        }
-        ScanStep::Active
-    }
 }
 
 fn check_boundary(

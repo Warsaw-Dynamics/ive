@@ -5,6 +5,18 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit registered parser and grammar destinations and reject unregistered destinations', () => {
+  // given
+  const source = manifest();
+  source.sourceFiles[0].rust = ['engine/src/plantuml/parser/document.rs', 'engine/src/plantuml/parser/grammar/document.lalrpop'];
+  // when / then
+  assert.doesNotThrow(() => validateManifest(source));
+  for (const target of ['engine/src/plantuml/parser/not_registered.rs', 'engine/src/plantuml/generated/document.rs', '../outside.rs']) {
+    source.sourceFiles[0].rust = [target];
+    assert.throws(() => validateManifest(source), /unregistered Rust destination/);
+  }
+});
+
 test('should admit exact Chen and icon-free rectangle semantics without subtype or asset paths', () => {
   // given
   const source = manifest();

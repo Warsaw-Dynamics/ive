@@ -1,17 +1,24 @@
 {
   "schema": 1,
-  "scope": "Supported same-line !define declaration syntax only; other PlantUML parsers are pending migration.",
+  "scope": "Generated supported same-line !define declarations, single paired documents/directive placement, shared authored/expanded lexical ownership, typed family header evidence and structured expanded-byte error mapping. Preambles/styles, family parsers and Creole remain pending.",
   "authorship": "Original native infrastructure and subset grammar; existing MIT semantic translation remains in preprocess.rs and its source manifest. No Java authorship is attributed to this infrastructure.",
   "authoredFiles": [
     "engine/src/plantuml/parser/context.rs",
     "engine/src/plantuml/parser/definition.rs",
+    "engine/src/plantuml/parser/document.rs",
     "engine/src/plantuml/parser/error.rs",
     "engine/src/plantuml/parser/grammar/definition.lalrpop",
+    "engine/src/plantuml/parser/grammar/document.lalrpop",
+    "engine/src/plantuml/parser/grammar/header.lalrpop",
+    "engine/src/plantuml/parser/header.rs",
     "engine/src/plantuml/parser/mod.rs",
+    "engine/src/plantuml/parser/ownership.rs",
     "engine/src/plantuml/parser/token.rs"
   ],
   "generatedFiles": [
     "engine/src/plantuml/generated/definition.rs",
+    "engine/src/plantuml/generated/document.rs",
+    "engine/src/plantuml/generated/header.rs",
     "engine/src/plantuml/generated/manifest.json"
   ],
   "generator": "tools/plantuml-grammar-gen/Cargo.toml",

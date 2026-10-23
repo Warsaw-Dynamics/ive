@@ -16,6 +16,18 @@
       "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
       "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
       "grammarSha256": "0983da93c3f2a0d4920102036e4409abcf8078b0c9f4faf26e9808e7f54fb675"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/document.rs",
+      "generatedSha256": "761b856999aacafae5a744ddaed56720ccf8bd412433d69572cefe20b16bb244",
+      "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
+      "grammarSha256": "b4538391acaee6c48cbbd0e938d3200ac169c8e6617a60a87b44c44286e73e4b"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/header.rs",
+      "generatedSha256": "094a5bd7bd1d146cb25f0b7b945e0eb01d26db6104d23778d3a9ba7b156ce74c",
+      "grammar": "engine/src/plantuml/parser/grammar/header.lalrpop",
+      "grammarSha256": "af0b96ed412055c0f9596428a97515f675297739f9d84b7cdf4a9b068ba6e6cf"
     }
   ],
   "schema": 1

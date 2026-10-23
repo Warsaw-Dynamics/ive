@@ -61,6 +61,63 @@ pub(super) static EMPTY: Document = Document {
 };
 
 impl Document {
+    pub fn map_failure(
+        &self,
+        failure: super::parser::error::ParseFailure,
+        budget: &mut Budget,
+    ) -> RenderError {
+        use super::parser::error::FailureKind;
+        let (detail, unsupported) = match failure.kind {
+            FailureKind::Terminal(error) => return error,
+            FailureKind::Syntax(detail) => (detail, false),
+            FailureKind::Unsupported(detail) => (detail, true),
+        };
+        if let Err(error) = budget.charge(self.text.len() + self.segments.len() * 9) {
+            return error;
+        }
+        let start = failure.span.start.min(self.text.len());
+        let end = failure.span.end.min(self.text.len()).max(start);
+        let segment = self
+            .segments
+            .iter()
+            .find(|segment| segment.output.contains(&start))
+            .or_else(|| {
+                self.segments
+                    .last()
+                    .filter(|segment| segment.output.end == start)
+            });
+        let (line, column) = match segment.map(|segment| (&segment.origin, segment.output.start)) {
+            Some((Origin::Expansion { use_span, .. }, _)) => (use_span.line, use_span.column),
+            Some((Origin::Direct(span), base)) => {
+                let prefix = &self.text[base..start];
+                let lines = prefix.bytes().filter(|&byte| byte == b'\n').count();
+                (
+                    span.line + lines,
+                    prefix
+                        .rfind('\n')
+                        .map_or(span.column + prefix.len(), |last| prefix.len() - last),
+                )
+            }
+            None => (1, 1),
+        };
+        let mut message = format!(
+            "PlantUML at line {line}, column {column}: {detail} (expanded bytes {start}..{end})"
+        );
+        self.describe_candidate(&(start..end.max(start.saturating_add(1))), &mut message);
+        if let Some(Segment {
+            origin: Origin::Expansion { definition_id, .. },
+            ..
+        }) = segment
+        {
+            message.push_str(&self.describe_lineage(*definition_id));
+        }
+        if unsupported {
+            RenderError::UnsupportedFeature(message)
+        } else {
+            RenderError::InvalidSource(message)
+        }
+    }
+
     pub fn check_preamble(
         &self,
         lines: &[super::source::Line],
@@ -317,5 +374,47 @@ impl Storage {
         budget.charge(1)?;
         self.segments += 1;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RenderOptions;
+    use crate::plantuml::parser::error::ParseFailure;
+
+    #[test]
+    fn should_map_only_overlapping_expanded_bytes_and_preserve_utf8_byte_columns() {
+        // given
+        let mut budget = Budget::new(&RenderOptions::default());
+        let document = crate::plantuml::preprocess::prepare(
+            "@startuml\r\n!define X Ready\r\n!define UNUSED inert\r\nA -> B : Ω X\r\n@enduml",
+            &mut budget,
+        )
+        .unwrap();
+        let expanded = document.text.find("Ready").unwrap();
+        let direct = document.text.find('Ω').unwrap();
+        // when
+        let expansion_error =
+            ParseFailure::unsupported(expanded..expanded + 5, "generated failure")
+                .into_document(&document, &mut budget)
+                .to_string();
+        let direct_error = ParseFailure::syntax(direct..direct + 2, "direct failure")
+            .into_document(&document, &mut budget)
+            .to_string();
+        let terminal = ParseFailure::terminal(RenderError::Backend("quota terminal".into()))
+            .into_document(&document, &mut budget);
+        // then
+        assert!(
+            expansion_error.contains("used at line 4, column 13, defined at line 2, column 1"),
+            "{expansion_error}"
+        );
+        assert!(!expansion_error.contains("UNUSED"), "{expansion_error}");
+        assert!(
+            direct_error.contains("at line 4, column 10"),
+            "{direct_error}"
+        );
+        assert!(!direct_error.contains("expansion"), "{direct_error}");
+        assert!(matches!(terminal, RenderError::Backend(message) if message == "quota terminal"));
     }
 }
