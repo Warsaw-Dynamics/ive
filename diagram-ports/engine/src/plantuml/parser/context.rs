@@ -177,7 +177,7 @@ pub(super) fn admit_frontend(
 ) -> Result<(), ParseFailure> {
     let (terminals, symbol_slots, live_states, reductions, symbol_bytes) = match kind {
         Frontend::Document(_) => (
-            43usize,
+            45usize,
             8usize,
             7usize,
             4usize,

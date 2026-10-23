@@ -60,6 +60,21 @@ pub(in crate::plantuml) fn lex(
     text: &str,
     budget: &mut Budget,
 ) -> Result<Vec<Spanned>, ParseFailure> {
+    lex_tokens((text, Escapes::Newlines), budget)
+}
+pub(in crate::plantuml) fn lex_display(
+    text: &str,
+    budget: &mut Budget,
+) -> Result<Vec<Spanned>, ParseFailure> {
+    lex_tokens((text, Escapes::Literal), budget)
+}
+#[derive(PartialEq, Eq)]
+enum Escapes {
+    Newlines,
+    Literal,
+}
+fn lex_tokens(input: (&str, Escapes), budget: &mut Budget) -> Result<Vec<Spanned>, ParseFailure> {
+    let (text, escapes) = input;
     bound("label bytes", text.len(), 16 * 1024)?;
     bound(
         "Creole lexical retained bytes",
@@ -93,7 +108,13 @@ pub(in crate::plantuml) fn lex(
             url = true;
             continue;
         }
-        if ch == '\\' {
+        if escapes == Escapes::Literal && (ch == '\t' || rest.starts_with("\\t")) {
+            return Err(ParseFailure::unsupported(
+                offset..offset + ch.len_utf8(),
+                "flow label tabulation",
+            ));
+        }
+        if ch == '\\' && escapes == Escapes::Newlines {
             let Some(next) = rest[1..].chars().next() else {
                 return Err(ParseFailure::unsupported(
                     offset..offset + 1,

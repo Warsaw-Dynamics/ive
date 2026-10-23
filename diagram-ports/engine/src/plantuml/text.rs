@@ -42,11 +42,13 @@ enum LabelMode {
     Display,
     Tree,
     Data,
+    Flow,
 }
 impl LabelMode {
     fn family(self) -> &'static str {
         match self {
             Self::Display => "sans-serif",
+            Self::Flow => "serif",
             Self::Tree | Self::Data => "Arial, Liberation Sans, DejaVu Sans, Noto Sans, sans-serif",
         }
     }
@@ -103,6 +105,13 @@ impl<'a> Context<'a> {
             LabelMode::Data,
         )
     }
+    pub fn flow_label(&mut self, text: &str) -> Result<Label, RenderError> {
+        self.measure_label(
+            text,
+            self.base(Role::Element, LabelMode::Flow),
+            LabelMode::Flow,
+        )
+    }
     pub fn tree_label(&mut self, text: &str) -> Result<Label, RenderError> {
         self.measure_label(
             text,
@@ -142,7 +151,10 @@ impl<'a> Context<'a> {
         if let Some(label) = self.cache.get(&key) {
             return Ok(label.clone());
         }
-        let parsed = if mode == LabelMode::Data {
+        let parsed = if mode == LabelMode::Flow {
+            super::parser::creole::parse_display(text, base.clone(), self.budget)
+                .map_err(|error| self.origins.label_error(text, error, self.budget))?
+        } else if mode == LabelMode::Data {
             self.literal_lines(text, &base)?
         } else {
             creole::parse(text, base.clone(), self.budget)

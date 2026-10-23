@@ -3188,7 +3188,7 @@
         "engine/src/plantuml/text.rs",
         "engine/src/plantuml/svg.rs"
       ],
-      "behavior": "Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic.",
+      "behavior": "Task3D: paired bold/italic/underline/strike and b/i/u/s aliases, style restoration, precise tilde hiding and one-pass explicit breaks/backslashes; shared measured runs. Native pairing is bounded and strict when activated; unmatched symbolic markers stay literal; wave/resources/alignment remain unsupported; literal URLs intentionally do not activate italic. Task3P: separate Display.create flow mode preserves literal backslashes/newline spellings with admitted Creole style nesting; tabulation explicitly unsupported until modeled; existing getWithNewlines families unchanged.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -4271,6 +4271,132 @@
         "* Original Author:  Arnaud Roques"
       ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/flowdiagram/FlowDiagram.java",
+      "sha256": "d133a9306d8003e6ddf56c35277d39e4ca5ed210011be0562f17a6d204f564e6",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flow.rs",
+        "engine/src/plantuml/flowscene.rs"
+      ],
+      "behavior": "First tile ignores orientation; new tile advances last, explicit existing-ID link does not. Native measured sparse cells, actual side ports and red line/7-pixel offset destination-circle semantics; native box/circle outline and stroke width differ.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/flowdiagram/FlowDiagramFactory.java",
+      "sha256": "76fdfd19aabc35d48e40ce4c0428741ab3d23ca56b304fdbad9ae00304cf3dae",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/flow.rs",
+        "engine/src/plantuml/parser/grammar/flow.lalrpop"
+      ],
+      "behavior": "Distinct flow family with two commands and no common-command registration; native complete grammar rejects other commands.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/flowdiagram/CommandLineSimple.java",
+      "sha256": "36d4aaceb2d1a48d4bc73a791b3bcc71a4d843658bbb7fb139c3756a22105f26",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/flow.rs",
+        "engine/src/plantuml/parser/grammar/flow.lalrpop",
+        "engine/src/plantuml/flow.rs"
+      ],
+      "behavior": "Optional lower-case cardinal, ASCII word ID, required gap and greedy double-quoted label; omitted direction south.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/flowdiagram/CommandLink.java",
+      "sha256": "b5d82ad1f79152dec546a6f55ad042439fc29e8a66d6acadea0e65fb2809b4ee",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/flow.rs",
+        "engine/src/plantuml/parser/grammar/flow.lalrpop",
+        "engine/src/plantuml/flow.rs"
+      ],
+      "behavior": "Existing-ID link with optional cardinal default south and no cursor movement; no target creation.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/flowdiagram/ActivityBox.java",
+      "sha256": "00d858c58407a72060d73f52d7986f6a5cfc5c68eb7ff40368d2a3f803f591e0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flow.rs",
+        "engine/src/plantuml/flowscene.rs"
+      ],
+      "behavior": "Serif14 black/Creole label, measured 10-unit margins, rounded yellow tile. Native shared-ink outline, expanding cell pitch and metric/baseline differences disclosed.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/golem/TilesField.java",
+      "sha256": "fa5809564779df62b98091cef5eb6200cf00efb84dc85295384fe9517759a438",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flow.rs"
+      ],
+      "behavior": "Cardinal placement, opposite owned endpoint sides and source path admission. Native rejects collisions instead of east-shift mutation; narrows west-only long links to leftward unobstructed routes and rejects self crossings.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/golem/Position.java",
+      "sha256": "d87cbf517907abfeaef2d45fa045f954ec1aa2bfecae1dc0799b1e8e63c15a01",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flow.rs",
+        "engine/src/plantuml/flowscene.rs"
+      ],
+      "behavior": "Checked row/column directional arithmetic; native cell step1 corresponds to original step2 source cell extents.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/golem/TileGeometry.java",
+      "sha256": "04af18a833b2a8d04d57cb493af7f6d36689290cf8c19edf03278ebcb4b0a660",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flow.rs"
+      ],
+      "behavior": "North/south/east/west directions and exact opposite endpoint ownership.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/klimt/color/HColors.java",
+      "sha256": "cf2a35137feca85b903e266ab208c24a0db90f14237ad1dd2bc4c3976b77e33a",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2025, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/flowscene.rs"
+      ],
+      "behavior": "Only MY_RED #A80036 and MY_YELLOW #FEFECE constants used for native flow line/circle/fill; no named-color/assets import.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4812,6 +4938,18 @@
         "signal",
         "save"
       ]
+    },
+    {
+      "path": "fixtures/plantuml/flow.puml",
+      "sha256": "a50ecc4dd253fca2a44b862d94ffdb2c1e11c63ca374e92127ff4f236904a8e8",
+      "origin": "Exact retained local MIT original flow-directed-tiles source fixture.",
+      "family": "flow"
+    },
+    {
+      "path": "fixtures/plantuml/flowcursor.puml",
+      "sha256": "5ed35d8bff255d30e93259faf76729c6a69239e58984160269dfdaaf05fa1955",
+      "origin": "Fresh independently authored bounded original MIT probe: explicit west link keeps last, next south creation stays under B. Genuine non-error SVG bac86befdbf6857958df9d63f9e9b00f547b0dc9a777922c26b06b4129b5a352; initial injected-font error was retained separately and is not an oracle success.",
+      "family": "flow"
     }
   ],
   "oracle": {
@@ -4887,7 +5025,9 @@
     "engine/src/plantuml/git.rs",
     "engine/src/plantuml/gitscene.rs",
     "engine/src/plantuml/wire.rs",
-    "engine/src/plantuml/wirescene.rs"
+    "engine/src/plantuml/wirescene.rs",
+    "engine/src/plantuml/flow.rs",
+    "engine/src/plantuml/flowscene.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -4905,6 +5045,7 @@
     "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles.",
     "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply.",
     "Task3O adds generated legacy BPM colon events and nested balanced branch/else/end syntax, typed immutable instruction/block arenas and explicit Start/Event/Merge flow nodes/owned edges. Native sparse branch composition replaces Java grid cleaners; no matching, modern activity alias, new dependency/runtime IO, reference expansion or synthetic END syntax. Single/empty-arm, named merge/goto/resume and other unverified commands reject.",
-    "Native Git history uses generated raw row/cell/commit/comment syntax, bounded sparse typed ancestry and original measured circle/lane geometry; no SmetanaForGit source or runtime git/JVM is used. The frozen parser baseline selects its original recorded43 paths while all later family fixtures remain provenance-audited."
+    "Native Git history uses generated raw row/cell/commit/comment syntax, bounded sparse typed ancestry and original measured circle/lane geometry; no SmetanaForGit source or runtime git/JVM is used. The frozen parser baseline selects its original recorded43 paths while all later family fixtures remain provenance-audited.",
+    "Task3P adds a generated directional flow grammar, immutable tile/cell/path ownership and dedicated bounded sparse measured cardinal layout. No DAG rewrite, no cursor move on explicit link. Rejects collision east-shifts, self/obstructed/unrouteable links, unknown/duplicate IDs and unverified commands; preserves source root-direction ignore/default south. Flow-only Display.create literal-backslash mode retains style syntax and serif14 measure/paint; old family text semantics unchanged. Red lines/yellow boxes/7-pixel destination circles have disclosed native outline/stroke/spacing differences."
   ]
 }

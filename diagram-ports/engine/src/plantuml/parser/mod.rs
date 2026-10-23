@@ -11,6 +11,7 @@ pub(super) mod document;
 pub(super) mod ebnf;
 pub(super) mod error;
 pub(super) mod files;
+pub(super) mod flow;
 pub(super) mod gantt;
 pub(super) mod git;
 pub(super) mod hcl;
@@ -44,6 +45,11 @@ pub(super) struct BodySource<'s> {
     pub ownership: ownership::Ownership,
     pub adapters: usize,
 }
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/flow.rs"]
+mod generated_flow;
 
 #[rustfmt::skip]
 #[allow(clippy::all, unused, private_interfaces)]

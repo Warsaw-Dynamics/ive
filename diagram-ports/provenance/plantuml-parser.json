@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Generated structured activity instructions, nested control blocks and raw actions preserve the activity model. Generated timing tracks/cursors/exact integers/connections and Gantt project/date/task/alias/duration/reference grammar preserve their models. Generated admitted Creole tag/symbol nesting and complete EOF construct existing styled runs; escapes, URLs and same-line symbolic pair eligibility remain lexical. Other family grammars remain pending. Complete Chen owners/composites/associations/cardinalities and EOF preserve Chen qualified identities with contextual keyword names. Generated JSON objects/arrays/members/numbers and literal HCL named blocks/headers/fields/containers construct the preserved ordered Value and Document before unchanged data lowering/layout. Generated PlantUML-specific YAML offside map/list/entry and narrow flow productions construct ordered string Value models; primitive capability, tab, quote, comment and literal ownership remains lexical. Generated Salt table/row/column/cell/widget syntax preserves postorder arenas, direct lexical escapes and same-row spans. Generated nwdiag network/group/server/property statements preserve global identities, membership addresses and sparse layout. Generated packetdiag canonical/direct bodies, configuration assignments, inclusive/auto ranges, literal labels, attributes and EOF construct the existing Config/Field/Packet before unchanged conserved fragment projection/layout. Generated packetdiag and nested Creole complete the current structural syntax inventory. Production frontends borrow body spans without physical-line materialization; test setup invokes generated entries. Generated categorical charts own axis/series/list/legend/EOF syntax and construct a typed chart model before native measured projection. Task3K adds complete generated EBNF named-rule/choice/sequence/group/optional/repeat and regex class/range/group/quantifier syntax with dedicated symbolic railroad models; family punctuation ownership and primitive numeric/escape validation remain lexical. Generated legacy BPM events and balanced nested ordered branch/else/end structure own complete EOF and construct typed instruction arenas and explicit directed flow topology; primitive raw labels and keyword/nesting admission remain lexical. Generated raw ASCII Git rows/cells/names/comments and EOF construct typed commit ancestry and source lanes before dedicated measured layout. Generated offside wire component/column/nesting/size/dotted-endpoint/arrow/label productions construct hierarchical typed placements and links before bounded native geometry.",
+  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, complete sequence declarations/messages/arrows/notes/nested frames/lifecycle, and scoped state declarations/composites/descriptions/transitions with preserved models/layout and structured expanded-byte failures. Separate generated mindmap/WBS markers, files paths/raw notes and board stage rows construct the preserved Mindmap, Wbs, Files and Board models. Generated class/object/description/ArchiMate declarations, members, groups, names, aliases and relations preserve the UML model. Generated structured activity instructions, nested control blocks and raw actions preserve the activity model. Generated timing tracks/cursors/exact integers/connections and Gantt project/date/task/alias/duration/reference grammar preserve their models. Generated admitted Creole tag/symbol nesting and complete EOF construct existing styled runs; escapes, URLs and same-line symbolic pair eligibility remain lexical. Other family grammars remain pending. Complete Chen owners/composites/associations/cardinalities and EOF preserve Chen qualified identities with contextual keyword names. Generated JSON objects/arrays/members/numbers and literal HCL named blocks/headers/fields/containers construct the preserved ordered Value and Document before unchanged data lowering/layout. Generated PlantUML-specific YAML offside map/list/entry and narrow flow productions construct ordered string Value models; primitive capability, tab, quote, comment and literal ownership remains lexical. Generated Salt table/row/column/cell/widget syntax preserves postorder arenas, direct lexical escapes and same-row spans. Generated nwdiag network/group/server/property statements preserve global identities, membership addresses and sparse layout. Generated packetdiag canonical/direct bodies, configuration assignments, inclusive/auto ranges, literal labels, attributes and EOF construct the existing Config/Field/Packet before unchanged conserved fragment projection/layout. Generated packetdiag and nested Creole complete the current structural syntax inventory. Production frontends borrow body spans without physical-line materialization; test setup invokes generated entries. Generated categorical charts own axis/series/list/legend/EOF syntax and construct a typed chart model before native measured projection. Task3K adds complete generated EBNF named-rule/choice/sequence/group/optional/repeat and regex class/range/group/quantifier syntax with dedicated symbolic railroad models; family punctuation ownership and primitive numeric/escape validation remain lexical. Generated legacy BPM events and balanced nested ordered branch/else/end structure own complete EOF and construct typed instruction arenas and explicit directed flow topology; primitive raw labels and keyword/nesting admission remain lexical. Generated raw ASCII Git rows/cells/names/comments and EOF construct typed commit ancestry and source lanes before dedicated measured layout. Generated offside wire component/column/nesting/size/dotted-endpoint/arrow/label productions construct hierarchical typed placements and links before bounded native geometry. Generated directional flow owns optional cardinal/ID/gap/quoted-label/link/newline and EOF syntax; typed builders validate sparse placement/path constraints. Flow-only shared Creole lexical mode preserves Display.create literal backslashes, while generated style nesting and original family escapes remain unchanged.",
   "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, sequence participant/message/note/frame/lifecycle semantics, scoped two-phase state identity/resolution and admitted Creole style semantics are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
   "authoredFiles": [
     "engine/src/plantuml/parser/activity.rs",
@@ -15,7 +15,9 @@
     "engine/src/plantuml/parser/ebnf.rs",
     "engine/src/plantuml/parser/error.rs",
     "engine/src/plantuml/parser/files.rs",
+    "engine/src/plantuml/parser/flow.rs",
     "engine/src/plantuml/parser/gantt.rs",
+    "engine/src/plantuml/parser/git.rs",
     "engine/src/plantuml/parser/grammar/activity.lalrpop",
     "engine/src/plantuml/parser/grammar/board.lalrpop",
     "engine/src/plantuml/parser/grammar/bpm.lalrpop",
@@ -26,7 +28,9 @@
     "engine/src/plantuml/parser/grammar/document.lalrpop",
     "engine/src/plantuml/parser/grammar/ebnf.lalrpop",
     "engine/src/plantuml/parser/grammar/files.lalrpop",
+    "engine/src/plantuml/parser/grammar/flow.lalrpop",
     "engine/src/plantuml/parser/grammar/gantt.lalrpop",
+    "engine/src/plantuml/parser/grammar/git.lalrpop",
     "engine/src/plantuml/parser/grammar/hcl.lalrpop",
     "engine/src/plantuml/parser/grammar/header.lalrpop",
     "engine/src/plantuml/parser/grammar/json.lalrpop",
@@ -40,6 +44,7 @@
     "engine/src/plantuml/parser/grammar/timing.lalrpop",
     "engine/src/plantuml/parser/grammar/tree.lalrpop",
     "engine/src/plantuml/parser/grammar/uml.lalrpop",
+    "engine/src/plantuml/parser/grammar/wire.lalrpop",
     "engine/src/plantuml/parser/grammar/yaml.lalrpop",
     "engine/src/plantuml/parser/hcl.rs",
     "engine/src/plantuml/parser/header.rs",
@@ -61,11 +66,8 @@
     "engine/src/plantuml/parser/token.rs",
     "engine/src/plantuml/parser/tree.rs",
     "engine/src/plantuml/parser/uml.rs",
-    "engine/src/plantuml/parser/yaml.rs",
-    "engine/src/plantuml/parser/git.rs",
-    "engine/src/plantuml/parser/grammar/git.lalrpop",
-    "engine/src/plantuml/parser/grammar/wire.lalrpop",
-    "engine/src/plantuml/parser/wire.rs"
+    "engine/src/plantuml/parser/wire.rs",
+    "engine/src/plantuml/parser/yaml.rs"
   ],
   "generatedFiles": [
     "engine/src/plantuml/generated/activity.rs",
@@ -78,7 +80,9 @@
     "engine/src/plantuml/generated/document.rs",
     "engine/src/plantuml/generated/ebnf.rs",
     "engine/src/plantuml/generated/files.rs",
+    "engine/src/plantuml/generated/flow.rs",
     "engine/src/plantuml/generated/gantt.rs",
+    "engine/src/plantuml/generated/git.rs",
     "engine/src/plantuml/generated/hcl.rs",
     "engine/src/plantuml/generated/header.rs",
     "engine/src/plantuml/generated/json.rs",
@@ -93,9 +97,8 @@
     "engine/src/plantuml/generated/timing.rs",
     "engine/src/plantuml/generated/tree.rs",
     "engine/src/plantuml/generated/uml.rs",
-    "engine/src/plantuml/generated/yaml.rs",
-    "engine/src/plantuml/generated/git.rs",
-    "engine/src/plantuml/generated/wire.rs"
+    "engine/src/plantuml/generated/wire.rs",
+    "engine/src/plantuml/generated/yaml.rs"
   ],
   "generator": "tools/plantuml-grammar-gen/Cargo.toml",
   "generationInventory": "engine/src/plantuml/generated/manifest.json",

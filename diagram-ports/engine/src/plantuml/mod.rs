@@ -22,6 +22,8 @@ mod datascene;
 mod ebnf;
 mod files;
 mod filesscene;
+mod flow;
+mod flowscene;
 mod gantt;
 mod ganttscene;
 mod git;
@@ -229,6 +231,11 @@ pub(crate) fn render(
     } else {
         None
     };
+    let flow_model = if wrapper == source::Wrapper::Flow {
+        Some(parser::flow::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -236,10 +243,17 @@ pub(crate) fn render(
             .with_text_measurement_policy(options.text_measurement.clone())
             .begin_session_with_control(budget.control.clone())
             .map_err(|e| RenderError::Backend(e.to_string()))?;
+        let fonts = if wrapper == source::Wrapper::Flow {
+            flow::fonts()
+        } else {
+            preamble.fonts.clone()
+        };
         let mut context = text::Context::new(&session, &mut budget)
-            .with_fonts(preamble.fonts.clone())
+            .with_fonts(fonts)
             .with_origins(&expanded);
-        let (family, scene) = if wrapper == source::Wrapper::Wire {
+        let (family, scene) = if let Some(model) = &flow_model {
+            ("flow", flowscene::layout(model, &mut context)?)
+        } else if wrapper == source::Wrapper::Wire {
             let model = wire_model
                 .as_ref()
                 .ok_or_else(|| RenderError::Backend("wire selection has no parsed model".into()))?;

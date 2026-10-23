@@ -80,7 +80,7 @@
       "path": "engine/src/plantuml/creole.rs",
       "groups": [
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1"]},
-        {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["symbol#1", "lex#1", "literal#1", "push#1", "tag#1", "reject_block#1", "activate#1", "rich_tag#1"]},
+        {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["lex_display#1", "lex_tokens#1", "symbol#1", "lex#1", "literal#1", "push#1", "tag#1", "reject_block#1", "activate#1", "rich_tag#1"]},
         {"role": "semantic", "reason": "Preserved typed model, constraints, identity and run/fragment construction after generated syntax.", "symbols": ["new#1", "tick#1", "open#1", "close#1", "text#1", "literal#2", "line#1", "finish#1", "append_text#1"]}
       ]
     },
@@ -232,7 +232,7 @@
     {
       "path": "engine/src/plantuml/parser/creole.rs",
       "groups": [
-        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_text#1"]},
+        {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse_display#1", "reduce#1", "parse#1", "parse_text#1"]},
         {"role": "infrastructure", "reason": "Checked storage/work/stack admission and structured error mapping.", "symbols": ["label_failure#1", "admit#1"]},
         {"role": "lexical", "reason": "Bounded primitive spelling, token/payload ownership and eligibility; generated productions own structural nesting and ordering.", "symbols": ["convert#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup through generated entries; no production syntax authority.", "symbols": ["base#1", "should_build_generated_nested_tag_symbol_styles_hard_and_blank_lines#1", "should_reject_crossed_empty_duplicate_unclosed_and_unsupported_spans#1", "should_keep_unmatched_symbols_url_escapes_and_line_local_pair_eligibility_literal#1", "should_coalesce_equivalent_run_styles_and_restore_authored_base_font#1", "should_report_truthful_label_local_utf8_spans_without_authored_document_claims#1", "should_reject_direct_generated_suffix_eof_and_cancel_delivery_and_scope_actions#1", "should_admit_exact_four_style_depth_and_bound_run_text_work_and_cancellation#1"]}
@@ -523,7 +523,7 @@
       "path": "engine/src/plantuml/text.rs",
       "groups": [
         {"role": "infrastructure", "reason": "Private typed text-color override uses the existing full style cache/measurement path; typed layout failures use existing bounded origin mapping once. No new language parsing.", "symbols": ["colored_label#1", "locate_failure#1"]},
-        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["family#1", "new#1", "with_fonts#1", "with_origins#1", "label#1", "styled_label#1", "data_label#1", "tree_label#1", "region_label#1", "base#1", "measure_label#1", "literal_lines#1", "measure_line#1", "font_style#1", "validate_label#1", "append_label#1"]},
+        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["flow_label#1", "family#1", "new#1", "with_fonts#1", "with_origins#1", "label#1", "styled_label#1", "data_label#1", "tree_label#1", "region_label#1", "base#1", "measure_label#1", "literal_lines#1", "measure_line#1", "font_style#1", "validate_label#1", "append_label#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["measure#1", "should_bound_aggregate_body_and_chrome_measurement_requests_before_host_call#1", "should_reject_oversized_label_before_scanning_or_retaining_it#1", "should_coalesce_equal_styles_and_keep_color_only_cache_changes#1", "should_bound_tokens_before_measuring_many_short_runs#1", "should_bound_marker_activation_and_escaped_punctuation_with_linear_work#1"]}
       ]
     },
@@ -673,6 +673,102 @@
       "groups": [
         {"role": "layout", "reason": "Bounded measured bottom-up wire cursor placement, source-slot reservation, native straight routes/heads/labels and located layout admission; no source syntax recognition.", "symbols": ["layout#1", "store#1", "measure#1", "place#1", "fail#1", "draw_blocks#1", "endpoints#1", "draw_link#1", "overlaps#1", "crosses#1", "head#1"]},
         {"role": "test-adapter", "reason": "Wire contract assertions and test-only generated facade setup.", "symbols": ["inspect#1", "should_draw_axis_aligned_arrowheads_with_the_tip_on_each_wire_endpoint#1", "should_size_children_once_and_keep_parent_labels_columns_and_forced_leaf_dimensions#1", "should_keep_separate_source_slots_and_reserve_long_horizontal_and_vertical_labels#1", "should_keep_measured_attachment_spacing_local_to_each_source_block#1", "should_cancel_iterative_placement_and_reject_route_product_before_measurement#1"]}
+      ]
+    },
+{
+      "path": "engine/src/plantuml/flow.rs",
+      "groups": [
+        {
+          "role": "semantic",
+          "reason": "Immutable directional tiles/cells/owned side paths, cursor/identity/placement/route validation and explicit source font configuration; no source structural parsing.",
+          "symbols": [
+            "opposite#1",
+            "name#1",
+            "moved#1",
+            "new#1",
+            "direction#1",
+            "locate_name#1",
+            "position#1",
+            "tile#1",
+            "link#1",
+            "path#1",
+            "finish#1",
+            "unsupported#1",
+            "fonts#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused source-probed cursor/port identity, measured geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "parse#1",
+            "should_preserve_cardinal_cells_ignored_root_direction_and_opposite_owned_ports#1",
+            "should_preserve_original_probed_explicit_link_cursor_semantics#1",
+            "should_reject_checked_coordinate_overflow_without_mutating_cells#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/flowscene.rs",
+      "groups": [
+        {
+          "role": "layout",
+          "reason": "Sparse measured cardinal placement, actual tile-side ports, finite red paths/destination circles and bounded scene geometry.",
+          "symbols": [
+            "push#1",
+            "measure#1",
+            "rectangles#1",
+            "port#1",
+            "layout#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused source-probed cursor/port identity, measured geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "draw#1",
+            "rectangle#1",
+            "should_keep_measured_long_labels_and_directional_boxes_disjoint_and_contained#1",
+            "should_connect_side_ports_and_original_offset_circle_without_crossing_tile_interiors#1",
+            "should_preserve_literal_backslashes_and_style_spans_in_display_create_mode#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/parser/flow.rs",
+      "groups": [
+        {
+          "role": "infrastructure",
+          "reason": "Checked aggregate token/model/index vector growth and exact generated fixed-state/symbol/reduction/diagnostic admission.",
+          "symbols": [
+            "insert#1",
+            "push#1",
+            "admit#1"
+          ]
+        },
+        {
+          "role": "generated-facade",
+          "reason": "Borrowed primitive delivery into complete registered flow grammar and once-only authored origin mapping.",
+          "symbols": [
+            "parse#1"
+          ]
+        },
+        {
+          "role": "lexical",
+          "reason": "ASCII word/gap/greedy quote payload/newline ownership; generated grammar owns cardinal/create/link/EOF structure.",
+          "symbols": [
+            "lex#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Focused source-probed cursor/port identity, measured geometry and preallocation resource assertions through generated source entries.",
+          "symbols": [
+            "should_reject_index_arena_growth_before_allocation_and_measure_symbol_payloads#1"
+          ]
+        }
       ]
     }
   ]

@@ -1,0 +1,5 @@
+@startflow
+Read "Read"
+s Check "Check"
+e Store "Store"
+@endflow

@@ -46,6 +46,25 @@ fn parse_text(
 ) -> Result<Vec<Vec<Run>>, ParseFailure> {
     bound("label bytes", text.len(), 16 * 1024)?;
     let tokens = creole::lex(text, budget)?;
+    reduce((text, tokens), base, budget)
+}
+pub(in crate::plantuml) fn parse_display(
+    text: &str,
+    base: RunStyle,
+    budget: &mut Budget,
+) -> Result<Vec<Vec<Run>>, RenderError> {
+    let result = (|| {
+        let tokens = creole::lex_display(text, budget)?;
+        reduce((text, tokens), base, budget)
+    })();
+    result.map_err(|error| label_failure(error, text, budget))
+}
+fn reduce(
+    input: (&str, Vec<creole::Spanned>),
+    base: RunStyle,
+    budget: &mut Budget,
+) -> Result<Vec<Vec<Run>>, ParseFailure> {
+    let (text, tokens) = input;
     admit((&tokens, tokens.capacity()), budget)?;
     let iterator = context::Checked::new(tokens, budget.control.clone())
         .map(|token| token.map(|(start, token, end)| (start, convert(token), end)));

@@ -1,0 +1,6 @@
+@startflow
+A "A"
+e B "B"
+w A
+s C "C"
+@endflow

@@ -93,7 +93,7 @@ impl Lexer {
             false
         } else if matches!(
             wrapper,
-            Wrapper::Bpm | Wrapper::Ebnf | Wrapper::Regex | Wrapper::Hcl
+            Wrapper::Flow | Wrapper::Bpm | Wrapper::Ebnf | Wrapper::Regex | Wrapper::Hcl
         ) || keyed
             || !marker
             || (wrapper == Wrapper::Chart && text.split_whitespace().next() == Some("legend"))
