@@ -12,6 +12,7 @@ mod mouse;
 mod progress;
 mod session;
 mod text;
+mod theme_reports;
 mod view;
 
 #[cfg(unix)]

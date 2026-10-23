@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use alacritty_terminal::event::Event;
-use gpui::{Context, SharedString, Task, Window};
+use gpui::{App, Context, SharedString, Task, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
@@ -17,6 +17,7 @@ use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
 use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView};
+use crate::theme::Theme;
 #[cfg(unix)]
 use crate::terminal::{DirectoryReport, DirectoryTracker, Sample};
 
@@ -61,6 +62,14 @@ const RUN_NAME_LABEL: &str = "ive.run.name";
 const RUN_URL_LABEL: &str = "ive.run.url";
 
 impl Workspace {
+    /// Tells the programs that asked, such as Claude Code, that the theme changed, so they can re-read its colours.
+    pub(super) fn report_theme(&self, cx: &App) {
+        let appearance = cx.global::<Theme>().appearance;
+        for process in self.processes.iter() {
+            process.view.report_theme(appearance);
+        }
+    }
+
     /// Starts a login shell in `checkout` (the home folder for `None`) and shows it in a new tab.
     pub fn open_terminal_in(&mut self, checkout: Option<CheckoutRef>, window: &mut Window, cx: &mut Context<Self>) -> TabId {
         let directory = checkout

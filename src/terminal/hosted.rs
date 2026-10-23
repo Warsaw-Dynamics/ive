@@ -23,6 +23,7 @@ use super::foreground::ForegroundProbe;
 use super::launch::{Launch, login_shell};
 use super::progress::{Progress, ProgressScanner};
 use super::session::{GridSize, Listener};
+use super::theme_reports::ThemeReportScanner;
 use crate::profile::Profile;
 use crate::retry::{RESTART_ATTEMPTS, RESTART_INTERVAL, retry};
 
@@ -137,6 +138,8 @@ struct Shared {
     progress: Mutex<Progress>,
     /// the program's last working-directory report
     directory: Mutex<Option<DirectoryReport>>,
+    /// whether the program asked to hear when the theme turns dark or light
+    theme_reports: AtomicBool,
 }
 
 /// The client input goes to, and whether the tab let go of it. One lock covers both, so a re-attach either lands
@@ -167,6 +170,7 @@ impl Connection {
                 hanging_up: AtomicBool::new(false),
                 progress: Mutex::new(Progress::None),
                 directory: Mutex::new(None),
+                theme_reports: AtomicBool::new(false),
             });
         let (outbox, frames) = mpsc::channel();
         let writer = shared.clone();
@@ -207,6 +211,10 @@ impl Connection {
 
     pub fn directory(&self) -> Option<DirectoryReport> {
         self.shared.directory.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+    }
+
+    pub fn wants_theme_reports(&self) -> bool {
+        self.shared.theme_reports.load(Ordering::Relaxed)
     }
 
     pub fn input(&self, bytes: &[u8]) {
@@ -298,11 +306,17 @@ struct Parsers {
     terminal: Processor<StdSyncHandler>,
     progress: ProgressScanner,
     directory: DirectoryScanner,
+    theme_reports: ThemeReportScanner,
 }
 
 impl Default for Parsers {
     fn default() -> Self {
-        Self { terminal: Processor::default(), progress: ProgressScanner::default(), directory: DirectoryScanner::new(host_name()) }
+        Self {
+            terminal: Processor::default(),
+            progress: ProgressScanner::default(),
+            directory: DirectoryScanner::new(host_name()),
+            theme_reports: ThemeReportScanner::default(),
+        }
     }
 }
 
@@ -376,6 +390,10 @@ impl Output {
         parser.terminal.advance(&mut *self.term.lock(), bytes);
         if let Some(progress) = parser.progress.scan(bytes) {
             *self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = progress;
+        }
+        // replayed output counts too: it restores what the program asked for before IVE re-attached
+        if let Some(wanted) = parser.theme_reports.scan(bytes) {
+            self.shared.theme_reports.store(wanted, Ordering::Relaxed);
         }
         if let Some(path) = parser.directory.scan(bytes) {
             let mut directory = self.shared.directory.lock().unwrap_or_else(|poisoned| poisoned.into_inner());

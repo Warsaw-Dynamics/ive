@@ -20,6 +20,7 @@ use super::foreground::ForegroundProbe;
 use super::directory::DirectoryReport;
 use super::launch::Launch;
 use super::progress::Progress;
+use super::theme_reports::theme_report;
 #[cfg(unix)]
 use super::hosted::{Connection, HostedTerminals};
 #[cfg(all(test, unix))]
@@ -28,6 +29,8 @@ use ptyhost::client::Client;
 use ptyhost::registry::SessionInfo;
 #[cfg(all(test, unix))]
 use ptyhost::registry::Registry;
+
+use crate::theme::Appearance;
 
 const SCROLLBACK_LINES: usize = 10_000;
 /// Grid used until the first layout reports the real one.
@@ -228,6 +231,21 @@ impl Session {
             Transport::InProcess(_) => None,
             #[cfg(unix)]
             Transport::Hosted(connection) => connection.directory(),
+        }
+    }
+
+    /// Tells the program the theme turned `appearance`, if it asked to hear of that; only hosted sessions know.
+    pub fn report_theme(&self, appearance: Appearance) {
+        if self.wants_theme_reports() {
+            self.write(theme_report(appearance));
+        }
+    }
+
+    fn wants_theme_reports(&self) -> bool {
+        match &self.transport {
+            Transport::InProcess(_) => false,
+            #[cfg(unix)]
+            Transport::Hosted(connection) => connection.wants_theme_reports(),
         }
     }
 

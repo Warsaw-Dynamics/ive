@@ -166,6 +166,11 @@ impl TerminalView {
         self.session.foreground().cloned()
     }
 
+    /// Tells the program the theme turned `appearance`, if it asked to hear of that.
+    pub fn report_theme(&self, appearance: theme::Appearance) {
+        self.session.report_theme(appearance);
+    }
+
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus_handle.clone()
     }
