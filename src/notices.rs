@@ -138,6 +138,8 @@ fn render_notice(index: usize, notice: Notice, theme: Theme, cx: &App) -> Div {
         .border_color(rgb(theme.error))
         .bg(rgb(theme.sidebar))
         .shadow_md()
+        // a press on a notice stays there: the terminal or file under it would take the keyboard and the click
+        .occlude()
         .text_sm()
         .child(head)
         .child(text)
@@ -149,6 +151,45 @@ mod tests {
 
     fn notices_in(dir: &std::path::Path) -> Notices {
         Notices::new(ScriptLog::new(dir.join("ive.log"), 64 * 1024))
+    }
+
+    /// A view under the notices that counts the presses reaching it, as a terminal would take them.
+    struct Under {
+        presses: std::rc::Rc<std::cell::Cell<usize>>,
+    }
+
+    impl Render for Under {
+        fn render(&mut self, _window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+            let presses = self.presses.clone();
+            let under = div().id("under").size_full().on_any_mouse_down(move |_event, _window, _cx| presses.set(presses.get() + 1));
+            div().relative().size_full().child(under).children(render(cx))
+        }
+    }
+
+    #[gpui::test]
+    fn should_keep_presses_on_a_notice_from_the_view_under_it(cx: &mut gpui::TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        cx.update(|cx| {
+            cx.set_global(Theme::of(crate::theme::Appearance::Dark));
+            let selection = crate::selectable::TextSelection::new(cx);
+            cx.set_global(selection);
+            let mut notices = notices_in(dir.path());
+            notices.add("cannot reattach terminal t1".to_owned());
+            cx.set_global(notices);
+        });
+        let presses = std::rc::Rc::new(std::cell::Cell::new(0));
+        let seen = presses.clone();
+        let (_, cx) = cx.add_window_view(|_window, _cx| Under { presses: seen });
+        cx.run_until_parked();
+        let size = cx.update(|window, _cx| window.viewport_size());
+
+        // when
+        let on_notice = gpui::point(size.width - px(100.), size.height - px(30.));
+        cx.simulate_event(gpui::MouseDownEvent { button: gpui::MouseButton::Left, position: on_notice, modifiers: gpui::Modifiers::default(), click_count: 1, first_mouse: false });
+
+        // then
+        assert_eq!(presses.get(), 0);
     }
 
     #[test]
