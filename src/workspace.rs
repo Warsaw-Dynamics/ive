@@ -234,6 +234,7 @@ impl Workspace {
             cx.observe_window_appearance(window, |_workspace, window, cx| {
                 theme::apply(window.appearance(), cx);
             }),
+            cx.observe_global::<theme::Theme>(|workspace, cx| workspace.report_theme(cx)),
             cx.observe_window_activation(window, |workspace, window, cx| {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
