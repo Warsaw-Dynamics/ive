@@ -400,13 +400,23 @@ impl<'b> Builder<'b> {
         } = value;
         let scope = self.scope();
         self.budget
-            .charge(self.model.nodes.len() + name.len() + 1)
+            .charge(self.model.nodes.len() + name.len().saturating_mul(2) + 1)
             .map_err(ParseFailure::terminal)?;
         if name.contains('.') || (name.contains(':') && matches!(spelling, Spelling::Identifier)) {
             return Err(ParseFailure::unsupported(
                 span,
                 "qualified state declaration",
             ));
+        }
+        if matches!(spelling, Spelling::Identifier)
+            && !name.chars().all(|ch| ch.is_alphanumeric() || ch == '_')
+        {
+            self.budget
+                .text(name.len().saturating_mul(4).saturating_add(96))?;
+            return Err(ParseFailure {
+                span,
+                kind: super::parser::error::FailureKind::Unsupported(format!("state declaration identifier {name:?} requires letters, numbers or underscores").into()),
+            });
         }
         if self
             .model

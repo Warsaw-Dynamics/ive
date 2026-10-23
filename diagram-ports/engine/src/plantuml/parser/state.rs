@@ -473,6 +473,28 @@ mod tests {
     }
 
     #[test]
+    fn should_keep_deep_history_value_syntax_out_of_unquoted_declaration_names() {
+        // given
+        for body in ["state history*", "state history* as \"Display\""] {
+            // when
+            let error = model(body).unwrap_err();
+            // then
+            assert!(matches!(&error, RenderError::UnsupportedFeature(_)));
+            let detail = error.to_string();
+            assert!(
+                detail.contains("history*") && detail.contains("line 2, column 1"),
+                "{detail}"
+            );
+        }
+        // when
+        let quoted = model("state \"history*\"").unwrap();
+        let stereotype = model("state h <<HiStOrY*>>").unwrap();
+        // then
+        assert_eq!(quoted.nodes[0].name, "history*");
+        assert_eq!(stereotype.nodes[0].kind, Kind::DeepHistory);
+    }
+
+    #[test]
     fn should_bound_region_and_typed_path_arenas_and_reject_invalid_separator_suffixes() {
         // given
         for body in [
