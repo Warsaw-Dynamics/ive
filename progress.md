@@ -19,12 +19,12 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `435d73c` — tested Chen and JSON/HCL parser routes added to UML/activity; root full tests/baseline/native checks pass |
+| Latest integrated product checkpoint | `6664c86` — tested timing/Gantt routes added; 505 combined focused tests pass; root full/native checks pending for this newer head |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | YAML and Salt in isolated worktrees; tested timing/Gantt checkpoint awaits central integration |
+| Current implementers | Salt and nwdiag in isolated worktrees; tested YAML checkpoint awaits integration |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate tested timing/Gantt, finish YAML and Salt, then continue remaining grammar queue |
+| Next implementation | Integrate tested YAML, finish Salt and nwdiag, then continue remaining grammar queue |
 | Latest independent controller checks | At `435d73c`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build and five native class/activity/Chen/JSON/HCL captures plus five empty-PATH/no-display SVG exports pass; zero fallbacks and no test viewer survivors. Agent combined strict Clippy/fmt, private generator14 and 220 MIT/43 fixture/43 module audit pass. Earlier `0c5177e` completed all16 gates. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -185,10 +185,10 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 8 | Structured activity | INTEGRATEDe9c1354 from tested1b0c234 — combined focused suite375, strict Clippy/fmt and private generator11 pass; root full serial workspace tests and seven worker faults pass; broad review deferred |
 | 9 | Mindmap/WBS/files/board | DONE —4a31cb7 integrated0c5177e; syntax/label limit fix reviewed, full combined gates/native pass |
 | 10 | JSON/HCL | INTEGRATED435d73c from tested53dbad8 —454 combined focused tests/private generator14/source audit, root full/baseline/native checks pass; depth64 positive/depth65 negative and exact retained-byte controls pass; broad review deferred |
-| 11 | PlantUML YAML | IN PROGRESS — isolated worktree from tested Task10 head |
-| 12 | Timing/Gantt/assigned defects | TESTEDf5f07f9 —414 focused tests, strict Clippy/fmt, private generator13 and source audit pass; central integration pending |
+| 11 | PlantUML YAML | TESTED349ccb5 —375 focused tests, strict Clippy/fmt, private generator12 and source audit pass; central integration pending |
+| 12 | Timing/Gantt/assigned defects | INTEGRATED6664c86 from testedf5f07f9 —505 combined focused tests, strict Clippy/fmt, private generator16 and source audit; root full serial workspace tests and seven worker faults pass; native/baseline checks pending on this head |
 | 13 | Salt | IN PROGRESS — isolated worktree from integrated Chen/data head; generated table/row/cell/widget grammar and first private tests pass |
-| 14 | nwdiag/contextual server-name repair | Pending |
+| 14 | nwdiag/contextual server-name repair | IN PROGRESS — isolated worktree from integrated timing/Gantt head |
 | 15 | Packetdiag | Pending |
 | 16 | Creole nesting | Pending |
 | 17 | Legacy-syntax removal/inventory/integration review | Pending |
