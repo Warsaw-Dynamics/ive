@@ -20,12 +20,12 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `d3baf26` — EBNF/regex joined charts and prior families; 761 ordinary Rust tests+seven worker faults, source/generator checks and railroad native captures pass; baseline selector repair pending |
+| Latest integrated product checkpoint | `3071513` — native BPM joined charts/railroad; 777 ordinary Rust tests+seven worker faults and source/generator checks pass; BPM native/baseline checks pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | ASCII Git and wire in isolated worktrees; tested BPM checkpoint awaits integration |
+| Current implementers | ASCII Git and wire in isolated worktrees; BPM integrated, directional flow next |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Integrate tested legacy BPM, complete ASCII Git and wire, then flow/standalone Creole/advanced state; broad review stays at the end |
+| Next implementation | Complete ASCII Git and wire, start directional flow, then standalone Creole/advanced state; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -244,7 +244,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
 | 4 | 3M ASCII Git — ACTIVE | Generated raw-grid parser/native topology passes327 engine units+six public controls and sparse/negative/bounds/cancel cases; natural original merge input found disconnected after correcting SVG path count, so two-parent oracle admission remains under investigation. Frozen43 baseline selector RED→GREEN5; source/strict/final commit pending |
 | 5 | 3N wire — ACTIVE | Generated offside grammar/typed block placement passes first original nested/horizontal/vertical controls; table/depth bounds measured, wider geometry/source/strict checks pending |
-| 6 | 3O legacy BPM — TESTED90ed6dd | 492 focused Rust, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; central integration/native pending |
+| 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; native/baseline pending |
 | 7 | 3P directional flow | Cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
 | 8 | 3Q standalone Creole | Real document paragraphs/blank lines/styled runs, not one universal label |
 | 9 | 3B2 advanced state | Concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
