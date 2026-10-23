@@ -139,35 +139,22 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
     for (offset, raw) in source.trim_start_matches('\u{feff}').lines().enumerate() {
         budget.checkpoint()?;
         let line = offset + 1;
-        if body != TextBody::None {
+        if (body != TextBody::None || (state == 1 && !graph_grammar && !block_comment))
+            && let Some(next) = body.consume_raw(raw)
+        {
             if raw.trim_start().starts_with('!') {
                 return Err(unsupported(line, raw));
             }
             budget.text(raw.len())?;
             let text = if body == TextBody::Note && raw.trim() == "end note" {
-                body = TextBody::None;
                 "end note".to_owned()
+            } else if body == TextBody::None {
+                raw.trim_start().to_owned()
             } else {
-                if body == TextBody::Action && raw.trim_end().ends_with(';') {
-                    body = TextBody::None;
-                }
                 raw.to_owned()
             };
+            body = next;
             lines.push(Line { number: line, text });
-            continue;
-        }
-        if state == 1 && !graph_grammar && !block_comment && raw.trim_start().starts_with(':') {
-            budget.text(raw.len())?;
-            let statement = Line {
-                number: line,
-                text: raw.trim_start().to_owned(),
-            };
-            body = if statement.text.trim_end().ends_with(';') {
-                TextBody::None
-            } else {
-                TextBody::Action
-            };
-            lines.push(statement);
             continue;
         }
         let text = strip_comments(raw, &mut block_comment, budget)?
@@ -217,6 +204,26 @@ pub(super) enum TextBody {
     None,
     Action,
     Note,
+}
+
+impl TextBody {
+    /// Returns the next body state when this row belongs to raw note/action text.
+    pub fn consume_raw(self, raw: &str) -> Option<Self> {
+        match self {
+            Self::Note => Some(if raw.trim() == "end note" {
+                Self::None
+            } else {
+                Self::Note
+            }),
+            Self::Action => Some(if raw.trim_end().ends_with(';') {
+                Self::None
+            } else {
+                Self::Action
+            }),
+            Self::None if raw.trim_start().starts_with(':') => Self::Action.consume_raw(raw),
+            Self::None => None,
+        }
+    }
 }
 
 pub(super) fn text_body(line: &Line) -> TextBody {

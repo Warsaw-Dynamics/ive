@@ -315,3 +315,81 @@ fn should_expand_raw_note_and_action_rows_before_comment_normalization() {
         assert!(text.contains(&"' Ready".into()), "{text:?}");
     }
 }
+
+#[test]
+fn should_ignore_block_commented_wrappers_before_definitions() {
+    // given
+    let source = "@startuml\n/'\n@enduml\n'/\n!define X Ready\nA -> B : X\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"Ready".into()));
+}
+
+#[test]
+fn should_recognize_comment_normalized_opening_wrappers() {
+    // given
+    let source = "@startuml /' wrapper comment '/\n!define X Ready\nA -> B : X\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"Ready".into()));
+}
+
+#[test]
+fn should_expand_wrapper_looking_raw_note_rows() {
+    // given
+    let source =
+        "@startuml\n!define X Ready\nparticipant A\nnote over A\n@enduml X\nend note\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"@enduml Ready".into()), "{text:?}");
+}
+
+#[test]
+fn should_keep_comment_looking_action_openings_raw() {
+    // given
+    let source =
+        "@startuml\n!define X Ready\nstart\n:opening /' literal\n' X\nending;\nstop\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"' Ready".into()), "{text:?}");
+    assert!(text.contains(&"opening /' literal".into()), "{text:?}");
+}
+
+#[test]
+fn should_keep_raw_ownership_until_note_and_action_terminators() {
+    // given
+    for body in [
+        "participant A\nnote over A\n@startuml X\n@enduml\n' X\nend note\nA -> B : X",
+        "start\n:opening /' literal\n@enduml X\n' X\nending;  \n:next X;\nstop",
+        "start\n:one /' literal X;  \n/'\n@enduml\n'/\n:next X;\nstop",
+    ] {
+        let source = format!("@startuml\n!define X Ready\n{body}\n@enduml");
+        // when
+        let text = labels(&source);
+        // then
+        assert!(text.iter().any(|label| label.contains("Ready")), "{text:?}");
+        assert!(text.iter().all(|label| !label.contains('X')), "{text:?}");
+    }
+}
+
+#[test]
+fn should_preserve_literal_data_wrappers_and_strict_generated_admission() {
+    // given
+    let data = "@startyaml\n!define X Ready\nlabel: '@enduml X'\n@endyaml";
+    // when
+    let text = labels(data);
+    // then
+    assert!(text.contains(&"@enduml Ready".into()), "{text:?}");
+    for body in [
+        "!define END @enduml\nEND\nA -> B",
+        "!define START @startuml\nSTART\nA -> B",
+        "!define IMAGE <img:x>\nparticipant A\nnote over A\nIMAGE\nend note",
+        "!define X Ready\nA -> B : X\n@enduml\n!define Y later",
+    ] {
+        assert!(render(&format!("@startuml\n{body}\n@enduml"), &options()).is_err());
+    }
+}

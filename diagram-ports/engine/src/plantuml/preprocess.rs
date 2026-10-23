@@ -53,15 +53,15 @@ impl Processor<'_> {
                 line: index + 1,
                 column: 1,
             };
-            let trimmed = raw.trim().trim_start_matches('\u{feff}');
             self.source_comment = block;
-            let raw_text = body != super::source::TextBody::None;
-            self.literal_input = raw_text || raw_data;
-            if (body == super::source::TextBody::Note && trimmed == "end note")
-                || (body == super::source::TextBody::Action && raw.trim_end().ends_with(';'))
+            let mut raw_text = false;
+            if (body != super::source::TextBody::None || (inside && !graph && !block && !raw_data))
+                && let Some(next) = body.consume_raw(raw)
             {
-                body = super::source::TextBody::None;
+                raw_text = true;
+                body = next;
             }
+            self.literal_input = raw_text || raw_data;
             let classified =
                 if self.literal_input || (!block && raw.trim_start().starts_with("!define")) {
                     std::borrow::Cow::Borrowed(raw)
@@ -72,23 +72,27 @@ impl Processor<'_> {
                         self.budget,
                     )?)
                 };
-            let command = classified.trim();
-            if command.eq_ignore_ascii_case("<style>") {
+            let command = classified.trim().trim_start_matches('\u{feff}');
+            if !self.literal_input && command.eq_ignore_ascii_case("<style>") {
                 sheet = true;
             }
-            if command.eq_ignore_ascii_case("</style>") {
+            if !self.literal_input && command.eq_ignore_ascii_case("</style>") {
                 sheet = false;
             }
-            if trimmed.eq_ignore_ascii_case("@startuml")
-                || matches!(
-                    trimmed,
-                    "@startuml" | "@startmindmap" | "@startwbs" | "@startjson" | "@startyaml"
-                )
+            if !self.literal_input
+                && (command.eq_ignore_ascii_case("@startuml")
+                    || matches!(
+                        command,
+                        "@startmindmap" | "@startwbs" | "@startjson" | "@startyaml"
+                    ))
             {
                 inside = true;
-                raw_data = matches!(trimmed, "@startjson" | "@startyaml");
+                raw_data = matches!(command, "@startjson" | "@startyaml");
                 self.direct(physical, span.slice(0..physical.len()))?;
-            } else if trimmed.eq_ignore_ascii_case("@enduml") || trimmed.starts_with("@end") {
+            } else if !raw_text
+                && (command.eq_ignore_ascii_case("@enduml")
+                    || matches!(command, "@endmindmap" | "@endwbs" | "@endjson" | "@endyaml"))
+            {
                 inside = false;
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if command.is_empty() {
@@ -121,7 +125,8 @@ impl Processor<'_> {
                 let start = self.document.text.len();
                 self.expand(raw, span, None)?;
                 let expanded = self.document.text[start..].trim_start();
-                if (expanded.starts_with('!') || expanded.starts_with('@'))
+                if !raw_text
+                    && (expanded.starts_with('!') || expanded.starts_with('@'))
                     && expanded != raw.trim_start()
                 {
                     return Err(self.document.map_error(
