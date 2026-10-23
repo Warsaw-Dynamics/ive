@@ -20,7 +20,7 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `3071513` — native BPM joined charts/railroad; 777 ordinary Rust tests+seven worker faults and source/generator checks pass; BPM native/baseline checks pending |
+| Latest integrated product checkpoint | `3071513` — native BPM joined charts/railroad; 777 ordinary Rust tests+seven worker faults, source/generator checks and BPM native capture pass; baseline selector repair pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
 | Current implementers | ASCII Git and wire in isolated worktrees; BPM integrated, directional flow next |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
@@ -244,8 +244,8 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
 | 4 | 3M ASCII Git — ACTIVE | Generated raw-grid parser/native topology passes327 engine units+six public controls and sparse/negative/bounds/cancel cases; natural original merge input found disconnected after correcting SVG path count, so two-parent oracle admission remains under investigation. Frozen43 baseline selector RED→GREEN5; source/strict/final commit pending |
 | 5 | 3N wire — ACTIVE | Generated offside grammar/typed block placement passes first original nested/horizontal/vertical controls; table/depth bounds measured, wider geometry/source/strict checks pending |
-| 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; native/baseline pending |
-| 7 | 3P directional flow | Cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
+| 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; root native4/zero-fallback capture/headless export passes; baseline selector repair pending |
+| 7 | 3P directional flow — ACTIVE | Isolated implementation from BPM head; cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
 | 8 | 3Q standalone Creole | Real document paragraphs/blank lines/styled runs, not one universal label |
 | 9 | 3B2 advanced state | Concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
 | 10 | 4B final evidence/tooling/docs | Coherent final corpus/oracles, honest coverage, audit hardening, documentation and durable evidence archive |
