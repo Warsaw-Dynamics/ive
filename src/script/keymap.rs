@@ -234,6 +234,8 @@ pub enum Builtin {
     HubToggleContent,
     HubToggleRegex,
     HubToggleWholeWord,
+    /// what a contents search covers: all, files only, output only
+    HubCycleSearchIn,
 }
 
 impl Builtin {
@@ -271,7 +273,8 @@ impl Builtin {
             | Self::HubBack
             | Self::HubToggleContent
             | Self::HubToggleRegex
-            | Self::HubToggleWholeWord => scope == Scope::Hub,
+            | Self::HubToggleWholeWord
+            | Self::HubCycleSearchIn => scope == Scope::Hub,
             Self::SendPathsToTerminal
             | Self::CopyRelativePath
             | Self::CopyFileName

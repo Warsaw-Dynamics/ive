@@ -126,6 +126,7 @@ pub fn init(config) {
         // a contents search: regex, whole words
         #{ key: "r", mods: "ALT", action: act::HubToggleRegex, scope: "hub" },
         #{ key: "w", mods: "ALT", action: act::HubToggleWholeWord, scope: "hub" },
+        #{ key: "p", mods: "ALT", action: act::HubCycleSearchIn, scope: "hub" },
         #{ key: find_in_files.key, mods: find_in_files.mods, action: act::HubToggleContent, scope: "hub" },
         // Ctrl+Shift+E again: only the changed files
         #{ key: "e", mods: "SECONDARY|SHIFT", action: act::HubToggleChanged, scope: "hub" },

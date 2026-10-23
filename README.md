@@ -125,8 +125,8 @@ lists **Recent** (every tab shown, newest first, open or closed: a closed one is
 every open project, and their scratches (`scratches/<name>`), as fzf does: fuzzy, smart case, `'exact`, `^prefix`,
 `suffix$`, `!not`, space for AND and `a | b` for OR, the matched characters highlighted; the counter at the right of
 the query reads `matched/total · ms`. `file.rs:42` opens the file at line 42, marked. The preview on the right
-shows the selected row: a file's lines, a change's diff, a process's last lines, a run configuration's command or
-its run's output, a worktree's summary.
+shows the selected row: a file in the editor's view (coloured, read-only), a change's diff, a process's terminal as it
+draws it (its last lines), a run configuration's command or its run's output, a worktree's summary.
 
 A row of one worktree carries its colour and name and opens there; a file or run configuration in several says
 `N worktrees`, and Enter asks which, most recently used first (a worktree is used when one of its tabs is shown,
@@ -147,16 +147,25 @@ Enter is pressed in one of its terminals or a run starts in it), so Enter, Enter
 | Ctrl+Shift+E again | only the changed files; the query filters them |
 | Ctrl+Shift+F (Cmd+Shift+F on macOS) | between searching file names and file contents |
 | Alt+R, Alt+W | a contents search's query as a regex; whole words only |
+| Alt+P | what a contents search covers: files and processes' output, files only, output only |
 | Escape | from the worktree question back to the list; else clear the query; else back to the tab shown before |
 
 **Contents.** Ctrl+Shift+F in the hub, or Find in Files from anywhere, searches the files' lines instead of their
 names: plain text from 2 characters, smart case (any capital makes it exact), Alt+R for a regex and Alt+W for whole
-words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line, marked, and the
-preview shows the lines around it. It searches the hub's scope (the worktrees of All, a project or a worktree, and
-their scratches), or the files and folders Find in Files was picked on, named above the rows (`Contents of src +1`);
-Backspace on an empty query drops them for the scope. Gitignored and excluded files are left out unless Alt+I, but a
-folder picked in the tree is searched even when it is ignored itself. Files over 8 MB and binary files are skipped,
-and the list stops at 2,000 lines. The counter reads `matches in files · ms`.
+words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line with the match
+selected, and the preview shows the file around it, scrolled sideways to the match. It searches the hub's scope (the
+worktrees of All, a project or a worktree, and their scratches), or the files and folders Find in Files was picked on,
+named above the rows (`Contents of src +1`); Backspace on an empty query drops them for the scope. Gitignored and
+excluded files are left out unless Alt+I, but a folder picked in the tree is searched even when it is ignored itself.
+Files over 8 MB and binary files are skipped.
+
+It also searches what the processes of the scope printed (running ones, and runs that ended, scrollback included),
+listed under **Output** as `process:line`; a process in no worktree only in All. The preview draws the terminal
+around the line, the match marked; Enter shows the process's tab scrolled to the line with the match selected, or at
+its bottom when the line has left the scrollback. Alt+P cycles what is searched: files and output, files only, output
+only; a search of files picked in the tree searches files only. The list stops at 2,000 lines, output first. The
+counter reads `matches in files and processes · ms`. The lines stay as found: files changing on disk or processes
+printing do not search again, a change to the query does.
 
 Prefixes: `>` actions (New terminal, New scratch, Git log, project overview, Close Other Tabs, Settings, theme), `@`
 processes and run configurations (Enter shows a configuration's live run, or starts one), `#` worktrees and the
@@ -515,6 +524,7 @@ async fn restart(context) {
 | `act::OpenTerminalHere`, `act::RevealInFileManager`, `act::OpenInNewWindow` | tree, window, menus | a terminal in the folder (a file: its folder); the OS file manager with it selected; the file in a window of its own |
 | `act::OpenWithDefaultApp`, `act::OpenInBrowser`, `act::RunFile`, `act::GitShowDiff`, `act::GitCompareWithBase`, `act::GitHistory`, `act::GitIgnore`, `act::CompareFiles` | menus | as the tree menu's items of those names |
 | `act::HubToggleContent`, `act::HubToggleRegex`, `act::HubToggleWholeWord` | hub | file names or contents; a contents query as a regex; whole words |
+| `act::HubCycleSearchIn` | hub | what a contents search covers: files and output, files only, output only (Alt+P) |
 | `act::ActivateRow`, `act::ToggleRow` | tree | the row's click (a project's overview, open the file, toggle a worktree or folder); expand or collapse it |
 | `act::ActivateRowToKeep` | tree | the row's click, its project tab kept rather than temporary (middle click by default); on other rows the same as `ActivateRow` |
 | `act::ToggleRowSelection`, `act::ExtendRowSelection` | tree | Ctrl+click (Cmd on macOS) adds a file or folder to the selection or takes it out; Shift+click selects the files and folders from the last clicked row; dragging a selected row onto a terminal types all their paths |

@@ -12,6 +12,7 @@ mod protocol;
 mod saving;
 mod state;
 
+use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -117,6 +118,7 @@ impl Panel {
             Cast::Parsed { target, revision, syntax } => self.parsed(target, revision, syntax, cx),
             Cast::Command(command) => self.run(command, cx),
             Cast::RevealLine(line) => self.reveal_line(line, cx),
+            Cast::RevealRange { line, bytes } => self.reveal_range(line, bytes, cx),
             Cast::MarkDeleted => self.mark_deleted(cx),
             Cast::Saved { revision, source } => self.saved(revision, source, cx),
             Cast::SaveFailed { revision, reason } => self.save_failed(revision, reason),
@@ -593,6 +595,14 @@ impl Panel {
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.reveal_line(line, cx)),
             Body::Diff(diff) => diff.update(cx, |diff, cx| diff.reveal_hunk_at(line, cx)),
             Body::Empty => {}
+        }
+    }
+
+    fn reveal_range(&self, line: usize, bytes: Range<usize>, cx: &mut Context<Self>) {
+        match &self.body {
+            Body::View(view) => view.update(cx, |view, cx| view.reveal_range(line, bytes, cx)),
+            Body::Edit(editor) => editor.update(cx, |editor, cx| editor.reveal_range(line, bytes, cx)),
+            Body::Diff(_) | Body::Empty => self.reveal_line(line, cx),
         }
     }
 

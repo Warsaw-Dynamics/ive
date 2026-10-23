@@ -13,11 +13,14 @@ use crate::hub::history::{History, Shown, TabIdentity};
 use crate::hub::matcher::Query;
 use crate::hub::model::{Effect, HubState, Mode, mode};
 use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Root, Search};
-use crate::hub::rows::{List, Located, content_list, list, thousands};
+use crate::hub::output::{self, OutputHit, OutputLines, Taken, in_scope, search_output};
+use crate::hub::rows::{List, Located, Places, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
 use codeview::diff::Headers;
-use codeview::panel::Cast;
+use codeview::document::Document;
+use codeview::panel::{Cast, Content, Panel};
+use codeview::syntax::Language;
 use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
@@ -25,8 +28,8 @@ use crate::git::repo::GitError;
 use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
-use crate::hub::preview::{PROCESS_PREVIEW_LINES, read_text};
-use crate::hub::view::{Drawn, HubTab, Preview, escape_does, render_hub};
+use crate::hub::preview::{Reveal, reveal_cast};
+use crate::hub::view::{Drawn, HubTab, Preview, ReadOutput, escape_does, render_hub};
 use crate::run::file::ConfigKind;
 use crate::hub::{corpus::Corpus, key_label};
 use crate::icons;
@@ -47,14 +50,20 @@ use crate::tabs::TabId;
 use crate::text_input::{self, TextInput, TextInputEvent};
 
 const QUERY_TARGET: &str = "hub-query";
+/// Lines of a terminal laid out for its preview: more than a preview pane is tall.
+const TERMINAL_PREVIEW_ROWS: usize = 120;
 const PLACEHOLDER: &str = "Files, or > actions, @ processes, # worktrees, : scope";
 const NEW_TERMINAL_PLACEHOLDER: &str = "New terminal in… type a project, worktree or branch";
 
 /// What the selected row's preview needs.
 enum Wanted {
     Ready(Preview),
-    Text { title: String, path: PathBuf, line: Option<usize> },
+    File { title: String, path: PathBuf, reveal: Reveal },
     Diff { title: String, dir: PathBuf, path: String },
+    /// a process's last lines, drawn as its terminal draws them
+    Process(ProcessId),
+    /// a line of a process's output, found again
+    Output(Box<OutputHit>),
 }
 
 impl Wanted {
@@ -62,15 +71,17 @@ impl Wanted {
     fn key(&self) -> String {
         match self {
             Self::Ready(_) => "ready".to_owned(),
-            Self::Text { path, line, .. } => format!("text:{}:{line:?}", path.display()),
+            Self::File { path, reveal, .. } => format!("file:{}:{reveal:?}", path.display()),
             Self::Diff { dir, path, .. } => format!("diff:{}:{path}", dir.display()),
+            Self::Process(process) => format!("process:{}", process.value()),
+            Self::Output(hit) => format!("output:{}:{}", hit.process.value(), hit.line),
         }
     }
 }
 
 /// A preview read off the UI thread.
 enum Loaded {
-    Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
+    File { title: String, document: Document, reveal: Reveal },
     Diff { title: String, dir: PathBuf, diff: FileDiff },
     Message(String),
 }
@@ -200,6 +211,7 @@ impl Workspace {
             input,
             found: None,
             content: None,
+            read_output: ReadOutput::Unread,
             searched: self.corpus.clone(),
             search: None,
             generations: Generations::default(),
@@ -373,7 +385,8 @@ impl Workspace {
             };
             Some(checkout.join(relative))
         };
-        let text = |path: PathBuf, line: Option<usize>| Wanted::Text { title: path.display().to_string(), path, line };
+        let file = |path: PathBuf, reveal: Reveal| Wanted::File { title: path.display().to_string(), path, reveal };
+        let text = |path: PathBuf, line: Option<usize>| file(path, Reveal::of_line(line));
         let message = |message: String| Wanted::Ready(Preview::Message(message));
         match &item.target {
             Target::File { path, .. } => in_checkout(path).map_or_else(|| message(item.title.clone()), |path| text(path, *line)),
@@ -389,6 +402,7 @@ impl Workspace {
             },
             Target::Change { checkout, path } => Wanted::Diff { title: format!("{path} · uncommitted"), dir: checkout.path.clone(), path: path.clone() },
             Target::Process(process) => self.process_preview(*process),
+            Target::Output(hit) => Wanted::Output(hit.clone()),
             Target::RunConfig { folder, key, .. } => self.config_preview(item, folder, key, sources),
             Target::Worktree(checkout) => self.worktree_preview(checkout, sources),
             Target::Line(number) => match sources.back.as_ref().and_then(|back| self.tabs.get(back.tab)) {
@@ -399,15 +413,30 @@ impl Workspace {
             Target::Action(_) | Target::Scope(_) | Target::Branch { .. } => message(format!("{} · {}", item.title, item.detail)),
             Target::NewTerminal(checkout) => self.new_terminal_preview(checkout),
             Target::NewWorktreeTerminal { project, branch, remote } => self.new_worktree_preview(project, branch, remote.as_deref()),
-            Target::Hit { path, line } => text(path.clone(), usize::try_from(*line).ok()),
+            Target::Hit { path, line, bytes } => file(path.clone(), Reveal::Range { line: *line as usize, bytes: bytes.clone() }),
         }
     }
 
     fn process_preview(&self, id: ProcessId) -> Wanted {
-        match self.processes.get(id) {
-            Some(process) => Wanted::Ready(Preview::Lines { title: process.title(), lines: process.view.output_text(Some(PROCESS_PREVIEW_LINES)), mono: true }),
-            None => Wanted::Ready(Preview::Message("This process has ended".to_owned())),
-        }
+        Wanted::Process(id)
+    }
+
+    /// A process's terminal, at its bottom or at a line of its output; drawn again each time, as it prints.
+    fn terminal_preview(&self, wanted: Wanted, cx: &App) -> Wanted {
+        let palette = cx.global::<crate::theme::Theme>().terminal;
+        let ended = || Preview::Message(output::PROCESS_ENDED.to_owned());
+        let preview = match wanted {
+            Wanted::Process(id) => self.processes.get(id).map_or_else(ended, |process| Preview::Terminal {
+                title: process.title(),
+                snapshot: process.view.snapshot_bottom(TERMINAL_PREVIEW_ROWS, &palette),
+            }),
+            Wanted::Output(hit) => self.processes.get(hit.process).map_or_else(ended, |process| {
+                let found = process.view.snapshot_found(|rows| output::frame_at(Some(rows), &hit), TERMINAL_PREVIEW_ROWS, &palette);
+                found.map_or_else(|why| Preview::Message(why.to_owned()), |snapshot| Preview::Terminal { title: process.title(), snapshot })
+            }),
+            other => return other,
+        };
+        Wanted::Ready(preview)
     }
 
     /// A configuration's live run's last lines there, else its command.
@@ -530,6 +559,7 @@ impl Workspace {
     /// Shows `wanted` in the preview, reading a file or a diff off the UI thread; the same row again keeps it.
     fn show_hub_preview(&mut self, id: TabId, wanted: Option<Wanted>, cx: &mut Context<Self>) {
         let key = wanted.as_ref().map(Wanted::key);
+        let wanted = wanted.map(|wanted| self.terminal_preview(wanted, cx));
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
             return;
         };
@@ -543,15 +573,17 @@ impl Workspace {
             return;
         };
         let reading = match wanted {
+            // `terminal_preview` drew them above
+            Wanted::Process(_) | Wanted::Output(_) => return,
             Wanted::Ready(preview) => {
                 hub.preview = preview;
                 hub.preview_task = None;
                 return;
             }
-            Wanted::Text { title, path, line } => cx.background_executor().spawn(async move {
-                match read_text(&path, line.and_then(|line| u32::try_from(line).ok())) {
-                    Ok((first, lines)) => Loaded::Text { title, first, lines, line },
-                    Err(error) => Loaded::Message(error),
+            Wanted::File { title, path, reveal } => cx.background_executor().spawn(async move {
+                match Document::open(&path) {
+                    Ok(document) => Loaded::File { title, document, reveal },
+                    Err(error) => Loaded::Message(format!("cannot read {}: {error}", path.display())),
                 }
             }),
             Wanted::Diff { title, dir, path } => cx.background_executor().spawn(async move {
@@ -573,7 +605,7 @@ impl Workspace {
 
     fn hub_preview_loaded(&mut self, id: TabId, key: Option<String>, loaded: Loaded, cx: &mut Context<Self>) {
         let preview = match loaded {
-            Loaded::Text { title, first, lines, line } => Preview::Text { title, first, lines, line },
+            Loaded::File { title, document, reveal } => Preview::File { title, panel: file_panel(document, &reveal, cx) },
             Loaded::Message(message) => Preview::Message(message),
             Loaded::Diff { title, dir, diff } => {
                 let origin = DiffOrigin { dir, sides: Sides::Uncommitted };
@@ -618,8 +650,10 @@ impl Workspace {
         };
         let ticket = hub.generations.next();
         if let Some(query) = hub.state.content_query() {
-            let roots = self.content_roots(id);
-            return self.start_content_search(id, ContentSearch { roots, query, ticket }, cx);
+            let state = hub.state.clone();
+            let roots = if state.files_searched() { self.content_roots(id) } else { Vec::new() };
+            let outputs = if state.output_searched() { self.read_output(id, &state.scope) } else { Arc::default() };
+            return self.start_content_search(id, ContentSearch { roots, outputs, query, ticket }, cx);
         }
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
             return;
@@ -661,15 +695,18 @@ impl Workspace {
         // the last query's lines are not this one's: "Searching…" until the first of these arrive
         hub.content = None;
         let ignored = if hub.state.excluded { Ignored::Searched } else { Ignored::Skipped };
-        let ContentSearch { roots, query, ticket } = search;
+        let ContentSearch { roots, outputs, query, ticket } = search;
         let (sender, mut found) = futures::channel::mpsc::unbounded::<ContentFound>();
         let scanned = ticket.clone();
         let scan = cx.background_executor().spawn(async move {
-            let search = Search { roots: &roots, query: &query, ignored, excluded: &excluded };
+            // output is in memory: its lines come first, the files fill the rest of the limit
+            let (output, limited) = query.compile().map_or((Vec::new(), false), |regex| search_output(&outputs, &regex, content::MAX_MATCHES));
+            let search = Search { roots: &roots, limit: content::MAX_MATCHES - output.len(), query: &query, ignored, excluded: &excluded };
+            let with_output = |found: &ContentFound| ContentFound { output: output.clone(), limited: found.limited || limited, ..found.clone() };
             let sending = std::sync::Mutex::new(sender.clone());
-            let done = content::search(&search, &scanned, |partial| drop(sending.lock().map(|sender| sender.unbounded_send(partial.clone()))));
+            let done = content::search(&search, &scanned, |partial| drop(sending.lock().map(|sender| sender.unbounded_send(with_output(partial)))));
             if let Some(done) = done {
-                drop(sender.unbounded_send(done));
+                drop(sender.unbounded_send(with_output(&done)));
             }
         });
         hub.search = Some(cx.spawn(async move |this, cx| {
@@ -717,6 +754,31 @@ impl Workspace {
         roots
     }
 
+    /// The output a contents search of `scope` searches: what the hub read a moment ago, else read now.
+    fn read_output(&mut self, id: TabId, scope: &HubScope) -> Arc<Vec<OutputLines>> {
+        let now = Instant::now();
+        if let Some(Tab::Hub(hub)) = self.tabs.get(id)
+            && let ReadOutput::Read(taken) = &hub.read_output
+            && taken.reusable(scope, now)
+        {
+            return taken.outputs();
+        }
+        let taken = Taken::new(scope.clone(), now, self.output_lines(scope));
+        let outputs = taken.outputs();
+        if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) {
+            hub.read_output = ReadOutput::Read(taken);
+        }
+        outputs
+    }
+
+    /// The output of the processes in `scope`, of the projects shown, for a contents search off the UI thread.
+    fn output_lines(&self, scope: &HubScope) -> Vec<OutputLines> {
+        let shown = self.shown_projects();
+        let searched = |checkout: Option<&CheckoutRef>| in_scope(scope, checkout) && checkout.is_none_or(|checkout| shown.contains(&checkout.project));
+        let processes = self.processes.iter().filter(|process| searched(process.checkout.as_ref()));
+        processes.map(|process| OutputLines { process: process.id, title: process.title(), lines: process.view.output_text(None) }).collect()
+    }
+
     /// A contents search's file in its checkout, for its row.
     fn locate_hit(&self, path: &Path) -> Located {
         match self.checkout_ref_of(path) {
@@ -738,7 +800,10 @@ impl Workspace {
 
     pub(super) fn hub_list(&self, hub: &HubTab, sources: &Sources) -> List {
         let mut list = match mode(&hub.state) {
-            Mode::Content => content_list(&hub.state, hub.content.as_ref(), &|path| self.locate_hit(path)),
+            Mode::Content => {
+                let places = Places { file: &|path| self.locate_hit(path), process: &|process| self.processes.get(process).and_then(|process| process.checkout.clone()) };
+                content_list(&hub.state, hub.content.as_ref(), &places)
+            }
             _ => list(&hub.state, sources, hub.found.as_ref().map(|found| (&*hub.searched, found)), &WorkspaceStates(self)),
         };
         if hub.notice.is_some() {
@@ -785,6 +850,7 @@ impl Workspace {
                 (key(Builtin::HubToggleRegex), if state.matching.is_regex() { "regex on" } else { "regex" }),
                 (key(Builtin::HubToggleWholeWord), if state.matching.is_whole_word() { "words on" } else { "words" }),
                 (key(Builtin::HubToggleExcluded), if state.excluded { "excluded on" } else { "excluded" }),
+                (key(Builtin::HubCycleSearchIn), state.search_in.label()),
                 (key(Builtin::HubToggleContent), "names"),
                 (key(Builtin::HubBack), escape_does(state)),
             ]);
@@ -1017,9 +1083,10 @@ impl Workspace {
             Target::Tab(id) => self.activate_tab(id, window, cx),
             Target::Reopen(saved) => self.reopen(&saved, line, window, cx),
             Target::Process(id) => self.show_process(id, window, cx),
+            Target::Output(hit) => self.show_output_line(&hit, window, cx),
             Target::File { path, .. } | Target::Change { path, .. } => {
                 if let Some(checkout) = checkout {
-                    self.open_document_at(&checkout.path.join(path), line, window, cx);
+                    self.open_document_at(&checkout.path.join(path), Reveal::of_line(line), window, cx);
                 }
             }
             Target::Scratch(scratch) => {
@@ -1044,21 +1111,34 @@ impl Workspace {
             }
             // the hub adds the worktree first (`add_worktree_from_hub`)
             Target::NewWorktreeTerminal { .. } => {}
-            Target::Hit { path, line } => self.open_document_at(&path, usize::try_from(line).ok(), window, cx),
+            Target::Hit { path, line, bytes } => self.open_document_at(&path, Reveal::Range { line: line as usize, bytes }, window, cx),
         }
     }
 
-    /// Shows the file's tab, opening it when needed, at `line` (from 1) marked.
-    pub(crate) fn open_document_at(&mut self, path: &Path, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
+    /// Shows the process's tab scrolled to the hit's line, its match selected; at its bottom when the line is gone.
+    fn show_output_line(&mut self, hit: &OutputHit, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(process) = self.processes.get(hit.process) else {
+            eprintln!("ive: cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED);
+            return;
+        };
+        if let Err(why) = process.view.reveal(|rows| output::frame_at(Some(rows), hit)) {
+            eprintln!("ive: {}:{}: {why}", hit.title, hit.line);
+        }
+        self.show_process(hit.process, window, cx);
+        cx.notify();
+    }
+
+    /// Shows the file's tab, opening it when needed, scrolled as `reveal` says.
+    pub(crate) fn open_document_at(&mut self, path: &Path, reveal: Reveal, window: &mut Window, cx: &mut Context<Self>) {
         self.open_document(path, window, cx);
-        if let (Some(line), Some(shown)) = (line, self.tabs.active_id()) {
-            self.cast_to_document_tab(shown, Cast::RevealLine(line), cx);
+        if let (Some(cast), Some(shown)) = (reveal_cast(&reveal), self.tabs.active_id()) {
+            self.cast_to_document_tab(shown, cast, cx);
         }
     }
 
     fn reopen(&mut self, saved: &SavedTab, line: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
         match saved {
-            SavedTab::File { path, .. } => self.open_document_at(path, line, window, cx),
+            SavedTab::File { path, .. } => self.open_document_at(path, Reveal::of_line(line), window, cx),
             SavedTab::Settings { .. } => self.open_settings(window, cx),
             SavedTab::Hub => {
                 self.open_hub(None, window, cx);
@@ -1172,6 +1252,7 @@ impl Workspace {
 /// A contents search to start: where, what, and its ticket.
 struct ContentSearch {
     roots: Vec<Root>,
+    outputs: Arc<Vec<OutputLines>>,
     query: ContentQuery,
     ticket: Ticket,
 }
@@ -1274,6 +1355,21 @@ fn child_index(list: &List, row: usize) -> usize {
 /// `untitled-<n>`, the first `n` from 1 no scratch has.
 fn free_scratch_name(existing: &[String]) -> String {
     (1..).map(|number| format!("untitled-{number}")).find(|name| !existing.contains(name)).unwrap_or_default()
+}
+
+/// A read-only, unfocusable view of `document`, coloured as its name says, scrolled as `reveal` says.
+fn file_panel(document: Document, reveal: &Reveal, cx: &mut App) -> gpui::Entity<Panel> {
+    let panel = cx.new(|cx| Panel::new(cx).unselectable());
+    serve(&panel, document.path().display().to_string(), cx);
+    let language = Language::for_path(document.path(), document.bytes());
+    let cast = reveal_cast(reveal);
+    panel.update(cx, |panel, cx| {
+        panel.handle(Cast::Open(Content::Lines { source: Arc::new(document), language, edit: None }), cx);
+        if let Some(cast) = cast {
+            panel.handle(cast, cx);
+        }
+    });
+    panel
 }
 
 #[cfg(test)]

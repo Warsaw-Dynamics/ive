@@ -13,6 +13,7 @@ use super::content::ContentFound;
 use super::corpus::Corpus;
 use super::files::Class;
 use super::model::{HubState, mode, Mode};
+use super::output::Taken;
 use super::rows::{List, Row, Tag};
 use super::search::Found;
 use super::sources::HubScope;
@@ -24,6 +25,7 @@ use crate::icons;
 use crate::overview::git_ui::{layout_switch, mark_label, tag};
 use crate::scratch::search::Generations;
 use crate::tabs::TabId;
+use crate::terminal::{Snapshot, snapshot_element};
 use crate::text_input::TextInput;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
@@ -43,6 +45,8 @@ pub struct HubTab {
     pub input: Entity<TextInput>,
     /// the last search's result, over `searched`
     pub found: Option<Found>,
+    /// the output the last contents search read, searched again while fresh
+    pub read_output: ReadOutput,
     /// the last contents search's lines
     pub content: Option<ContentFound>,
     pub searched: Arc<Corpus>,
@@ -60,12 +64,20 @@ pub struct HubTab {
     pub _input_events: Subscription,
 }
 
+/// The processes' output a hub's contents searches read.
+pub enum ReadOutput {
+    Unread,
+    Read(Taken),
+}
+
 /// The preview right of the list, as `fzf --preview`.
 pub enum Preview {
     None,
     Loading,
-    /// a file's lines from `first` (from 1), `line` marked
-    Text { title: String, first: usize, lines: Vec<String>, line: Option<usize> },
+    /// a file in the editor's view, read-only
+    File { title: String, panel: Entity<Panel> },
+    /// lines of a process's terminal, drawn as it draws them
+    Terminal { title: String, snapshot: Snapshot },
     Diff { title: String, panel: Entity<Panel> },
     /// a process's last lines, a run configuration's command, a worktree's summary
     Lines { title: String, lines: Vec<String>, mono: bool },
@@ -155,17 +167,24 @@ fn query_row(id: TabId, hub: &HubTab, drawn: &Drawn, theme: Theme, cx: &mut Cont
         .children(switches.into_iter().flatten())
 }
 
-/// The `:…` scope picker and the Excluded switch.
-fn search_switches(id: TabId, hub: &HubTab, theme: Theme, cx: &mut Context<Workspace>) -> [Stateful<Div>; 2] {
+/// The `:…` scope picker, the Excluded switch and, for a contents search, what it covers.
+fn search_switches(id: TabId, hub: &HubTab, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
     let picker = target("hub-scope-picker".to_owned(), cx.listener(move |workspace, _event, window, cx| workspace.hub_typed(id, ":".to_owned(), window, cx)), cx);
     let excluded = target("hub-excluded".to_owned(), cx.listener(move |workspace, _event, window, cx| {
         workspace.hub_action(id, crate::script::keymap::Builtin::HubToggleExcluded, window, cx);
     }), cx);
     let switch_colour = if hub.state.excluded { theme.accent } else { theme.muted };
-    [
+    let mut switches = vec![
         chip_box("hub-scope-picker", ":…", false, theme).on_click(picker),
         chip_box("hub-excluded", "Excluded", hub.state.excluded, theme).text_color(rgb(switch_colour)).on_click(excluded),
-    ]
+    ];
+    if mode(&hub.state) == Mode::Content {
+        let search_in = target("hub-search-in".to_owned(), cx.listener(move |workspace, _event, window, cx| {
+            workspace.hub_action(id, crate::script::keymap::Builtin::HubCycleSearchIn, window, cx);
+        }), cx);
+        switches.push(chip_box("hub-search-in", hub.state.search_in.label(), false, theme).on_click(search_in));
+    }
+    switches
 }
 
 fn scope_chip(id: TabId, label: &str, scope: &HubScope, shown: bool, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -226,20 +245,8 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
             let body = if *is_mono { body.font_family(mono) } else { body };
             pane.child(title(name)).child(body.children(lines.iter().map(|line| div().whitespace_nowrap().child(line.clone()))))
         }
-        Preview::Text { title: name, first, lines, line } => {
-            let width = (first + lines.len()).to_string().len();
-            let rows = lines.iter().enumerate().map(|(offset, text)| {
-                let number = first + offset;
-                let row = div()
-                    .flex()
-                    .gap_2()
-                    .whitespace_nowrap()
-                    .child(div().flex_none().text_color(rgb(theme.muted)).child(format!("{number:>width$}")))
-                    .child(text.clone());
-                if Some(number) == *line { row.bg(rgb(theme.hover)) } else { row }
-            });
-            pane.child(title(name)).child(div().flex().flex_col().px_3().font_family(mono).text_xs().overflow_hidden().children(rows))
-        }
+        Preview::Terminal { title: name, snapshot } => pane.child(title(name)).child(snapshot_element(snapshot.clone(), theme.terminal)),
+        Preview::File { title: name, panel } => pane.child(title(name)).child(div().flex().flex_1().min_h_0().child(panel.clone())),
     }
 }
 

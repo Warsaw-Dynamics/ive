@@ -15,3 +15,4 @@ pub mod sources;
 pub mod index;
 pub mod view;
 pub mod preview;
+pub mod output;
