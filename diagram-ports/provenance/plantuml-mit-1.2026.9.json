@@ -1690,9 +1690,11 @@
       "sha256": "868aaeb45d1567c03c5c2a6830aa528cb6d9032a9434b41aabc1675331d4ec7f",
       "rust": [
         "engine/src/plantuml/yaml.rs",
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/yaml.rs",
+        "engine/src/plantuml/parser/grammar/yaml.lalrpop"
       ],
-      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction. Generated offside block/map/list/entry/flow productions construct the existing Value; only primitive quote/comment/tab/literal/flow-field lexing and ordered replacement remain handwritten.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1707,9 +1709,11 @@
       "sha256": "f676afed3976925d03382dff0f1ae86ccd2704999756276ef9c95825704c8877",
       "rust": [
         "engine/src/plantuml/yaml.rs",
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/yaml.rs",
+        "engine/src/plantuml/parser/grammar/yaml.lalrpop"
       ],
-      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction. Generated offside block/map/list/entry/flow productions construct the existing Value; only primitive quote/comment/tab/literal/flow-field lexing and ordered replacement remain handwritten.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1724,9 +1728,11 @@
       "sha256": "b152242c11e8f195860ac0f71eeccaae36739fa0fcfebce8598f0ae38665e360",
       "rust": [
         "engine/src/plantuml/yaml.rs",
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/yaml.rs",
+        "engine/src/plantuml/parser/grammar/yaml.lalrpop"
       ],
-      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction. Generated offside block/map/list/entry/flow productions construct the existing Value; only primitive quote/comment/tab/literal/flow-field lexing and ordered replacement remain handwritten.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1741,9 +1747,11 @@
       "sha256": "b64718fee43b56d000713dc8a07e7fca9e69ee1cb458e83ba3b6d6741df1d3a3",
       "rust": [
         "engine/src/plantuml/yaml.rs",
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/yaml.rs",
+        "engine/src/plantuml/parser/grammar/yaml.lalrpop"
       ],
-      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction. Generated offside block/map/list/entry/flow productions construct the existing Value; only primitive quote/comment/tab/literal/flow-field lexing and ordered replacement remain handwritten.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1758,9 +1766,11 @@
       "sha256": "811b59d7900989a076a05dbdc4c3f2faec8938a2728150aa04fb4c483fb2413f",
       "rust": [
         "engine/src/plantuml/yaml.rs",
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/parser/yaml.rs",
+        "engine/src/plantuml/parser/grammar/yaml.lalrpop"
       ],
-      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction.",
+      "behavior": "Narrow string scalar YAML, quote-aware colon/comment boundaries, tab expansion, ordered duplicate replacement, map/list/list-map/keyed-flow-list and exact literal-block trimming/stopping; unsupported continuation/folded/nested-flow syntax rejected; preflight capabilities rejected before value construction. Generated offside block/map/list/entry/flow productions construct the existing Value; only primitive quote/comment/tab/literal/flow-field lexing and ordered replacement remain handwritten.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",

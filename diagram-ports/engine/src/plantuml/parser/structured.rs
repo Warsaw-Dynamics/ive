@@ -41,6 +41,9 @@ impl<'s, 'b> Cursor<'s, 'b> {
 pub(in crate::plantuml) enum Syntax {
     Json,
     Hcl,
+    Yaml,
+    #[cfg(test)]
+    YamlFlow,
 }
 
 pub(in crate::plantuml) trait DepthToken {
@@ -54,7 +57,7 @@ pub(in crate::plantuml) struct Arena {
 
 fn measure_symbol<T>(syntax: &Syntax) -> usize {
     let payloads = match syntax {
-        Syntax::Json => [
+        Syntax::Json | Syntax::Yaml => [
             std::mem::size_of::<T>(),
             std::mem::size_of::<crate::plantuml::data::Value>(),
             std::mem::size_of::<(String, crate::plantuml::data::Value)>(),
@@ -69,6 +72,15 @@ fn measure_symbol<T>(syntax: &Syntax) -> usize {
             std::mem::size_of::<crate::plantuml::hcl::HclValue>(),
             std::mem::size_of::<super::hcl::Word>(),
             std::mem::size_of::<super::hcl::Header>(),
+        ],
+        #[cfg(test)]
+        Syntax::YamlFlow => [
+            std::mem::size_of::<T>(),
+            std::mem::size_of::<crate::plantuml::data::Value>(),
+            std::mem::size_of::<(String, crate::plantuml::data::Value)>(),
+            std::mem::size_of::<String>(),
+            std::mem::size_of::<Vec<crate::plantuml::data::Value>>(),
+            std::mem::size_of::<usize>(),
         ],
     };
     // Generated enum tags need at most usize; every concrete payload is usize-aligned.
@@ -97,6 +109,9 @@ impl Arena {
         let (live, terminals, reductions) = match syntax {
             Syntax::Json => (5 * maximum + 8, 16usize, 8usize),
             Syntax::Hcl => ((4 * maximum + 4).max(6), 10, 5),
+            Syntax::Yaml => (5 * maximum + 4, 13, 5),
+            #[cfg(test)]
+            Syntax::YamlFlow => (5, 13, 2),
         };
         let stack_capacity = live.next_power_of_two().max(8);
         let diagnostic_capacity = (live + 1).next_power_of_two().max(8);

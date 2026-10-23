@@ -1,0 +1,41 @@
+// PlantUML-specific ordered string YAML with offside and lexical literal ownership.
+grammar(builder: &mut crate::plantuml::parser::yaml::Builder<'_>);
+use crate::plantuml::{data::Value, parser::{yaml::Token, error::ParseFailure}};
+pub Yaml: Value = <_open:Open> <value:Block> <_close:Close> => value;
+Block: Value = { <entries:Map> => Value::Object(entries), <values:List> => Value::Array(values) };
+Open: () = "indent" =>? builder.open().map_err(|error| lalrpop_util::ParseError::User { error });
+Inline: () = "inline" =>? builder.inline().map_err(|error| lalrpop_util::ParseError::User { error });
+Close: () = "dedent" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error });
+Map: Vec<(String, Value)> = {
+ <pair:Entry> =>? builder.replace(Vec::new(), pair).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <entries:Map> <pair:Entry> =>? builder.replace(entries, pair).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Entry: (String, Value) = <key:Key> ":" <value:EntryValue> => (key, value);
+Key: String = <key:"scalar"> =>? builder.key(key).map_err(|error| lalrpop_util::ParseError::User { error });
+EntryValue: Value = {
+ <scalar:"scalar"> "newline" => Value::String(scalar),
+ <flow:Flow> "newline" => flow,
+ "newline" => Value::String(String::new()),
+ "newline" <_open:Open> <value:Block> <_close:Close> => value,
+ "|" "newline" <rows:Literal> => Value::String(rows),
+};
+Literal: String = { => String::new(), <value:Literal> <row:"literal"> =>? builder.literal(value, row).map_err(|error| lalrpop_util::ParseError::User { error }) };
+List: Vec<Value> = {
+ <value:Item> =>? builder.push(Vec::new(), value).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <values:List> <value:Item> =>? builder.push(values, value).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Dash: () = "-" =>? builder.item().map_err(|error| lalrpop_util::ParseError::User { error });
+Item: Value = {
+ <_dash:Dash> <_open:Inline> <entries:Map> <_close:Close> => Value::Object(entries),
+ <_dash:Dash> <_open:Inline> <scalar:"scalar"> "newline" <_close:Close> => Value::String(scalar),
+ <_dash:Dash> "newline" <_open:Open> <entries:Map> <_close:Close> => Value::Object(entries),
+};
+pub Flow: Value = "[" <values:FlowFields> "]" => Value::Array(values);
+FlowFields: Vec<Value> = {
+ <value:"field"> =>? builder.push(Vec::new(), Value::String(value)).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <values:FlowFields> "," <value:"field"> =>? builder.push(values, Value::String(value)).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+extern { type Location = usize; type Error = ParseFailure;
+ enum Token { "indent" => Token::Indent, "inline" => Token::Inline, "dedent" => Token::Dedent, "-" => Token::Dash, ":" => Token::Colon, "newline" => Token::Newline,
+ "scalar" => Token::Scalar(<String>), "[" => Token::FlowOpen, "]" => Token::FlowClose, "," => Token::Comma, "field" => Token::Field(<String>), "|" => Token::Pipe, "literal" => Token::Literal(<String>) }
+}

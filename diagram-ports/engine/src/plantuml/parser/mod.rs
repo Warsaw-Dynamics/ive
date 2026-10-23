@@ -21,6 +21,7 @@ pub(super) mod timing;
 pub(super) mod token;
 pub(super) mod tree;
 pub(super) mod uml;
+pub(super) mod yaml;
 
 pub(super) use definition::parse_definition;
 
@@ -125,3 +126,8 @@ mod generated_json;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/hcl.rs"]
 mod generated_hcl;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/yaml.rs"]
+mod generated_yaml;

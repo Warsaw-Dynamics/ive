@@ -158,6 +158,11 @@ pub(crate) fn render(
         .map(|document| hcl::lower(document, &mut budget))
         .transpose()?;
 
+    let yaml_model = if wrapper == source::Wrapper::Yaml {
+        Some(parser::yaml::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let timing_model = if wrapper == source::Wrapper::Uml && selection == Selection::Timing {
         Some(parser::timing::parse(
             prepared.body.reborrow(),
@@ -231,8 +236,10 @@ pub(crate) fn render(
             })?;
             ("json", datascene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Yaml {
-            let model = yaml::parse(lines, context.budget)?;
-            ("yaml", datascene::layout(&model, &mut context)?)
+            let model = yaml_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML YAML selection has no parsed model".into())
+            })?;
+            ("yaml", datascene::layout(model, &mut context)?)
         } else if selection == Selection::Activity {
             let model = activity_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("PlantUML activity selection has no parsed model".into())
