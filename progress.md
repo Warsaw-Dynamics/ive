@@ -13,6 +13,7 @@ This is the visible master checklist for further work. The controller updates it
 - Owner now requires LALRPOP to replace current PlantUML ad-hoc parsers, not merely a pilot for future families. This rewrite is the next implementation priority; models/layouts/viewer and regression evidence are preserved.
 - Chen/ArchiMate and the lexical prerequisite are independently approved. LALRPOP Tasks1–4,7,9 are fully approved and integrated: six of17 migration stages. UML/activity review and JSON/HCL WIP are saved for resumption.
 - Full Mermaid/PlantUML compatibility is **not complete**. Remaining family increments, advanced state work, final corpus/documentation and whole-branch review are still required.
+- Current estimate (2026-10-23): Task17 parser cleanup plus final checks/review about 2–4 more hours if no new blocker appears; remaining planned family increments and final evidence about 1–2 additional working days. These are estimates, not a claim of complete upstream syntax or pixel parity.
 - Main IVE product code is unchanged. Work is isolated in a separate Rust workspace/worktree; IVE markdown integration is a later project.
 
 | Item | Current value |
