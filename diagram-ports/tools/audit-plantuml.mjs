@@ -50,13 +50,24 @@ export function audit(manifest) {
   for (const file of manifest.fixtures) {
     if (sha256(fs.readFileSync(path.join(root, file.path))) !== file.sha256) throw new Error(`fixture checksum mismatch: ${file.path}`);
   }
-  const actual = fs.readdirSync(path.join(root, 'engine/src/plantuml')).map(name => `engine/src/plantuml/${name}`).sort();
+  const actual = fs.readdirSync(path.join(root, 'engine/src/plantuml')).filter(name => !['parser', 'generated'].includes(name)).map(name => `engine/src/plantuml/${name}`).sort();
   if (JSON.stringify(actual) !== JSON.stringify([...manifest.nativeModules].sort())) throw new Error('native module inventory changed');
+  auditParserInventory();
   if (!fs.readFileSync(path.join(root, 'provenance/LICENSE-PlantUML-MIT.txt'), 'utf8').includes('Hisashi Miyashita')) throw new Error('contributor notice missing');
   for (const notice of ['provenance/LICENSE-PlantUML-MIT.txt', 'THIRD-PARTY-NOTICES.md']) {
     if (!fs.readFileSync(path.join(root, notice), 'utf8').includes('Serge Wenger')) throw new Error(`contributor notice missing: ${notice}: Serge Wenger`);
   }
   return `Verified ${manifest.sourceFiles.length} MIT-edition source/ZIP hashes, ${manifest.fixtures.length} fresh fixture hashes and ${actual.length} native modules.`;
+}
+
+function auditParserInventory() {
+  const inventory = JSON.parse(fs.readFileSync(path.join(root, 'provenance/plantuml-parser.json')));
+  const actual = ['parser', 'generated'].flatMap(directory => fs.readdirSync(path.join(root, 'engine/src/plantuml', directory), { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile()).map(entry => path.relative(root, path.join(entry.parentPath, entry.name)))).sort();
+  const expected = [...inventory.authoredFiles, ...inventory.generatedFiles].sort();
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('authored/generated PlantUML parser inventory changed');
+  const directories = fs.readdirSync(path.join(root, 'engine/src/plantuml'), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+  if (JSON.stringify(directories) !== JSON.stringify(['generated', 'parser'])) throw new Error('unexpected PlantUML parser directory');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

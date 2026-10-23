@@ -27,6 +27,7 @@ mod nwscene;
 mod origin;
 mod packet;
 mod packetscene;
+mod parser;
 mod preprocess;
 mod salt;
 mod saltscene;

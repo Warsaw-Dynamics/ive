@@ -1,0 +1,22 @@
+// Original supported-subset grammar. Semantic source traces remain in the MIT manifest.
+grammar<'s>(context: &mut Context<'_>);
+
+use crate::plantuml::parser::{context::Context, definition::DefinitionSyntax, error::ParseFailure, token::Token};
+
+pub Definition: DefinitionSyntax<'s> = {
+    "!define" "gap" <name_start:@L> <name:"name"> <name_end:@R>
+    "gap" <literal_start:@L> <literal:"literal"> <literal_end:@R>
+    =>? context.finish_definition((name_start, name, name_end), (literal_start, literal, literal_end))
+        .map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token<'s> {
+        "!define" => Token::Define,
+        "gap" => Token::Gap,
+        "name" => Token::Name(<&'s str>),
+        "literal" => Token::Literal(<&'s str>),
+    }
+}

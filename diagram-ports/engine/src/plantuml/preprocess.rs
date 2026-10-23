@@ -194,60 +194,8 @@ impl Processor<'_> {
     }
 
     fn define(&mut self, raw: &str, span: SourceSpan) -> Result<(), RenderError> {
-        let declaration = raw
-            .trim_start()
-            .strip_prefix("!define")
-            .unwrap()
-            .trim_start_matches([' ', '\t']);
-        let end = declaration
-            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
-            .unwrap_or(declaration.len());
-        let name = &declaration[..end];
-        if name.is_empty() || name.len() > 64 || name.as_bytes()[0].is_ascii_digit() {
-            return Err(invalid(
-                span.line,
-                format!("invalid literal definition name {name:?}"),
-            ));
-        }
-        let tail = &declaration[end..];
-        if tail.starts_with('(') {
-            return Err(unsupported(span.line, "parameterized definition"));
-        }
-        match tail.chars().next() {
-            Some(' ' | '\t') => {}
-            _ => {
-                return Err(invalid(
-                    span.line,
-                    "definition requires a same-line literal",
-                ));
-            }
-        }
-        let literal = tail
-            .trim_start_matches([' ', '\t'])
-            .trim_end_matches([' ', '\t']);
-        if literal.is_empty() {
-            return Err(invalid(span.line, "definition requires a nonempty literal"));
-        }
-        bound("definition literal bytes", literal.len(), 16 * 1024)?;
-        if literal
-            .chars()
-            .any(|ch| (ch.is_control() && ch != '\t') || matches!(ch, '\u{fffe}' | '\u{ffff}'))
-        {
-            return Err(unsupported(
-                span.line,
-                "literal definition control character",
-            ));
-        }
-        if literal
-            .bytes()
-            .rev()
-            .take_while(|&byte| byte == b'\\')
-            .count()
-            % 2
-            == 1
-        {
-            return Err(unsupported(span.line, "literal definition continuation"));
-        }
+        let syntax = super::parser::parse_definition(raw, span, self.budget)?;
+        let name = syntax.name;
         self.budget
             .charge(name.len() * (self.names.len().checked_ilog2().unwrap_or(0) as usize + 1))?;
         if self.names.contains_key(name) {
@@ -266,8 +214,7 @@ impl Processor<'_> {
             prior: Vec::new(),
             depth: 1,
         });
-        let start = literal.as_ptr() as usize - raw.as_ptr() as usize;
-        self.expand(literal, span.slice(start..start + literal.len()), Some(id))?;
+        self.expand(syntax.literal, syntax.literal_span, Some(id))?;
         self.names.insert(name.to_owned(), id);
         Ok(())
     }

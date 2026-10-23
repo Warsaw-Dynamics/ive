@@ -12,6 +12,8 @@ dugong.workspace = true
 roxmltree.workspace = true
 serde_json.workspace = true
 cssparser.workspace = true
+lalrpop-util = { version = "=0.23.2", default-features = false }
 
 [dev-dependencies]
+merman-core = { version = "=0.9.2", default-features = false, features = ["test-support"] }
 usvg = { version = "=0.46.0", default-features = false, features = ["text"] }

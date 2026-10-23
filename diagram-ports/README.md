@@ -2,6 +2,17 @@
 
 An independent Rust workspace for a headless diagram engine and a standalone native pgui viewer. IVE's root workspace is unchanged.
 
+PlantUML parser migration currently replaces supported same-line literal `!define` declaration syntax with a genuine checked-in LALRPOP grammar. Its immutable evaluator/registry, other family parsers and layouts remain unchanged; the full current-family rewrite is pending. Ordinary builds/renders require no generator. Developer regeneration and read-only checks use an independent pinned closure:
+
+```sh
+CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- generate
+CARGO_TARGET_DIR=/mnt/data/Projects/ive/target cargo run --locked --offline --manifest-path tools/plantuml-grammar-gen/Cargo.toml -- check
+python3 tools/audit-plantuml-generator.py check
+node tools/parser-baseline.mjs check
+```
+
+Generation uses LALRPOP 0.23.2, no default features, explicit empty grammar features and fresh temporary input/output mirrors. `check` byte-compares generated Rust and the deterministic inventory without writing tracked outputs. Never edit or format generated files. The immutable 43-fixture baseline was recorded from the public render API before this cutover; `record` refuses an existing baseline. It retains exact source, family and deterministic SVG hashes, independently of parser internals. [Parser admission evidence](provenance/plantuml-parser-admission.md) documents the actual generated stack/reduction and cancellation bounds.
+
 From this directory:
 
 ```sh

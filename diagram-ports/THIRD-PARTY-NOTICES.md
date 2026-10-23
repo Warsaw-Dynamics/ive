@@ -1,5 +1,11 @@
 # Third-party notices
 
+## PlantUML parser generation
+
+The engine directly selects the already locked `lalrpop-util =0.23.2` with default features disabled; its existing MIT/Apache notices below still apply. The separate developer-only `tools/plantuml-grammar-gen` crate selects `lalrpop =0.23.2` with default features disabled. Its 67-package registry checksum, exact unpacked-source, license-expression and selected-feature inventory is [provenance/plantuml-generator-dependencies.json](provenance/plantuml-generator-dependencies.json); full selected grants and copyright notices are [provenance/LICENSE-PlantUML-Generator-Dependencies.md](provenance/LICENSE-PlantUML-Generator-Dependencies.md). This generator is outside the engine/viewer dependency graph and is never invoked by an ordinary build or render. A test-only `merman-core` feature supplies deterministic cancellation checkpoints without altering the shipped closure or audited vendor files.
+
+The borrowed token, admission, error infrastructure and supported-subset definition grammar are original native code, separately inventoried in [provenance/plantuml-parser.json](provenance/plantuml-parser.json). Existing PlantUML literal evaluation semantics and their actual MIT credits remain in the semantic translation manifest; these infrastructure files do not acquire invented Java credits. Checked-in generated output retains the generator's mechanical version/hash header and is never hand-edited.
+
 ## Adapted pgui SVG font policy
 
 `viewer/src/svg_fonts.rs` adapts the installed-font selection, missing generic-family repair, Unicode Emoji_Presentation test and platform emoji fallback order from `crates/gpui/src/svg_renderer.rs` in [Warsaw-Dynamics/pgui](https://github.com/Warsaw-Dynamics/pgui) at exact revision `f5d5fa2f8f07b0be68442e694d22ed6064609e73`. Original file SHA-256: `fb12dae87c0cd4c5f5a1fbbd2f9548d52fde9440c21e3d576dfeb0233eda88a6`. Copyright 2022 - 2025 Zed Industries, Inc.; Apache License 2.0. The full original copyright/grant and Apache licence text are retained in the gpui dependency section below and apply to this adapted source too.

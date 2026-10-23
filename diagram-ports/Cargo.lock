@@ -1218,7 +1218,9 @@ version = "0.1.0"
 dependencies = [
  "cssparser 0.38.0",
  "dugong",
+ "lalrpop-util",
  "merman",
+ "merman-core",
  "merman-render",
  "roxmltree 0.21.1",
  "serde_json",

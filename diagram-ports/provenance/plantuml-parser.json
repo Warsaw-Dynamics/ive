@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "scope": "Supported same-line !define declaration syntax only; other PlantUML parsers are pending migration.",
+  "authorship": "Original native infrastructure and subset grammar; existing MIT semantic translation remains in preprocess.rs and its source manifest. No Java authorship is attributed to this infrastructure.",
+  "authoredFiles": [
+    "engine/src/plantuml/parser/context.rs",
+    "engine/src/plantuml/parser/definition.rs",
+    "engine/src/plantuml/parser/error.rs",
+    "engine/src/plantuml/parser/grammar/definition.lalrpop",
+    "engine/src/plantuml/parser/mod.rs",
+    "engine/src/plantuml/parser/token.rs"
+  ],
+  "generatedFiles": [
+    "engine/src/plantuml/generated/definition.rs",
+    "engine/src/plantuml/generated/manifest.json"
+  ],
+  "generator": "tools/plantuml-grammar-gen/Cargo.toml",
+  "generationInventory": "engine/src/plantuml/generated/manifest.json",
+  "developmentClosure": "provenance/plantuml-generator-dependencies.json",
+  "developmentNotices": "provenance/LICENSE-PlantUML-Generator-Dependencies.md"
+}
