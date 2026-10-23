@@ -4,13 +4,13 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use gpui::{
-    AnyElement, Context, Div, Entity, EventEmitter, IntoElement, Render, ScrollHandle, Stateful, Subscription, Task, Window, div, prelude::*,
-    rgb, uniform_list,
+    AnyElement, Context, Div, Entity, EventEmitter, IntoElement, ListSizingBehavior, Render, Stateful, Subscription, Task, Window, div,
+    prelude::*, rgb, uniform_list,
 };
 
 use super::git_event::{CommitLink, GitEvent};
 use super::git_ui::{Picked, error_with_retry, list_row, muted, segment, toggle_button};
-use super::project_git::{LogRow, ProjectContext, bordered, log_row, stash_row};
+use super::project_git::{CheckoutLine, LogRow, ProjectContext, bordered, log_row, stash_row};
 use crate::age::Clock;
 use crate::click_targets::target;
 use crate::git::log::{self, CommitInfo, CommitRange, Page, Stash};
@@ -107,7 +107,9 @@ pub struct GitLogView {
     /// the Log draws only the rows in view: it grows by 100 per "Load 100 more"
     log_scroll: ListScroll,
     log_scrollbar: ScrollState,
-    scroll: ScrollHandle,
+    /// Stashes, Worktrees and Branches, which also draw only the rows in view
+    rows_scroll: ListScroll,
+    rows_scrollbar: ScrollState,
     _load: Option<Task<()>>,
 }
 
@@ -130,6 +132,8 @@ impl GitLogView {
     pub fn new(context: ProjectContext, of: LogOf) -> Self {
         let log_scroll = ListScroll::new();
         let log_scrollbar = ScrollState::for_list(&log_scroll);
+        let rows_scroll = ListScroll::new();
+        let rows_scrollbar = ScrollState::for_list(&rows_scroll);
         Self {
             context,
             of,
@@ -141,7 +145,8 @@ impl GitLogView {
             stale: true,
             log_scroll,
             log_scrollbar,
-            scroll: ScrollHandle::new(),
+            rows_scroll,
+            rows_scrollbar,
             _load: None,
         }
     }
@@ -203,34 +208,55 @@ impl GitLogView {
     }
 
     fn select(&mut self, section: Section, cx: &mut Context<Self>) {
+        if section != self.section {
+            // the sections share one list: another section starts at its top
+            self.rows_scroll.set_offset(gpui::Point::default());
+        }
         self.section = section;
         cx.notify();
     }
 
     fn render_section(&self, data: &GitLogData, theme: Theme, cx: &mut Context<Self>) -> AnyElement {
-        let clock = Clock::system();
-        let list = match self.section {
+        let empty = match self.section {
             Section::Log => return self.render_log(theme, cx).into_any_element(),
-            Section::Stashes if data.stashes.is_empty() => div().p(theme.sizes.git.message_padding.px()).child(muted("No stashes.", theme)),
-            Section::Stashes => bordered(theme).children(data.stashes.iter().enumerate().map(|(index, stash)| stash_row(index, stash, theme))),
-            Section::Worktrees => bordered(theme).children(self.context.checkouts.iter().enumerate().map(|(index, checkout)| {
-                list_row(("git-log-worktree", index), Picked::No, theme)
-                    .cursor_default()
-                    .child(icon(theme, icons::BRANCH))
-                    .child(div().flex_none().child(checkout.label.clone()))
-                    .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.branch.clone().unwrap_or_else(|| "detached".to_owned())))
-                    .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.path.display().to_string()))
-            })),
-            Section::Branches if data.branches.is_empty() => div().p(theme.sizes.git.message_padding.px()).child(muted("Every branch has a worktree.", theme)),
-            Section::Branches => bordered(theme).children(data.branches.iter().enumerate().map(|(index, branch)| {
-                list_row(("git-log-branch", index), Picked::No, theme)
-                    .cursor_default()
-                    .child(icon(theme, icons::BRANCH))
-                    .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().child(branch.name.display()))
-                    .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(clock.age(branch.when.seconds)))
-            })),
+            Section::Stashes if data.stashes.is_empty() => "No stashes.",
+            Section::Branches if data.branches.is_empty() => "Every branch has a worktree.",
+            Section::Stashes | Section::Worktrees | Section::Branches => return self.render_rows(self.count(data, self.section), theme, cx).into_any_element(),
         };
-        div().id("git-log-scroll").flex_1().min_h_0().overflow_y_scroll().track_scroll(&self.scroll).pb(theme.sizes.git.log_padding_bottom.px()).child(list).into_any_element()
+        div().p(theme.sizes.git.message_padding.px()).child(muted(empty, theme)).into_any_element()
+    }
+
+    /// Stashes, worktrees and branches: a repository can have thousands, so only the rows in view are built; a
+    /// short list's box ends under its last row.
+    fn render_rows(&self, count: usize, theme: Theme, cx: &mut Context<Self>) -> Div {
+        let rows = uniform_list(("git-log-section-rows", cx.entity_id().as_u64()), count, cx.processor(|view: &mut GitLogView, range, _window, cx| view.render_section_rows(range, cx)))
+            .with_sizing_behavior(ListSizingBehavior::Infer)
+            .track_scroll(&self.rows_scroll.list_handle())
+            .w_full();
+        bordered(theme).relative().flex_shrink_1().min_h_0().mb(theme.sizes.git.log_padding_bottom.px()).child(rows).child(vertical_scrollbar(&self.rows_scrollbar, &crate::theme::view_style(&theme)))
+    }
+
+    fn render_section_rows(&self, range: Range<usize>, cx: &mut Context<Self>) -> Vec<Stateful<Div>> {
+        let Some(Ok(data)) = &self.data else {
+            return Vec::new();
+        };
+        let (theme, clock) = (crate::theme::tabs(cx), Clock::system());
+        let row = |index: usize| match self.section {
+            Section::Stashes => data.stashes.get(index).map(|stash| stash_row(index, stash, theme)),
+            Section::Worktrees => self.context.checkouts.get(index).map(|checkout| worktree_row(index, checkout, theme)),
+            Section::Branches => data.branches.get(index).map(|branch| branch_row(index, branch, &clock, theme)),
+            Section::Log => None,
+        };
+        range.filter_map(row).map(|row| row.w_full()).collect()
+    }
+
+    fn count(&self, data: &GitLogData, section: Section) -> usize {
+        match section {
+            Section::Log => data.log.len(),
+            Section::Stashes => data.stashes.len(),
+            Section::Worktrees => self.context.checkouts.len(),
+            Section::Branches => data.branches.len(),
+        }
     }
 
     /// The Log fills the tab and scrolls itself; the last row loads 100 more while the walk may have more.
@@ -265,14 +291,8 @@ impl GitLogView {
     }
 
     fn section_label(&self, section: Section) -> String {
-        let count = |data: &GitLogData| match section {
-            Section::Log => data.log.len(),
-            Section::Stashes => data.stashes.len(),
-            Section::Worktrees => self.context.checkouts.len(),
-            Section::Branches => data.branches.len(),
-        };
         match &self.data {
-            Some(Ok(data)) => format!("{} ({})", section.name(), count(data)),
+            Some(Ok(data)) => format!("{} ({})", section.name(), self.count(data, section)),
             _ => section.name().to_owned(),
         }
     }
@@ -305,6 +325,23 @@ impl Render for GitLogView {
             .child(div().flex().flex_none().items_center().gap(theme.sizes.git.log_buttons_gap.px()).children(buttons))
             .child(body)
     }
+}
+
+fn worktree_row(index: usize, checkout: &CheckoutLine, theme: Theme) -> Stateful<Div> {
+    list_row(("git-log-worktree", index), Picked::No, theme)
+        .cursor_default()
+        .child(icon(theme, icons::BRANCH))
+        .child(div().flex_none().child(checkout.label.clone()))
+        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.branch.clone().unwrap_or_else(|| "detached".to_owned())))
+        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.path.display().to_string()))
+}
+
+fn branch_row(index: usize, branch: &BranchInfo, clock: &Clock, theme: Theme) -> Stateful<Div> {
+    list_row(("git-log-branch", index), Picked::No, theme)
+        .cursor_default()
+        .child(icon(theme, icons::BRANCH))
+        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().child(branch.name.display()))
+        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(clock.age(branch.when.seconds)))
 }
 
 #[cfg(test)]
