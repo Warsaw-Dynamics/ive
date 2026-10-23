@@ -3637,6 +3637,299 @@
         "* Original Author:  David Fyfe"
       ],
       "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/EbnfExpression.java",
+      "sha256": "a6fda59a2f91452f35ef8b7141b477e1734f19713c1bfde7366b4893a3f2d3cb",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/ebnf.rs",
+        "engine/src/plantuml/parser/ebnf.rs",
+        "engine/src/plantuml/parser/railroad.rs",
+        "engine/src/plantuml/parser/grammar/ebnf.lalrpop"
+      ],
+      "behavior": "EBNF terminal quote ownership, symbolic references, ordered expression operations and explicit Empty rule semantics.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/PSystemEbnf.java",
+      "sha256": "d2b72d188d4295cf7ddaa7f167af58ff4dcff2f1db44e84575d1681eb05f051b",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/ebnf.rs"
+      ],
+      "behavior": "Source-ordered duplicate rule append without reference expansion.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/Symbol.java",
+      "sha256": "eaaa1dfac44afb0967200093a5ff3433fa36b7ab2a528fe7984b3be7dede42b0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/grammar/ebnf.lalrpop"
+      ],
+      "behavior": "Comma concatenation binds more tightly than ordered alternation; deferred exception/count syntax rejects.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/CommandEBnfSingleLine.java",
+      "sha256": "b538b2d766276b45a6487e3b03a1cd1e2e06313708fbf756b255f7f6e50f77bb",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/ebnf.rs",
+        "engine/src/plantuml/parser/railroad.rs",
+        "engine/src/plantuml/parser/grammar/ebnf.lalrpop"
+      ],
+      "behavior": "Named rule/equals/terminal semicolon framing and identifier spelling; quoted punctuation is owned by the lexer.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/UBrexCommandEbnfMultilines.java",
+      "sha256": "6fb503691539faab6b8ac95abd00b5c5541d597408ed811a808906481b5945ef",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/grammar/ebnf.lalrpop"
+      ],
+      "behavior": "Multiline named rules; native generated grammar locates quoted terminators and consumes complete EOF.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETile.java",
+      "sha256": "f7704c5a2ef397a006ca020bb0b1a59fe4da7f789e9c17d36bc19c42fce70c32",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Measured width/above-baseline/below-baseline railroad contract and directed rails; native orthogonal geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileEmpty.java",
+      "sha256": "da563074d4d5251ad9f7651dd444c2b15332f5b713c694db2b7d41dc0dd5456e",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Explicit empty expression rail, with native 30-unit visible route rather than zero-size original tile.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileBox.java",
+      "sha256": "0f5a244ad3168e4ad66bc7583d525fe6e8d898e18463d0b09abc8b2749bfe396",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Rectangular terminals versus rounded references and measured literal labels. Native shared font/style primitives.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileConcatenation.java",
+      "sha256": "86221aedae1266bfeedc5bb86ef68bda2791a33301fb80587408245164f3e1f0",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Shared baseline, maximal upper/lower extents and 20-unit concatenation gap.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileAlternation.java",
+      "sha256": "046948c86e6087de66952bbe2bd619785feb084fff7dadd04fa6ac55a09d5da4",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Ordered branches and shared side rails, 10-unit branch gap; native binary composition uses orthogonal paths.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileOptional2.java",
+      "sha256": "307b35a377c0f8b58963b30af794c3229f1b3094294b554004c4a5bd1af3d3ca",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Zero bypass separate from the child route; native orthogonal lane above child.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileOneOrMore.java",
+      "sha256": "2ce22e328b93e285657d7da91cf1e1d9ccf653eb872932c0ae2063ce05217643",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Directed return loop with symbolic repeat annotation, without child duplication or zero bypass.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileZeroOrMore.java",
+      "sha256": "5fd9ec99f47f940b83d6bf44e78a807b569424701a83034203bb2d712b469716",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Zero-or-more has both return loop and zero bypass; native bypass runs below child.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileWithCircles.java",
+      "sha256": "fb8725309327d620c449efc987fae2ea618726396b3cf80dbb5968b4949c26db",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Rule entry/exit endpoint markers; native fixed filled circles and measured route extents differ.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileRegexGroup.java",
+      "sha256": "cc6f3ecfcd928a72bd2215fb867582efbdc74d6e607311ebc7945acff5279ae9",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/regex.rs",
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Measured character-class member rows, kept symbolic and not expanded into alternatives. Native one-of label and rounded border.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/ebnf/ETileRegexGroupAllBut.java",
+      "sha256": "6c6e63048894a2268b6f7ac5f3aecb345887730bc113cca8c415052d6d0d67bf",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/regex.rs",
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Visible character-class negation and ordered excluded members; native not: row rather than two-column original.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/regexdiagram/RegexExpression.java",
+      "sha256": "1431e40cbb99422d854f6f90b13a75007317f11c5706fe2ee25f95b60a9de786",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/regex.rs",
+        "engine/src/plantuml/parser/regex.rs",
+        "engine/src/plantuml/parser/railroad.rs",
+        "engine/src/plantuml/parser/grammar/regex.lalrpop"
+      ],
+      "behavior": "Family-owned punctuation, classes, group/capture kind and symbolic repeat lexemes; assertions/properties/backreferences/modifiers reject. No matching engine.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/regexdiagram/PSystemRegex.java",
+      "sha256": "e7932fd6e9c4dff1b4d79dc68cb2d2ad0a6a7c6bc7ef1c87f94a012a0184aea2",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/regex.rs",
+        "engine/src/plantuml/parser/grammar/regex.lalrpop",
+        "engine/src/plantuml/railroad.rs"
+      ],
+      "behavior": "Typed concatenation/choice/repeat railroad operations and symbolic counts; native rejects zero-only repeat quirk.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/regexdiagram/ReTokenType.java",
+      "sha256": "0426d5062d0a24135f2a8b81d8e3337a8daf1bcb9a75b61a6aeafbafaae8bb98",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2020, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/parser/grammar/regex.lalrpop"
+      ],
+      "behavior": "Implicit concatenation between atoms with quantified-atom precedence; generated grammar owns structure.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/regexdiagram/GroupSplitter.java",
+      "sha256": "676850d3f107cfe4773de9a861ac85134365197a4b4e8f6c08ffb1a7f3b1d49d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/regex.rs",
+        "engine/src/plantuml/parser/grammar/regex.lalrpop"
+      ],
+      "behavior": "Ordered symbolic scalar/range/escape class members; native validates descending ranges and escaped endpoints.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
     }
   ],
   "fixtures": [
@@ -4091,6 +4384,18 @@
         "0",
         "100"
       ]
+    },
+    {
+      "path": "fixtures/plantuml/ebnf.puml",
+      "sha256": "63126d525ce71732630bd0840e94e970eed8c5be946db0c8fbc2c1571f0a197b",
+      "origin": "Exact existing locally generated original MIT oracle /tmp/ive-plantuml-native-oracles/ebnf-optional-repeat.puml; retained verbatim source fixture.",
+      "family": "ebnf"
+    },
+    {
+      "path": "fixtures/plantuml/regex.puml",
+      "sha256": "68b258c9db493a896f5f248717cfe1bc21e233cfffffcbbb3d4c52a6e77a9370",
+      "origin": "Exact existing locally generated original MIT oracle /tmp/ive-plantuml-native-oracles/regex-branch-repeat.puml; retained verbatim source fixture.",
+      "family": "regex"
     }
   ],
   "oracle": {
@@ -4157,7 +4462,10 @@
     "engine/src/plantuml/chen.rs",
     "engine/src/plantuml/chenscene.rs",
     "engine/src/plantuml/chart.rs",
-    "engine/src/plantuml/chartscene.rs"
+    "engine/src/plantuml/chartscene.rs",
+    "engine/src/plantuml/ebnf.rs",
+    "engine/src/plantuml/railroad.rs",
+    "engine/src/plantuml/regex.rs"
   ],
   "implementationNotes": [
     "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
@@ -4172,6 +4480,7 @@
     "Budgeting, native scene geometry and SVG serialization are original glue. No upstream theme/icon/font assets imported.",
     "Selected MIT artifact files retain legacy upstream comment headers beneath their generated MIT grant. Their bytes/hashes were not cleaned or altered.",
     "Task3D2 adds raw-byte Direct/Expansion origins, immutable eager definitions and compact earlier-definition lineage IDs. Statement errors keep authoritative parser lines and bounded expansion-use context; late Creole errors identify label-local locations and bounded textual candidates (including inert duplicates), not falsely precise authored spans. Existing YAML nested-flow/quote diagnostics remain line1. Columns in known source spans are one-based UTF-8 bytes.",
-    "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles."
+    "Task3D/3D2 are bounded styles/measured runs/literal preprocessing checkpoints, not full Task6 or PlantUML parity. Only immutable preamble !define is admitted; full TIM and resources remain denied. No dependencies/assets/runtime IO added. Raw family input is preserved before existing grammar admission. Baselines remain font-size/4.5 approximations; fixtures are native validation sources, not geometry oracles.",
+    "Task3K adds dedicated typed EBNF/regex arenas and real generated structural grammars, with a measured native orthogonal railroad compositor. References/ranges/counts remain symbolic; no regex execution. Native class/capture/repeat labels and routes differ from original curved geometry; explicit unsupported syntax and source/depth/model/work/text/output/cancellation controls apply."
   ]
 }

@@ -1,0 +1,27 @@
+grammar<'s>(builder: &mut crate::plantuml::ebnf::Builder<'_>);
+use crate::plantuml::{ebnf::Kind, parser::{railroad::Token,error::ParseFailure}};
+pub Document: () = <Rules>;
+Rules: () = { <Rule>, <Rules> <Rule> => () };
+Rule: () = <l:@L> <name:"word"> "=" <expr:Expression?> ";" <r:@R> =>? {
+    let id = match expr { Some(id) => Ok(id), None => builder.node(l..r,Kind::Empty) };
+    id.and_then(|id| builder.rule(l..r,name,id)).map_err(|error|lalrpop_util::ParseError::User{error})
+};
+Expression: usize = {
+    <Sequence>,
+    <l:@L> <a:Expression> "|" <b:Sequence> <r:@R> =>? builder.node(l..r,Kind::Choice(a,b)).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Sequence: usize = {
+    <Atom>,
+    <l:@L> <a:Sequence> "," <b:Atom> <r:@R> =>? builder.node(l..r,Kind::Sequence(a,b)).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Atom: usize = {
+    <l:@L> <name:"word"> <r:@R> =>? builder.text(name).and_then(|text|builder.node(l..r,Kind::Reference(text))).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> <raw:"text"> <r:@R> =>? builder.text(raw.0).and_then(|text|builder.node(l..r,Kind::Terminal(text,raw.1))).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "(" <id:Expression> ")" <r:@R> =>? builder.node(l..r,Kind::Group(id)).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "[" <id:Expression> "]" <r:@R> =>? builder.node(l..r,Kind::Optional(id)).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "{" <id:Expression> "}" <min:Plus?> <r:@R> =>? builder.node(l..r,Kind::Repeat(id,usize::from(min.is_some()))).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Plus: () = "-";
+extern { type Location=usize; type Error=ParseFailure;
+ enum Token<'s> { "word"=>Token::Word(<&'s str>), "text"=>Token::Text(<(&'s str,char)>), "="=>Token::Eq, ";"=>Token::Semi, ","=>Token::Comma, "|"=>Token::Pipe, "("=>Token::Open, ")"=>Token::Close, "["=>Token::Square, "]"=>Token::EndSquare, "{"=>Token::Brace, "}"=>Token::EndBrace, "-"=>Token::Minus }
+}

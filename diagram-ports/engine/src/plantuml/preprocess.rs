@@ -90,7 +90,7 @@ impl Processor<'_> {
                     self.define(raw, span)?;
                 }
                 Kind::Content => {
-                    if row.text.trim_start().starts_with('!') {
+                    if row.text.trim_start().starts_with('!') && !ownership.railroad() {
                         return Err(unsupported(span.line, &row.text));
                     }
                     let start = self.document.text.len();

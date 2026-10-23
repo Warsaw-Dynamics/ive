@@ -332,7 +332,7 @@
     {
       "path": "engine/src/plantuml/parser/ownership.rs",
       "groups": [
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["default#1", "classify#1", "advance#1", "advance_body#1", "finish#1", "span#1", "classify#2", "new#1", "consume#1", "strip#1"]},
+        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["railroad#1", "default#1", "classify#1", "advance#1", "advance_body#1", "finish#1", "span#1", "classify#2", "new#1", "consume#1", "strip#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["should_check_cancellation_during_comment_ownership_before_retaining_text#1"]}
       ]
     },
@@ -565,6 +565,147 @@
       "groups": [
         {"role": "lexical", "reason": "Literal quote/comment/scalar spelling primitives retained by generated YAML tokenization; no offside structure parser.", "symbols": ["push#1", "starts_quote#1", "open_quote#1", "finish#1", "find_unquoted#1", "remove_comment#1", "unquote#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["value#1", "should_check_flow_scalar_depth_before_any_field_accumulation#1", "should_admit_flow_scalars_at_exact_depth_including_mandatory_empty_element#1", "should_scan_long_whitespace_flow_fields_with_linear_charged_work#1", "should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work#1", "should_preserve_escaped_content_when_deciding_whether_quotes_open#1", "should_charge_trimmed_flow_copy_before_allocating_a_second_string#1", "should_enforce_flow_item_limit_before_next_field_accumulation#1", "should_replace_yaml_duplicate_without_moving_first_key_and_keep_string_scalars#1", "should_apply_literal_block_trimming_and_nonstructured_stopping_quirk#1", "should_distinguish_map_unquoting_from_flow_list_escaping#1", "should_preserve_list_of_maps_and_plain_dash_map_ownership#1"]}
+      ]
+    },
+{
+      "path": "engine/src/plantuml/ebnf.rs",
+      "groups": [
+        {
+          "role": "semantic",
+          "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.",
+          "symbols": [
+            "node#1",
+            "text#1",
+            "rule#1",
+            "span#1",
+            "rule_span#1",
+            "len#1",
+            "root_count#1",
+            "root#1",
+            "tile#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/regex.rs",
+      "groups": [
+        {
+          "role": "semantic",
+          "reason": "Typed immutable symbolic family arenas, range/repeat constraints and model-to-tile projection; no matching or expansion.",
+          "symbols": [
+            "bounds#1",
+            "node#1",
+            "text#1",
+            "member#1",
+            "range#1",
+            "class#1",
+            "repeat#1",
+            "span#1",
+            "rule_span#1",
+            "len#1",
+            "root_count#1",
+            "root#1",
+            "tile#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/railroad.rs",
+      "groups": [
+        {
+          "role": "layout",
+          "reason": "Measured railroad tiles, stable semantic ownership, finite port placement and bounded native orthogonal routes.",
+          "symbols": [
+            "len#1",
+            "root_count#1",
+            "root#1",
+            "tile#1",
+            "span#1",
+            "rule_span#1",
+            "geometry#1",
+            "store#1",
+            "measure#1",
+            "layout#1",
+            "emit#1",
+            "rail#1",
+            "place#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.",
+          "symbols": [
+            "draw#1",
+            "rect#1",
+            "points#1",
+            "should_stack_ordered_branches_and_connect_both_ports_to_shared_rails#1",
+            "should_connect_repeat_return_and_optional_bypass_without_crossing_leaf_interiors#1",
+            "should_bound_every_tile_and_expose_measured_entry_exit_ports#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/parser/ebnf.rs",
+      "groups": [
+        {
+          "role": "generated-facade",
+          "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.",
+          "symbols": [
+            "parse#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/parser/regex.rs",
+      "groups": [
+        {
+          "role": "generated-facade",
+          "reason": "Borrowed family token delivery into registered generated grammar and once-only authored origin mapping.",
+          "symbols": [
+            "parse#1"
+          ]
+        }
+      ]
+    },
+{
+      "path": "engine/src/plantuml/parser/railroad.rs",
+      "groups": [
+        {
+          "role": "infrastructure",
+          "reason": "Checked aggregate token/AST capacity, actual generated table-derived stack/reduction/symbol/diagnostic admission.",
+          "symbols": [
+            "reserve#1",
+            "push#1",
+            "admit#1"
+          ]
+        },
+        {
+          "role": "lexical",
+          "reason": "Family-owned primitive quote/escape/identifier/numeric lexemes and delimiter depth admission; no recursive structural grammar.",
+          "symbols": [
+            "lex#1",
+            "ebnf_token#1",
+            "regex_token#1",
+            "escape#1"
+          ]
+        },
+        {
+          "role": "test-adapter",
+          "reason": "Scoped model, geometry and resource-control assertions; generated entries are the only source syntax authority.",
+          "symbols": [
+            "ebnf_model#1",
+            "regex_model#1",
+            "should_preserve_ordered_rule_ids_quote_kinds_and_symbolic_references#1",
+            "should_keep_ebnf_sequence_precedence_and_independent_optional_repeat_nodes#1",
+            "should_parse_regex_precedence_and_count_metadata_without_expansion#1",
+            "should_retain_negation_ranges_escaped_brackets_and_noncapture_kind#1",
+            "should_admit_retained_vector_growth_before_allocation_and_keep_exact_payload_witnesses#1"
+          ]
+        }
       ]
     }
   ]

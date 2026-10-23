@@ -64,6 +64,9 @@ enum Mode {
 }
 
 impl Ownership {
+    pub fn railroad(&self) -> bool {
+        matches!(self.wrapper, Wrapper::Ebnf | Wrapper::Regex) && matches!(self.mode, Mode::Literal)
+    }
     pub fn classify(&mut self, raw: &str, budget: &mut Budget) -> Result<Row, ParseFailure> {
         for chunk in raw.as_bytes().chunks(256) {
             budget.charge(chunk.len()).map_err(ParseFailure::terminal)?;
@@ -118,7 +121,9 @@ impl Ownership {
                 self.wrapper = wrapper;
                 self.mode = match wrapper {
                     Wrapper::Uml => Mode::Uml,
-                    Wrapper::Json
+                    Wrapper::Ebnf
+                    | Wrapper::Regex
+                    | Wrapper::Json
                     | Wrapper::Yaml
                     | Wrapper::Salt
                     | Wrapper::Files
@@ -235,6 +240,8 @@ fn classify(command: &str) -> Kind {
     for (name, wrapper) in [
         ("chart", Wrapper::Chart),
         ("mindmap", Wrapper::Mindmap),
+        ("ebnf", Wrapper::Ebnf),
+        ("regex", Wrapper::Regex),
         ("wbs", Wrapper::Wbs),
         ("json", Wrapper::Json),
         ("yaml", Wrapper::Yaml),

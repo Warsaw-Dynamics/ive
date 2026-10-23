@@ -7,6 +7,7 @@ pub(super) mod context;
 pub(super) mod creole;
 pub(super) mod definition;
 pub(super) mod document;
+pub(super) mod ebnf;
 pub(super) mod error;
 pub(super) mod files;
 pub(super) mod gantt;
@@ -18,6 +19,8 @@ pub(super) mod outline;
 pub(super) mod ownership;
 pub(super) mod packet;
 pub(super) mod preamble;
+pub(super) mod railroad;
+pub(super) mod regex;
 pub(super) mod salt;
 pub(super) mod sequence;
 pub(super) mod state;
@@ -38,6 +41,15 @@ pub(super) struct BodySource<'s> {
     pub ownership: ownership::Ownership,
     pub adapters: usize,
 }
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/ebnf.rs"]
+mod generated_ebnf;
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/regex.rs"]
+mod generated_regex;
 
 impl BodySource<'_> {
     pub fn reborrow(&self) -> Self {

@@ -17,6 +17,7 @@ mod chrome;
 mod creole;
 mod data;
 mod datascene;
+mod ebnf;
 mod files;
 mod filesscene;
 mod gantt;
@@ -31,6 +32,8 @@ mod packet;
 mod packetscene;
 mod parser;
 mod preprocess;
+mod railroad;
+mod regex;
 mod salt;
 mod saltscene;
 mod scene;
@@ -195,6 +198,16 @@ pub(crate) fn render(
     } else {
         None
     };
+    let ebnf_model = if wrapper == source::Wrapper::Ebnf {
+        Some(parser::ebnf::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+    let regex_model = if wrapper == source::Wrapper::Regex {
+        Some(parser::regex::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
     let result = (|| {
         let session = RenderEnvironment::deterministic()
             .without_math_renderer()
@@ -205,7 +218,11 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if wrapper == source::Wrapper::Chart {
+        let (family, scene) = if let Some(model) = &ebnf_model {
+            ("ebnf", railroad::layout(model, &mut context)?)
+        } else if let Some(model) = &regex_model {
+            ("regex", railroad::layout(model, &mut context)?)
+        } else if wrapper == source::Wrapper::Chart {
             let model = chart_model.as_ref().ok_or_else(|| {
                 RenderError::Backend("chart selection has no parsed model".into())
             })?;

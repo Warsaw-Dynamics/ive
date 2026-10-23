@@ -36,6 +36,10 @@ pub(in crate::plantuml) enum Token {
     StartFiles,
     EndFiles,
     StartPacket,
+    StartEbnf,
+    EndEbnf,
+    StartRegex,
+    EndRegex,
     EndPacket,
     StartBoard,
     EndBoard,
@@ -106,6 +110,10 @@ pub(in crate::plantuml) fn emit(
         Kind::End(Wrapper::Nwdiag) => Token::EndNwdiag,
         Kind::Start(Wrapper::Files) => Token::StartFiles,
         Kind::End(Wrapper::Files) => Token::EndFiles,
+        Kind::Start(Wrapper::Ebnf) => Token::StartEbnf,
+        Kind::End(Wrapper::Ebnf) => Token::EndEbnf,
+        Kind::Start(Wrapper::Regex) => Token::StartRegex,
+        Kind::End(Wrapper::Regex) => Token::EndRegex,
         Kind::Start(Wrapper::Packet) => Token::StartPacket,
         Kind::End(Wrapper::Packet) => Token::EndPacket,
         Kind::Start(Wrapper::Board) => Token::StartBoard,
@@ -195,8 +203,28 @@ fn scan<'s>(
         };
         budget.charge(1).map_err(ParseFailure::terminal)?;
         let checkpoint = ownership;
-        let row = ownership.classify(raw, budget)?;
-        if row.text.trim_start().starts_with('!') {
+        let mut row = ownership.classify(raw, budget)?;
+        if ownership.railroad() && !matches!(row.kind, Kind::Content | Kind::Empty) {
+            budget.charge(document.segments.len().checked_ilog2().unwrap_or(0) as usize + 1)?;
+            let start = document
+                .segments
+                .partition_point(|segment| segment.output.end <= offset);
+            for segment in document.segments[start..]
+                .iter()
+                .take_while(|segment| segment.output.start < offset + raw.len())
+            {
+                budget.charge(1)?;
+                if matches!(
+                    segment.origin,
+                    crate::plantuml::origin::Origin::Expansion { .. }
+                ) {
+                    row.kind = Kind::Content;
+                    row.annotated_start = false;
+                    break;
+                }
+            }
+        }
+        if row.text.trim_start().starts_with('!') && !ownership.railroad() {
             return Err(ParseFailure::unsupported(
                 offset..offset + raw.len(),
                 "active preprocessing or generated directive",

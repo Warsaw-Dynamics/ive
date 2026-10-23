@@ -1,5 +1,9 @@
 # Completed current-parser migration inventory
 
+Central Chart + EBNF + regex integration retains **24 generated grammars**, **81 authored Rust modules / 1,186 registered functions**, and zero pending syntax exemptions. All prior family grammars and Chart's typed legend/series/layout remain registered; new railroad syntax has its separate generated authority. The older per-task counts below describe historical checkpoints.
+
+Task3K extension: EBNF and regex now have separate real generated structural grammars and dedicated immutable symbolic arenas. `parser/railroad.rs` owns borrowed primitive lexing and table-derived bounded admission; `railroad.rs` owns measured native tile/port/route composition below both language boundaries. References/counts/ranges are not expanded and no regex engine is invoked. The complete inventory is now 23 grammars and 78 authored modules / 1,155 function declarations. The historical Task17 counts below describe its earlier checkpoint. Native orthogonal geometry, explicit capture/class/count annotations and admitted/rejected subsets are recorded in README and the Task3K report.
+
 Basis: stable product `da590bc` plus final Task17 tooling/adapter cleanup. All current components have one registered generated structural authority. The final integration, full gate record and independent review remain separate completion steps.
 
 | Component | Structural authority | Retained handwritten responsibility |
