@@ -1,0 +1,39 @@
+// Independent entries; markers/modifiers/aliases/separators are generated syntax.
+grammar(builder: &mut dyn crate::plantuml::parser::tree::Actions);
+use crate::plantuml::{tree::{Outline, Side}, parser::{tree::{Token, Marker, Direction, marker, alias}, error::ParseFailure}};
+pub Mindmap: () = <MindItems>;
+MindItems: () = { => (), <MindItems> <MindItem> => () };
+MindItem: () = {
+    <side:"side"> "newline" =>? builder.set_side(side).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <prefix:MindPrefix> <shape:Shape> <label:"label"> "newline" <end:@R> =>? builder.node(marker(prefix, (shape, Direction::Default), String::new(), (label, String::new())), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+MindPrefix: String = { <prefix:"prefix"> => prefix, "zero" => "0".into() };
+#[inline]
+Shape: Outline = { => Outline::Box, "_" => Outline::Boxless };
+pub Wbs: () = <WbsItems>;
+WbsItems: () = { => (), <WbsItems> <WbsItem> => () };
+WbsItem: () = <start:@L> <prefix:"prefix"> <modifiers:Modifiers> <name:Alias> <label:Label> "newline" <end:@R> =>? builder.node(marker(prefix, modifiers, name, label), start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+#[inline]
+Modifiers: (Outline, Direction) = {
+    <shape:Shape> => (shape, Direction::Default),
+    <shape:Shape> "<" => (shape, Direction::Left),
+    <shape:Shape> ">" => (shape, Direction::Right),
+    "<" "_" => (Outline::Boxless, Direction::Left),
+    ">" "_" => (Outline::Boxless, Direction::Right),
+};
+#[inline]
+Alias: String = { => String::new(), "(" <value:Name> ")" => value };
+Name: String = <start:@L> <value:"alias"> <end:@R> =>? alias(value, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+#[inline]
+Label: (String, String) = { => (String::new(), String::new()), "space" <label:"label"> => (label, String::new()), "space" <display:"quoted"> "as" <name:Name> => (display, name) };
+extern {
+ type Location = usize;
+ type Error = ParseFailure;
+ enum Token {
+  "prefix" => Token::Prefix(<String>), "zero" => Token::Zero, "_" => Token::Under,
+  "<" => Token::Left, ">" => Token::Right, "(" => Token::Open, ")" => Token::Close,
+  "alias" => Token::Alias(<String>), "space" => Token::Space, "label" => Token::Label(<String>),
+  "quoted" => Token::Quoted(<String>), "as" => Token::As, "side" => Token::Side(<Side>),
+  "newline" => Token::Newline, "unknown" => Token::Unknown,
+ }
+}

@@ -77,8 +77,46 @@ pub(crate) fn render(
     } else {
         Selection::Sequence
     };
+    let view_bytes = std::mem::size_of::<parser::BodySource<'_>>();
+    let adapters = prepared.body.adapters.saturating_add(view_bytes);
+    budget::bound(
+        "family parser view retained bytes",
+        adapters,
+        budget.limits.source_bytes.saturating_mul(256),
+    )?;
+    budget.charge(view_bytes)?;
+    prepared.body.adapters = adapters;
     let sequence_model = if wrapper == source::Wrapper::Uml && selection == Selection::Sequence {
-        Some(parser::sequence::parse(prepared.body, &mut budget)?)
+        Some(parser::sequence::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
+    let files_model = if wrapper == source::Wrapper::Files {
+        Some(parser::files::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+    let board_model = if wrapper == source::Wrapper::Board {
+        Some(parser::board::parse(prepared.body.reborrow(), &mut budget)?)
+    } else {
+        None
+    };
+    let mindmap_model = if wrapper == source::Wrapper::Mindmap {
+        Some(parser::tree::parse_mindmap(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
+    let wbs_model = if wrapper == source::Wrapper::Wbs {
+        Some(parser::tree::parse_wbs(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
     } else {
         None
     };
@@ -96,14 +134,18 @@ pub(crate) fn render(
             let model = chen::parse(lines, context.budget)?;
             ("chen", chenscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Files {
-            let model = files::parse(lines, context.budget)?;
-            ("files", filesscene::layout(&model, &mut context)?)
+            let model = files_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML files selection has no parsed model".into())
+            })?;
+            ("files", filesscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Packet {
             let model = packet::parse(lines, context.budget)?;
             ("packetdiag", packetscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Board {
-            let model = board::parse(lines, context.budget)?;
-            ("board", boardscene::layout(&model, &mut context)?)
+            let model = board_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML board selection has no parsed model".into())
+            })?;
+            ("board", boardscene::layout(model, &mut context)?)
         } else if wrapper == source::Wrapper::Hcl {
             let document = hcl::parse(lines, context.budget)?;
             let model = hcl::lower(document, context.budget)?;
@@ -118,11 +160,15 @@ pub(crate) fn render(
             let model = gantt::parse(lines, context.budget)?;
             ("gantt", ganttscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Mindmap {
-            let model = tree::parse_mindmap(lines, context.budget)?;
-            ("mindmap", treescene::mindmap(&model, &mut context)?)
+            let model = mindmap_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML mindmap selection has no parsed model".into())
+            })?;
+            ("mindmap", treescene::mindmap(model, &mut context)?)
         } else if wrapper == source::Wrapper::Wbs {
-            let model = tree::parse_wbs(lines, context.budget)?;
-            ("wbs", treescene::wbs(&model, &mut context)?)
+            let model = wbs_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML WBS selection has no parsed model".into())
+            })?;
+            ("wbs", treescene::wbs(model, &mut context)?)
         } else if matches!(wrapper, source::Wrapper::Json | source::Wrapper::Yaml) {
             let (family, model) = if wrapper == source::Wrapper::Json {
                 ("json", data::parse_json(lines, context.budget)?)

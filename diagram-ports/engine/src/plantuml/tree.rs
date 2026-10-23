@@ -1,11 +1,9 @@
 //! MIT PlantUML mindmap/ and wbs/: ordered marker levels, sides and parent policies.
 use super::{
-    budget::{Budget, invalid, unsupported},
-    source::Line,
-    text::validate_label,
+    budget::Budget,
+    parser::{error::ParseFailure, outline::Arena, tree::Marker},
 };
-use crate::RenderError;
-
+use std::ops::Range;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Side {
     Left,
@@ -39,150 +37,208 @@ pub(super) struct Wbs {
     pub nodes: Vec<Node>,
 }
 
-struct Marker<'a> {
-    prefix: &'a str,
-    label: &'a str,
-    side: Side,
-    outline: Outline,
-    alias: &'a str,
+pub(in crate::plantuml) struct MindmapBuilder<'b> {
+    pub budget: &'b mut Budget,
+    arena: Arena,
+    nodes: Vec<Node>,
+    roots: Vec<usize>,
+    stacks: [Vec<usize>; 2],
+    first: String,
+    multiplier: usize,
+    pub side: Side,
 }
-
-pub(super) fn parse_mindmap(lines: &[Line], budget: &mut Budget) -> Result<Mindmap, RenderError> {
-    let mut nodes = Vec::new();
-    let mut roots = Vec::new();
-    let mut stacks = [Vec::new(), Vec::new()];
-    let mut first = String::new();
-    let mut multiplier = 0;
-    let mut side = Side::Right;
-    for line in lines {
-        budget.charge(line.text.len() + 1)?;
-        let trimmed = line.text.trim();
-        if trimmed.is_empty() || trimmed.starts_with('\'') {
-            continue;
+pub(in crate::plantuml) struct WbsBuilder<'b> {
+    pub budget: &'b mut Budget,
+    arena: Arena,
+    nodes: Vec<Node>,
+    stack: Vec<usize>,
+    first: String,
+}
+impl<'b> MindmapBuilder<'b> {
+    pub fn new(budget: &'b mut Budget, arena: Arena) -> Self {
+        Self {
+            budget,
+            arena,
+            nodes: Vec::new(),
+            roots: Vec::new(),
+            stacks: [Vec::new(), Vec::new()],
+            first: String::new(),
+            multiplier: 0,
+            side: Side::Right,
         }
-        match trimmed {
-            "left side" | "top side" => {
-                side = Side::Left;
-                continue;
-            }
-            "right side" | "bottom side" => {
-                side = Side::Right;
-                continue;
-            }
-            _ => {}
-        }
-        let marker = mindmap_marker(line, side)?;
+    }
+    pub fn set_side(&mut self, side: Side) -> Result<(), ParseFailure> {
+        self.budget.charge(1).map_err(ParseFailure::terminal)?;
+        self.side = side;
+        Ok(())
+    }
+    pub fn node(&mut self, mut marker: Marker, span: Range<usize>) -> Result<(), ParseFailure> {
         let raw = if marker.prefix.contains(['+', '-']) {
+            marker.side = if marker.prefix.contains('-') {
+                Side::Left
+            } else {
+                Side::Right
+            };
             marker.prefix.len() - 1
         } else {
-            smart_level(marker.prefix, &mut first, Smart::Mindmap, line.number)?
+            marker.side = if marker.prefix == "0" {
+                Side::Right
+            } else {
+                self.side
+            };
+            smart_level(
+                &marker.prefix,
+                &mut self.first,
+                Smart::Mindmap,
+                span.clone(),
+                self.budget,
+            )?
         };
-        let level = if nodes.is_empty() { 0 } else { raw };
+        let level = if self.nodes.is_empty() { 0 } else { raw };
         let depth = if level == 0 {
             0
         } else {
-            if multiplier == 0 {
-                multiplier = level;
+            if self.multiplier == 0 {
+                self.multiplier = level;
             }
-            if level % multiplier != 0 {
-                return Err(invalid(
-                    line.number,
+            if level % self.multiplier != 0 {
+                return Err(ParseFailure::syntax(
+                    span,
                     "mindmap Bad indentation: level is not a multiple of first child depth",
                 ));
             }
-            level / multiplier
+            level / self.multiplier
         };
-        budget.depth(depth + 1)?;
-        let index = nodes.len();
+        self.budget
+            .depth(depth + 1)
+            .map_err(ParseFailure::terminal)?;
+        let index = self.nodes.len();
         let branch = usize::from(marker.side == Side::Right);
         let parent = if depth == 0 {
-            roots.push(index);
-            stacks = [vec![index], vec![index]];
-            multiplier = 0;
+            self.arena.push(&mut self.roots, index, self.budget)?;
+            self.stacks[0].clear();
+            self.stacks[1].clear();
+            self.arena.push(&mut self.stacks[0], index, self.budget)?;
+            self.arena.push(&mut self.stacks[1], index, self.budget)?;
+            self.multiplier = 0;
             Parent::Root
         } else {
-            find_parent(&mut stacks[branch], depth, line.number)?
+            find_parent(&mut self.stacks[branch], depth, span.clone())?
         };
         if depth > 0 {
-            stacks[branch].push(index);
+            self.arena
+                .push(&mut self.stacks[branch], index, self.budget)?;
         }
-        nodes.push(make_node(marker, parent, depth, line.number, budget)?);
+        let node = make_node(marker, (parent, depth), span, self.budget)?;
+        self.arena.push(&mut self.nodes, node, self.budget)
     }
-    if nodes.is_empty() {
-        return Err(invalid(1, "mindmap has no root"));
+    pub fn finish(self, span: Range<usize>) -> Result<Mindmap, ParseFailure> {
+        self.budget.checkpoint().map_err(ParseFailure::terminal)?;
+        if self.nodes.is_empty() {
+            return Err(ParseFailure::syntax(span, "mindmap has no root"));
+        }
+        Ok(Mindmap {
+            nodes: self.nodes,
+            roots: self.roots,
+        })
     }
-    Ok(Mindmap { nodes, roots })
 }
-
-pub(super) fn parse_wbs(lines: &[Line], budget: &mut Budget) -> Result<Wbs, RenderError> {
-    let mut nodes = Vec::new();
-    let mut stack = Vec::new();
-    let mut first = String::new();
-    for line in lines {
-        budget.charge(line.text.len() + 1)?;
-        if line.text.trim().is_empty() || line.text.trim_start().starts_with('\'') {
-            continue;
+impl<'b> WbsBuilder<'b> {
+    pub fn new(budget: &'b mut Budget, arena: Arena) -> Self {
+        Self {
+            budget,
+            arena,
+            nodes: Vec::new(),
+            stack: Vec::new(),
+            first: String::new(),
         }
-        let marker = wbs_marker(line)?;
-        let depth = if nodes.is_empty() {
-            first = marker.prefix.to_owned();
+    }
+    pub fn node(&mut self, mut marker: Marker, span: Range<usize>) -> Result<(), ParseFailure> {
+        let depth = if self.nodes.is_empty() {
+            self.budget
+                .charge(marker.prefix.len())
+                .map_err(ParseFailure::terminal)?;
+            self.first = marker.prefix.clone();
             0
         } else {
-            smart_level(marker.prefix, &mut first, Smart::Wbs, line.number)?
+            smart_level(
+                &marker.prefix,
+                &mut self.first,
+                Smart::Wbs,
+                span.clone(),
+                self.budget,
+            )?
         };
-        budget.depth(depth + 1)?;
-        let parent = if nodes.is_empty() {
+        self.budget
+            .depth(depth + 1)
+            .map_err(ParseFailure::terminal)?;
+        let parent = if self.nodes.is_empty() {
             Parent::Root
         } else {
             if depth == 0 {
-                return Err(invalid(line.number, "WBS only accepts one root"));
+                return Err(ParseFailure::syntax(span, "WBS only accepts one root"));
             }
-            find_parent(&mut stack, depth, line.number)?
+            find_parent(&mut self.stack, depth, span.clone())?
         };
-        stack.push(nodes.len());
-        nodes.push(make_node(marker, parent, depth, line.number, budget)?);
+        if marker.label.is_empty() {
+            if marker.outline == Outline::Boxless {
+                marker.outline = Outline::Pseudo;
+            } else {
+                return Err(ParseFailure::syntax(span, "missing WBS node label"));
+            }
+        }
+        let node = make_node(marker, (parent, depth), span, self.budget)?;
+        self.arena
+            .push(&mut self.stack, self.nodes.len(), self.budget)?;
+        self.arena.push(&mut self.nodes, node, self.budget)
     }
-    if nodes.is_empty() {
-        return Err(invalid(1, "WBS has no root"));
+    pub fn finish(self, span: Range<usize>) -> Result<Wbs, ParseFailure> {
+        self.budget.checkpoint().map_err(ParseFailure::terminal)?;
+        if self.nodes.is_empty() {
+            return Err(ParseFailure::syntax(span, "WBS has no root"));
+        }
+        Ok(Wbs { nodes: self.nodes })
     }
-    Ok(Wbs { nodes })
 }
-
-fn find_parent(stack: &mut Vec<usize>, depth: usize, line: usize) -> Result<Parent, RenderError> {
+fn find_parent(
+    stack: &mut Vec<usize>,
+    depth: usize,
+    span: Range<usize>,
+) -> Result<Parent, ParseFailure> {
     if depth > stack.len() {
-        return Err(invalid(line, format!("invalid tree depth jump to {depth}")));
+        return Err(ParseFailure::syntax(span, "invalid tree depth jump"));
     }
     stack.truncate(depth);
     stack
         .last()
         .copied()
         .map(Parent::Node)
-        .ok_or_else(|| invalid(line, "tree parent is missing"))
+        .ok_or_else(|| ParseFailure::syntax(span, "tree parent is missing"))
 }
-
 fn make_node(
-    marker: Marker<'_>,
-    parent: Parent,
-    depth: usize,
-    line: usize,
+    marker: Marker,
+    position: (Parent, usize),
+    span: Range<usize>,
     budget: &mut Budget,
-) -> Result<Node, RenderError> {
-    budget.item()?;
-    budget.text(marker.label.len() + marker.alias.len())?;
+) -> Result<Node, ParseFailure> {
+    budget.item().map_err(ParseFailure::terminal)?;
+    budget
+        .text(marker.label.len() + marker.alias.len())
+        .map_err(ParseFailure::terminal)?;
     if marker.label.contains("<<") {
-        return Err(unsupported(line, "tree stereotypes"));
+        return Err(ParseFailure::unsupported(span, "tree stereotypes"));
     }
-    validate_label(marker.label, line)?;
+    // Shared label capability validation remains separate from marker syntax.
+    super::text::validate_label(&marker.label, 1).map_err(ParseFailure::terminal)?;
     Ok(Node {
-        parent,
-        depth,
+        parent: position.0,
+        depth: position.1,
         side: marker.side,
         outline: marker.outline,
-        label: marker.label.to_owned(),
-        alias: marker.alias.to_owned(),
+        label: marker.label,
+        alias: marker.alias,
     })
 }
-
 enum Smart {
     Mindmap,
     Wbs,
@@ -191,8 +247,12 @@ fn smart_level(
     prefix: &str,
     first: &mut String,
     policy: Smart,
-    line: usize,
-) -> Result<usize, RenderError> {
+    span: Range<usize>,
+    budget: &mut Budget,
+) -> Result<usize, ParseFailure> {
+    budget
+        .charge(prefix.len())
+        .map_err(ParseFailure::terminal)?;
     if first.is_empty() {
         *first = prefix.to_owned();
     }
@@ -202,9 +262,9 @@ fn smart_level(
     } else {
         &normalized
     };
-    if !kind.contains(' ') {
+    let Some(_) = kind.split_once(' ') else {
         return Ok(kind.len() - 1);
-    }
+    };
     if kind.ends_with(first.as_str()) {
         return Ok(kind.len() - first.len());
     }
@@ -214,169 +274,24 @@ fn smart_level(
     if kind.starts_with(first.as_str()) {
         return Ok(kind.len() - first.len());
     }
-    Err(invalid(
-        line,
-        format!("unsupported tree indentation prefix {prefix:?} relative to {first:?}"),
+    Err(ParseFailure::syntax(
+        span,
+        "unsupported tree indentation prefix relative to first node",
     ))
 }
-
-fn mindmap_marker(line: &Line, default: Side) -> Result<Marker<'_>, RenderError> {
-    let raw = &line.text;
-    if let Some(label) = raw.strip_prefix('0') {
-        return Ok(Marker {
-            prefix: "0",
-            label: label.trim_start(),
-            side: Side::Right,
-            outline: Outline::Box,
-            alias: "",
-        });
-    }
-    let text = raw.trim_start_matches([' ', '\t']);
-    let count = text
-        .bytes()
-        .take_while(|ch| matches!(ch, b'*' | b'#'))
-        .count();
-    let (prefix, rest, side) = if count > 0 {
-        let end = raw.len() - text.len() + count;
-        (&raw[..end], &raw[end..], default)
-    } else {
-        let count = raw
-            .bytes()
-            .take_while(|ch| matches!(ch, b'+' | b'-'))
-            .count();
-        if count == 0 {
-            return Err(unsupported(
-                line.number,
-                &format!("mindmap command {:?}", line.text),
-            ));
-        }
-        (
-            &raw[..count],
-            &raw[count..],
-            if raw[..count].contains('-') {
-                Side::Left
-            } else {
-                Side::Right
-            },
-        )
-    };
-    if rest.starts_with('[') {
-        return Err(unsupported(line.number, "mindmap colors"));
-    }
-    let (outline, rest) = if let Some(rest) = rest.strip_prefix('_') {
-        (Outline::Boxless, rest)
-    } else {
-        (Outline::Box, rest)
-    };
-    if rest.starts_with(':') {
-        return Err(unsupported(
-            line.number,
-            "mindmap multiline command variant",
-        ));
-    }
-    Ok(Marker {
-        prefix,
-        label: rest.trim_start(),
-        side,
-        outline,
-        alias: "",
-    })
+#[cfg(test)]
+use super::source::Line;
+#[cfg(test)]
+pub(super) fn parse_mindmap(
+    lines: &[Line],
+    budget: &mut Budget,
+) -> Result<Mindmap, crate::RenderError> {
+    super::parser::outline::test_parse(lines, "mindmap", budget, super::parser::tree::parse_mindmap)
 }
-
-fn wbs_marker(line: &Line) -> Result<Marker<'_>, RenderError> {
-    let raw = &line.text;
-    let text = raw.trim_start_matches([' ', '\t']);
-    let count = text
-        .bytes()
-        .take_while(|ch| matches!(ch, b'*' | b'+' | b'-'))
-        .count();
-    if count == 0 {
-        return Err(unsupported(line.number, "WBS command or crosslink"));
-    }
-    let end = raw.len() - text.len() + count;
-    let prefix = &raw[..end];
-    let mut rest = &raw[end..];
-    let mut outline = Outline::Box;
-    let mut side = if prefix.contains('-') {
-        Side::Left
-    } else {
-        Side::Right
-    };
-    let mut seen_shape = false;
-    let mut seen_direction = false;
-    while let Some(ch) = rest.chars().next().filter(|c| matches!(c, '_' | '<' | '>')) {
-        match ch {
-            '_' if !seen_shape => {
-                outline = Outline::Boxless;
-                seen_shape = true;
-            }
-            '<' | '>' if !seen_direction => {
-                side = if ch == '<' { Side::Left } else { Side::Right };
-                seen_direction = true;
-            }
-            _ => {
-                return Err(invalid(
-                    line.number,
-                    "repeated WBS shape/direction modifier",
-                ));
-            }
-        }
-        rest = &rest[1..];
-    }
-    let mut alias = "";
-    if rest.starts_with('(') {
-        let close = rest
-            .find(')')
-            .ok_or_else(|| invalid(line.number, "unterminated WBS alias"))?;
-        alias = &rest[1..close];
-        if alias.is_empty() || !alias.chars().all(|c| c.is_alphanumeric() || c == '_') {
-            return Err(invalid(line.number, format!("invalid WBS alias {alias:?}")));
-        }
-        rest = &rest[close + 1..];
-    }
-    if rest.starts_with('[') {
-        return Err(unsupported(line.number, "WBS colors"));
-    }
-    if rest.starts_with(':') {
-        return Err(unsupported(line.number, "WBS multiline command variant"));
-    }
-    if !rest.is_empty() && !rest.starts_with(char::is_whitespace) {
-        return Err(invalid(
-            line.number,
-            "WBS label requires separating whitespace",
-        ));
-    }
-    let mut label = rest.trim_start();
-    if label.starts_with('"') {
-        if let Some((display, code)) = label
-            .strip_prefix('"')
-            .and_then(|s| s.rsplit_once("\" as "))
-        {
-            if code.is_empty() || !code.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                return Err(invalid(line.number, "invalid WBS quoted-label alias"));
-            }
-            alias = code;
-            label = display;
-        } else {
-            return Err(unsupported(line.number, "WBS quoted label without alias"));
-        }
-    }
-    if label.is_empty() {
-        if outline == Outline::Boxless {
-            outline = Outline::Pseudo;
-        } else {
-            return Err(invalid(line.number, "missing WBS node label"));
-        }
-    }
-    Ok(Marker {
-        prefix,
-        label,
-        side,
-        outline,
-        alias,
-    })
+#[cfg(test)]
+pub(super) fn parse_wbs(lines: &[Line], budget: &mut Budget) -> Result<Wbs, crate::RenderError> {
+    super::parser::outline::test_parse(lines, "wbs", budget, super::parser::tree::parse_wbs)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
