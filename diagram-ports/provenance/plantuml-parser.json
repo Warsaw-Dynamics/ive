@@ -1,12 +1,14 @@
 {
   "schema": 1,
-  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, and complete sequence declarations/messages/arrows/notes/nested frames/lifecycle with preserved Sequence model/layout and structured expanded-byte failures. Other family grammars and Creole remain pending.",
-  "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, and sequence participant/message/note/frame/lifecycle semantics are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
+  "scope": "Generated same-line !define, paired documents/directive placement, shared authored/expanded lexical ownership, typed family headers, preamble/regions/styles/skinparams, and complete sequence declarations/messages/arrows/notes/nested frames/lifecycle with preserved Sequence model/layout and structured expanded-byte failures. Complete recursive modern activities, conditions/guards, continuation blocks and EOF preserve the existing Block model and activitytile layout. Other family grammars and Creole remain pending.",
+  "authorship": "Original native parser infrastructure and generated subset grammars. Retained immutable evaluator, typed preamble/style policy, and sequence participant/message/note/frame/lifecycle and structured activity semantics are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. Generated Rust follows the registered grammar inventory.",
   "authoredFiles": [
+    "engine/src/plantuml/parser/activity.rs",
     "engine/src/plantuml/parser/context.rs",
     "engine/src/plantuml/parser/definition.rs",
     "engine/src/plantuml/parser/document.rs",
     "engine/src/plantuml/parser/error.rs",
+    "engine/src/plantuml/parser/grammar/activity.lalrpop",
     "engine/src/plantuml/parser/grammar/definition.lalrpop",
     "engine/src/plantuml/parser/grammar/document.lalrpop",
     "engine/src/plantuml/parser/grammar/header.lalrpop",
@@ -20,6 +22,7 @@
     "engine/src/plantuml/parser/token.rs"
   ],
   "generatedFiles": [
+    "engine/src/plantuml/generated/activity.rs",
     "engine/src/plantuml/generated/definition.rs",
     "engine/src/plantuml/generated/document.rs",
     "engine/src/plantuml/generated/header.rs",

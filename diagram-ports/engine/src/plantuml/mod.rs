@@ -77,8 +77,25 @@ pub(crate) fn render(
     } else {
         Selection::Sequence
     };
+    let view_bytes = std::mem::size_of::<parser::BodySource<'_>>();
+    let adapters = prepared.body.adapters.saturating_add(view_bytes);
+    budget::bound(
+        "family parser view retained bytes",
+        adapters,
+        budget.limits.source_bytes.saturating_mul(256),
+    )?;
+    budget.charge(view_bytes)?;
+    prepared.body.adapters = adapters;
     let sequence_model = if wrapper == source::Wrapper::Uml && selection == Selection::Sequence {
-        Some(parser::sequence::parse(prepared.body, &mut budget)?)
+        Some(parser::sequence::parse(
+            prepared.body.reborrow(),
+            &mut budget,
+        )?)
+    } else {
+        None
+    };
+    let activity_model = if wrapper == source::Wrapper::Uml && selection == Selection::Activity {
+        Some(parser::activity::parse(prepared.body, &mut budget)?)
     } else {
         None
     };
@@ -131,8 +148,10 @@ pub(crate) fn render(
             };
             (family, datascene::layout(&model, &mut context)?)
         } else if selection == Selection::Activity {
-            let model = activity::parse(lines, context.budget)?;
-            ("activity", activitytile::layout(&model, &mut context)?)
+            let model = activity_model.as_ref().ok_or_else(|| {
+                RenderError::Backend("PlantUML activity selection has no parsed model".into())
+            })?;
+            ("activity", activitytile::layout(model, &mut context)?)
         } else if selection == Selection::State {
             let model = state::parse(lines, context.budget)?;
             ("state", stategraph::layout(&model, &mut context)?)
