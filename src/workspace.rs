@@ -79,6 +79,7 @@ pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 pub use path_actions::is_path_action;
 pub use updates::activity_watcher;
+pub(crate) use scripts::run_text_key;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {

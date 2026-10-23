@@ -93,6 +93,12 @@ impl Render for TabWindow {
             // input here counts against the update restart's idle time as the main window's does
             .child(crate::workspace::activity_watcher(self.workspace.clone()))
             .track_focus(&self.focus_handle)
+            // the user's Copy and Select All on selected text; the workspace's other bindings stay in the main window
+            .on_key_down(|event, window, cx| {
+                if crate::workspace::run_text_key(event, window, cx) {
+                    cx.stop_propagation();
+                }
+            })
             .bg(rgb(theme.background))
             .font_family(theme::ui_font(cx))
             .text_color(rgb(theme.text));

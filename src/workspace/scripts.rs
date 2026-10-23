@@ -84,6 +84,20 @@ fn apply_excluded(excluded: Excluded, cx: &mut App) -> bool {
     changed
 }
 
+/// Runs the user's binding for `event` on selected text in `window` when that text has the keyboard (Copy, Select
+/// All); whether it took the key. A detached tab's window has no workspace bindings, so it asks this.
+pub(crate) fn run_text_key(event: &KeyDownEvent, window: &Window, cx: &mut App) -> bool {
+    let has_keys = cx.global::<TextSelection>().focus.is_focused(window);
+    let action = has_keys.then(|| bound_action(event, Place::Text, cx)).flatten();
+    match action {
+        Some(Action::Builtin(builtin)) if takes_in_text(builtin) => {
+            run_text_builtin(builtin, cx);
+            true
+        }
+        _ => false,
+    }
+}
+
 /// Whether selected read-only text takes `builtin`: the editor's own actions; window-wide ones (Alt+F12, the hub)
 /// still act on the window.
 fn takes_in_text(builtin: Builtin) -> bool {
@@ -291,6 +305,63 @@ mod tests {
 
     fn excluded(names: serde_json::Value) -> Excluded {
         crate::script::excluded::parse(&serde_json::from_value(names).unwrap()).unwrap()
+    }
+
+    /// Selectable text in a panel that hands its keys to [`run_text_key`], as a detached tab's window does.
+    struct Detached;
+
+    impl gpui::Render for Detached {
+        fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+            use gpui::prelude::*;
+            let panel = gpui::div().size_full().on_key_down(|event, window, cx| {
+                run_text_key(event, window, cx);
+            });
+            gpui::div().size_full().child(panel.child(crate::selectable::selectable("t", "hello world", cx)))
+        }
+    }
+
+    #[gpui::test]
+    fn should_copy_selected_text_with_the_users_copy_key(cx: &mut gpui::TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        cx.update(|cx| {
+            cx.set_global(crate::theme::Theme::of(crate::theme::Appearance::Dark));
+            let selection = TextSelection::new(cx);
+            cx.set_global(selection);
+            let copy = crate::script::keymap::Binding {
+                trigger: crate::script::keymap::Trigger::Key(gpui::Keystroke::parse("ctrl-c").unwrap()),
+                scope: Scope::Editor,
+                action: Action::Builtin(Builtin::CopyTo(crate::script::keymap::ClipboardTarget::Clipboard)),
+            };
+            let mut state = ScriptState::new(futures::channel::mpsc::unbounded().0, crate::script::log::ScriptLog::new(dir.path().join("scripts.log"), 64 * 1024));
+            state.apply(loaded(crate::script::keymap::Keymap::new(vec![copy]).unwrap()));
+            cx.set_global(state);
+        });
+        let (_, cx) = cx.add_window_view(|_window, _cx| Detached);
+        cx.run_until_parked();
+        cx.simulate_event(gpui::MouseDownEvent { button: gpui::MouseButton::Left, position: gpui::point(gpui::px(5.), gpui::px(5.)), modifiers: gpui::Modifiers::default(), click_count: 2, first_mouse: false });
+        cx.run_until_parked();
+
+        // when
+        cx.simulate_keystrokes("ctrl-c");
+
+        // then
+        assert_eq!(cx.read_from_clipboard().and_then(|item| item.text()).as_deref(), Some("hello"));
+    }
+
+    fn loaded(keymap: crate::script::keymap::Keymap) -> crate::script::ScriptEvent {
+        crate::script::ScriptEvent::Loaded {
+            keymap,
+            fonts: Fonts::default(),
+            theme: Box::new(crate::theme_config::defaults()),
+            excluded: Default::default(),
+            temporary_tabs: TemporaryTabs { enabled: true, kinds: Vec::new(), marker: crate::script::temporary_tabs::TabMarker::Italic },
+            menus: Default::default(),
+            quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
+            open_folders: Default::default(),
+            has_init: true,
+            themes: Vec::new(),
+        }
     }
 
     #[test]
