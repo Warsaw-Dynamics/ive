@@ -71,6 +71,47 @@ enum Block {
     Literal(usize),
 }
 
+#[derive(Default)]
+struct FlowField {
+    text: String,
+    quoted: bool,
+    has_content: bool,
+}
+
+impl FlowField {
+    fn push(&mut self, ch: char, budget: &mut Budget) -> Result<(), RenderError> {
+        budget.text(ch.len_utf8())?;
+        self.has_content |= !ch.is_whitespace();
+        self.text.push(ch);
+        Ok(())
+    }
+
+    fn starts_quote(&self, ch: char) -> bool {
+        !self.quoted && !self.has_content && matches!(ch, '\'' | '"')
+    }
+
+    fn open_quote(&mut self) {
+        self.text.clear();
+        self.quoted = true;
+        self.has_content = false;
+    }
+
+    fn finish(&mut self, budget: &mut Budget) -> Result<String, RenderError> {
+        let value = if self.quoted {
+            std::mem::take(&mut self.text)
+        } else {
+            budget.charge(self.text.len())?;
+            let trimmed = self.text.trim();
+            budget.text(trimmed.len())?;
+            trimmed.to_owned()
+        };
+        self.text.clear();
+        self.quoted = false;
+        self.has_content = false;
+        Ok(value)
+    }
+}
+
 fn classify(line: &Line, budget: &mut Budget) -> Result<YamlLine, RenderError> {
     let tabs = line.text.bytes().filter(|&b| b == b'\t').count();
     let size = line.text.len() + tabs * 3;
@@ -380,17 +421,17 @@ impl Parser<'_, '_> {
     }
     fn flow(&mut self, text: &str, depth: usize) -> Result<Value, RenderError> {
         self.budget.depth(depth)?;
+        self.begin_flow_scalar(depth)?;
         let mut values = Vec::new();
-        let mut field = String::new();
+        let mut field = FlowField::default();
         let mut quote = '\0';
-        let mut quoted = false;
         let mut chars = text.chars();
         while let Some(ch) = chars.next() {
             self.budget.charge(ch.len_utf8())?;
             if ch == '\\' {
                 if let Some(next) = chars.next() {
-                    self.budget.text(next.len_utf8())?;
-                    field.push(next);
+                    self.budget.charge(next.len_utf8())?;
+                    field.push(next, self.budget)?;
                 }
                 continue;
             }
@@ -398,45 +439,35 @@ impl Parser<'_, '_> {
                 if ch == quote {
                     quote = '\0';
                 } else {
-                    self.budget.text(ch.len_utf8())?;
-                    field.push(ch);
+                    field.push(ch, self.budget)?;
                 }
                 continue;
             }
-            if !quoted && field.trim().is_empty() && matches!(ch, '\'' | '"') {
+            if field.starts_quote(ch) {
                 quote = ch;
-                quoted = true;
-                field.clear();
+                field.open_quote();
                 continue;
             }
             if ch == ',' {
-                self.budget.item()?;
-                values.push(Value::String(if quoted {
-                    std::mem::take(&mut field)
-                } else {
-                    let value = field.trim().to_owned();
-                    field.clear();
-                    value
-                }));
-                quoted = false;
+                values.push(Value::String(field.finish(self.budget)?));
+                self.begin_flow_scalar(depth)?;
                 continue;
             }
             if matches!(ch, '[' | ']') {
                 return Err(unsupported(1, "YAML nested flow containers"));
             }
-            self.budget.text(ch.len_utf8())?;
-            field.push(ch);
+            field.push(ch, self.budget)?;
         }
         if quote != '\0' {
             return Err(invalid(1, "unterminated YAML flow quote"));
         }
-        self.budget.item()?;
-        values.push(Value::String(if quoted {
-            field
-        } else {
-            field.trim().to_owned()
-        }));
+        values.push(Value::String(field.finish(self.budget)?));
         Ok(Value::Array(values))
+    }
+
+    fn begin_flow_scalar(&mut self, depth: usize) -> Result<(), RenderError> {
+        self.budget.depth(depth + 1)?;
+        self.budget.item()
     }
 }
 
@@ -454,6 +485,198 @@ mod tests {
             })
             .collect();
         parse(&lines, &mut Budget::new(&RenderOptions::default())).unwrap()
+    }
+
+    #[test]
+    fn should_check_flow_scalar_depth_before_any_field_accumulation() {
+        // given
+        for text in ["one", "\"two\"", "", "   ", "\\ ", "one,two"] {
+            let mut config = RenderOptions::default();
+            config.limits.nesting_depth = 2;
+            let mut budget = Budget::new(&config);
+            let mut parser = Parser {
+                tokens: &[],
+                index: 0,
+                budget: &mut budget,
+            };
+            // when
+            let result = parser.flow(text, 2);
+            // then
+            let error = result.expect_err("flow scalar depth 3 exceeded limit 2");
+            assert!(
+                error
+                    .to_string()
+                    .contains("nesting depth value 3 exceeds limit 2"),
+                "{error}"
+            );
+            assert_eq!(
+                budget.work, 0,
+                "field work happened before depth rejection for {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn should_admit_flow_scalars_at_exact_depth_including_mandatory_empty_element() {
+        // given
+        for (text, expected) in [
+            ("one", "one"),
+            ("\" two \"", " two "),
+            ("", ""),
+            ("   ", ""),
+        ] {
+            let mut config = RenderOptions::default();
+            config.limits.nesting_depth = 3;
+            let mut budget = Budget::new(&config);
+            let mut parser = Parser {
+                tokens: &[],
+                index: 0,
+                budget: &mut budget,
+            };
+            // when
+            let result = parser.flow(text, 2).unwrap();
+            // then
+            assert_eq!(result, Value::Array(vec![Value::String(expected.into())]));
+        }
+    }
+
+    #[test]
+    fn should_scan_long_whitespace_flow_fields_with_linear_charged_work() {
+        // given
+        for size in [4_000, 8_000, 16_000] {
+            let text = " ".repeat(size);
+            let mut config = RenderOptions::default();
+            config.limits.layout_work = 4 * text.len() + 32;
+            let mut budget = Budget::new(&config);
+            let mut parser = Parser {
+                tokens: &[],
+                index: 0,
+                budget: &mut budget,
+            };
+            // when
+            let result = parser.flow(&text, 2).unwrap();
+            // then
+            assert_eq!(result, Value::Array(vec![Value::String(String::new())]));
+            assert!(budget.work >= text.len(), "input scan was not charged");
+            eprintln!(
+                "flow whitespace bytes={size} bounded_work={} limit={}",
+                budget.work, config.limits.layout_work
+            );
+        }
+    }
+
+    #[test]
+    fn should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work() {
+        // given
+        for size in [4_000, 8_000, 16_000] {
+            let spaces = " ".repeat(size);
+            let text = format!(
+                "{spaces}\" one \",{spaces}\\ {spaces}tail,{spaces}\\\"literal,{spaces}\\ \' two \'"
+            );
+            let mut config = RenderOptions::default();
+            config.limits.layout_work = 4 * text.len() + 64;
+            let mut budget = Budget::new(&config);
+            let mut parser = Parser {
+                tokens: &[],
+                index: 0,
+                budget: &mut budget,
+            };
+            // when
+            let result = parser.flow(&text, 2).unwrap();
+            // then
+            assert_eq!(
+                result,
+                Value::Array(vec![
+                    Value::String(" one ".into()),
+                    Value::String("tail".into()),
+                    Value::String("\"literal".into()),
+                    Value::String(" two ".into())
+                ])
+            );
+            eprintln!(
+                "flow mixed bytes={} bounded_work={} limit={}",
+                text.len(),
+                budget.work,
+                config.limits.layout_work
+            );
+        }
+    }
+
+    #[test]
+    fn should_preserve_escaped_content_when_deciding_whether_quotes_open() {
+        // given
+        let mut budget = Budget::new(&RenderOptions::default());
+        let mut parser = Parser {
+            tokens: &[],
+            index: 0,
+            budget: &mut budget,
+        };
+        let text = "\\x\"y\",\\ \"z\",\\'literal,\\\u{a0}\"spaced\"";
+        // when
+        let result = parser.flow(text, 2).unwrap();
+        // then
+        assert_eq!(
+            result,
+            Value::Array(vec![
+                Value::String("x\"y\"".into()),
+                Value::String("z".into()),
+                Value::String("'literal".into()),
+                Value::String("spaced".into())
+            ])
+        );
+    }
+
+    #[test]
+    fn should_charge_trimmed_flow_copy_before_allocating_a_second_string() {
+        // given
+        let mut config = RenderOptions::default();
+        config.limits.source_bytes = 1;
+        let mut budget = Budget::new(&config);
+        let mut field = FlowField::default();
+        for ch in "original".chars() {
+            field.push(ch, &mut budget).unwrap();
+        }
+        // when
+        let error = field.finish(&mut budget).unwrap_err();
+        // then
+        assert!(
+            error
+                .to_string()
+                .contains("expanded model text bytes value 16 exceeds limit 8"),
+            "{error}"
+        );
+        assert_eq!(field.text, "original");
+    }
+
+    #[test]
+    fn should_enforce_flow_item_limit_before_next_field_accumulation() {
+        // given
+        let mut observed_work = Vec::new();
+        for suffix in ["two".to_owned(), format!("{}tail", " ".repeat(16_000))] {
+            let text = format!("one,{suffix}");
+            let mut config = RenderOptions::default();
+            config.limits.model_items = 1;
+            let mut budget = Budget::new(&config);
+            let mut parser = Parser {
+                tokens: &[],
+                index: 0,
+                budget: &mut budget,
+            };
+            // when
+            let error = parser.flow(&text, 2).unwrap_err();
+            // then
+            assert!(
+                error
+                    .to_string()
+                    .contains("model items value 2 exceeds limit 1"),
+                "{error}"
+            );
+            observed_work.push(budget.work);
+        }
+        assert_eq!(
+            observed_work[0], observed_work[1],
+            "rejected field contents were processed"
+        );
     }
 
     #[test]

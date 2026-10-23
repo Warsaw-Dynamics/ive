@@ -412,3 +412,74 @@ fn should_reject_spaced_yaml_merge_keys_but_keep_escaped_quote_flow_literals() {
         .collect();
     assert!(labels.contains(&"escaped\" *literal"));
 }
+
+#[test]
+fn should_enforce_flow_scalar_depth_at_exact_limit_and_one_below() {
+    // given
+    for (body, depth) in [
+        ("a: [one]", 3),
+        ("a: []", 3),
+        ("nested:\n  a: [one]", 4),
+        ("nested:\n  a: []", 4),
+    ] {
+        let source = format!("@startyaml\n{body}\n@endyaml");
+        let mut exact = options();
+        exact.limits.nesting_depth = depth;
+        let mut below = options();
+        below.limits.nesting_depth = depth - 1;
+        // when
+        let admitted = render(&source, &exact).unwrap();
+        let rejected = render(&source, &below);
+        // then
+        assert_eq!(admitted.family, "yaml");
+        usvg::Tree::from_str(&admitted.svg, &usvg::Options::default()).unwrap();
+        let error = rejected
+            .expect_err("flow scalar escaped caller nesting limit")
+            .to_string();
+        assert!(
+            error.contains(&format!(
+                "nesting depth value {depth} exceeds limit {}",
+                depth - 1
+            )),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn should_render_long_whitespace_quote_and_escape_flow_fields_with_bounded_work() {
+    // given
+    for size in [4_000, 8_000, 16_000] {
+        let spaces = " ".repeat(size);
+        for body in [
+            format!("a: [{spaces}]"),
+            format!("a: [{spaces}\" quoted \",{spaces}\\\"literal]"),
+        ] {
+            let source = format!("@startyaml\n{body}\n@endyaml");
+            let mut config = options();
+            config.limits.layout_work = 20 * source.len() + 1_024;
+            // when
+            let output = render(&source, &config).unwrap();
+            // then
+            assert_eq!(output.family, "yaml");
+            usvg::Tree::from_str(&output.svg, &usvg::Options::default()).unwrap();
+            assert!(output.layout_work_units <= config.limits.layout_work);
+            let xml = roxmltree::Document::parse(&output.svg).unwrap();
+            let labels: Vec<_> = xml
+                .descendants()
+                .filter(|n| n.has_tag_name("text"))
+                .filter_map(|n| n.text())
+                .collect();
+            if body.contains("quoted") {
+                assert!(labels.contains(&" quoted "));
+                assert!(labels.contains(&"\"literal"));
+            }
+            eprintln!(
+                "render flow source_bytes={} work={} limit={}",
+                source.len(),
+                output.layout_work_units,
+                config.limits.layout_work
+            );
+        }
+    }
+}
