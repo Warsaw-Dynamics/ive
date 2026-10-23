@@ -19,13 +19,13 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Current committed head | `e9c1354` — tested UML and activity parser routes integrated |
+| Latest integrated product checkpoint | `435d73c` — tested Chen and JSON/HCL parser routes added to UML/activity; root full tests/baseline/native checks pass |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Chen, JSON/HCL, and timing/Gantt stages in isolated worktrees |
+| Current implementers | YAML and timing/Gantt in isolated worktrees; central integration is stable for root checks |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Complete Chen, JSON/HCL and timing/Gantt; integrate tested checkpoints, then continue remaining grammar queue |
-| Latest independent controller checks | At `e9c1354`, full serial workspace `cargo test --locked --offline --workspace -- --test-threads=1` passes, including seven actual worker faults; immutable43 baseline and 220 MIT/43 fixture/43 module audit also pass. Earlier `0c5177e` completed all16 gates and six native captures/exports. |
+| Next implementation | Continue YAML, timing/Gantt and Salt; integrate their tested checkpoints, then remaining grammar queue |
+| Latest independent controller checks | At `435d73c`, full serial workspace tests and seven actual worker faults, immutable43 baseline, release viewer build and five native class/activity/Chen/JSON/HCL captures plus five empty-PATH/no-display SVG exports pass; zero fallbacks and no test viewer survivors. Agent combined strict Clippy/fmt, private generator14 and 220 MIT/43 fixture/43 module audit pass. Earlier `0c5177e` completed all16 gates. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
 | Latest native compatibility captures | Sequence/state/mindmap/WBS/files/board measurements7/7/5/5/12/8,all zero fallback; controller inspected/hash-verified and stopped all viewers |
@@ -180,13 +180,13 @@ Approach: staged real grammar cutovers with existing models/layouts retained. Cu
 | 3 | Preambles/styles/chrome syntax | DONE —f5a10a0; both Important findings addressed, independent scoped approval; root544/all16 gates/native/public probes pass |
 | 4 | Sequence | DONE —1506eb1 integrated0c5177e; both compatibility fixes reviewed, full combined gates/native pass |
 | 5 | UML/description/ArchiMate/names/arrows | INTEGRATED8a58a71 from tested0c2ee0e —362 UML-only focused tests pass; broad review deferred |
-| 6 | Chen/contextual keyword repair | IN PROGRESS — isolated worktree from tested UML head |
+| 6 | Chen/contextual keyword repair | INTEGRATED435d73c from testedc465f21 —454 combined focused tests/private generator14/source audit, root full/baseline/native checks pass; broad review deferred |
 | 7 | State | DONE —ec60840 integrated0c5177e; adjacency fix reviewed, full combined gates/native pass |
 | 8 | Structured activity | INTEGRATEDe9c1354 from tested1b0c234 — combined focused suite375, strict Clippy/fmt and private generator11 pass; root full serial workspace tests and seven worker faults pass; broad review deferred |
 | 9 | Mindmap/WBS/files/board | DONE —4a31cb7 integrated0c5177e; syntax/label limit fix reviewed, full combined gates/native pass |
-| 10 | JSON/HCL | IN PROGRESS from WIPe71d646 — newest tests, provenance/admission proof and final checks being completed |
-| 11 | PlantUML YAML | Pending |
-| 12 | Timing/Gantt/assigned defects | Pending |
+| 10 | JSON/HCL | INTEGRATED435d73c from tested53dbad8 —454 combined focused tests/private generator14/source audit, root full/baseline/native checks pass; depth64 positive/depth65 negative and exact retained-byte controls pass; broad review deferred |
+| 11 | PlantUML YAML | IN PROGRESS — isolated worktree from tested Task10 head |
+| 12 | Timing/Gantt/assigned defects | IN PROGRESS — isolated worktree from integrated UML/activity head |
 | 13 | Salt | Pending |
 | 14 | nwdiag/contextual server-name repair | Pending |
 | 15 | Packetdiag | Pending |
@@ -272,7 +272,7 @@ Existing inventory briefs/source-semantic research are prepared and read; the re
 - [ ] Fresh final tests, Clippy/fmt/release, license/feature/source audits, headless empty-PATH exports, negative cases, both-language native captures and no surviving test processes.
 - [ ] Fresh most-capable whole-branch review; one scoped fix wave/re-review and explicit adjudication of remaining findings.
 - [ ] Keep local branch/worktree/commits; no unrequested merge/push/publication. Read finishing workflow and provide launch/coverage/evidence handoff.
-- [ ] Preserve all recorded controller rulings (currently eleven: ten parent, one acceleration), chronologically with cost-if-wrong, in final handoff.
+- [ ] Preserve all recorded controller rulings (currently twelve: ten parent, one parallel acceleration, one review deferral), chronologically with cost-if-wrong, in final handoff.
 
 ## Compatibility work not completed by family admission
 
