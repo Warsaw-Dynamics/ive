@@ -46,6 +46,44 @@ pub struct HubState {
     pub matching: Matching,
     /// a contents search limited to these files and folders, picked in the tree; empty: the scope
     pub paths: Vec<PathBuf>,
+    /// what a contents search covers: files, processes' output, or both
+    pub search_in: SearchIn,
+}
+
+/// What a contents search covers (Alt+P).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SearchIn {
+    #[default]
+    All,
+    Files,
+    Output,
+}
+
+impl SearchIn {
+    pub fn next(self) -> Self {
+        match self {
+            Self::All => Self::Files,
+            Self::Files => Self::Output,
+            Self::Output => Self::All,
+        }
+    }
+
+    pub fn searches_files(self) -> bool {
+        matches!(self, Self::All | Self::Files)
+    }
+
+    pub fn searches_output(self) -> bool {
+        matches!(self, Self::All | Self::Output)
+    }
+
+    /// As the key strip names it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::All => "files + output",
+            Self::Files => "files only",
+            Self::Output => "output only",
+        }
+    }
 }
 
 /// The worktree question for a row in several worktrees.
@@ -151,6 +189,19 @@ impl HubState {
         }
     }
 
+    /// Whether the contents search covers processes' output: not when it is limited to paths picked in the tree.
+    pub fn output_searched(&self) -> bool {
+        self.content_query().is_some() && self.search_in.searches_output() && self.paths.is_empty()
+    }
+
+    /// Whether the contents search covers files: always when it is limited to paths picked in the tree.
+    pub fn files_searched(&self) -> bool {
+        if self.paths.is_empty() {
+            return self.search_in.searches_files();
+        }
+        true
+    }
+
     /// The query field's text changed.
     pub fn typed(&mut self, text: String) -> Effect {
         if let Some(pick) = &mut self.pick {
@@ -204,6 +255,11 @@ impl HubState {
             Builtin::HubBack => self.back(),
             Builtin::HubToggleContent => {
                 self.content = !self.content;
+                self.selected = 0;
+                Effect::Search
+            }
+            Builtin::HubCycleSearchIn => {
+                self.search_in = self.search_in.next();
                 self.selected = 0;
                 Effect::Search
             }
@@ -955,6 +1011,44 @@ mod tests {
 
         // then
         assert_eq!(restored, state);
+    }
+
+    #[test]
+    fn should_cycle_all_files_output() {
+        // given
+        let mut state = HubState { content: true, ..HubState::default() };
+
+        // when
+        let steps: Vec<(Effect, SearchIn)> = (0..3).map(|_| (act(&mut state, Builtin::HubCycleSearchIn, &sources()), state.search_in)).collect();
+
+        // then
+        assert_eq!(steps, [(Effect::Search, SearchIn::Files), (Effect::Search, SearchIn::Output), (Effect::Search, SearchIn::All)]);
+    }
+
+    #[test]
+    fn should_leave_output_out_of_a_search_of_picked_paths() {
+        // given
+        let all = HubState { content: true, query: "fn main".to_owned(), ..HubState::default() };
+        let picked = HubState { paths: vec![PathBuf::from("/a/dev/src")], ..all.clone() };
+        let files = HubState { search_in: SearchIn::Files, ..all.clone() };
+
+        // when
+        let searched = [&all, &picked, &files].map(HubState::output_searched);
+
+        // then
+        assert_eq!(searched, [true, false, false]);
+    }
+
+    #[test]
+    fn should_restore_the_switch_from_saved_state() {
+        // given
+        let state = HubState { content: true, search_in: SearchIn::Output, ..HubState::default() };
+
+        // when
+        let restored: HubState = serde_json::from_value(serde_json::to_value(&state).unwrap()).unwrap();
+
+        // then
+        assert_eq!(restored.search_in, SearchIn::Output);
     }
 
     #[test]

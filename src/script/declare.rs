@@ -295,6 +295,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "HubToggleContent" => Builtin::HubToggleContent,
         "HubToggleRegex" => Builtin::HubToggleRegex,
         "HubToggleWholeWord" => Builtin::HubToggleWholeWord,
+        "HubCycleSearchIn" => Builtin::HubCycleSearchIn,
         _ => return Err(format!("action {name:?} is not an act:: action")),
     };
     Ok(Action::Builtin(builtin))

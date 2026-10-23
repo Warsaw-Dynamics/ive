@@ -788,6 +788,7 @@ impl Workspace {
                 (key(Builtin::HubToggleRegex), if state.matching.is_regex() { "regex on" } else { "regex" }),
                 (key(Builtin::HubToggleWholeWord), if state.matching.is_whole_word() { "words on" } else { "words" }),
                 (key(Builtin::HubToggleExcluded), if state.excluded { "excluded on" } else { "excluded" }),
+                (key(Builtin::HubCycleSearchIn), state.search_in.label()),
                 (key(Builtin::HubToggleContent), "names"),
                 (key(Builtin::HubBack), escape_does(state)),
             ]);

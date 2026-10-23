@@ -1151,6 +1151,7 @@ mod tests {
         assert_eq!(keymap.find_key(&pressed(find), Place::Hub).cloned(), builtin(Builtin::HubToggleContent));
         assert_eq!(keymap.find_key(&pressed("alt-r"), Place::Hub).cloned(), builtin(Builtin::HubToggleRegex));
         assert_eq!(keymap.find_key(&pressed("alt-w"), Place::Hub).cloned(), builtin(Builtin::HubToggleWholeWord));
+        assert_eq!(keymap.find_key(&pressed("alt-p"), Place::Hub).cloned(), builtin(Builtin::HubCycleSearchIn));
     }
 
     #[test]
