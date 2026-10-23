@@ -7,6 +7,7 @@ pub(super) mod header;
 pub(super) mod ownership;
 pub(super) mod preamble;
 pub(super) mod sequence;
+pub(super) mod state;
 pub(super) mod token;
 
 pub(super) use definition::parse_definition;
@@ -16,6 +17,17 @@ pub(super) struct BodySource<'s> {
     pub range: std::ops::Range<usize>,
     pub ownership: ownership::Ownership,
     pub adapters: usize,
+}
+
+impl BodySource<'_> {
+    pub fn reborrow(&self) -> Self {
+        Self {
+            document: self.document,
+            range: self.range.clone(),
+            ownership: self.ownership,
+            adapters: self.adapters,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -48,3 +60,8 @@ mod generated_preamble;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/sequence.rs"]
 mod generated_sequence;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/state.rs"]
+mod generated_state;

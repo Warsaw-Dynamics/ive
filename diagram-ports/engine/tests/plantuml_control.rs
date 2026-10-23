@@ -144,6 +144,56 @@ fn should_keep_implicit_state_family_for_pseudostate_targets() {
 }
 
 #[test]
+fn should_reject_state_arrows_split_between_operator_primitives() {
+    // given
+    for arrow in [
+        "- >", "-- >", "- ->", "- - >", "< -", "<- -", "< --", "-\t>", "<\t-",
+    ] {
+        let source = format!("@startuml\nstate A\nA {arrow} B\n@enduml");
+        // when
+        let result = render(
+            &source,
+            &RenderOptions {
+                language: Language::PlantUml,
+                ..Default::default()
+            },
+        );
+        // then
+        assert!(result.is_err(), "accepted split arrow {arrow:?}");
+    }
+}
+
+#[test]
+fn should_render_contiguous_state_arrows_across_removed_inline_comments() {
+    // given
+    for arrow in [
+        "->",
+        "-->",
+        "<--",
+        "-/'Ω'/>",
+        "-/'gap'/-/'gap'/>",
+        "</'gap'/-/'gap'/-",
+    ] {
+        // when
+        let result = svg(&format!("state A\nA {arrow} B : literal - >"));
+        let xml = roxmltree::Document::parse(&result).unwrap();
+        // then
+        assert_eq!(
+            xml.descendants()
+                .filter(|node| node.attribute("data-kind") == Some("state-transition"))
+                .count(),
+            1,
+            "{arrow}"
+        );
+        assert!(
+            xml.descendants()
+                .any(|node| node.text() == Some("literal - >")),
+            "{arrow}"
+        );
+    }
+}
+
+#[test]
 fn should_reuse_initial_and_final_per_scope() {
     // given
     let body = "state One {\n[*] --> A\n[*] --> B\nA --> [*]\nB --> [*]\n}\nstate Two {\n[*] --> C\nC --> [*]\n}\n[*] --> One\nOne --> [*]";

@@ -353,8 +353,10 @@ mod tests {
         // given
         let source = "@startuml\nstate Outer {\nOuter : entry / prepare\\nsecond row\nstate Inner {\nInner : exit / finish\n[*] --> A\nA --> [*]\n}\n[*] --> Inner\n}\n[*] --> Outer\n@enduml";
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines = super::super::source::prepare(source, &mut budget).unwrap();
-        let model = super::super::state::parse(&lines, &mut budget).unwrap();
+        let document = super::super::preprocess::prepare(source, &mut budget).unwrap();
+        let mut parsed = super::super::parser::document::parse(&document, &mut budget).unwrap();
+        super::super::parser::preamble::parse(&mut parsed, &mut budget).unwrap();
+        let model = super::super::parser::state::parse(parsed.body, &mut budget).unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         // when
         let scene = layout(&model, &mut Context::new(&session, &mut budget)).unwrap();
