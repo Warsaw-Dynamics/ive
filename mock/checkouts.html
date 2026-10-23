@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="./mock.css" />
     <link rel="stylesheet" href="./checkouts.css" />
     <link rel="stylesheet" href="./hub.css" />
+    <link rel="stylesheet" href="./find.css" />
     <!-- Modules run in order before DOMContentLoaded, so the data exists before include.js starts Alpine. -->
     <script type="module" src="./checkouts-data.js"></script>
     <script type="module" src="./hub.js"></script>
+    <script type="module" src="./find.js"></script>
     <script type="module" src="./route.js"></script>
     <script type="module" src="./menus.js"></script>
     <script type="module" src="./checkouts.js"></script>
@@ -19,7 +21,8 @@
   <body>
     <div class="desktop" x-data="checkouts" x-cloak @keydown.window.escape="menu = null"
          @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
-         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event)">
+         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event)"
+         @mousedown.window="findSideClick($event)">
       <div class="window">
         <main class="window__content" :style="{ '--project-glow': projectGlow() }">
           <div class="fill" x-include="components/checkouts/sidebar.html"></div>

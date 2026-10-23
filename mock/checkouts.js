@@ -1856,7 +1856,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
     });
   });
 })();
