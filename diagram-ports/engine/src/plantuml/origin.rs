@@ -120,11 +120,10 @@ impl Document {
 
     pub fn check_preamble(
         &self,
-        lines: &[super::source::Line],
-        start: usize,
+        body: Range<usize>,
         budget: &mut Budget,
     ) -> Result<(), RenderError> {
-        let first_body = lines[start].number;
+        let first_body = self.authored_line(body.start, budget)?;
         for definition in &self.definitions {
             budget.charge(1)?;
             if definition.span.line >= first_body {
@@ -137,31 +136,45 @@ impl Document {
                 ));
             }
         }
-        let mut definitions = self.definitions.iter().peekable();
-        let mut sheet = false;
-        for line in &lines[..start] {
-            budget.charge(line.text.len() + 1)?;
-            while let Some(definition) = definitions
-                .peek()
-                .filter(|definition| definition.span.line < line.number)
-            {
-                budget.charge(1)?;
-                if sheet {
-                    return Err(invalid(
-                        definition.span.line,
-                        "!define definition inside an expanded stylesheet",
-                    ));
-                }
-                definitions.next();
-            }
-            if line.text.trim().eq_ignore_ascii_case("<style>") {
-                sheet = true;
-            }
-            if line.text.trim().eq_ignore_ascii_case("</style>") {
-                sheet = false;
+        Ok(())
+    }
+
+    pub fn deny_sheet_definitions(
+        &self,
+        sheet: Range<usize>,
+        budget: &mut Budget,
+    ) -> Result<(), RenderError> {
+        let start = self.authored_line(sheet.start, budget)?;
+        let end = self.authored_line(sheet.end.saturating_sub(1), budget)?;
+        for definition in &self.definitions {
+            budget.charge(1)?;
+            if definition.span.line > start && definition.span.line < end {
+                return Err(invalid(
+                    definition.span.line,
+                    "!define definition inside an expanded stylesheet",
+                ));
             }
         }
         Ok(())
+    }
+
+    fn authored_line(&self, byte: usize, budget: &mut Budget) -> Result<usize, RenderError> {
+        budget.charge(self.text.len() + self.segments.len())?;
+        for segment in &self.segments {
+            if segment.output.contains(&byte) {
+                return Ok(match &segment.origin {
+                    Origin::Expansion { use_span, .. } => use_span.line,
+                    Origin::Direct(span) => {
+                        span.line
+                            + self.text[segment.output.start..byte]
+                                .bytes()
+                                .filter(|&byte| byte == b'\n')
+                                .count()
+                    }
+                });
+            }
+        }
+        Ok(1)
     }
 
     pub fn map_error(&self, error: RenderError, budget: &mut Budget) -> RenderError {

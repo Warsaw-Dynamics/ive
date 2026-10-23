@@ -766,11 +766,8 @@ mod tests {
 
     fn draw(source: &str) -> Scene {
         let mut budget = Budget::new(&RenderOptions::default());
-        let lines = super::super::source::prepare(source, &mut budget).unwrap();
-        let preamble =
-            super::super::style::prepare(&lines, super::super::source::Wrapper::Uml, &mut budget)
-                .unwrap();
-        let model = parse(&lines[preamble.start..], &mut budget).unwrap();
+        let (preamble, lines) = super::super::source::prepare_styled(source, &mut budget).unwrap();
+        let model = parse(&lines, &mut budget).unwrap();
         let session = RenderEnvironment::deterministic().begin_session().unwrap();
         layout(
             &model,

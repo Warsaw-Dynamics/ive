@@ -363,7 +363,7 @@ impl Parser<'_> {
 }
 
 fn classify(text: &str, line: usize) -> Result<(LeafKind, &str), RenderError> {
-    if super::style::is_preamble(text) {
+    if super::parser::preamble::has_marker(text) {
         return Err(unsupported(
             line,
             &format!("Salt styles/chrome must precede the table: {text:?}"),

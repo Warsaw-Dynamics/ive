@@ -24,6 +24,7 @@ enum Body {
 
 pub(in crate::plantuml) struct Row {
     pub text: String,
+    pub offsets: Vec<(usize, usize)>,
     pub kind: Kind,
     pub literal: bool,
     pub source_comment: bool,
@@ -73,8 +74,9 @@ impl Ownership {
                 && !self.block
                 && raw.trim_start().starts_with(':'));
         let literal = raw_body || matches!(self.mode, Mode::Literal);
-        let text = if literal || (!self.block && raw.trim_start().starts_with("!define")) {
-            raw.to_owned()
+        let (text, offsets) = if literal || (!self.block && raw.trim_start().starts_with("!define"))
+        {
+            (raw.to_owned(), Vec::new())
         } else {
             strip(raw, &mut self.block, budget)?
         };
@@ -92,6 +94,7 @@ impl Ownership {
         let continuation = raw_body && self.body != Body::None;
         Ok(Row {
             text,
+            offsets,
             kind,
             literal,
             source_comment,
@@ -194,6 +197,27 @@ impl Ownership {
             return Err(ParseFailure::syntax(eof..eof, detail));
         }
         Ok(())
+    }
+}
+
+impl Row {
+    pub fn span(&self, base: usize, range: std::ops::Range<usize>) -> std::ops::Range<usize> {
+        let locate = |position| {
+            let end = self
+                .offsets
+                .partition_point(|&(start, _)| start <= position);
+            let delta = end.checked_sub(1).map_or(0, |index| {
+                let (start, raw) = self.offsets[index];
+                raw - start
+            });
+            base + position + delta
+        };
+        let end = if range.is_empty() {
+            locate(range.end)
+        } else {
+            locate(range.end - 1) + 1
+        };
+        locate(range.start)..end
     }
 }
 
@@ -302,9 +326,15 @@ impl ByteScan {
     }
 }
 
-fn strip(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, ParseFailure> {
+fn strip(
+    raw: &str,
+    block: &mut bool,
+    budget: &mut Budget,
+) -> Result<(String, Vec<(usize, usize)>), ParseFailure> {
     let mut scanner = ByteScan::new(*block);
     let mut out = String::new();
+    let mut offsets = Vec::new();
+    let mut delta = 0;
     let mut cursor = 0;
     let mut charged = 0;
     while cursor < raw.len() {
@@ -320,7 +350,13 @@ fn strip(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, Par
                 cursor += bytes;
                 continue;
             }
-            Step::Active => out.push(ch),
+            Step::Active => {
+                if cursor - out.len() != delta {
+                    delta = cursor - out.len();
+                    super::context::push(&mut offsets, (out.len(), cursor), budget)?;
+                }
+                out.push(ch);
+            }
             Step::Inert => {}
         }
         cursor += ch.len_utf8();
@@ -329,7 +365,7 @@ fn strip(raw: &str, block: &mut bool, budget: &mut Budget) -> Result<String, Par
     budget
         .charge(cursor - charged)
         .map_err(ParseFailure::terminal)?;
-    Ok(out)
+    Ok((out, offsets))
 }
 
 #[cfg(test)]

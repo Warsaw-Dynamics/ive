@@ -60,15 +60,18 @@ pub(crate) fn render(
     let mut budget = budget::Budget::new(options);
     budget.checkpoint()?;
     let expanded = preprocess::prepare(source, &mut budget)?;
-    let prepared = parser::document::parse(&expanded, &mut budget)?;
+    let mut prepared = parser::document::parse(&expanded, &mut budget)?;
     let wrapper = prepared.wrapper;
-    let lines = &prepared.lines;
-    let preamble = style::prepare(lines, wrapper, &mut budget)
-        .map_err(|error| expanded.map_error(error, &mut budget))?;
-    expanded
-        .check_preamble(lines, preamble.start, &mut budget)
-        .map_err(|error| expanded.map_error(error, &mut budget))?;
-    let lines = &lines[preamble.start..];
+    let (preamble, body) = parser::preamble::parse(&mut prepared, &mut budget)?;
+    let first_body = expanded.text[..body.start]
+        .bytes()
+        .filter(|&byte| byte == b'\n')
+        .count()
+        + 1;
+    let start = prepared
+        .lines
+        .partition_point(|line| line.number < first_body);
+    let lines = &prepared.lines[start..];
     let selection = if wrapper == source::Wrapper::Uml {
         parser::header::select(&prepared.body, lines, &mut budget)?
     } else {
@@ -151,12 +154,4 @@ pub(crate) fn render(
         Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs including icon-free ArchiMate description rectangles, Chen entity/relationship/attribute graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
-}
-
-fn has_identifier_arrow(line: &source::Line) -> bool {
-    let text = line.text.trim_start();
-    let word = text.split_whitespace().next().unwrap_or("");
-    !word.starts_with('[')
-        && !lexer::split_label(line).0.ends_with("[*]")
-        && lexer::arrow_at(text[word.len()..].trim_start()).is_some()
 }

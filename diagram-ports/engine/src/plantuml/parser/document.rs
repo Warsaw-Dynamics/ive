@@ -73,6 +73,7 @@ pub(in crate::plantuml) struct ParsedDocument<'s> {
     pub wrapper: Wrapper,
     pub body: BodySource<'s>,
     pub lines: Vec<Line>,
+    pub preamble_tokens: Vec<super::preamble::Spanned>,
 }
 
 pub(in crate::plantuml) type Spanned = (usize, Token, usize);
@@ -120,13 +121,14 @@ pub(in crate::plantuml) fn emit(
     context::push(tokens, (span.start, token, span.end), budget)
 }
 
-pub(in crate::plantuml) fn validate(
+fn validate_retained(
     tokens: Vec<Spanned>,
-    eof: usize,
+    location: (usize, usize),
     budget: &mut Budget,
 ) -> Result<Bounds, ParseFailure> {
+    let (eof, retained) = location;
     context::admit_frontend(
-        context::Frontend::Document,
+        context::Frontend::Document(retained),
         tokens.len(),
         tokens.capacity(),
         std::mem::size_of::<Spanned>(),
@@ -140,6 +142,14 @@ pub(in crate::plantuml) fn validate(
             }
         generated_failure(error, eof, "expected exactly one complete PlantUML block with paired wrappers; definition must be inside a single wrapper")
     })
+}
+
+pub(in crate::plantuml) fn validate(
+    tokens: Vec<Spanned>,
+    eof: usize,
+    budget: &mut Budget,
+) -> Result<Bounds, ParseFailure> {
+    validate_retained(tokens, (eof, 0), budget)
 }
 
 pub(in crate::plantuml) fn parse<'s>(
@@ -163,6 +173,7 @@ fn scan<'s>(
     let mut ownership = Ownership::default();
     let mut tokens = Vec::new();
     let mut lines = Vec::new();
+    let mut preamble = super::preamble::Lexer::default();
     let mut wrapper = Wrapper::Uml;
     let mut offset = 0;
     let mut timing_at = 0;
@@ -209,6 +220,7 @@ fn scan<'s>(
         match row.kind {
             Kind::Start(value) => wrapper = value,
             Kind::Content | Kind::Empty | Kind::Trivia | Kind::SheetStart | Kind::SheetEnd => {
+                preamble.row(&row, (offset, wrapper, evidence), budget)?;
                 append_line(row, (index + 1, wrapper, raw), &mut lines, budget)?
             }
             _ => {}
@@ -216,7 +228,12 @@ fn scan<'s>(
         offset += physical.len();
     }
     ownership.finish(offset)?;
-    let bounds = validate(tokens, offset, budget)?;
+    let adapters = lines
+        .capacity()
+        .saturating_mul(std::mem::size_of::<Line>())
+        .saturating_add(document.text.len().saturating_mul(2));
+    let retained = adapters.saturating_add(preamble.retained_bytes());
+    let bounds = validate_retained(tokens, (offset, retained), budget)?;
     if timing_at > 0 && !timing_declaration {
         return Err(ParseFailure::syntax(
             timing_at..timing_at,
@@ -230,6 +247,7 @@ fn scan<'s>(
             range: bounds.range,
         },
         lines,
+        preamble_tokens: preamble.tokens,
     })
 }
 

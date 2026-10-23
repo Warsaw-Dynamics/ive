@@ -164,7 +164,7 @@ pub(super) fn push<T>(
 
 #[derive(Clone, Copy)]
 pub(super) enum Frontend {
-    Document,
+    Document(usize),
     Header,
 }
 
@@ -176,7 +176,7 @@ pub(super) fn admit_frontend(
     budget: &mut Budget,
 ) -> Result<(), ParseFailure> {
     let (terminals, symbol_slots, live_states, reductions, symbol_bytes) = match kind {
-        Frontend::Document => (
+        Frontend::Document(_) => (
             31usize,
             8usize,
             7usize,
@@ -196,8 +196,13 @@ pub(super) fn admit_frontend(
         ),
     };
     let diagnostic_capacity = terminals.next_power_of_two().max(4);
+    let shared_bytes = match kind {
+        Frontend::Document(bytes) => bytes,
+        Frontend::Header => 0,
+    };
     let retained = capacity
         .saturating_mul(token_bytes)
+        .saturating_add(shared_bytes)
         .saturating_add(symbol_slots * (symbol_bytes + 3 * std::mem::size_of::<usize>()))
         // Include old+new vectors during diagnostic growth and generated stack growth.
         .saturating_add(40 + symbol_slots / 2 * (symbol_bytes + 3 * std::mem::size_of::<usize>()))

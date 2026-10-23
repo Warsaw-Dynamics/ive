@@ -86,6 +86,7 @@ impl Tail {
 
 #[derive(Clone, Copy, Debug)]
 pub(in crate::plantuml) struct Evidence {
+    pub identifier_arrow: bool,
     pub selection: Selection,
     pub candidate: Selection,
     pub graph: bool,
@@ -99,6 +100,7 @@ pub(in crate::plantuml) struct Evidence {
 impl Evidence {
     pub fn empty() -> Self {
         Self {
+            identifier_arrow: false,
             selection: Selection::Pending,
             candidate: Selection::Pending,
             graph: false,
@@ -161,6 +163,7 @@ pub(in crate::plantuml) fn finish(
     let graph = !identifier_arrow && head.graph;
     let graph_stop = !identifier_arrow && word == Word::Group;
     Ok(Evidence {
+        identifier_arrow,
         selection,
         candidate,
         graph,

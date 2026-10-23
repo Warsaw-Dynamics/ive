@@ -34,7 +34,7 @@ pub(super) fn parse(lines: &[Line], budget: &mut Budget) -> Result<Board, Render
         if text.is_empty() {
             continue;
         }
-        if super::style::is_preamble(text)
+        if super::parser::preamble::has_marker(text)
             || matches!(
                 text.split_whitespace().next(),
                 Some("newpage" | "page" | "sprite" | "hide" | "show" | "scale" | "url")

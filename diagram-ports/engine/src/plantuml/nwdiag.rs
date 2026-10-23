@@ -139,7 +139,7 @@ fn tokenize<'a>(lines: &'a [Line], budget: &mut Budget) -> Result<Vec<Token<'a>>
     let mut tokens = Vec::new();
     for line in lines {
         budget.charge(line.text.len() * 2 + 1)?;
-        if super::style::is_preamble(&line.text) {
+        if super::parser::preamble::has_marker(&line.text) {
             return Err(unsupported(
                 line.number,
                 &format!(

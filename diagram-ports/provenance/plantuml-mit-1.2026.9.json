@@ -1571,7 +1571,9 @@
       "rust": [
         "engine/src/plantuml/data.rs",
         "engine/src/plantuml/style.rs",
-        "engine/src/plantuml/mod.rs"
+        "engine/src/plantuml/mod.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "JSON-only raw payload boundary; column-zero hash comment extension explicitly outside admitted strict subset. Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
       "copyrights": [
@@ -2726,7 +2728,9 @@
       "path": "net/sourceforge/plantuml/command/CommandTitle.java",
       "sha256": "98f79ba3e6032bf689c4aa0c481d902c6a6d60721d42a62fe15a4215530b5246",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
       "copyrights": [
@@ -2742,7 +2746,9 @@
       "path": "net/sourceforge/plantuml/command/CommandLegend.java",
       "sha256": "d7db02ee08f9c736a92b8220cdf47dee993fda09774d6f0b6e6b3c56064dd4bc",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
       "copyrights": [
@@ -2758,7 +2764,9 @@
       "path": "net/sourceforge/plantuml/command/CommandHeader.java",
       "sha256": "f19a73844bc50966b47d2d4f4808e512c497500cae0b42f734b1b3081862122e",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
       "copyrights": [
@@ -2774,7 +2782,9 @@
       "path": "net/sourceforge/plantuml/command/CommandFooter.java",
       "sha256": "582704ef20242ba7f79e04ac619dd70a403380e62545343c97e9b8eeb6c028e3",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: single-line document label separators, quote capture and header/footer alignment defaults; title/legend centered. Multiline forms remain rejected.",
       "copyrights": [
@@ -2790,7 +2800,9 @@
       "path": "net/sourceforge/plantuml/command/CommandSkinParam.java",
       "sha256": "477ba349a5cc2259c843ddfa31c06344b60f305714b3a6f286d15912064d69ae",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
       "copyrights": [
@@ -2807,7 +2819,9 @@
       "sha256": "ac6ef70a87c9e7af5fa69340659b85e6f9cd2459ed3a57f9189a59cad3b7371e",
       "rust": [
         "engine/src/plantuml/chrome.rs",
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: replacement of document regions including alignment; header/title above complete diagram, legend/footer below; native measured composition with original spacing, not upstream geometry.",
       "copyrights": [
@@ -2824,7 +2838,9 @@
       "sha256": "8c81c5c8e12baabc1902797a5bb6cdcb7a7a79a6da7531782ad04938a40c2b28",
       "rust": [
         "engine/src/plantuml/chrome.rs",
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: replacement of document regions including alignment; header/title above complete diagram, legend/footer below; native measured composition with original spacing, not upstream geometry.",
       "copyrights": [
@@ -2840,7 +2856,9 @@
       "path": "net/sourceforge/plantuml/style/FromSkinparamToStyle.java",
       "sha256": "291a7ce954e6cdd357c8c64f04ca629a0866123c695f3e80301f4bf265f95235",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
       "copyrights": [
@@ -2856,7 +2874,9 @@
       "path": "net/sourceforge/plantuml/style/parser/RawStyleParser.java",
       "sha256": "16f0691b8e0b1ed5cd46ad97f308f16c8820159b759c61faca9d09ce0280cf01",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
       "copyrights": [
@@ -2872,7 +2892,9 @@
       "path": "net/sourceforge/plantuml/style/value/Specificity.java",
       "sha256": "0a0a2bfc88886e51821377605705eb1f065cdae3bf03ff1b0fe3cf5934542bfe",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
       "copyrights": [
@@ -2888,7 +2910,9 @@
       "path": "net/sourceforge/plantuml/style/value/ValueImpl.java",
       "sha256": "a5765e750c82c653cbb8095347ee97f4b0a37b124851b7bbcec7bc5d7ec8fdc5",
       "rust": [
-        "engine/src/plantuml/style.rs"
+        "engine/src/plantuml/style.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: finite skinparam migration targets; root/element/document and document-region style selectors, finite font axes, authored-order matching-property precedence and literal quoted font family. Native rejects unknown properties/selectors, malformed braces, empty rules and all mixed skinparam/style syntax.",
       "copyrights": [
@@ -2941,7 +2965,9 @@
       "sha256": "1a7ca4dc5d70f901e16f7ecac0af48f1cd327f736e504b70bee225887aa1a03f",
       "rust": [
         "engine/src/plantuml/style.rs",
-        "engine/src/plantuml/mod.rs"
+        "engine/src/plantuml/mod.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
       "copyrights": [
@@ -2958,7 +2984,9 @@
       "sha256": "49763c6ca543425f31c63255265f0f35ba7010719bb0c62b8f15dd623ad32824",
       "rust": [
         "engine/src/plantuml/style.rs",
-        "engine/src/plantuml/mod.rs"
+        "engine/src/plantuml/mod.rs",
+        "engine/src/plantuml/parser/preamble.rs",
+        "engine/src/plantuml/parser/grammar/preamble.lalrpop"
       ],
       "behavior": "Task3D: source-backed prefix title and style extraction before JSON/YAML parsing and application to the document/data font roles. Native deliberately limits extraction to the preamble and gives keyed YAML payload rows precedence; literal data never enters Creole.",
       "copyrights": [

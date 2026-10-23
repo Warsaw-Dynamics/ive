@@ -281,6 +281,164 @@ fn should_reject_unknown_style_declarations_values_and_unbalanced_rules() {
 }
 
 #[test]
+fn should_keep_region_keyword_boundaries_before_raw_label_ownership() {
+    // given
+    for command in [
+        "title{Caption}",
+        "title;Caption",
+        "legend{Caption}",
+        "header;Caption",
+        "footer{Caption}",
+    ] {
+        // when
+        let result = render(&source(&format!("{command}\nA -> B : x")), &options());
+        // then
+        assert!(result.is_err(), "accepted non-keyword region {command}");
+    }
+}
+
+#[test]
+fn should_preserve_case_colon_alignment_and_reject_physical_multiline_regions() {
+    // given
+    for command in [
+        "TiTlE: Caption",
+        "LEGEND : Caption",
+        "LeFt HeAdEr: Caption",
+        "CENTER footer Caption",
+        "right HEADER : Caption",
+    ] {
+        // when
+        let output = render(&source(&format!("{command}\nA -> B : x")), &options()).unwrap();
+        // then
+        assert!(output.svg.contains(">Caption</text>"), "{command}");
+    }
+    for role in ["title", "legend", "header", "footer"] {
+        // when
+        let result = render(
+            &source(&format!("{role}\nCaption\nend {role}\nA -> B : x")),
+            &options(),
+        );
+        // then
+        assert!(result.is_err(), "accepted multiline {role}");
+    }
+}
+
+#[test]
+fn should_keep_finite_font_axes_and_case_insensitive_multiline_rules() {
+    // given
+    for size in [6, 14, 96] {
+        let (config, calls) = recorded();
+        let input = source(&format!(
+            "<StYlE>\nROOT {{\nFontName \"Liberation Sans\";\nFontColor #12AbEf;\n}}\nElEmEnT {{\nFontSize {size};\nFontStyle ItAlIc;\n}}\ndocument {{\nBackgroundColor #fEdCbA;\ntitle {{\nFontStyle normal;\n}}\n}}\n</STYLE>\ntitle Top\nA -> B : Exact"
+        ));
+        // when
+        let output = render(&input, &config).unwrap();
+        // then
+        assert!(output.svg.contains("#fedcba"));
+        assert!(output.svg.contains("#12abef"));
+        assert!(
+            calls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|query| query.text == "Exact"
+                    && query.size == f64::from(size)
+                    && query.slant == "italic"
+                    && query.family == "Liberation Sans")
+        );
+    }
+    for value in ["5", "97", "06", "6.0", "-6", "100", "6px", "6 7"] {
+        // when
+        let result = render(
+            &source(&format!("skinparam defaultFontSize {value}\nA -> B : x")),
+            &options(),
+        );
+        // then
+        if value == "06" {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err(), "accepted size {value}");
+        }
+    }
+}
+
+#[test]
+fn should_map_style_values_once_through_inline_comment_and_expansion_spans() {
+    // given
+    let input = "\u{feff}@startuml\r\n!define SIZE enormous\r\n  skinparam /' Ω '/ defaultFontSize SIZE\r\nA -> B : x\r\n@enduml";
+    // when
+    let error = render(input, &options()).unwrap_err().to_string();
+    // then
+    assert!(
+        error.contains("used at line 3, column 38, defined at line 2, column 1"),
+        "{error}"
+    );
+    assert_eq!(error.matches("expansion").count(), 1, "{error}");
+    assert!(!error.contains("ambiguous"), "{error}");
+}
+
+#[test]
+fn should_apply_each_region_skinparam_axis_to_its_owned_region() {
+    // given
+    for role in ["title", "legend", "header", "footer"] {
+        for (style, weight, slant) in [
+            ("plain", "400", "normal"),
+            ("normal", "400", "normal"),
+            ("bold", "700", "normal"),
+            ("italic", "400", "italic"),
+        ] {
+            let input = source(&format!(
+                "skinparam {role}FontName \"Liberation Sans\"\nskinparam {role}FontSize 31\nskinparam {role}FontColor #aBcD09\nskinparam {role}FontStyle {style}\n{role} Caption\nA -> B : Body"
+            ));
+            // when
+            let output = render(&input, &options()).unwrap();
+            let xml = roxmltree::Document::parse(&output.svg).unwrap();
+            let region = xml
+                .descendants()
+                .find(|node| node.has_tag_name("text") && node.text() == Some("Caption"))
+                .unwrap();
+            // then
+            assert_eq!(region.attribute("font-family"), Some("Liberation Sans"));
+            assert_eq!(region.attribute("font-size"), Some("31"));
+            assert_eq!(region.attribute("fill"), Some("#abcd09"));
+            assert_eq!(region.attribute("font-weight"), Some(weight));
+            assert_eq!(region.attribute("font-style"), Some(slant));
+        }
+    }
+}
+
+#[test]
+fn should_preserve_late_region_boundaries_and_quoted_command_lookalikes() {
+    // given
+    for command in [
+        "title Late",
+        "legend Late",
+        "header Late",
+        "footer Late",
+        "left header: Late",
+        "center footer: Late",
+        "right footer Late",
+        "skinparam defaultFontSize 20",
+        "<style>\nroot {\nFontSize 20\n}\n</style>",
+    ] {
+        // when
+        let result = render(&source(&format!("A -> B : first\n{command}")), &options());
+        // then
+        assert!(result.is_err(), "accepted late preamble {command}");
+    }
+    // given
+    let input = source(
+        "title \"skinparam defaultFontSize 96\"\nparticipant \"header Normal\" as A\nA -> B : title Late\nnote over B\nheader Raw\nend note",
+    );
+    // when
+    let output = render(&input, &options()).unwrap();
+    // then
+    assert!(output.svg.contains(">skinparam defaultFontSize 96</text>"));
+    assert!(output.svg.contains(">header Raw</text>"));
+    assert!(!output.svg.contains("font-size=\"96\""));
+}
+
+#[test]
 fn should_style_data_preamble_without_interpreting_literal_payload() {
     // given
     for (wrapper, payload) in [

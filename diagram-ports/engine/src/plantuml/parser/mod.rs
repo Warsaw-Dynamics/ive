@@ -5,6 +5,7 @@ pub(super) mod document;
 pub(super) mod error;
 pub(super) mod header;
 pub(super) mod ownership;
+pub(super) mod preamble;
 pub(super) mod token;
 
 pub(super) use definition::parse_definition;
@@ -34,3 +35,8 @@ mod generated_document;
 #[allow(clippy::all, unused, private_interfaces)]
 #[path = "../generated/header.rs"]
 mod generated_header;
+
+#[rustfmt::skip]
+#[allow(clippy::all, unused, private_interfaces)]
+#[path = "../generated/preamble.rs"]
+mod generated_preamble;

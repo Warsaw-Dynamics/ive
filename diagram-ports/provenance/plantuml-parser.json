@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "scope": "Generated supported same-line !define declarations, single paired documents/directive placement, shared authored/expanded lexical ownership, typed family header evidence and structured expanded-byte error mapping. Preambles/styles, family parsers and Creole remain pending.",
-  "authorship": "Original native infrastructure and subset grammar; existing MIT semantic translation remains in preprocess.rs and its source manifest. No Java authorship is attributed to this infrastructure.",
+  "scope": "Generated supported same-line !define declarations, single paired documents/directive placement, shared authored/expanded lexical ownership, typed family header evidence, generated preamble/regions/styles/skinparams and structured expanded-byte error mapping. Family parsers and Creole remain pending.",
+  "authorship": "Original native parser infrastructure and generated subset grammars. The retained immutable evaluator and typed preamble/style semantic policy are traced to authorized MIT sources in plantuml-mit-1.2026.9.json, with original copyright/grant notices retained. No Java authorship is attributed to the original parser infrastructure.",
   "authoredFiles": [
     "engine/src/plantuml/parser/context.rs",
     "engine/src/plantuml/parser/definition.rs",
@@ -10,16 +10,19 @@
     "engine/src/plantuml/parser/grammar/definition.lalrpop",
     "engine/src/plantuml/parser/grammar/document.lalrpop",
     "engine/src/plantuml/parser/grammar/header.lalrpop",
+    "engine/src/plantuml/parser/grammar/preamble.lalrpop",
     "engine/src/plantuml/parser/header.rs",
     "engine/src/plantuml/parser/mod.rs",
     "engine/src/plantuml/parser/ownership.rs",
+    "engine/src/plantuml/parser/preamble.rs",
     "engine/src/plantuml/parser/token.rs"
   ],
   "generatedFiles": [
     "engine/src/plantuml/generated/definition.rs",
     "engine/src/plantuml/generated/document.rs",
     "engine/src/plantuml/generated/header.rs",
-    "engine/src/plantuml/generated/manifest.json"
+    "engine/src/plantuml/generated/manifest.json",
+    "engine/src/plantuml/generated/preamble.rs"
   ],
   "generator": "tools/plantuml-grammar-gen/Cargo.toml",
   "generationInventory": "engine/src/plantuml/generated/manifest.json",

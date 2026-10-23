@@ -1,0 +1,76 @@
+// Original generated preamble syntax; MIT semantic source destinations are in provenance.
+grammar(builder: &mut crate::plantuml::parser::preamble::Builder<'_>);
+use crate::plantuml::{parser::{preamble::Token, error::ParseFailure}, style::{Alignment, Role, Target, PropertyKey}};
+use std::ops::Range;
+
+pub Preamble: Range<usize> = <_items:Items> <start:@L> "body" <end:@R> => start..end;
+Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+Item: () = {
+    <head:RegionHead> ":"? <start:@L> <value:"value"> <end:@R> "newline" =>? builder.region(head, value, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "skinparam" <key:SkinKey> <start:@L> <value:"value"> <end:@R> "newline" =>? builder.skin(key, value, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <Sheet>,
+};
+RegionHead: (Role, Alignment) = {
+    "title" => (Role::Title, Alignment::Center),
+    "legend" => (Role::Legend, Alignment::Center),
+    "header" => (Role::Header, Alignment::Right),
+    "footer" => (Role::Footer, Alignment::Center),
+    <align:Align> <role:AlignedRole> => (role, align),
+};
+Align: Alignment = { "left" => Alignment::Left, "center" => Alignment::Center, "right" => Alignment::Right };
+AlignedRole: Role = { "header" => Role::Header, "footer" => Role::Footer };
+RegionRole: Role = { "title" => Role::Title, "legend" => Role::Legend, "header" => Role::Header, "footer" => Role::Footer };
+SkinKey: (Target, PropertyKey) = {
+    <key:"skin key"> => key,
+    <start:@L> <key:"property"> <end:@R> =>? if key == PropertyKey::BackgroundColor { Ok((Target::Document, key)) }
+        else { Err(lalrpop_util::ParseError::User { error: ParseFailure::unsupported(start..end, "unsupported skinparam property") }) },
+};
+Sheet: () = <start:@L> <_open:SheetOpen> <_rules:Rules> "sheet end" <end:@R> "newline" =>? builder.finish_sheet(start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+SheetOpen: () = <start:@L> "sheet start" <end:@R> "newline" =>? builder.sheet(start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Rules: () = { <Rule>, <Rules> <Rule> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+Rule: () = {
+    <start:@L> <count:RootOpen> <_declarations:Declarations> "}" <end:@R> "newline" =>? builder.close(count, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <count:ElementOpen> <_declarations:Declarations> "}" <end:@R> "newline" =>? builder.close(count, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <count:DocumentOpen> <_declarations:DocumentDeclarations> "}" <end:@R> "newline" =>? builder.close(count, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+RootOpen: usize = "root" "{" "newline" =>? builder.open(Target::Root, 1).map_err(|error| lalrpop_util::ParseError::User { error });
+ElementOpen: usize = "element" "{" "newline" =>? builder.open(Target::Element, 1).map_err(|error| lalrpop_util::ParseError::User { error });
+DocumentOpen: usize = "document" "{" "newline" =>? builder.open(Target::Document, 1).map_err(|error| lalrpop_util::ParseError::User { error });
+Declarations: () = { => (), <Declarations> <Declaration> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+DocumentDeclarations: () = { => (), <DocumentDeclarations> <DocumentItem> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+DocumentItem: () = {
+    <Declaration>,
+    <start:@L> <count:RegionOpen> <_declarations:Declarations> "}" <end:@R> "newline" =>? builder.close(count, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+RegionOpen: usize = <role:RegionRole> "{" "newline" =>? builder.open(Target::Region(role), 2).map_err(|error| lalrpop_util::ParseError::User { error });
+Declaration: () = <key:"property"> <start:@L> <value:"value"> <end:@R> ";"? "newline" =>? builder.declare(key, value, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "title" => Token::Title,
+        "legend" => Token::Legend,
+        "header" => Token::Header,
+        "footer" => Token::Footer,
+        "left" => Token::Left,
+        "center" => Token::Center,
+        "right" => Token::Right,
+        "skinparam" => Token::Skinparam,
+        "skin key" => Token::SkinKey(<(Target, PropertyKey)>),
+        "sheet start" => Token::SheetStart,
+        "sheet end" => Token::SheetEnd,
+        "root" => Token::Root,
+        "element" => Token::Element,
+        "document" => Token::Document,
+        "property" => Token::Property(<PropertyKey>),
+        "{" => Token::Open,
+        "}" => Token::Close,
+        ":" => Token::Colon,
+        ";" => Token::Semi,
+        "value" => Token::Value(<String>),
+        "unknown" => Token::Unknown,
+        "newline" => Token::Newline,
+        "body" => Token::Body,
+    }
+}

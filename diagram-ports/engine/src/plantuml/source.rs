@@ -62,6 +62,23 @@ pub(super) fn prepare(source: &str, budget: &mut Budget) -> Result<Vec<Line>, Re
 }
 
 #[cfg(test)]
+pub(super) fn prepare_styled(
+    source: &str,
+    budget: &mut Budget,
+) -> Result<(super::style::Preamble, Vec<Line>), RenderError> {
+    let document = super::preprocess::prepare(source, budget)?;
+    let mut parsed = super::parser::document::parse(&document, budget)?;
+    let (preamble, body) = super::parser::preamble::parse(&mut parsed, budget)?;
+    let first = document.text[..body.start]
+        .bytes()
+        .filter(|&byte| byte == b'\n')
+        .count()
+        + 1;
+    parsed.lines.retain(|line| line.number >= first);
+    Ok((preamble, parsed.lines))
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RenderOptions;
