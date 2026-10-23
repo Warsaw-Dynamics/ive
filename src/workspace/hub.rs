@@ -531,7 +531,7 @@ impl Workspace {
             }
             Err(error) => {
                 eprintln!("ive: {error}");
-                Some(format!("Cannot create a worktree of {branch}: {}", error.message))
+                Some(format!("Cannot create a worktree of {branch}: {error}"))
             }
         };
         // the hub there is now: the one that asked may be closed, or opened again

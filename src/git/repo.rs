@@ -14,7 +14,8 @@ pub struct GitError {
 impl GitError {
     /// `operation` completes "cannot … of <dir>", e.g. "read the status".
     pub fn new(operation: &str, dir: &Path, error: git2::Error) -> Self {
-        Self { operation: operation.to_owned(), dir: dir.to_path_buf(), message: error.message().to_owned() }
+        let message = format!("{} (class {:?}, code {:?})", error.message(), error.class(), error.code());
+        Self { operation: operation.to_owned(), dir: dir.to_path_buf(), message }
     }
 }
 
@@ -42,6 +43,18 @@ pub fn short_sha(oid: Oid) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_keep_git_code_and_class() {
+        // given
+        let error = git2::Error::new(git2::ErrorCode::NotFound, git2::ErrorClass::Reference, "reference 'refs/heads/x' not found");
+
+        // when
+        let shown = GitError::new("read the branch", Path::new("/r"), error).to_string();
+
+        // then
+        assert_eq!(shown, "cannot read the branch of /r: reference 'refs/heads/x' not found (class Reference, code NotFound)");
+    }
 
     #[test]
     fn should_name_operation_folder_and_reason_when_folder_is_no_repository() {
