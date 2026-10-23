@@ -22,10 +22,10 @@ This is the visible master checklist for further work. The controller updates it
 | Standalone Rust workspace | `diagram-ports/` |
 | Latest integrated product checkpoint | `0f468eb` — Task17 tooling and final cleanup integrated across all21 generated parsers; central full gates/native checks pass |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | No parser implementation writer; EBNF/regex and chart native-family briefs are prepared |
+| Current implementers | EBNF/regex, charts and ASCII Git in separate isolated worktrees |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Resume EBNF/regex and charts with LALRPOP; broad review stays at the end of the port |
+| Next implementation | Complete and integrate EBNF/regex, charts and ASCII Git; continue wire/BPM/flow/standalone Creole/advanced state; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
@@ -238,10 +238,10 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 
 | Order | Task | Remaining deliverable |
 | --- | --- | --- |
-| 1 | Full current PlantUML LALRPOP migration — ACTIVE parallel | Complete the cutover table above, retaining models/layouts; before new-family breadth |
-| 2 | 3K EBNF / regex | Family-specific ASTs with shared railroad geometry; actual sequence/choice/optional/repeat rails, no regex execution or grammar expansion |
-| 3 | 3L charts | Numeric axes, categorical bars/lines, zero/negative baselines, legends and bounded ticks |
-| 4 | 3M ASCII Git | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
+| 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
+| 2 | 3K EBNF / regex — ACTIVE | Family-specific ASTs with shared railroad geometry; actual sequence/choice/optional/repeat rails, no regex execution or grammar expansion |
+| 3 | 3L charts — ACTIVE | Numeric axes, categorical bars/lines, zero/negative baselines, legends and bounded ticks |
+| 4 | 3M ASCII Git — ACTIVE | Raw row/column parsing and verified linear/two-parent ancestry, real owned commit links, no git execution |
 | 5 | 3N wire | Indented hierarchical blocks, explicit placements, orientation/direction and owned routes |
 | 6 | 3O legacy BPM | Genuine legacy events/branches/splits/merges and continuation, distinct from modern activity/BPMN |
 | 7 | 3P directional flow | Cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
@@ -249,18 +249,18 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 9 | 3B2 advanced state | Concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
 | 10 | 4B final evidence/tooling/docs | Coherent final corpus/oracles, honest coverage, audit hardening, documentation and durable evidence archive |
 
-Existing inventory briefs/source-semantic research are prepared and read; the requested parser migration design/plan is committed and active. Do not restart completed source research or redispatch prior model/render work. Supply each implementer the actual reviewed head/current interfaces; update remaining-family briefs to require LALRPOP before release.
+Existing inventory briefs/source-semantic research are prepared and read; the parser migration is complete. Do not restart completed source research or redispatch prior model/render work. New family briefs require LALRPOP and current generated interfaces; broad review is deferred to the end.
 
 ## Known review follow-ups
 
-- [ ] Timing: tracks named `robust`/`concise` are accepted identifiers but `PLAYER is STATE` is misclassified as a declaration. Fix complete-statement dispatch or explicitly reject/document reserved names; retain regression coverage. Review: `/tmp/ive-plantuml-timing-review.md`.
+- [x] Timing: robust/concise contextual track names corrected in Task12 generated parser with positive/negative regressions.
 - [x] Gantt: reject an unterminated block comment attached after `@endgantt`. Generated document cutover92c9520 resolves it with all-wrapper EOF and closed-comment controls; independently reviewed.
-- [ ] Nwdiag: complete-statement recognition must accept a server such as `title [address=...]` just like `title[address=...]`, while still rejecting genuine late chrome. Review: `/tmp/ive-plantuml-nwdiag-review.md`.
-- [ ] Chen: keyword aliases entity/relationship fail as association sources; spaced composite attributes such as entity followed by an opening brace fail while compact spelling works. Fix complete-statement recognition or accurately document the exact reserved-name boundary. Review: /tmp/ive-plantuml-chen-archimate-3j-review.md (M1).
+- [x] Nwdiag: title-with-spaces/tab contextual server names corrected in Task14 generated parser; genuine late chrome still rejects.
+- [x] Chen: entity/relationship alias endpoints and spaced/compact composite attributes corrected in Task6 generated parser with exact scoped ownership tests.
 - [ ] Triage existing coarse source columns, YAML nested-flow line1/missing-close diagnostics and large parser/layout units without unrelated rewrites.
 - [ ] Record inherited vendored Atomic deprecation; do not silently alter the audited vendor baseline just to hide it.
-- [ ] Migration Task17: make baseline configuration reflect actual exporter defaults or explicitly configured values; currently Node reports hardcoded values. Task1 review Minor; existing defaults/output remain unchanged.
-- [ ] Migration Task17: remove the generator's embedded-checkout assumption and add a two-checkout regression. Private generator targets currently prevent wrong-checkout writes during parallel work; normal tooling also needs a durable fix.
+- [x] Migration Task17: baseline driver now reports actual exporter defaults, with a drift contract; immutable43 outputs remain unchanged.
+- [x] Migration Task17: generator takes an explicit validated root; same-binary two-checkout/wrong-root regressions pass.
 - [ ] Final validation-noise triage: development test-support exposes a second inherited Merman Atomic deprecation. Preserve vendor audit policy. Review: `/tmp/ive-plantuml-lalrpop-core-review.md`.
 - [ ] Final verification evidence: retain the Task4 500ms action-test timing sensitivity (one concurrent-build failure, serial controls/full workspace pass). Keep its assertion/deadline unchanged and record verification workload ordering.
 
