@@ -1155,6 +1155,19 @@ mod tests {
     }
 
     #[test]
+    fn should_bind_find_and_its_steps_in_code_views_only() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let find = if cfg!(target_os = "macos") { "cmd-f" } else { "ctrl-f" };
+        assert_eq!(keymap.find_key(&pressed(find), Place::Editor).cloned(), builtin(Builtin::Find));
+        assert_eq!(keymap.find_key(&pressed("f3"), Place::Editor).cloned(), builtin(Builtin::FindNext));
+        assert_eq!(keymap.find_key(&pressed("shift-f3"), Place::Editor).cloned(), builtin(Builtin::FindPrevious));
+        assert_ne!(keymap.find_key(&pressed(find), Place::Terminal).cloned(), builtin(Builtin::Find));
+    }
+
+    #[test]
     fn should_reject_show_tab_menu_on_a_key() {
         // given
         let init = r#"pub fn init(config) { config.keys = [#{ key: "m", mods: "ALT", action: act::ShowTabMenu("main") }]; }"#;

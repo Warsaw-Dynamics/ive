@@ -40,6 +40,11 @@ typing searches the monorepo's real file paths fzf-style (`data/files.gz`; regen
 Ctrl+Shift+F (in the hub too) searches the files' contents instead: rows `path:line` with the matches marked, Alt+R
 regex, Alt+W whole words; Find in Files… in a menu limits it to that file or folder (Backspace on an empty query drops
 it). The mock searches the text its files and scratches have.
+Ctrl+F in a file, scratch, diff or commit tab (a proposal, `find.js`) opens a find bar over the code with the selection
+or the word at the caret: every match marked, the current one stronger and on a strip by the scrollbar, "3 of 12",
+Enter / Shift+Enter and F3 / Shift+F3 (and ▲ ▼) step and wrap, Alt+C match case, Alt+W whole words, Alt+R regex, Esc
+closes and leaves the current match selected in a file. The box floats at the top right of the code, as in Chrome and
+VS Code. A side-by-side diff searches the side last clicked.
 Ctrl+Shift+T (in a browser also Alt+Shift+T; DESIGN.md "New terminal") asks where a new terminal goes: a project, a
 worktree, or a branch without one (local, or only on `origin` with a faded icon), which first gets its worktree in
 the folder `.ive.toml` names. A Processes row's + (on hover) starts a terminal there.

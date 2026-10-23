@@ -130,7 +130,8 @@
         <button class="toggle" type="button"><img class="icon" :src="icon('history.svg')" alt="" /><span>Reload</span></button>
       </div>
       <div x-include="components/checkouts/savebar.html"></div>
-      <div class="diff" x-data="{ get rows() { return d ? diffRows(d.diff, tab.path) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
+      <div x-include="components/checkouts/find.html"></div>
+      <div class="diff" data-find-scroll x-data="{ get rows() { return d ? diffRows(d.diff, tab.path) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
     </div>
   </template>
 
@@ -147,7 +148,8 @@
       </template>
       <div x-include="components/checkouts/savebar.html"></div>
       <!-- A textarea over the coloured lines types into the text; it is as tall and wide as the text, so the box scrolls both. -->
-      <div class="editor editor--static" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
+      <div x-include="components/checkouts/find.html"></div>
+      <div class="editor editor--static" data-find-scroll :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
         <div class="editor__sheet" :style="{ height: lines(tab).length * 21 + 'px', width: editorWidth(tab) }">
           <template x-for="(tokens, i) in codeLines(tab)" :key="i">
             <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->

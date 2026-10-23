@@ -481,6 +481,15 @@ impl DisplayLine {
         self.text.char_indices().take_while(|(at, _)| *at < display).count()
     }
 
+    /// [`Self::column_of`] for many offsets: the text's characters are found once, then each column by a binary search.
+    pub fn columns(&self) -> impl Fn(usize) -> usize + '_ {
+        let starts: Vec<usize> = self.text.char_indices().map(|(at, _)| at).collect();
+        move |offset| {
+            let display = self.offsets[offset.saturating_sub(self.start).min(self.offsets.len() - 1)];
+            starts.partition_point(|start| *start < display)
+        }
+    }
+
     /// The file bytes this line shows, without the cut-off rest.
     pub fn file_bytes(&self) -> Range<usize> {
         self.start..self.start + self.offsets.len() - 1

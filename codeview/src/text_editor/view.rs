@@ -10,23 +10,25 @@ use gpui::{
     EntityInputHandler, EventEmitter, FocusHandle, Focusable, FontStyle, FontWeight, KeyDownEvent, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, PathBuilder, Pixels, Point, ScrollWheelEvent, Subscription, TextRun, UTF16Selection,
     WeakEntity, Window, canvas,
-    div, fill, point, prelude::*, px, rgb, size,
+    div, fill, point, prelude::*, px, rgb, rgba, size,
 };
 
 use super::change_popup::{Anchor, ChangeAction, ChangePopup, CommitShown, Committing, Popup, PopupActions, SentChange, popup_element};
-use super::message_field::{FieldState, MessageField, MessageFieldEvent};
+use crate::line_field::{FieldState, LineField, LineFieldEvent};
 use super::colours::Colours;
 use super::keys::command;
-use super::layout::{Area, Geometry, VisibleLine, visible_lines};
+use super::layout::{Area, Geometry, VisibleLine, mark_columns, visible_lines};
 use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
 use crate::changes::{BaseChange, ChangeBase, ChangeDiffJob, ChangeHunk, ChangeHunks, ChangeMarkers, Marker, Toward};
 use crate::colors::{ResolvedScheme, TextAttributes};
+use crate::find::FindText;
+use crate::find::marks::{FindMarks, Mark};
 use crate::line_view::{self, LineScroll, Metrics};
 use crate::panel::{Edit, LineSource, ParseJob};
 use crate::piece_table::{PieceTable, WrongBase};
 use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
-use crate::scrollbar::{ScrollState, horizontal_scrollbar, vertical_scrollbar};
+use crate::scrollbar::{ScrollState, Tick, horizontal_scrollbar, vertical_scrollbar_with_ticks};
 use crate::style::ViewStyle;
 use crate::syntax::{Highlight, Language, Syntax};
 
@@ -37,6 +39,7 @@ const CARET_MARGIN_CHARS: f64 = 2.;
 /// The width of a change marker's bar, and the height of a deleted marker's triangle, in pixels.
 const CHANGE_BAR_WIDTH: f32 = 3.;
 const DELETED_MARKER_HEIGHT: f32 = 8.;
+const COMMIT_PLACEHOLDER: &str = "Commit this change";
 
 pub enum TextEditorEvent {
     /// the text changed
@@ -63,7 +66,7 @@ pub struct TextEditor {
     markers: ChangeMarkers,
     popup: Popup,
     /// the popup's commit message, kept while it is closed; it takes no typing while its commit is in flight
-    message: Entity<MessageField>,
+    message: Entity<LineField>,
     committing: Committing,
     /// closes the popup when the keyboard leaves the editor (and what it holds), from the first popup on
     focus_out: FocusWatch,
@@ -76,6 +79,10 @@ pub struct TextEditor {
     dragging: bool,
     reveal_caret: bool,
     _message_submits: Subscription,
+    /// the find box's matches, while it is open
+    find_marks: Option<FindMarks>,
+    /// the text the last search copied, and its revision: typing in the box searches it again without a copy
+    find_snapshot: std::cell::RefCell<Option<(u64, Arc<Vec<u8>>)>>,
 }
 
 enum FocusWatch {
@@ -90,8 +97,12 @@ impl TextEditor {
     pub fn new(table: PieceTable, setup: Setup, cx: &mut Context<Self>) -> Self {
         let model = EditorModel::new(table, setup.limit);
         let scroll = Rc::new(LineScroll::new(model.line_count()));
-        let message = cx.new(MessageField::new);
-        let submits = cx.subscribe(&message, |editor, _field, MessageFieldEvent::Submitted, cx| editor.commit_change(cx));
+        let message = cx.new(|cx| LineField::new(COMMIT_PLACEHOLDER, "change-popup-message", cx));
+        let submits = cx.subscribe(&message, |editor, _field, event: &LineFieldEvent, cx| {
+            if let LineFieldEvent::Submitted(_) = event {
+                editor.commit_change(cx);
+            }
+        });
         Self {
             message,
             _message_submits: submits,
@@ -107,7 +118,68 @@ impl TextEditor {
             geometry: Rc::default(),
             dragging: false,
             reveal_caret: false,
+            find_marks: None,
+            find_snapshot: std::cell::RefCell::default(),
         }
+    }
+
+    /// The text as of its revision, copied out for a search off the UI thread.
+    pub fn find_text(&self) -> (u64, FindText) {
+        let revision = self.model.revision();
+        let mut snapshot = self.find_snapshot.borrow_mut();
+        if let Some((copied, bytes)) = snapshot.as_ref()
+            && *copied == revision
+        {
+            return (revision, FindText::Owned(bytes.clone()));
+        }
+        let table = self.model.table();
+        let bytes = Arc::new(table.bytes(0..table.byte_len()));
+        *snapshot = Some((revision, bytes.clone()));
+        (revision, FindText::Owned(bytes))
+    }
+
+    /// The selection when on one line, else the word at the caret, and the byte it starts at.
+    pub fn find_prefill(&self) -> Option<(String, usize)> {
+        let picked = match self.model.selection() {
+            Some(selection) if selection.start.line == selection.end.line => selection,
+            Some(_) => return None,
+            None => self.model.word_at(self.model.caret())?,
+        };
+        Some((self.model.text_in(picked.start, picked.end), self.model.byte_of(picked.start)))
+    }
+
+    /// The selection's bytes, else the caret's.
+    pub fn find_anchor(&self) -> Range<usize> {
+        let caret = self.model.caret();
+        let selection = self.model.selection().unwrap_or(caret..caret);
+        self.model.byte_of(selection.start)..self.model.byte_of(selection.end)
+    }
+
+    /// Selects bytes `bytes`, the caret at their end, and scrolls them into view.
+    pub fn show_match(&mut self, bytes: Range<usize>, cx: &mut Context<Self>) {
+        self.model.set_caret(self.model.position_of(bytes.start), Selecting::Move);
+        self.model.set_caret(self.model.position_of(bytes.end), Selecting::Extend);
+        self.reveal_caret = true;
+        cx.notify();
+    }
+
+    pub fn set_find_marks(&mut self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
+        self.find_marks = marks;
+        cx.notify();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn has_find_marks(&self) -> bool {
+        self.find_marks.is_some()
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        self.model.selected_text()
+    }
+
+    fn find_ticks(&self) -> Rc<[Tick]> {
+        let lines = self.model.line_count() as f32;
+        self.find_marks.as_ref().map_or_else(|| Rc::from([]), |marks| marks.ticks(|line| line as f32 / lines))
     }
 
     /// The changes since the base: the text as opened or last saved.
@@ -479,8 +551,8 @@ impl TextEditor {
                 },
                 cx,
             ),
-            // saving is the panel's, and a text has no layout to toggle
-            Command::Flush | Command::ToggleLayout => Ok(()),
+            // saving and finding are the panel's, and a text has no layout to toggle
+            Command::Flush | Command::ToggleLayout | Command::Find | Command::FindNext | Command::FindPrevious => Ok(()),
         };
     }
 
@@ -521,6 +593,8 @@ impl TextEditor {
             return self.close_change_popup(cx);
         }
         match Host::key_outcome(event, KeyScope::Editor, cx) {
+            // the panel around the editor runs the find box
+            KeyOutcome::Command(command) if command.is_find() => {}
             KeyOutcome::Command(command) => {
                 cx.stop_propagation();
                 self.run(command, cx);
@@ -607,9 +681,13 @@ impl TextEditor {
         let first_column = (self.scroll.left() / char_width).floor() as usize;
         let columns = first_column..first_column + visible_columns(self.scroll.viewport_width(), char_width) + 1;
         let highlights = self.highlights_of(rows.clone());
+        let mut lines = visible_lines(&self.model, Area { rows: rows.clone(), columns }, &highlights);
+        if let Some(marks) = &self.find_marks {
+            lines.iter_mut().for_each(|line| line.marks = mark_columns(&self.model, line, marks));
+        }
         Frame {
             changes: self.markers.shown(rows.clone()).cloned().collect(),
-            lines: visible_lines(&self.model, Area { rows, columns }, &highlights),
+            lines,
             caret: self.focus_handle.is_focused(window).then(|| self.model.caret()),
             top: self.scroll.top(),
             left: self.scroll.left(),
@@ -680,7 +758,7 @@ impl Render for TextEditor {
             .child(line_view::measure_viewport(self.scroll.clone(), metrics))
             .children(change_targets(&frame, cx.weak_entity(), cx))
             .child(text_canvas(frame, cx.entity()))
-            .child(vertical_scrollbar(&self.scrollbars, &style))
+            .child(vertical_scrollbar_with_ticks(&self.scrollbars, &style, self.find_ticks()))
             .child(horizontal_scrollbar(&self.scrollbars, &style))
             .children(popup)
     }
@@ -716,7 +794,7 @@ impl TextEditor {
 }
 
 /// The popup's buttons, each running an editor method, the commit message's field, and how committing shows.
-fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<MessageField>, commit_shown: CommitShown) -> PopupActions {
+fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<LineField>, commit_shown: CommitShown) -> PopupActions {
     let on = |run: fn(&mut TextEditor, &mut Context<TextEditor>)| -> ClickListener {
         let editor = editor.clone();
         Rc::new(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| drop(editor.update(cx, run)))
@@ -908,10 +986,20 @@ fn change_targets(frame: &Frame, editor: WeakEntity<TextEditor>, cx: &App) -> Ve
 }
 
 fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: &mut Window, cx: &mut App) {
+    let columns_box = |columns: &Range<usize>| {
+        let from = point(frame.column_x(origin.x, columns.start), origin.y);
+        Bounds::from_corners(from, point(frame.column_x(origin.x, columns.end), origin.y + frame.metrics.line_height))
+    };
+    let marked = |mark: Mark| line.marks.iter().filter(move |(_, kind)| *kind == mark).map(|(columns, _)| columns);
+    // the matches under the selection, the current one over it
+    for columns in marked(Mark::Match) {
+        window.paint_quad(fill(columns_box(columns), rgba(frame.style.find_match)));
+    }
     if let Some(selected) = &line.selected {
-        let from = point(frame.column_x(origin.x, selected.start), origin.y);
-        let to = point(frame.column_x(origin.x, selected.end), origin.y + frame.metrics.line_height);
-        window.paint_quad(fill(Bounds::from_corners(from, to), rgb(frame.style.selected)));
+        window.paint_quad(fill(columns_box(selected), rgb(frame.style.selected)));
+    }
+    for columns in marked(Mark::Current) {
+        window.paint_quad(fill(columns_box(columns), rgba(frame.style.find_current)));
     }
     if line.text.is_empty() {
         return;

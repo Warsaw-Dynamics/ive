@@ -146,7 +146,7 @@ impl PieceTable {
     }
 
     /// The line byte `offset` (at most the length) is on: the newlines before it.
-    fn line_of(&self, offset: u64) -> usize {
+    pub(crate) fn line_of(&self, offset: u64) -> usize {
         if offset >= self.byte_len() {
             return self.index.newlines;
         }

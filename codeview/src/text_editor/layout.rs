@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use super::model::{EditorModel, Position, content, shown, shown_char_starts};
 use crate::colors::ColorKey;
+use crate::find::marks::{FindMarks, Mark};
 use crate::syntax::Highlight;
 
 /// One visible line: its index, the visible slice of its text, its selected columns (one past the end when the
@@ -15,6 +16,8 @@ pub struct VisibleLine {
     pub text: String,
     pub selected: Option<Range<usize>>,
     pub colours: Vec<(Range<usize>, ColorKey)>,
+    /// the find box's matches on the line, by columns as `selected` (its break counts as one past the text)
+    pub marks: Vec<(Range<usize>, Mark)>,
 }
 
 /// The lines and columns a frame shows.
@@ -40,6 +43,7 @@ pub fn visible_lines(model: &EditorModel, area: Area, highlights: &[Highlight]) 
             colours: colours(&text, starts, highlights),
             text,
             selected: selection.as_ref().and_then(|selection| selected_columns(selection, line, all.chars().count())),
+            marks: Vec::new(),
         }
     })
     .collect()
@@ -64,6 +68,25 @@ fn colours(text: &str, starts: impl Iterator<Item = u64>, highlights: &[Highligh
 fn key_at(highlights: &[Highlight], offset: usize) -> Option<ColorKey> {
     let at = highlights.partition_point(|highlight| highlight.bytes.end <= offset);
     highlights.get(at).filter(|highlight| highlight.bytes.start <= offset).map(|highlight| highlight.key)
+}
+
+/// The columns of `shown` that `marks` cover: of its stored bytes on screen, and of its line break. Each column is
+/// found by a binary search, so a long line with many matches costs its length once.
+pub fn mark_columns(model: &EditorModel, shown: &VisibleLine, marks: &FindMarks) -> Vec<(Range<usize>, Mark)> {
+    let (start, stored) = model.stored_line(shown.line);
+    let (start, content) = (start as usize, content(&stored));
+    let starts: Vec<usize> = shown_char_starts(content).collect();
+    let byte = |column: usize| start + starts.get(column).copied().unwrap_or(content.len());
+    let (first, last) = (shown.first_column, shown.first_column + shown.text.chars().count());
+    // the text ending on screen shows its line break too
+    let end = if last >= starts.len() { start + stored.len() + 1 } else { byte(last) };
+    // past the content (a CRLF's \r, the line break) is the column after the text, as a selection marks the break
+    let column = |at: usize| match at - start {
+        within if within > content.len() => starts.len() + 1,
+        within => starts.partition_point(|first| *first < within),
+    };
+    let marked = marks.on_bytes(byte(first.min(starts.len()))..end).into_iter().map(|(bytes, mark)| (column(bytes.start)..column(bytes.end), mark));
+    marked.filter(|(columns, _)| !columns.is_empty()).collect()
 }
 
 fn selected_columns(selection: &Range<Position>, line: usize, line_chars: usize) -> Option<Range<usize>> {
@@ -104,6 +127,8 @@ impl Geometry {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::piece_table::PieceTable;
     use crate::text_editor::model::Selecting;
@@ -126,11 +151,60 @@ mod tests {
         assert_eq!(
             lines,
             [
-                VisibleLine { line: 0, first_column: 2, text: "cde".to_owned(), selected: Some(4..7), colours: Vec::new() },
-                VisibleLine { line: 1, first_column: 2, text: String::new(), selected: Some(0..3), colours: Vec::new() },
-                VisibleLine { line: 2, first_column: 2, text: String::new(), selected: None, colours: Vec::new() },
+                VisibleLine { line: 0, first_column: 2, text: "cde".to_owned(), selected: Some(4..7), colours: Vec::new(), marks: Vec::new() },
+                VisibleLine { line: 1, first_column: 2, text: String::new(), selected: Some(0..3), colours: Vec::new(), marks: Vec::new() },
+                VisibleLine { line: 2, first_column: 2, text: String::new(), selected: None, colours: Vec::new(), marks: Vec::new() },
             ]
         );
+    }
+
+    /// One match, not the current one.
+    fn marks(bytes: Range<usize>) -> FindMarks {
+        FindMarks { ranges: Arc::from(vec![bytes]), lines: Arc::from([0]), current: None }
+    }
+
+    #[test]
+    fn should_mark_the_columns_of_a_match_after_invalid_utf8_and_before_a_crlf() {
+        // given
+        let model = EditorModel::new(PieceTable::new(std::sync::Arc::new(crate::document::TextSource::from_bytes(b"\xe9ab\r\nx"))), None);
+
+        // when
+        let shown = &visible_lines(&model, Area { rows: 0..1, columns: 0..10 }, &[])[0];
+        let columns = mark_columns(&model, shown, &marks(1..3));
+
+        // then
+        assert_eq!(columns, [(1..3, Mark::Match)]);
+    }
+
+    #[test]
+    fn should_mark_a_match_across_a_line_break_on_both_lines() {
+        // given
+        let model = model("xa\nby");
+
+        // when
+        let shown = visible_lines(&model, Area { rows: 0..2, columns: 0..10 }, &[]);
+        let columns = [0, 1].map(|line| mark_columns(&model, &shown[line], &marks(1..4)));
+
+        // then
+        assert_eq!(columns, [vec![(1..3, Mark::Match)], vec![(0..1, Mark::Match)]]);
+    }
+
+    #[test]
+    fn should_mark_only_the_shown_columns_of_a_long_line_quickly() {
+        // given
+        let line = "e ".repeat(10_000);
+        let model = model(&line);
+        let ranges: Vec<Range<usize>> = (0..10_000).map(|at| 2 * at..2 * at + 1).collect();
+        let marks = FindMarks { lines: vec![0; ranges.len()].into(), ranges: ranges.into(), current: None };
+        let shown = &visible_lines(&model, Area { rows: 0..1, columns: 100..110 }, &[])[0];
+
+        // when
+        let started = std::time::Instant::now();
+        let columns = mark_columns(&model, shown, &marks);
+
+        // then
+        assert_eq!(columns, (0..5).map(|at| (100 + 2 * at..101 + 2 * at, Mark::Match)).collect::<Vec<_>>());
+        assert!(started.elapsed() < std::time::Duration::from_millis(50), "{:?}", started.elapsed());
     }
 
     #[test]

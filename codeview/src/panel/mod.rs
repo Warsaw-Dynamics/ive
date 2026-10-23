@@ -8,6 +8,9 @@ mod commit_report;
 mod diff_tests;
 #[cfg(test)]
 mod edit_diff_tests;
+mod find;
+#[cfg(test)]
+mod find_tests;
 mod protocol;
 mod saving;
 mod state;
@@ -17,8 +20,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, ParentElement, Render,
-    Styled, Subscription, Task, Window, div,
+    AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement, IntoElement, ParentElement,
+    Render, Styled, Subscription, Task, Window, div,
 };
 
 pub use protocol::{
@@ -38,6 +41,9 @@ use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
 use commit_report::CommitReport;
+use find::Finder;
+#[cfg(test)]
+use find::FindView;
 use saving::{Answer, BarActions, Blur, Discarded, Next, Saving, Then};
 
 /// The pause after the last edit before the change markers are diffed again.
@@ -63,6 +69,7 @@ pub struct Panel {
     change_pause: Task<()>,
     /// the body's own events, passed on as the panel's
     _body_events: Vec<Subscription>,
+    finder: Finder,
 }
 
 #[derive(Clone)]
@@ -102,6 +109,7 @@ impl Panel {
             blur: Blur::Unwatched,
             change_pause: Task::ready(()),
             _body_events: Vec::new(),
+            finder: Finder::new(cx),
         }
     }
 
@@ -116,6 +124,7 @@ impl Panel {
             Cast::Restore(state) => self.restore(state, cx),
             Cast::SetFiles(files) => self.set_files(files, cx),
             Cast::Parsed { target, revision, syntax } => self.parsed(target, revision, syntax, cx),
+            Cast::Command(command) if command.is_find() => self.run_find(command, cx),
             Cast::Command(command) => self.run(command, cx),
             Cast::RevealLine(line) => self.reveal_line(line, cx),
             Cast::RevealRange { line, bytes } => self.reveal_range(line, bytes, cx),
@@ -126,12 +135,18 @@ impl Panel {
             Cast::CloseWithdrawn => self.saving.withdraw_close(),
             Cast::SetPolicy(policy) => self.saving.delay = policy.save_delay,
             Cast::SetEditable(editable) => self.set_editable(editable, cx),
-            Cast::Type(text) => self.type_text(&text, cx),
+            Cast::Type(text) => self.type_where_the_keyboard_is(&text, cx),
             Cast::SetTexts { file, generation, old, new } => {
                 self.set_texts(generation, [(ParseTarget::DiffOld(file), old), (ParseTarget::DiffNew(file), new)], cx);
             }
-            Cast::SetEditBase { generation, base } => self.set_edit_base(generation, base, cx),
-            Cast::SetBaseDiff { base, diff } => self.set_base_diff(&base, diff, cx),
+            Cast::SetEditBase { generation, base } => {
+                self.set_edit_base(generation, base, cx);
+                self.refind(cx);
+            }
+            Cast::SetBaseDiff { base, diff } => {
+                self.set_base_diff(&base, diff, cx);
+                self.refind(cx);
+            }
             Cast::SetChangeBase { base } => self.set_change_base(base, cx),
             Cast::ChangeDiff { revision, hunks } => self.change_diffed(revision, hunks, cx),
             Cast::ChangeCommitted => self.change_committed(cx),
@@ -157,8 +172,9 @@ impl Panel {
     }
 
     /// Whether typing reaches a text now: in Edit mode, or a diff's new side taken to edit.
+    /// The find box's query, while it has the keyboard, takes typing on any panel.
     pub fn takes_typing(&self, cx: &App) -> bool {
-        self.edit_revision(cx).is_some()
+        self.finder.is_typing() || self.edit_revision(cx).is_some()
     }
 
     /// The revision of the text edited: in Edit mode, or a diff's new side; `None` when nothing is edited.
@@ -255,6 +271,7 @@ impl Panel {
             (content, _) => self.build(content, cx),
         }
         self.apply_pending(cx);
+        self.refind(cx);
     }
 
     fn build(&mut self, content: Content, cx: &mut Context<Self>) {
@@ -319,8 +336,10 @@ impl Panel {
             DiffEvent::LayoutToggled(layout) => {
                 cx.emit(Event::LayoutToggled(*layout));
                 self.notice_state(cx);
+                self.refind(cx);
             }
             DiffEvent::Edited => self.edited(cx),
+            DiffEvent::SearchedChanged => self.refind_from_anchor(cx),
         }
     }
 
@@ -329,6 +348,7 @@ impl Panel {
         self.revision = self.edit_revision(cx).unwrap_or(self.revision);
         cx.emit(Event::Edited { revision: self.revision });
         self.restart_pause(cx);
+        self.refind(cx);
     }
 
     /// A diff file's sides, each the text of the side its target names, answering ask `generation`; a missing side
@@ -510,6 +530,7 @@ impl Panel {
             diff.update(cx, |diff, cx| diff.set_files(files, cx));
         }
         self.apply_pending(cx);
+        self.refind(cx);
     }
 
     fn run(&mut self, command: Command, cx: &mut Context<Self>) {
@@ -662,6 +683,12 @@ impl Panel {
         cx.emit(Event::StateChanged);
     }
 
+    /// The state the body has now, before a frame catches up.
+    #[cfg(test)]
+    pub(crate) fn state_now(&self, cx: &App) -> PanelState {
+        self.observed_state(cx)
+    }
+
     fn observed_state(&self, cx: &App) -> PanelState {
         if let Pending::Restore(state) = &self.pending {
             return state.clone();
@@ -728,6 +755,8 @@ impl Render for Panel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // the body scrolls and moves its caret without telling the panel; each frame catches up
         self.notice_state(cx);
+        self.settle_find_focus(window, cx);
+        self.register_find_open(cx);
         let body: AnyElement = match self.body.clone() {
             Body::Empty => div().into_any_element(),
             Body::View(view) => view.into_any_element(),
@@ -735,7 +764,16 @@ impl Render for Panel {
             Body::Diff(diff) if diff.read(cx).is_editable() => self.render_edit(diff, window, cx),
             Body::Diff(diff) => diff.into_any_element(),
         };
-        body
+        div()
+            .relative()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .on_key_down(cx.listener(Self::on_find_key))
+            .child(body)
+            .children(self.find_bar(cx))
     }
 }
 

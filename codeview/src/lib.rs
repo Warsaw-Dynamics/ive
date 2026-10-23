@@ -3,10 +3,12 @@
 pub mod code_view;
 pub mod colors;
 pub mod diff;
+pub mod find;
 pub mod document;
 pub mod host;
 pub mod icons;
 pub mod line_view;
+pub(crate) mod line_field;
 pub mod changes;
 pub mod panel;
 pub mod parallel;

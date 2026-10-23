@@ -170,6 +170,11 @@ pub enum Builtin {
     Redo,
     /// a diff inline or side by side; new diffs open in the layout last switched to
     ToggleDiffLayout,
+    /// the code view's find box opens, or takes the keyboard back
+    Find,
+    /// the next match of the find box's query, the box reopening with the last query
+    FindNext,
+    FindPrevious,
     CopyTo(ClipboardTarget),
     PasteFrom(ClipboardTarget),
     /// the terminal-only pastes besides `PasteFrom`
@@ -251,6 +256,7 @@ impl Builtin {
             Self::ActivateTab => scope == Scope::Tab,
             Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection => scope == Scope::Tree,
             Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout => scope == Scope::Editor,
+            Self::Find | Self::FindNext | Self::FindPrevious => scope == Scope::Editor,
             Self::CopyTo(_) | Self::PasteFrom(_) => matches!(scope, Scope::Terminal | Scope::Editor),
             Self::Paste(..) => scope == Scope::Terminal,
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,
