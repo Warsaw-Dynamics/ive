@@ -5,10 +5,14 @@
      Run rows (a worktree's Processes, and the run configurations tab): the run's state, Restart + Stop or Start + Remove on hover;
      the tab's folder rows carry ● n (a folder's icon has the run badge in the Files tree, without a count).
      A changed file: its git mark after its name, a deleted file struck through.
-     A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js). -->
+     A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js).
+     A proposal (dnd.js): Ctrl+click and Shift+click pick rows; files, folders and processes drag onto other rows. -->
 <template x-for="row in rows" :key="row.node.key">
-  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty }"
-       :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="activateNode(row.node)"
+  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty, 'tree__row--picked': isPicked(row.node),
+         'tree__row--drop': isDropRow(row.node) && drag.ok, 'tree__row--nodrop': isDropRow(row.node) && drag.ok === false }"
+       :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="clickRow(row.node, $event)"
+       :draggable="String(isDraggable(row.node))" @dragstart="dragStart(row.node, $event)" @dragover="dragOver(row.node, $event)"
+       @drop="drop(row.node, $event)" @dragend="dragEnd()"
        @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && activateNodeToKeep(row.node)"
        @contextmenu.prevent="openTreeMenu(row.node, $event.clientX, $event.clientY)"
        :title="row.node.warning || row.node.hint || row.node.label">

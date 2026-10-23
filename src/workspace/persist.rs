@@ -116,7 +116,22 @@ impl Workspace {
             window: self.window_place.saved(),
             history: self.history.saved(),
             worktree_use: self.worktree_use.saved(),
+            terminals: self.saved_terminals(),
         }
+    }
+
+    /// Where each hosted terminal and Claude Code session is listed, and its pin; runs go back by their labels.
+    fn saved_terminals(&self) -> Vec<crate::state::SavedTerminal> {
+        let saved = |process: &crate::process::Process| {
+            let checkout = process.checkout.as_ref().filter(|_| process.kind != crate::process::ProcessKind::Run)?;
+            Some(crate::state::SavedTerminal {
+                session: process.view.hosted_id()?.to_owned(),
+                project: checkout.project.as_str().to_owned(),
+                checkout: checkout.path.clone(),
+                pinned: process.pinned().map(std::path::Path::to_path_buf),
+            })
+        };
+        self.processes.iter().filter_map(saved).take(crate::state::MAX_TERMINALS).collect()
     }
 
     /// Saves soon: changes within the next 500 ms, or made while a write runs, go into one write. Called after a

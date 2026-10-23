@@ -32,8 +32,14 @@ impl Workspace {
         if index.is_some() || folders.is_empty() {
             self.locating = None;
         }
+        if index.is_none() && folders.is_empty() {
+            self.locating_picks.clear();
+        }
         if let Some(index) = index {
-            self.tree.selection.select_only(key);
+            match std::mem::take(&mut self.locating_picks) {
+                picks if picks.is_empty() => self.tree.selection.select_only(key),
+                picks => self.tree.selection.pick_all(picks),
+            }
             self.tree.list.list_handle().scroll_to_item(index, ScrollStrategy::Center);
         }
         // read even when the row is found: folders_to_read hands out trees shown again only once

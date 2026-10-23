@@ -269,6 +269,7 @@ impl Workspace {
 
     fn on_tick(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.watches.ticks += 1;
+        self.expire_note(cx);
         for (id, paths) in self.watches.pending.take() {
             self.refresh_checkouts(&id, Statuses::Only(paths), cx);
         }

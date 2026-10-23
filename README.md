@@ -213,6 +213,38 @@ As a fallback, this repository also reports it: the root `.claude/settings.json`
 to Claude's terminal itself, because hooks run without a terminal and Claude Code drops `OSC 7` from a hook's
 `terminalSequence`. It needs only bash, and sends nothing when something is missing.
 
+### Drag and drop, copy and paste
+
+Ctrl+click (macOS Cmd+click) picks tree rows one by one, Shift+click from the last one picked; files and folders pick
+together, terminals, Claude Code and runs together. Escape drops the picks. A hint under the pointer says what a drop
+would do.
+
+- **Terminals and Claude Code** dropped on a worktree, its Processes folder or a project (its main checkout) move
+  there: the shell is not touched, only listed under the other worktree. It stays there until its directory changes
+  again (into another worktree it follows as above; anywhere else it stays), and after a restart of IVE too. Runs
+  stay with their worktree's `.run.toml`. With the copy modifier held (Ctrl, macOS Option), the same things start
+  there instead and the originals keep running: a terminal, Claude Code, the worktree's own copy of a run.
+- **Files and folders** dropped on a folder (or a file: its folder), a worktree, its Files folder or a project copy or
+  move there, in any project: the same worktree moves, another copies; Ctrl copies and Shift moves (macOS Option and
+  Cmd). From different folders of one worktree, a menu asks whether to keep their folders (below the folder they
+  share) or put them all flat into the target; from several worktrees they always go flat. A copied folder carries
+  all its files but git's own (`.git`, nested worktrees); a moved one carries a nested `.git` too, and a folder holding
+  another open worktree is not moved. Pasted or Ctrl+dropped into its own folder, a file or folder goes beside
+  itself as `name (2)`. At most 20 000 files and 4 GiB in one copy.
+- **Copy and Paste**: Ctrl+C (macOS Cmd+C) in the tree puts the picked files' absolute paths on the clipboard; Ctrl+V
+  on a row copies the files and folders on the clipboard into its folder, keeping their folders when they come from
+  one worktree. The tree menu has Copy and Paste too.
+- **Nothing is overwritten unasked.** When anything would land on an existing file or folder, nothing is written and
+  a Conflicts tab lists them: where each comes from, both sizes, why (differs by so many lines, same content, two
+  incoming files of one name, a folder in the way) and Replace | Skip | Keep both (`name (2).ext`); a click on a row
+  shows both texts. Copy stays greyed until every row is decided; Cancel or closing the tab writes nothing. Each file is
+  written under a temporary name and renamed into place. A line under the tree says what happened (`Copied 7 files to
+  dev · internal-apps/ive/mock · skipped 1`); a failure stays until clicked.
+
+The drop modifiers are `config.drop_modifiers = #{ force_copy: "CTRL", force_move: "SHIFT" }` in `ive.rn` (macOS
+`ALT` / `SUPER`), the keys `act::CopyFiles`, `act::PasteFiles` and `act::ClearRowSelection` in the tree scope; change
+them in `init.rn`.
+
 ### Restart
 
 To work on IVE in IVE, start it with `./restart.sh` (or a copy with your flags) from a terminal. The Restart button
@@ -743,7 +775,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 
 | Tool | What it does |
 |---|---|
-| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub |
+| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `conflicts`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub |
 | `active_tab` | the shown tab: id, kind, checkout path; nulls when no tab is shown |
 | `script_status` | scripts from `~/.config/ive/<profile>`: whether `init.rn` loaded (`loaded`, `failed`, `no-init`), its errors with file and line, bindings made, the log file and its last 50 lines |
 | `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; a run also its `folder`, `config` and `live`) |
@@ -751,6 +783,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
 | `list_targets` | what `click` can press now, by name: every tree row and its actions (also rows scrolled out of view), overview sections and cards, Settings, prompt buttons (see the names below) |
 | `click` | click a target from `list_targets`, as the mouse would; a tree row out of view is scrolled to first; answers once the window has drawn the result |
+| `drop_rows` | drag tree rows onto another row and drop them, as the mouse would: `rows` and `onto` by their names after `tree-menu:` (`entry:/r/src/a.rs`, `process:3`, `toggle:/r/.claude/worktrees/x`); the first row is the pressed one, the others are picked with it; `force`: `copy` or `move`, as if `config.drop_modifiers`' key were held. Returns the drop's hint (`Copy 2 items to dev · lib`), or why it was refused. Files from folders of one worktree open the layout menu: answer it with `click` on `tree-menu:keep-folders`, `tree-menu:flat` or `tree-menu:cancel` |
 | `window_keys`, `window_text` | keys or text for whatever has the keyboard: a prompt (Enter, Escape), a terminal, a text field, the workspace's key bindings (`alt-f12`) |
 | `show_process` | show a process's tab by its `list_projects` id, opening it again after its tab was closed |
 | `open_project` | open a folder's project, as Open Folder… with it picked; answers with its id once it is open |
@@ -784,6 +817,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Where | Targets |
 |---|---|
 | tab row | `restart` (with `--restart`: builds, then restarts IVE) |
+| tree picks | `tree-pick:<row target>` as a Ctrl+click on the row (adds it to the picked rows, or takes it out), `tree-pick-range:<row target>` as a Shift+click (picks the rows from the last one picked); files and folders pick together, terminals, Claude Code and runs together |
 | menus | `tab-menu:<tab>` and `tree-menu:<row target>` (e.g. `tree-menu:entry:/r/src`) open a tab's or a row's `main` menu; then each line is `tab-menu:` or `tree-menu:` and the labels down to it joined by `/` (`tree-menu:Copy Path/Copy Relative Path`; a click on a submenu's line opens it); Send to Terminal's lines by process id (`tree-menu:Send to Terminal/<n>`, `…/new`), Run's by configuration key; a line waiting for its condition is listed as `<name> (pending)`; the tab actions also as `tab-menu:keep`, `tab-menu:stop`, `tab-menu:kill`, `tab-menu:close`, `tab-menu:close-others`, `tab-menu:close-left`, `tab-menu:close-right` |
 | sidebar header, welcome | `select-opened` (Select opened file: the shown tab's row), `open-project` (the + menu), `recent:<id>`, `open-folder` (the OS picker: use the `open_project` tool instead) |
 | sidebar header menus | `project-picker` (the title), then `show-projects:all`, `show-projects:<id>`; `folders-menu`, then `every-folder:<folder>`, `changes-layout:flat`, `changes-layout:tree`, `reset-folders` |
@@ -792,6 +826,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | worktree folders | `folder:<id>/<label>/<folder>` (fold/unfold; `<folder>` also `files`; Processes' opens its Run configurations tab), `toggle:<id>/<label>/processes` (Processes' chevron), `new-terminal:<id>/<label>/processes` (Processes' +) |
 | process row | `process:<n>`, `stop-process:<n>`; a run in Processes: `live-run:<n>`; a running server's `open-link:<n>`, `copy-link:<n>`; its `restart-process:<n>`, `stop-process:<n>` (live) or `start-process:<n>`, `remove-process:<n>` (exited; `<n>` is `pending-<k>` while it waits for `before` steps) |
 | git folder rows | `change:<id>/<label>/<source>:<path>` (its diff; `<source>`: `uncommitted`, `since-base` or a short sha), `change-folder:<id>/<label>/<source>:<path>/`, `commit:<id>/<label>/<short sha>` (folds its files), `commits-more:<id>/<label>` (Load 20 more) |
+| Conflicts tab (`<n>` a row of the plan) | `conflicts-all:replace`, `conflicts-all:skip`, `conflicts-all:both` (every conflict where offered), `conflict:<n>:replace`, `conflict:<n>:skip`, `conflict:<n>:both`, `conflict-row:<n>` (unfolds both texts), `conflicts-clean` (the files without a conflict), `conflicts-apply` (Copy or Move, once every conflict is decided), `conflicts-cancel`; the line under the tree: `tree-note` (dismisses it) |
 | Run configurations tab (`<folder>` checkout-relative) | `run-configs-filter` (focus the filter, then `window_text`), `run-configs-layout:flat`, `run-configs-layout:tree`, `run-configs-folder:<folder>` (folds a Tree folder), `open-run-file:<folder>` (its `.run.toml`), `run-config:<folder>#<key>` (shows its run), `run:<folder>#<key>` (▷ Run), and a run's `run-configs-restart:<n>`, `run-configs-stop:<n>`, `run-configs-start:<n>`, `run-configs-remove:<n>` |
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |

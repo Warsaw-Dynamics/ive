@@ -105,6 +105,8 @@ pub fn label(builtin: Builtin) -> &'static str {
         Builtin::CopyRelativePath => "Copy Relative Path",
         Builtin::CopyFileName => "Copy File Name",
         Builtin::FindInFiles => "Find in Files…",
+        Builtin::CopyFiles => "Copy",
+        Builtin::PasteFiles => "Paste",
         Builtin::OpenFindInFiles => "Find in Files…",
         Builtin::OpenTerminalHere => "Open in Terminal",
         Builtin::NewTerminal => "New Terminal",

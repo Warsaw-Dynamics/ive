@@ -165,6 +165,7 @@ mod tests {
             menus: Default::default(),
             quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
             open_folders: Default::default(),
+            drop_modifiers: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }
@@ -241,9 +242,9 @@ mod tests {
         // given
         let (_dir, mut state) = new_state();
         let event = match loaded(send_binding("f5")) {
-            ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, has_init, .. } => {
+            ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, has_init, .. } => {
                 let themes = vec!["a".to_owned(), "b".to_owned()];
-                ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, has_init, themes }
+                ScriptEvent::Loaded { keymap, fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, has_init, themes }
             }
             event => event,
         };

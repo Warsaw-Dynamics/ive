@@ -509,3 +509,44 @@ button.card:hover { border-color: var(--accent); }
 .savebar__actions { display: flex; align-items: center; gap: 6px; }
 .savebar__note { font-size: 12px; }
 .savebar__close { border-color: var(--error); color: var(--error); }
+
+/* A proposal (dnd.js, DESIGN.md "Drag and drop"): picked rows, the drop row, the hint under the pointer, the line after
+   a drop, and the Conflicts tab. */
+.tree__row--picked, .tree__row--picked:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.tree__row--drop, .tree__row--drop:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tree__row--nodrop { cursor: no-drop; }
+.drag-hint {
+  position: fixed; z-index: 30; pointer-events: none; max-width: 420px; padding: 2px 8px; border-radius: 4px;
+  background: var(--sidebar); border: 1px solid var(--accent); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.drag-hint--no { border-color: var(--border); color: var(--muted); }
+.dnd-note {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 4px 8px; border-radius: 6px;
+  background: var(--sidebar); border: 1px solid var(--border); font-size: 12px;
+}
+.conflicts { font-size: 13px; }
+.conflicts__title { margin-top: 14px; font-size: 14px; font-weight: 600; }
+.conflicts__hint { margin-top: 2px; font-size: 12px; }
+.conflicts__bar { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; font-size: 12px; }
+.conflicts__bar .segmented button, .conflicts__actions button { padding: 1px 8px; font-size: 12px; }
+.conflicts__table { width: 100%; border-collapse: collapse; }
+.conflicts__table th { padding: 4px 8px; text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--border); }
+.conflicts__table td { padding: 3px 8px; height: 28px; white-space: nowrap; vertical-align: middle; }
+.conflicts__row { cursor: pointer; }
+.conflicts__row:hover { background: var(--hover); }
+.conflicts__row--undecided .conflicts__actions { box-shadow: 0 0 0 1px var(--accent); }
+.conflicts__file { display: flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 12px; }
+.conflicts__from { position: relative; padding-left: 12px !important; }
+.conflicts__clip { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.conflicts__stripe { position: absolute; left: 2px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; }
+.conflicts__why { color: var(--warning, #e0bb65); }
+.conflicts__as { font-size: 11px; font-family: var(--mono); }
+.conflicts__preview td { padding: 0 8px 8px 28px; }
+.conflicts__texts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.conflicts__texts pre { margin: 0; padding: 6px 8px; max-height: 220px; overflow: auto; border-radius: 6px; background: var(--sidebar); border: 1px solid var(--border); font: 12px/1.5 var(--mono); }
+.conflicts__side { font-size: 11px; margin-bottom: 2px; }
+.conflicts__clean { margin-top: 12px; font-size: 12px; }
+.conflicts__clean summary { cursor: pointer; }
+.conflicts__cleanrow { display: flex; gap: 16px; padding: 2px 0 2px 16px; font-family: var(--mono); }
+.conflicts__buttons { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.conflicts__buttons .button:disabled { opacity: 0.5; cursor: default; }

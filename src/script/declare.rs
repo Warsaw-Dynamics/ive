@@ -113,7 +113,7 @@ fn key_name(key: &str) -> Result<String, String> {
     Err(format!("key {key:?} is not a key IVE knows (one character, F1-F24, or {})", named.join(", ")))
 }
 
-fn parse_mods(mods: &str) -> Result<Modifiers, String> {
+pub(crate) fn parse_mods(mods: &str) -> Result<Modifiers, String> {
     let mut modifiers = Modifiers::default();
     for name in mods.split('|').map(str::trim).filter(|name| !name.is_empty() && *name != "NONE") {
         match name {
@@ -254,6 +254,9 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "ToggleRow" => Builtin::ToggleRow,
         "ToggleRowSelection" => Builtin::ToggleRowSelection,
         "ExtendRowSelection" => Builtin::ExtendRowSelection,
+        "ClearRowSelection" => Builtin::ClearRowSelection,
+        "CopyFiles" => Builtin::CopyFiles,
+        "PasteFiles" => Builtin::PasteFiles,
         "SelectAll" => Builtin::SelectAll,
         "Cut" => Builtin::Cut,
         "Undo" => Builtin::Undo,

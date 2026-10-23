@@ -26,6 +26,8 @@ pub const MAX_RECENT: usize = 10;
 pub const MAX_HISTORY: usize = 500;
 /// checkouts whose last use is remembered
 pub const MAX_WORKTREE_USE: usize = 200;
+/// terminals whose checkout is remembered
+pub const MAX_TERMINALS: usize = 1000;
 /// open commits, change folders and expanded folders, each, that a checkout's folders keep
 pub const MAX_SAVED_OPEN: usize = 1000;
 pub const MAX_COMMITS_SHOWN: usize = 10_000;
@@ -57,11 +59,14 @@ pub struct SavedState {
     /// the last input or run start in each checkout
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub worktree_use: Vec<SavedUse>,
+    /// where each hosted terminal is listed, which its session's labels cannot follow
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub terminals: Vec<SavedTerminal>,
 }
 
 impl Default for SavedState {
     fn default() -> Self {
-        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new() }
+        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new(), terminals: Vec::new() }
     }
 }
 
@@ -146,6 +151,18 @@ pub struct SavedShown {
     pub tab: SavedTab,
 }
 
+/// A hosted terminal or Claude Code session's place: moved by hand or following its directory, it can be listed
+/// under another checkout, even another project, than its session's labels say.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedTerminal {
+    pub session: String,
+    pub project: String,
+    pub checkout: PathBuf,
+    /// the directory it was moved from, which it does not follow
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SavedUse {
     pub checkout: PathBuf,
@@ -163,6 +180,12 @@ impl SavedState {
                 self.history.len(),
                 self.worktree_use.len()
             ));
+        }
+        if self.terminals.len() > MAX_TERMINALS {
+            return Err(format!("{} terminals, the limit is {MAX_TERMINALS}", self.terminals.len()));
+        }
+        for terminal in &self.terminals {
+            ProjectId::parse(&terminal.project)?;
         }
         if self.projects.len() > MAX_PROJECTS || self.recent.len() > MAX_RECENT {
             return Err(format!(
@@ -200,7 +223,8 @@ impl SavedState {
         let shown = self.history.iter().flat_map(|shown| shown.tab.paths());
         let shown = shown.chain(self.history.iter().flat_map(|shown| &shown.checkout));
         let used = self.worktree_use.iter().map(|used| &used.checkout);
-        match paths.chain(checkouts).chain(shown).chain(used).find(|path| path.is_relative()) {
+        let terminals = self.terminals.iter().flat_map(|terminal| std::iter::once(&terminal.checkout).chain(&terminal.pinned));
+        match paths.chain(checkouts).chain(shown).chain(used).chain(terminals).find(|path| path.is_relative()) {
             Some(relative) => Err(format!("path {} is not absolute", relative.display())),
             None => Ok(()),
         }
@@ -359,6 +383,7 @@ mod tests {
             window: Some(SavedWindow { x: 1950., y: 40., width: 1000., height: 700., mode: WindowMode::Maximized }),
             history: Vec::new(),
             worktree_use: Vec::new(),
+            terminals: Vec::new(),
         }
     }
 
@@ -375,6 +400,37 @@ mod tests {
         // then
         assert_eq!((loaded.state, loaded.problem), (sample(), None));
         assert!(fs::read_to_string(&path).unwrap().starts_with("version = 2\n"));
+    }
+
+    #[test]
+    fn should_round_trip_saved_terminals() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let terminal = SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: PathBuf::from("/r/wt"), pinned: Some(PathBuf::from("/r/src")) };
+        let state = SavedState { terminals: vec![terminal], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_set_aside_relative_terminal_checkout() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let terminal = SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: PathBuf::from("r/wt"), pinned: None };
+        save(&SavedState { terminals: vec![terminal], ..sample() }, &path).unwrap();
+
+        // when
+        let loaded = load(&path);
+
+        // then
+        assert!(loaded.problem.is_some_and(|problem| problem.contains("r/wt")));
     }
 
     #[test]

@@ -54,6 +54,8 @@ pub enum Request {
     OpenProject { path: PathBuf },
     /// what `WindowInput::Click` can press: the targets on screen and those of every tree row
     ListTargets,
+    /// tree rows, by their `tree-menu:` names, dropped on another as a drag would; `force`: "copy" or "move"
+    DropRows { rows: Vec<String>, onto: String, force: Option<String> },
     /// input for the whole window, dispatched outside the workspace's update
     WindowInput(WindowInput),
     /// answered once the window has drawn a fresh frame, so a screenshot shows the latest changes

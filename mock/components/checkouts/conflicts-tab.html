@@ -1,0 +1,74 @@
+<!-- A proposal (DESIGN.md "Drag and drop"): a copy or move that would overwrite opens this tab; nothing is written until
+     Copy (or Move) is pressed. One row per conflict: the file where it goes, where it comes from, both sizes, why, and
+     Replace | Skip | Keep both (Replace is not offered for a folder in the way, or two incoming files of one name).
+     Same content starts on Skip; the rest must be chosen, one by one or with All. A click on a row shows both texts. -->
+<div class="page conflicts" x-data="{ get plan() { return tab.plan; } }">
+  <div class="conflicts__title" x-text="conflictTitle(plan)"></div>
+  <div class="conflicts__hint muted">
+    <span x-text="counted(conflictRows(plan).length, 'file is', 'files are') + ' in the way · ' + conflictLayout(plan)"></span>
+    <span> · nothing is written until you press <span x-text="plan.op.verb === 'move' ? 'Move' : 'Copy'"></span></span>
+  </div>
+  <div class="conflicts__bar">
+    <span class="muted">All</span>
+    <div class="segmented" role="group" aria-label="Every conflict">
+      <template x-for="a in [['replace', 'Replace'], ['skip', 'Skip'], ['both', 'Keep both']]" :key="a[0]">
+        <button type="button" @click="setAllConflicts(plan, a[0])" x-text="a[1]"></button>
+      </template>
+    </div>
+  </div>
+  <table class="conflicts__table">
+    <thead>
+      <tr><th>File</th><th>From</th><th>Incoming</th><th>There now</th><th>Why</th><th>Action</th></tr>
+    </thead>
+    <template x-for="row in conflictRows(plan)" :key="row.id">
+      <tbody>
+        <tr class="conflicts__row" :class="{ 'conflicts__row--open': row.open, 'conflicts__row--undecided': row.action === null }" @click="row.open = !row.open">
+          <td class="conflicts__file">
+            <img class="icon" :src="icon(row.open ? 'chevron-down.svg' : 'chevron-right.svg')" alt="" />
+            <img class="icon" :src="icon(row.entry.children ? 'folder.svg' : fileIcon(row.dest))" alt="" />
+            <span x-text="row.dest.slice(plan.op.to.path.length + 1)" :title="placeName({ co: plan.op.to.co, path: row.dest })"></span>
+          </td>
+          <td class="conflicts__from"><span class="conflicts__stripe" :style="{ background: checkout(row.src.co).colour }"></span><span class="conflicts__clip" x-text="label(row.src.co) + ' · ' + row.src.path.slice(1)" :title="absolutePath(row.src)"></span></td>
+          <td class="muted" x-text="entrySize(row.entry)"></td>
+          <td class="muted" x-text="row.there ? entrySize(row.there) : '—'"></td>
+          <td :class="row.reason === 'same' ? 'muted' : 'conflicts__why'"><span class="conflicts__clip" x-text="conflictReason(row)" :title="conflictReason(row)"></span></td>
+          <td @click.stop>
+            <div class="segmented conflicts__actions" role="group" aria-label="Action">
+              <template x-for="a in conflictActions(row)" :key="a[0]">
+                <button type="button" :aria-pressed="String(row.action === a[0])" @click="row.action = a[0]" x-text="a[1]"></button>
+              </template>
+            </div>
+            <template x-if="row.action === 'both'"><div class="conflicts__as muted" x-text="'as ' + keptName(plan, row)"></div></template>
+          </td>
+        </tr>
+        <template x-if="row.open">
+          <tr class="conflicts__preview">
+            <td colspan="6">
+              <div class="conflicts__texts">
+                <div><div class="muted conflicts__side" x-text="'there now · ' + label(plan.op.to.co)"></div><pre x-text="row.there && row.there.text !== undefined ? row.there.text : (row.reason === 'twice' ? '(also incoming, from ' + label(row.first.co) + ')' : '(a folder)')"></pre></div>
+                <div><div class="muted conflicts__side" x-text="'incoming · ' + label(row.src.co)"></div><pre x-text="row.entry.text !== undefined ? row.entry.text : '(a folder)'"></pre></div>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </template>
+  </table>
+  <template x-if="cleanRows(plan).length">
+    <details class="conflicts__clean">
+      <summary class="muted" x-text="counted(cleanRows(plan).length, 'file goes', 'files go') + ' in without a conflict'"></summary>
+      <template x-for="row in cleanRows(plan)" :key="row.id">
+        <div class="conflicts__cleanrow muted">
+          <span x-text="row.dest.slice(plan.op.to.path.length + 1)"></span>
+          <span x-text="'from ' + label(row.src.co) + ' · ' + row.src.path.slice(1)"></span>
+        </div>
+      </template>
+    </details>
+  </template>
+  <div class="conflicts__buttons">
+    <button class="button button--small" type="button" :disabled="undecided(plan) > 0" @click="applyConflicts(tab)"
+            :title="undecided(plan) > 0 ? 'Choose for every file first' : ''" x-text="plan.op.verb === 'move' ? 'Move' : 'Copy'"></button>
+    <button class="toggle" type="button" @click="closeTab(tab)">Cancel</button>
+    <span class="muted" x-text="conflictSummary(plan)"></span>
+  </div>
+</div>

@@ -12,6 +12,7 @@ mod fingerprint;
 mod http_module;
 pub mod keymap;
 pub mod quit_countdown;
+pub mod drop_modifiers;
 pub mod log;
 pub mod state;
 pub mod menus;
