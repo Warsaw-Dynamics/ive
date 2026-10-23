@@ -9,7 +9,7 @@ use codeview::panel::Cast;
 use codeview::text_editor::{Motion, Selecting};
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
-use gpui::{App, Context, KeyDownEvent, Task, Window};
+use gpui::{App, ClipboardItem, Context, KeyDownEvent, Task, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
@@ -22,6 +22,7 @@ use crate::tabs::TabId;
 use crate::theme_config::ThemeSpec;
 use crate::theme_config::user::THEMES_DIR;
 use crate::script::temporary_tabs::TemporaryTabs;
+use crate::selectable::TextSelection;
 use crate::script::{ScriptEvent, Scripts};
 use crate::text_input;
 use crate::theme::Fonts;
@@ -81,6 +82,20 @@ fn apply_excluded(excluded: Excluded, cx: &mut App) -> bool {
     let changed = is_new(cx.try_global::<Excluded>(), &excluded);
     cx.set_global(excluded);
     changed
+}
+
+/// Of the built-in actions, selected read-only text takes Copy and Select All; the editing ones do nothing.
+fn run_text_builtin(builtin: Builtin, cx: &mut App) {
+    match builtin {
+        Builtin::CopyTo(_) => {
+            let text = cx.global::<TextSelection>().selection.copy_text().map(str::to_owned);
+            if let Some(text) = text {
+                cx.write_to_clipboard(ClipboardItem::new_string(text));
+            }
+        }
+        Builtin::SelectAll => cx.global_mut::<TextSelection>().selection.select_all(),
+        _ => {}
+    }
 }
 
 fn is_new(old: Option<&Excluded>, new: &Excluded) -> bool {
@@ -169,6 +184,7 @@ impl Workspace {
             return;
         }
         let place = match self.tabs.active() {
+            _ if cx.global::<TextSelection>().focus.is_focused(window) => Place::Text,
             _ if super::sidebar_has_keys(window, cx) => Place::Tree,
             Some(Tab::Document(_)) => Place::Editor,
             _ => Place::Elsewhere,
@@ -177,6 +193,7 @@ impl Workspace {
             return;
         };
         match action {
+            Action::Builtin(builtin) if place == Place::Text => run_text_builtin(builtin, cx),
             // a shown tab that is not a terminal takes no text
             Action::Send(text) => drop(self.send_to_active(&text)),
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
