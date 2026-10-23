@@ -2,6 +2,152 @@ use super::*;
 
 #[cfg(target_os = "linux")]
 #[test]
+fn should_contain_actual_native_inventory_labels_inside_owning_shapes() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    struct Bridge {
+        native: Arc<NativeText>,
+        calls: AtomicUsize,
+        fallback: AtomicUsize,
+    }
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(
+                match self.native.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => {
+                        self.fallback.fetch_add(1, Ordering::Relaxed);
+                        None
+                    }
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for family in ["files", "packetdiag", "board", "hcl"] {
+        for size in [6, 14, 96] {
+            if family == "hcl" && size != 14 {
+                continue;
+            }
+            let original = crate::examples::source(&format!("plantuml-{family}")).unwrap();
+            let source = if family == "hcl" {
+                original.to_owned()
+            } else {
+                original.replacen('\n',&format!("\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\n"),1)
+            };
+            let bridge = Arc::new(Bridge {
+                native: resources.start_render(),
+                calls: AtomicUsize::new(0),
+                fallback: AtomicUsize::new(0),
+            });
+            let options = RenderOptions {
+                language: Language::PlantUml,
+                text_measurement: TextMeasurementPolicy::host_display(
+                    TextMeasurementProfileIdentity::new(
+                        MeasurementProfileId::new("native-inventory-paint").unwrap(),
+                        "1",
+                    )
+                    .unwrap(),
+                    bridge.clone(),
+                    [TextMeasurementPhase::Layout],
+                ),
+                ..Default::default()
+            };
+            // when
+            let output = diagram_engine::render(&source, &options).unwrap();
+            let xml = roxmltree::Document::parse(&output.svg).unwrap();
+            let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+            let mut painted = 0;
+            // then
+            for element in xml
+                .descendants()
+                .filter(|n| n.attribute("data-kind").is_some())
+            {
+                let Some(usvg::Node::Group(group)) =
+                    tree.node_by_id(element.attribute("id").unwrap())
+                else {
+                    continue;
+                };
+                let kind = element.attribute("data-kind").unwrap();
+                let enclosure = if matches!(kind, "files-note" | "packet-fragment" | "board-card") {
+                    group.children().iter().find_map(|n| {
+                        if let usvg::Node::Path(p) = n {
+                            Some(p.abs_bounding_box())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
+                for child in group.children() {
+                    if let usvg::Node::Text(text) = child {
+                        painted += 1;
+                        let ink = text.abs_stroke_bounding_box();
+                        assert!(
+                            ink.left() >= -0.5
+                                && ink.top() >= -0.5
+                                && ink.right() <= tree.size().width() + 0.5
+                                && ink.bottom() <= tree.size().height() + 0.5,
+                            "{family} {size}px canvas {ink:?}"
+                        );
+                        let bounds = if kind.starts_with("data-row-") {
+                            let owner = element.attribute("data-owner").unwrap();
+                            let Some(usvg::Node::Group(owner)) = tree.node_by_id(owner) else {
+                                panic!()
+                            };
+                            owner.children().iter().find_map(|n| {
+                                if let usvg::Node::Path(p) = n {
+                                    Some(p.abs_bounding_box())
+                                } else {
+                                    None
+                                }
+                            })
+                        } else {
+                            enclosure
+                        };
+                        if let Some(bounds) = bounds {
+                            assert!(
+                                ink.left() >= bounds.left() - 0.5
+                                    && ink.right() <= bounds.right() + 0.5
+                                    && ink.top() >= bounds.top() - 0.5
+                                    && ink.bottom() <= bounds.bottom() + 0.5,
+                                "{family} {size}px {kind} ink {ink:?} enclosure {bounds:?}"
+                            );
+                        }
+                    }
+                }
+            }
+            assert!(painted >= 7, "{family} inspected only {painted} runs");
+            assert!(bridge.calls.load(Ordering::Relaxed) > 0);
+            assert_eq!(bridge.fallback.load(Ordering::Relaxed), 0);
+            eprintln!(
+                "{family} {size}px: {painted} painted runs, {} actual native calls, zero fallback",
+                bridge.calls.load(Ordering::Relaxed)
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
 fn should_contain_actual_native_nwdiag_labels_inside_servers_groups_and_canvas() {
     use crate::{
         native_text::{NativeText, NativeTextResources},

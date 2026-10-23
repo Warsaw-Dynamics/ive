@@ -10,6 +10,314 @@
   },
   "sourceFiles": [
     {
+      "path": "net/sourceforge/plantuml/filesdiagram/FEntry.java",
+      "sha256": "a499ebfff655214e6e77251b221e542e20acf2892e23e9c64f55875b41676195",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/files.rs",
+        "engine/src/plantuml/filesscene.rs"
+      ],
+      "behavior": "Ordered sibling folder reuse, distinct file/folder identities, parents/children and preorder rows; native primitives replace unimported emoji.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/filesdiagram/FilesDiagram.java",
+      "sha256": "010231ff785e054a5b89708cad02304ec54ba5350408f5bac0bd5a6632c08943",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/files.rs"
+      ],
+      "behavior": "Slash paths and note blocks; native rejects empty components, unknown rows and unterminated notes.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/filesdiagram/FilesListing.java",
+      "sha256": "10c2c9f7ac8cfa2890bd7767f36062df25a57643a081b3f1c1f98b9a9c250351",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/files.rs",
+        "engine/src/plantuml/filesscene.rs"
+      ],
+      "behavior": "Hidden root and sibling-note anchor at last file parent or root after folder-only declaration.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/Activity.java",
+      "sha256": "5b2add7755cad9040bb80f49f788f69d90c87f2755e10ef92ef98337ac08a521",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/board.rs",
+        "engine/src/plantuml/boardscene.rs"
+      ],
+      "behavior": "Nearest lower-stage ancestry and activity branch width; native corrects duplicate root paint.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/BNode.java",
+      "sha256": "f07671a3bf3032f22ffa9afb0833dd8606660582ddd85e65144128b58726fa55",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/board.rs",
+        "engine/src/plantuml/boardscene.rs"
+      ],
+      "behavior": "Ordered children, increasing stages and DFS columns; first child keeps parent column, later child follows previous subtree. Native traversal is iterative.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/BoardDiagram.java",
+      "sha256": "f6a098aae12e37da640dad1153c63df27545453a1eb08ca7e9eb4b2fd87db5a4",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/board.rs",
+        "engine/src/plantuml/boardscene.rs"
+      ],
+      "behavior": "Zero-plus activity roots, positive-stage releases, horizontal activity offsets and full-board dashed stage boundaries.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/CommandBoardPlus.java",
+      "sha256": "393d60f87b57a7a2dbadaa7b5e534b78baa6295a41c4cdfad23f2366b8401960",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/board.rs"
+      ],
+      "behavior": "Plus-count stage and required labels; native rejects orphan releases and substantive unsupported commands.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/CardBox.java",
+      "sha256": "f3b8a925b6484f8b7d095599a52375e2103e71568739f15d7cf4af3c2ee5f03a",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/boardscene.rs"
+      ],
+      "behavior": "Nominal150x70 cards; native measured minima expand dimensions for full labels and paint every root once.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/board/PostIt.java",
+      "sha256": "e0c40b492cfc1465c627540b562ac26f98c52fe156328559e708ba2cb3206446",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/boardscene.rs"
+      ],
+      "behavior": "Nominal170x90 pitches; measured native card minima plus20-unit gaps preserve stages/columns.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/hcl/HclParser.java",
+      "sha256": "f372a7c8e217e83986e8359988ca68418b48710a6950177b5ecc39d1ef05d09f",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/hcl.rs"
+      ],
+      "behavior": "Ordered textual named blocks, single-block unwrapping, duplicate fields, string scalars and quoted-string/object arrays; backslash consumes next character. Native rejects duplicate topblocks, calls/evaluation/interpolation/nested or bare arrays and retains physical line separators.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/hcl/HclSource.java",
+      "sha256": "0bc7b0f32e18c5304905e759c6ec6b042063c2cc280b12f37f922e9365996839",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* Original Author:  Arnaud Roques"
+      ],
+      "rust": [
+        "engine/src/plantuml/hcl.rs"
+      ],
+      "behavior": "Whole hash-comment rows omitted and quoted hashes retained. Native preserves physical newline separators instead of concatenating bare tokens.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/PacketDiagram.java",
+      "sha256": "21bf35b925a3a8b0810190f77a077f58582a6a2acf88f96c1ad03a6221b3939d",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23",
+        "* Contribution: The-Lum"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/packetscene.rs"
+      ],
+      "behavior": "Config defaults, inclusive field identity, declaration-width placement and row splitting/direction/heights. Native corrects remainder conservation, max-height row clearance and colwidth1 default interval.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/PacketBlock.java",
+      "sha256": "01b6a68d0016ee1ded28a844315eed855abbabffc28fc1fe985498a14b836b48",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packetscene.rs"
+      ],
+      "behavior": "Measured label/full rectangle contract. Native expands one common bit scale to retain complete UTF8 labels; no abbreviation/continuation/rotation paint claim.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/PacketIndicator.java",
+      "sha256": "ae2cbfc8ff3e254b9284d0323169a4cefe6d9857c814a07a967194dd9791be87",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packetscene.rs"
+      ],
+      "behavior": "Numbered/nonnumbered short/full ticks and centered measured indices; original native top-scale geometry.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandNumRange.java",
+      "sha256": "aa39aa72767f58098585f47115632aa9b318844e117a951cfa79fe71344f23e9",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23",
+        "* Contribution: The-Lum"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Inclusive ranges, single-bit len, auto start after last end and requested height. Native complete attributes reject rotate/unknown/duplicate values, descending ranges and len on explicit range.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandColWidth.java",
+      "sha256": "cabfe5b701d19ad5319aea43a2ba10dd397087b256227f3fb445be15536adba1",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Positive colwidth1..999 controls actual row wrapping.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandNodeHeight.java",
+      "sha256": "7fc01797660e4e085891cd809c0eaf8d7cbdc508f0848b0ed5610743376af669",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Positive node_height1..999 controls vertical unit; native also reserves full measured label height.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandScaleInterval.java",
+      "sha256": "dcfb42c720974ede07acb21a4485cc3ffc5f24b13a78fb5d17b4099e2f3a3350",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Positive scale_interval controls actual tick numbering and is capped at final configured colwidth.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandScaleDirection.java",
+      "sha256": "fe5762087b20c2b4ab7e2501ba6714710b4802496783fe3d49f7efafdd79e7e4",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23",
+        "* Contribution: The-Lum"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/packetscene.rs"
+      ],
+      "behavior": "ltr/rtl reverses actual block placement and tick indices.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandSameHeight.java",
+      "sha256": "5066322812e31b91bd788dc03a611a11199c66c93315fdb51790c8f02a78b09e",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  Duy Nguyen"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs",
+        "engine/src/plantuml/packetscene.rs"
+      ],
+      "behavior": "same_height promotes actual row cells to maximum; native always reserves maximum row clearance.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandPacketDiagStart.java",
+      "sha256": "ecd9da600b3d21a1ed82aa442a55a7346d59166795cff7a16d99895e18c9a7e1",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Canonical packetdiag opener; native admits only one optional balanced canonical braced body.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
+      "path": "net/sourceforge/plantuml/packetdiag/command/CommandPacketDiagEnd.java",
+      "sha256": "613835aa795bb4ab75cf6ec1314ff3031267fdd9c6f3f2c9a9dcb4910bcbae4c",
+      "copyrights": [
+        "* (C) Copyright 2009-2024, Arnaud Roques",
+        "* (C) Copyright 2009-2026, Arnaud Roques",
+        "* Original Author:  kolulu23"
+      ],
+      "rust": [
+        "engine/src/plantuml/packet.rs"
+      ],
+      "behavior": "Closing brace marker; native validates whole balanced block and rejects trailing substantive input.",
+      "notice": "provenance/LICENSE-PlantUML-MIT.txt"
+    },
+    {
       "path": "net/sourceforge/plantuml/nwdiag/CommandNwDiagInit.java",
       "sha256": "be20e6c6da17e4c718ae5a1a1a64e7665389310786f6b74021a2855656c43706",
       "copyrights": [
@@ -1228,9 +1536,10 @@
       "path": "net/sourceforge/plantuml/json/JsonObject.java",
       "sha256": "a2894810da21e1287c93821803a4fc03a79c1530c5ef623aedc982b04a373c63",
       "rust": [
-        "engine/src/plantuml/data.rs"
+        "engine/src/plantuml/data.rs",
+        "engine/src/plantuml/hcl.rs"
       ],
-      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected.",
+      "behavior": "Strict bounded JSON recursive parsing with distinct scalar types and ordered duplicate object members; native limits/Unicode decoding intentionally stricter; original comment extension rejected. HCL duplicate fields also append in order, preserving EclipseSource MIT.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* The above copyright notice and this permission notice shall be included",
@@ -1965,7 +2274,7 @@
       "rust": [
         "engine/src/plantuml/source.rs"
       ],
-      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames.",
+      "behavior": "Recognize admitted exact wrappers, including GANTT at lines 210-212; Gantt adds exact @startgantt/@endgantt only, not project wrapper aliases or output targets. Existing other admitted wrapper contracts remain unchanged. Salt additionally maps SALT at lines256-258 to exact @startsalt/@endsalt; source/preprocessor preserves Salt raw lexical ownership and never admits output filenames. Nwdiag additionally maps NWDIAG at lines239-241 to exact @startnwdiag/@endnwdiag, without aliases or output filenames. Exact files/packetdiag/board/HCL wrappers, no aliases or output filenames.",
       "copyrights": [
         "* (C) Copyright 2009-2024, Arnaud Roques",
         "* Original Author:  Arnaud Roques"
@@ -2643,6 +2952,96 @@
   ],
   "fixtures": [
     {
+      "path": "fixtures/plantuml/filesbase.puml",
+      "sha256": "49292373d102be17bc4b8cdca87e8145810714c12520b2f49a3dcea21a260a0c",
+      "origin": "/tmp/ive-plantuml-native-oracles/files-tree.puml",
+      "expectedLabels": [
+        "app",
+        "main.rs",
+        "README.md"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/packetbase.puml",
+      "sha256": "ed4d574921091eaf20c41f79fb22f97ff647e24388a8472d2c50f13b51c45669",
+      "origin": "/tmp/ive-plantuml-native-oracles/packetdiag-ranges.puml",
+      "expectedLabels": [
+        "Version",
+        "Flags",
+        "Length",
+        "Payload"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/boardbase.puml",
+      "sha256": "3479cbd3c10b0e2df33f6fa27c3e9fd1629d48acb40370b0a579f5ba3df8080c",
+      "origin": "/tmp/ive-plantuml-native-oracles/board-columns-cards.puml",
+      "expectedLabels": [
+        "Backlog",
+        "Add search",
+        "Done",
+        "Fix login"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/hclbase.puml",
+      "sha256": "40fb9ae3934394d2712f93624b8957bfd240d7af2098ae6c5223fa8299ecce39",
+      "origin": "/tmp/ive-plantuml-native-oracles/hcl-nested-data.puml",
+      "expectedLabels": [
+        "name",
+        "ledger",
+        "zones",
+        "north",
+        "tags",
+        "core"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/files.puml",
+      "sha256": "00fc27baa7dcb8bff29f94457eec4b194c635e6dcd7864ee5a996105b1c5c51c",
+      "origin": "Independently authored Task3I native example, not original geometry oracle.",
+      "expectedLabels": [
+        "Entry point",
+        "Root note after an empty folder"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/packetdiag.puml",
+      "sha256": "ecc46aa7cb370c90b48c8fca104315569bf97f1811a820c7d2c22b78b3dd8dd2",
+      "origin": "Independently authored Task3I native example; conserved fragments, not original geometry oracle.",
+      "expectedLabels": [
+        "Type",
+        "Payload",
+        "Flags"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/board.puml",
+      "sha256": "24eb78be7c019d19afb7e4b589880f69f64dffb02d4f2bf12fdd512daaeec62c",
+      "origin": "Independently authored Task3I native example; branches/stage gaps, not original geometry oracle.",
+      "expectedLabels": [
+        "Checkout",
+        "Draft",
+        "Validate",
+        "Submit",
+        "Ship",
+        "Audit",
+        "Record"
+      ]
+    },
+    {
+      "path": "fixtures/plantuml/hcl.puml",
+      "sha256": "5a3cef66fb7dc6d3e01df54c331985f8f2d26681d97201a5ece1d4745745e4c1",
+      "origin": "Independently authored Task3I native example; nested owning rows, not original geometry oracle.",
+      "expectedLabels": [
+        "name",
+        "replicas",
+        "zones",
+        "tags",
+        "endpoints"
+      ]
+    },
+    {
       "path": "fixtures/plantuml/nwdiagbase.puml",
       "sha256": "7bff741790360b248374d315934527d8169e7181427efd4af341892a810951f3",
       "origin": "/tmp/ive-plantuml-native-oracles/nwdiag-network.puml",
@@ -2980,6 +3379,13 @@
     "claim": "Original admission and painted labels; not native geometry/pixel parity."
   },
   "nativeModules": [
+    "engine/src/plantuml/files.rs",
+    "engine/src/plantuml/filesscene.rs",
+    "engine/src/plantuml/board.rs",
+    "engine/src/plantuml/boardscene.rs",
+    "engine/src/plantuml/packet.rs",
+    "engine/src/plantuml/packetscene.rs",
+    "engine/src/plantuml/hcl.rs",
     "engine/src/plantuml/nwdiag.rs",
     "engine/src/plantuml/nwscene.rs",
     "engine/src/plantuml/salt.rs",
@@ -3016,6 +3422,7 @@
     "engine/src/plantuml/chrome.rs"
   ],
   "implementationNotes": [
+    "Task3I adds four dedicated immutable files/packetdiag/board/HCL models. Files trie/notes use original native symbols; packet conserves inclusive widths under measured common bit scale and max-height row clearance; board preserves nearest-lower ancestry/DFS columns with one root paint; HCL lowers ordered duplicate string fields into real owning-row compartments. HCL duplicate topblocks/style/chrome/calls/evaluation/interpolation/nested or bare arrays reject; physical lines remain separators. No runtime IO/dependencies/assets/later families/API changes.",
     "Task3H adds stable network/server/group identities and sparse per-network interface memberships, measured horizontal buses and one global server box. Dedicated ordered cable lanes, charged sparse crossing sweeps with actual bus gaps, contiguous group columns and label/header reservations replace dense network-by-server grids. Unsupported shapes/hidden networks/links/colors/widths fail explicitly. Canonical balanced body, #RRGGBB fills and full bus width are admitted; whole grammar consumed. Native row/column geometry differs from upstream and is not pixel parity.",
     "Task3F adds a dedicated deterministic day-only Gantt model and measured date axis/bar/diamond scene. ISO dates are explicit and bounded; all seven days are open. Dependency dates are captured in source order with conservative freeze-after-reference admission, not a final reactive DAG. Native sparse calendar ticks and routes differ from upstream geometry; milestone references do not invent drawn arrows. No new runtime IO, ambient dates, dependencies or assets.",
     "Distinct mindmap side-stack/multiplier and WBS global-chain/fork/trunk models. Original measured native tree geometry, no generic mirrored fallback.",

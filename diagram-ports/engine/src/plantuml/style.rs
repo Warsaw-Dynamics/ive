@@ -108,6 +108,25 @@ pub(super) fn prepare(
     wrapper: Wrapper,
     budget: &mut Budget,
 ) -> Result<Preamble, RenderError> {
+    if wrapper == Wrapper::Hcl {
+        let mut result = Preamble::default();
+        for line in lines {
+            budget.charge(line.text.len() + 1)?;
+            let text = line.text.trim();
+            if text.is_empty() || text.starts_with('#') {
+                result.start += 1;
+            } else {
+                break;
+            }
+        }
+        if result.start == lines.len() {
+            return Err(invalid(
+                1,
+                "HCL requires a block after comments/definitions",
+            ));
+        }
+        return Ok(result);
+    }
     let mut result = Preamble::default();
     let mut syntax = 0;
     let data = matches!(wrapper, Wrapper::Json | Wrapper::Yaml);

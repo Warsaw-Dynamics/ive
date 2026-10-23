@@ -86,10 +86,23 @@ impl Processor<'_> {
                             | "@startgantt"
                             | "@startsalt"
                             | "@startnwdiag"
+                            | "@startfiles"
+                            | "@startpacketdiag"
+                            | "@startboard"
+                            | "@starthcl"
                     ))
             {
                 inside = true;
-                raw_data = matches!(command, "@startjson" | "@startyaml" | "@startsalt");
+                raw_data = matches!(
+                    command,
+                    "@startjson"
+                        | "@startyaml"
+                        | "@startsalt"
+                        | "@startfiles"
+                        | "@startpacketdiag"
+                        | "@startboard"
+                        | "@starthcl"
+                );
                 self.direct(physical, span.slice(0..physical.len()))?;
             } else if !raw_text
                 && (command.eq_ignore_ascii_case("@enduml")
@@ -102,6 +115,10 @@ impl Processor<'_> {
                             | "@endgantt"
                             | "@endsalt"
                             | "@endnwdiag"
+                            | "@endfiles"
+                            | "@endpacketdiag"
+                            | "@endboard"
+                            | "@endhcl"
                     ))
             {
                 inside = false;

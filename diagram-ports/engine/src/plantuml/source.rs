@@ -18,6 +18,10 @@ pub(super) enum Wrapper {
     Gantt,
     Salt,
     Nwdiag,
+    Files,
+    Packet,
+    Board,
+    Hcl,
 }
 
 pub(super) fn prepare_document(
@@ -38,6 +42,10 @@ pub(super) fn prepare_document(
         "@startgantt" => (Wrapper::Gantt, "@endgantt"),
         "@startsalt" => (Wrapper::Salt, "@endsalt"),
         "@startnwdiag" => (Wrapper::Nwdiag, "@endnwdiag"),
+        "@startfiles" => (Wrapper::Files, "@endfiles"),
+        "@startpacketdiag" => (Wrapper::Packet, "@endpacketdiag"),
+        "@startboard" => (Wrapper::Board, "@endboard"),
+        "@starthcl" => (Wrapper::Hcl, "@endhcl"),
         _ => return prepare(source, budget).map(|lines| (Wrapper::Uml, lines)),
     };
     budget.charge(source.len())?;

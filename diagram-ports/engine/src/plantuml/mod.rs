@@ -6,18 +6,25 @@
 mod activity;
 mod activitytile;
 mod arrow;
+mod board;
+mod boardscene;
 mod budget;
 mod chrome;
 mod creole;
 mod data;
 mod datascene;
+mod files;
+mod filesscene;
 mod gantt;
 mod ganttscene;
 mod graph;
+mod hcl;
 mod lexer;
 mod nwdiag;
 mod nwscene;
 mod origin;
+mod packet;
+mod packetscene;
 mod preprocess;
 mod salt;
 mod saltscene;
@@ -64,7 +71,20 @@ pub(crate) fn render(
         let mut context = text::Context::new(&session, &mut budget)
             .with_fonts(preamble.fonts.clone())
             .with_origins(&expanded);
-        let (family, scene) = if wrapper == source::Wrapper::Nwdiag {
+        let (family, scene) = if wrapper == source::Wrapper::Files {
+            let model = files::parse(lines, context.budget)?;
+            ("files", filesscene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Packet {
+            let model = packet::parse(lines, context.budget)?;
+            ("packetdiag", packetscene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Board {
+            let model = board::parse(lines, context.budget)?;
+            ("board", boardscene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Hcl {
+            let document = hcl::parse(lines, context.budget)?;
+            let model = hcl::lower(document, context.budget)?;
+            ("hcl", datascene::layout(&model, &mut context)?)
+        } else if wrapper == source::Wrapper::Nwdiag {
             let model = nwdiag::parse(lines, context.budget)?;
             ("nwdiag", nwscene::layout(&model, &mut context)?)
         } else if wrapper == source::Wrapper::Salt {
@@ -112,7 +132,7 @@ pub(crate) fn render(
             .into_string();
         budget.checkpoint()?;
         crate::svg::validate(&svg, &options.limits)?;
-        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS and ordered JSON/narrow YAML; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: sequence, UML graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
 }

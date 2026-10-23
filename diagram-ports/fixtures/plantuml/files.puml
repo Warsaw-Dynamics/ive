@@ -1,0 +1,16 @@
+@startfiles
+title Native files — ordered paths and sibling notes
+/app/src/main.rs
+<note>
+Entry point
+Notes share the file's folder
+</note>
+/app/src/lib.rs
+/app/README.md
+/tests/unit.rs
+/app/src/main.rs
+/empty/
+<note>
+Root note after an empty folder
+</note>
+@endfiles

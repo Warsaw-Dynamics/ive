@@ -1,0 +1,11 @@
+@starthcl
+# PlantUML's ordered data grammar, without evaluation
+service "billing" {
+  name = "ledger"
+  replicas = 3
+  active = true
+  zones = ["north", "south"]
+  tags = { tier = "core" owner = "Payments" }
+  endpoints = [{ path = "/v1/payments" enabled = true }, { path = "/health" }]
+}
+@endhcl

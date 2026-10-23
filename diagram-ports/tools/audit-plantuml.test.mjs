@@ -5,6 +5,20 @@ import { validateManifest, audit } from './audit-plantuml.mjs';
 
 const manifest = () => JSON.parse(fs.readFileSync(new URL('../provenance/plantuml-mit-1.2026.9.json', import.meta.url)));
 
+test('should admit exact inventory semantics and reject unselected source siblings', () => {
+  // given
+  const source = manifest();
+  // when / then
+  for (const path of ['filesdiagram/FEntry.java', 'board/BNode.java', 'hcl/HclParser.java', 'packetdiag/command/CommandSameHeight.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.doesNotThrow(() => validateManifest(source));
+  }
+  for (const path of ['filesdiagram/FilesDiagramFactory.java', 'board/BArray.java', 'hcl/OtherParser.java', 'packetdiag/PacketDiagramFactory.java']) {
+    source.sourceFiles[0].path = `net/sourceforge/plantuml/${path}`;
+    assert.throws(() => validateManifest(source), /unauthorized source path/);
+  }
+});
+
 test('should admit exact nwdiag semantics and reject unselected layout implementations', () => {
   // given
   const source = manifest();
