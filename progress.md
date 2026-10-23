@@ -12,7 +12,7 @@ This is the visible master checklist for further work. The controller updates it
 - Native PlantUML checkpoints through timing, Gantt, Salt, nwdiag and files/packetdiag/board/HCL are independently approved.
 - Owner required LALRPOP to replace current PlantUML ad-hoc parsers. All17 migration stages are now integrated, with current structural syntax routed through generated parsers and obsolete line adapters removed.
 - Chen/ArchiMate and the lexical prerequisite are implemented. Broad review follows the remaining port work.
-- Full Mermaid/PlantUML compatibility is **not complete**. Remaining family increments, advanced state work, final corpus/documentation and whole-branch review are still required.
+- Full Mermaid/PlantUML compatibility is **not complete**. Advanced state, a Creole styled-run paint correction, final corpus/documentation and whole-branch review are still required.
 - Current estimate (2026-10-23): parser migration is verified; remaining planned family increments and final evidence about 1–2 working days if no new blocker appears. This is an estimate, not a claim of complete upstream syntax or pixel parity.
 - Main IVE product code is unchanged. Work is isolated in a separate Rust workspace/worktree; IVE markdown integration is a later project.
 
@@ -20,16 +20,16 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `819cd9e` — native wire joined ASCII Git/BPM/charts/railroad; focused Rust/Node, source/generator and unchanged43 baseline checks pass; Git/wire native captures pass, full combined gate pending |
+| Latest integrated product checkpoint | `0f9d1c0` — Flow and standalone Creole joined Git/Wire/BPM/charts/railroad; scoped final tooling repair integrated; focused combined Rust/Node, source/generator and unchanged43 baseline checks pass; final full gate pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
-| Current implementers | Directional flow, standalone Creole, and scoped final tooling repairs in isolated worktrees |
+| Current implementers | Advanced state, Creole styled-run spacing fix, and final corpus native-export driver in isolated worktrees |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
 | Pending reviews | Broad implementation review deferred by owner until assembled port; preserve checkpoint evidence and use focused tests during implementation |
-| Next implementation | Complete directional flow and standalone Creole, then advanced state and final evidence/tooling; broad review stays at the end |
+| Next implementation | Complete advanced state and Creole paint fix, then final corpus/evidence/documentation; broad review stays at the end |
 | Latest independent controller checks | At `0f468eb`, core/audit gates pass:727 ordinary Rust tests+seven actual worker faults, strict Clippy/fmt/release/license checks,28 Node+five generator+five notice tests,21 reproducible parsers,220 MIT/43 fixture/43 native module/67 dependency/656 Merman audits and unchanged43-fixture baseline. Seventeen native family captures and empty-PATH/no-display exports pass with zero fallback, matching prior capture hashes; no viewer survivor. |
 | PlantUML provenance inventory | 220 selected MIT source/JAR matches,43 fixtures,43 native modules; controller audits pass |
 | Mermaid vendor audit | 656 original imported files, four explicitly recorded patches |
-| Latest native compatibility captures | Final17-family matrix `/tmp/ive-parser-final-*.png` remains verified. Added Git/wire captures `/tmp/ive-native-git-wire-{git,wire}.png`: native metrics4/7, zero fallback, visually inspected; SVG exports under empty PATH/no display are 3266/3740 bytes; no viewer survivor. |
+| Latest native compatibility captures | Final17-family matrix `/tmp/ive-parser-final-*.png` remains verified. Git/wire captures native4/7, zero fallback. Flow and Flow-cursor captures `/tmp/ive-native-flow-creole-{flow,flow-cursor}.png` native3/3, zero fallback, visually inspected; empty-PATH SVG exports2650/2861 bytes. Creole capture native7/zero fallback and SVG2224 bytes, but visual inspection found styled-run overlap; fix active before acceptance. |
 
 ## Completed work
 
@@ -240,15 +240,15 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | Order | Task | Remaining deliverable |
 | --- | --- | --- |
 | 1 | Full current PlantUML LALRPOP migration — DONE | All17 stages verified at `0f468eb`;21 generated parsers, zero pending syntax roles |
-| 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; baseline selector repair pending |
-| 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; baseline selector repair pending |
+| 2 | 3K EBNF / regex — INTEGRATEDd3baf26 | 761 Rust+seven worker faults, strict Clippy/fmt, private generator24 and source252MIT/46fixtures/48modules+23audit/closure67 pass; document union37terms/65states; root native EBNF4/regex9 zero-fallback captures/empty-PATH exports pass; immutable43 baseline selector later repaired in 3M |
+| 3 | 3L charts — INTEGRATED3c90bb1 | 606 engine/public tests, viewer example, strict Clippy/fmt, private generator22, source232MIT/44fixtures/45modules+14audit and closure67 pass; root chart native14/zero-fallback capture and headless export pass; immutable43 baseline selector later repaired in 3M |
 | 4 | 3M ASCII Git — INTEGRATED5a2f1ec | 549 focused Rust+11 viewer+29 Node tests, strict engine/generator Clippy/fmt, private generator26, source264MIT/49fixtures/52modules/closure67 and immutable43 baseline pass. Exact padded original merge verifies four endpoint-mapped edges; native unpadded robustness documented, `*-.` rejected. Root native4/zero-fallback capture visually checked, empty-PATH SVG3266 bytes; full combined gate pending |
 | 5 | 3N wire — INTEGRATED819cd9e | 674 focused Rust+12 viewer+21 Node tests, strict Clippy/fmt, private generator27, source275MIT/51fixtures/54modules/closure67 and immutable43 baseline pass; combined document43terms/74states. Root native7/zero-fallback capture visually checked, empty-PATH SVG3740 bytes; full combined gate pending |
-| 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; root native4/zero-fallback capture/headless export passes; baseline selector repair pending |
-| 7 | 3P directional flow — ACTIVE | Isolated implementation from BPM head; cardinal tile placement, cursor/link semantics, actual ports/routes/markers and sparse collision policy |
-| 8 | 3Q standalone Creole — ACTIVE | Isolated implementation of real document paragraphs/blank lines/styled runs, not one universal label |
-| 9 | 3B2 advanced state | Concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
-| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Isolated scoped import-audit and fresh-oracle tooling repairs underway; coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
+| 6 | 3O legacy BPM — INTEGRATED3071513 | 777 Rust+seven worker faults, strict Clippy/fmt, private generator25, source261MIT/47fixtures/50modules+23audit and closure67 pass; generated graph preserves split/merge/continuation; root native4/zero-fallback capture/headless export passes; immutable43 baseline selector later repaired in 3M |
+| 7 | 3P directional flow — INTEGRATED8ebb34e | Combined828 Rust+seven worker faults,30 Node, strict/generator/source/closure,28 parsers and unchanged43 baseline pass; native Flow/cursor3/3 zero-fallback captures and empty-PATH exports pass |
+| 8 | 3Q standalone Creole — INTEGRATED465b9c8; PAINT FIX ACTIVE | Combined595 focused Rust+13 viewer+30 Node, strict/generator/source/closure,29 parsers and unchanged43 baseline pass. Real native7/zero-fallback capture exposed overlapping styled runs despite retained space tokens; isolated correction/regression underway |
+| 9 | 3B2 advanced state — ACTIVE | Fresh isolated implementation from 465b9c8: concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
+| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import and fresh-oracle tooling integrated0f9d1c0;50 Node tests and source audits pass. Isolated native corpus driver underway; coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
 
 Existing inventory briefs/source-semantic research are prepared and read; the parser migration is complete. Do not restart completed source research or redispatch prior model/render work. New family briefs require LALRPOP and current generated interfaces; broad review is deferred to the end.
 
