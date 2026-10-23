@@ -28,6 +28,7 @@ export function validateManifest(manifest) {
 
 export function audit(manifest) {
   validateManifest(manifest);
+  auditParserInventory();
   if (sha256(fs.readFileSync(artifact)) !== artifactHash) throw new Error('source artifact checksum mismatch');
   for (const file of manifest.sourceFiles) {
     const extracted = fs.readFileSync(path.join(sourceRoot, file.path));
@@ -53,7 +54,6 @@ export function audit(manifest) {
   }
   const actual = fs.readdirSync(path.join(root, 'engine/src/plantuml')).filter(name => !['parser', 'generated'].includes(name)).map(name => `engine/src/plantuml/${name}`).sort();
   if (JSON.stringify(actual) !== JSON.stringify([...manifest.nativeModules].sort())) throw new Error('native module inventory changed');
-  auditParserInventory();
   if (!fs.readFileSync(path.join(root, 'provenance/LICENSE-PlantUML-MIT.txt'), 'utf8').includes('Hisashi Miyashita')) throw new Error('contributor notice missing');
   for (const notice of ['provenance/LICENSE-PlantUML-MIT.txt', 'THIRD-PARTY-NOTICES.md']) {
     if (!fs.readFileSync(path.join(root, notice), 'utf8').includes('Serge Wenger')) throw new Error(`contributor notice missing: ${notice}: Serge Wenger`);
@@ -61,14 +61,68 @@ export function audit(manifest) {
   return `Verified ${manifest.sourceFiles.length} MIT-edition source/ZIP hashes, ${manifest.fixtures.length} fresh fixture hashes and ${actual.length} native modules.`;
 }
 
-function auditParserInventory() {
-  const inventory = JSON.parse(fs.readFileSync(path.join(root, 'provenance/plantuml-parser.json')));
-  const actual = ['parser', 'generated'].flatMap(directory => fs.readdirSync(path.join(root, 'engine/src/plantuml', directory), { recursive: true, withFileTypes: true })
-    .filter(entry => entry.isFile()).map(entry => path.relative(root, path.join(entry.parentPath, entry.name)))).sort();
+export function auditParserInventory(directory = root) {
+  const inventory = JSON.parse(fs.readFileSync(path.join(directory, 'provenance/plantuml-parser.json')));
+  const actual = ['parser', 'generated'].flatMap(subdirectory => fs.readdirSync(path.join(directory, 'engine/src/plantuml', subdirectory), { recursive: true, withFileTypes: true })
+    .filter(entry => !entry.isDirectory()).map(entry => path.relative(directory, path.join(entry.parentPath, entry.name)))).sort();
   const expected = [...inventory.authoredFiles, ...inventory.generatedFiles].sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('authored/generated PlantUML parser inventory changed');
-  const directories = fs.readdirSync(path.join(root, 'engine/src/plantuml'), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+  const directories = fs.readdirSync(path.join(directory, 'engine/src/plantuml'), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
   if (JSON.stringify(directories) !== JSON.stringify(['generated', 'parser'])) throw new Error('unexpected PlantUML parser directory');
+  auditGenerated(directory, inventory);
+  auditResponsibilities(directory, inventory);
+}
+
+function auditGenerated(directory, inventory) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(directory, inventory.generationInventory)));
+  const grammars = inventory.authoredFiles.filter(file => file.endsWith('.lalrpop')).sort();
+  const expected = grammars.map(grammar => ({ grammar, generated: grammar.replace('/parser/grammar/', '/generated/').replace('.lalrpop', '.rs') }));
+  const pairs = manifest.grammars.map(({ grammar, generated }) => ({ grammar, generated }));
+  if (JSON.stringify(pairs) !== JSON.stringify(expected)) throw new Error('generated grammar mapping inventory changed');
+  const outputs = [...expected.map(record => record.generated), inventory.generationInventory].sort();
+  if (JSON.stringify(outputs) !== JSON.stringify([...inventory.generatedFiles].sort())) throw new Error('generated output inventory changed');
+  const registration = fs.readFileSync(path.join(directory, 'engine/src/plantuml/parser/mod.rs'), 'utf8');
+  const registered = [...registration.matchAll(/#\[path = "\.\.\/(generated\/[a-z_]+\.rs)"\]/g)].map(match => `engine/src/plantuml/${match[1]}`).sort();
+  if (JSON.stringify(registered) !== JSON.stringify(expected.map(record => record.generated).sort())) throw new Error('generated module registration inventory changed');
+  for (const record of manifest.grammars) {
+    for (const kind of ['grammar', 'generated']) {
+      const file = path.join(directory, record[kind]);
+      if (!fs.lstatSync(file).isFile() || sha256(fs.readFileSync(file)) !== record[`${kind}Sha256`]) throw new Error(`${kind} checksum mismatch: ${record[kind]}`);
+    }
+  }
+}
+
+function functionSymbols(source) {
+  const seen = new Map();
+  return [...source.matchAll(/^\s*(?:pub(?:\([^\n]*?\))?\s+)?(?:(?:async|const|unsafe)\s+)*(?:extern\s+"[^"\n]+"\s+)?fn\s+((?:r#)?[\p{ID_Start}_][\p{ID_Continue}]*)/gmu)].map(match => {
+    const count = (seen.get(match[1]) ?? 0) + 1;
+    seen.set(match[1], count);
+    return `${match[1]}#${count}`;
+  });
+}
+
+function auditResponsibilities(directory, inventory) {
+  const provenance = JSON.parse(fs.readFileSync(path.join(directory, 'provenance/plantuml-mit-1.2026.9.json')));
+  const ledger = JSON.parse(fs.readFileSync(path.join(directory, 'provenance/plantuml-parser-responsibilities.json')));
+  const expectedFiles = [...provenance.nativeModules, ...inventory.authoredFiles.filter(file => file.endsWith('.rs'))].sort();
+  const nativeFiles = fs.readdirSync(path.join(directory, 'engine/src/plantuml'), { withFileTypes: true }).filter(entry => !entry.isDirectory()).map(entry => `engine/src/plantuml/${entry.name}`).sort();
+  if (JSON.stringify(nativeFiles) !== JSON.stringify([...provenance.nativeModules].sort())) throw new Error('native module inventory changed');
+  if (JSON.stringify(ledger.modules.map(module => module.path).sort()) !== JSON.stringify(expectedFiles)) throw new Error('function responsibility file inventory changed');
+  const roles = new Set(['generated-facade', 'lexical', 'semantic', 'layout', 'infrastructure', 'pending-syntax', 'test-adapter']);
+  for (const module of ledger.modules) {
+    const file = path.join(directory, module.path);
+    if (!fs.lstatSync(file).isFile()) throw new Error(`invalid responsibility source: ${module.path}`);
+    const actual = functionSymbols(fs.readFileSync(file, 'utf8')).sort();
+    const classified = module.groups.flatMap(group => {
+      if (!roles.has(group.role) || !group.reason?.trim()) throw new Error(`invalid function responsibility: ${module.path}`);
+      return group.symbols;
+    }).sort();
+    if (JSON.stringify(actual) !== JSON.stringify(classified)) {
+      const added = actual.filter(symbol => !classified.includes(symbol));
+      const removed = classified.filter(symbol => !actual.includes(symbol));
+      throw new Error(`unclassified function or stale responsibility: ${module.path}; added ${JSON.stringify(added)}, removed ${JSON.stringify(removed)} (duplicate classifications also fail)`);
+    }
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
