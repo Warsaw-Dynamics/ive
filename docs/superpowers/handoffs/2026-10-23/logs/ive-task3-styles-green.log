@@ -1,0 +1,59 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 1.08s
+     Running tests/plantuml_styles.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_styles-02696d9b5d5e9b87)
+
+running 23 tests
+test should_map_style_values_once_through_inline_comment_and_expansion_spans ... ok
+test should_cancel_between_styled_run_host_calls ... ok
+test should_reject_blank_font_families_and_alignment_markup ... ok
+test should_keep_region_keyword_boundaries_before_raw_label_ownership ... ok
+test should_reject_unimplemented_block_markup_without_rejecting_lone_punctuation ... ok
+test should_enforce_run_depth_and_all_public_limits_for_styled_input ... ok
+test should_reject_crossed_unclosed_and_unsupported_markup ... ok
+test should_measure_and_paint_identical_nested_runs_with_composable_base_styles ... ok
+test should_reject_unknown_style_declarations_values_and_unbalanced_rules ... ok
+test should_preserve_escaped_markup_urls_angles_pua_and_lone_markers ... ok
+test should_follow_last_authored_matching_style_property_and_keep_color_cache_separate ... ok
+test should_replace_chrome_regions_and_their_alignment ... ok
+test should_decode_breaks_once_in_quoted_unquoted_and_chrome_labels ... ok
+test should_reserve_chrome_and_keep_default_element_size_separate ... ok
+test should_style_data_preamble_without_interpreting_literal_payload ... ok
+test should_preserve_late_region_boundaries_and_quoted_command_lookalikes ... ok
+test should_preserve_member_and_raw_note_commands_but_reject_interleaved_preambles ... ok
+test should_use_measured_frame_kind_and_multiline_caption_extents ... ok
+test should_keep_keyed_data_style_words_literal_and_reject_unsupported_data_preamble ... ok
+test should_keep_finite_font_axes_and_case_insensitive_multiline_rules ... ok
+test should_preserve_case_colon_alignment_and_reject_physical_multiline_regions ... ok
+test should_keep_chrome_contained_and_separate_from_every_family_body ... ok
+test should_apply_each_region_skinparam_axis_to_its_owned_region ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+

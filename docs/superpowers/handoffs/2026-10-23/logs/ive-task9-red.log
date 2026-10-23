@@ -1,0 +1,84 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-tree-parallel/diagram-ports/engine)
+warning: function `parse_mindmap` is never used
+ --> engine/src/plantuml/parser/tree.rs:3:15
+  |
+3 | pub(super) fn parse_mindmap(_: BodySource<'_>, _: &mut Budget) -> Result<Mindmap, RenderError> { Err(RenderError::InvalidSource("gene...
+  |               ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `parse_wbs` is never used
+ --> engine/src/plantuml/parser/tree.rs:4:15
+  |
+4 | pub(super) fn parse_wbs(_: BodySource<'_>, _: &mut Budget) -> Result<Wbs, RenderError> { Err(RenderError::InvalidSource("generated WB...
+  |               ^^^^^^^^^
+
+warning: function `parse` is never used
+ --> engine/src/plantuml/parser/files.rs:3:15
+  |
+3 | pub(super) fn parse(_: BodySource<'_>, _: &mut Budget) -> Result<Files, RenderError> { Err(RenderError::InvalidSource("generated file...
+  |               ^^^^^
+
+warning: function `parse` is never used
+ --> engine/src/plantuml/parser/board.rs:3:15
+  |
+3 | pub(super) fn parse(_: BodySource<'_>, _: &mut Budget) -> Result<Board, RenderError> { Err(RenderError::InvalidSource("generated boar...
+  |               ^^^^^
+
+warning: `diagram-engine` (lib) generated 4 warnings
+    Finished `test` profile [optimized + debuginfo] target(s) in 7.96s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-19a7b1ebd9bb364e)
+
+running 3 tests
+
+thread 'plantuml::parser::board::tests::should_generate_nearest_lower_stage_parents_and_gaps' (54659) panicked at engine/src/plantuml/parser/board.rs:17:55:
+called `Result::unwrap()` on an `Err` value: InvalidSource("generated board unavailable")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'plantuml::parser::files::tests::should_generate_literal_paths_and_raw_sibling_notes' (54660) panicked at engine/src/plantuml/parser/files.rs:17:55:
+called `Result::unwrap()` on an `Err` value: InvalidSource("generated files unavailable")
+
+thread 'plantuml::parser::tree::tests::should_generate_independent_mindmap_sides_and_wbs_aliases' (54661) panicked at engine/src/plantuml/parser/tree.rs:18:63:
+called `Result::unwrap()` on an `Err` value: InvalidSource("generated mindmap unavailable")
+test plantuml::parser::board::tests::should_generate_nearest_lower_stage_parents_and_gaps ... FAILED
+test plantuml::parser::files::tests::should_generate_literal_paths_and_raw_sibling_notes ... FAILED
+test plantuml::parser::tree::tests::should_generate_independent_mindmap_sides_and_wbs_aliases ... FAILED
+
+failures:
+
+failures:
+    plantuml::parser::board::tests::should_generate_nearest_lower_stage_parents_and_gaps
+    plantuml::parser::files::tests::should_generate_literal_paths_and_raw_sibling_notes
+    plantuml::parser::tree::tests::should_generate_independent_mindmap_sides_and_wbs_aliases
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 161 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

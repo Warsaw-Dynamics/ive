@@ -1,0 +1,201 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/engine)
+warning: function `is_graph` is never used
+   --> engine/src/plantuml/uml.rs:131:15
+    |
+131 | pub(super) fn is_graph(lines: &[Line]) -> bool {
+    |               ^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diagram-engine` (lib test) generated 1 warning
+    Finished `test` profile [optimized + debuginfo] target(s) in 3.25s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-2028a1e8cb1291f3)
+
+running 131 tests
+test plantuml::board::tests::should_reject_oversized_board_label_during_model_construction ... ok
+test plantuml::chen::tests::should_charge_tokens_before_scanning_the_next_token_or_retaining_nodes ... ok
+test plantuml::activitytile::tests::should_stop_activity_composition_when_work_is_exhausted ... ok
+test plantuml::boardscene::tests::should_contain_long_board_labels_with_measured_card_pitches ... ok
+test plantuml::chen::tests::should_check_owner_depth_before_retaining_composite_node_or_link ... ok
+test plantuml::chenscene::tests::should_project_diagonal_routes_to_true_ellipse_and_diamond ... ok
+test plantuml::activitytile::tests::should_connect_labeled_join_bar_directly_to_following_instruction ... ok
+test plantuml::boardscene::tests::should_project_nearest_lower_ancestors_to_dfs_columns_and_empty_stages ... ok
+test plantuml::activitytile::tests::should_route_while_false_exit_and_live_back_edge ... ok
+test plantuml::data::tests::should_reject_json_depth_and_items_before_descending_or_retaining_value ... ok
+test plantuml::chen::tests::should_keep_typed_owners_and_distinct_scoped_attribute_ids ... ok
+test plantuml::data::tests::should_keep_ordered_duplicate_members_and_exact_scalar_identities ... ok
+test plantuml::files::tests::should_bound_file_depth_items_names_and_wide_lookup_work ... ok
+test plantuml::activitytile::tests::should_route_repeat_positive_back_and_negative_out ... ok
+test plantuml::data::tests::should_bound_numeric_lexemes_before_copying_and_report_original_line ... ok
+test plantuml::activitytile::tests::should_separate_unequal_fork_lanes_and_span_join ... ok
+test plantuml::activitytile::tests::should_route_nested_group_inputs_clear_of_long_captions ... ok
+test plantuml::files::tests::should_keep_stable_parents_distinct_kinds_and_note_rows ... ok
+test plantuml::chen::tests::should_reject_oversized_attribute_before_retaining_any_attribute ... ok
+test plantuml::gantt::tests::should_round_trip_bounded_civil_ordinals_and_gregorian_centuries ... ok
+test plantuml::datascene::tests::should_connect_actual_container_rows_without_compressing_scalar_placeholders ... ok
+test plantuml::activitytile::tests::should_contain_nested_partition_shapes_and_all_labels ... ok
+test plantuml::gantt::tests::should_freeze_predecessor_fields_without_reactive_rescheduling ... ok
+test plantuml::filesscene::tests::should_clear_complete_note_height_and_indent_preorder_rows ... ok
+test plantuml::gantt::tests::should_keep_typed_task_identity_row_order_and_reference_ownership ... ok
+test plantuml::graph::tests::should_intersect_usecase_ellipse_instead_of_its_bounding_rectangle ... ok
+test plantuml::graph::tests::should_keep_diagonal_endpoint_label_outside_a_wide_owning_node ... ok
+test plantuml::hcl::tests::should_check_hcl_value_depth_and_item_budget_before_scanning_content ... ok
+test plantuml::nwdiag::tests::should_bound_servers_and_memberships_before_retaining_them ... ok
+test plantuml::nwdiag::tests::should_check_network_depth_before_retaining_the_block ... ok
+test plantuml::nwdiag::tests::should_bound_token_retention_and_property_text_before_allocating_values ... ok
+test plantuml::hcl::tests::should_preserve_hcl_block_field_types_order_and_duplicates ... ok
+test plantuml::activitytile::tests::should_paint_incoming_group_flow_above_every_opaque_container ... ok
+test plantuml::graph::tests::should_interrupt_inside_dagre_after_checked_graph_construction ... ok
+test plantuml::parser::definition::tests::should_admit_generated_stacks_before_parser_entry ... ok
+test plantuml::parser::definition::tests::should_deliver_cancelled_at_exhausted_iterator_instead_of_eof ... ok
+test plantuml::packet::tests::should_reject_oversized_packet_label_before_fragment_generation ... ok
+test plantuml::graph::tests::should_reject_parent_cycles_without_panicking ... ok
+test plantuml::parser::definition::tests::should_map_nonzero_utf8_definition_spans ... ok
+test plantuml::parser::definition::tests::should_parse_literal_definition_with_generated_grammar ... ok
+test plantuml::packetscene::tests::should_conserve_fragment_widths_and_retain_inclusive_field_identity ... ok
+test plantuml::packetscene::tests::should_reserve_variable_row_maximum_when_the_last_cell_is_shorter ... ok
+test plantuml::parser::definition::tests::should_preserve_unicode_literal_edges_and_unicode_leading_indentation ... ok
+test plantuml::ganttscene::tests::should_project_duration_bars_and_civil_day_diamonds_on_one_axis ... ok
+test plantuml::parser::definition::tests::should_reject_insufficient_work_before_generated_parser_entry ... ok
+test plantuml::parser::definition::tests::should_accept_boundary_names_literals_and_literal_comment_bytes ... ok
+test plantuml::files::tests::should_charge_wide_sibling_lookup_before_retaining_a_new_folder ... ok
+test plantuml::packetscene::tests::should_draw_proportional_cells_ticks_rtl_and_height_clearance ... ok
+test plantuml::parser::definition::tests::should_bound_ascii_names_and_require_same_line_nonempty_literal ... ok
+test plantuml::nwscene::tests::should_connect_every_membership_to_its_bus_and_leave_foreign_crossings_open ... ok
+test plantuml::nwscene::tests::should_preserve_stable_model_ids_and_separate_network_interface_and_group_ownership ... ok
+test plantuml::parser::token::tests::should_cancel_before_token_buffer_growth_and_keep_retained_capacity ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_reduction_and_literal_validation ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_token_delivery_without_fake_eof ... ok
+test plantuml::parser::token::tests::should_emit_primitive_tokens_without_requiring_header_separators ... ok
+test plantuml::parser::token::tests::should_lex_leading_carriage_return_as_original_indentation ... ok
+test plantuml::ganttscene::tests::should_reserve_large_multiline_labels_ticks_and_rows_without_overlap ... ok
+test plantuml::preprocess::tests::should_bound_retained_frozen_values_and_output_before_copying ... ok
+test plantuml::parser::definition::tests::should_cancel_during_lexical_trivia_scanning_before_retention ... ok
+test plantuml::graph::tests::should_contain_long_multiline_compound_captions_in_both_directions ... ok
+test plantuml::parser::definition::tests::should_let_generated_syntax_reject_malformed_header_structure ... ok
+test plantuml::parser::definition::tests::should_reject_controls_continuations_and_parameterized_definitions ... ok
+test plantuml::preprocess::tests::should_retain_exact_direct_bytes_and_expansion_use_spans ... ok
+test plantuml::parser::definition::tests::should_reject_overlong_literals_and_complete_input_after_a_line_break ... ok
+test plantuml::salt::tests::should_keep_escaped_braces_lexically_distinct_from_structural_tokens ... ok
+test plantuml::salt::tests::should_freeze_distinct_widget_ids_nested_ownership_and_positive_spans ... ok
+test plantuml::parser::document::tests::should_borrow_body_bytes_and_preserve_physical_utf8_lines ... ok
+test plantuml::preprocess::tests::should_bound_frozen_literal_size_and_lineage_before_copying ... ok
+test plantuml::graph::tests::should_place_endpoint_labels_outside_nodes_for_tb_lr_and_reverse_routes ... ok
+test plantuml::saltscene::tests::should_suppress_internal_vertical_grid_segments_through_spans ... ok
+test plantuml::preprocess::tests::should_bound_definition_count_and_authored_or_expanded_literal_bytes ... ok
+test plantuml::preprocess::tests::should_charge_raw_scanning_and_observe_cancel_before_retention ... ok
+test plantuml::parser::definition::tests::should_reject_overflowing_or_mismatched_source_views_before_lexing ... ok
+test plantuml::scene::tests::should_reject_nonfinite_or_negative_shape_geometry_before_retention ... ok
+test plantuml::preprocess::tests::should_bound_origin_segments_before_adding_another_expansion ... ok
+test plantuml::preprocess::tests::should_keep_consumed_comment_bytes_direct_and_expand_only_the_active_original_span ... ok
+test plantuml::chen::tests::should_bound_expanded_owner_keys_before_deep_amplification ... ok
+test plantuml::source::tests::should_charge_long_line_scanning_before_finishing_the_line ... ok
+test plantuml::source::tests::should_preserve_literal_raw_rows_around_nonleading_exclamation_marks ... ok
+test plantuml::stategraph::tests::should_interrupt_inside_checked_state_graph_layout ... ok
+test plantuml::sequence::tests::should_preserve_lane_order_reverse_message_and_balanced_events ... ok
+test plantuml::chenscene::tests::should_contain_measured_text_in_real_shapes_and_intersect_link_boundaries ... ok
+test plantuml::svg::tests::should_reject_svg_growth_before_appending_or_allocating ... ok
+test plantuml::state::tests::should_leave_state_identity_unchanged_when_rejecting_an_ancestor_endpoint ... ok
+test plantuml::svg::tests::should_include_negative_scene_coordinates_in_the_canvas ... ok
+test plantuml::sequence::tests::should_reserve_created_multiline_head_before_the_next_message ... ok
+test plantuml::text::tests::should_reject_oversized_label_before_scanning_or_retaining_it ... ok
+test plantuml::text::tests::should_coalesce_equal_styles_and_keep_color_only_cache_changes ... ok
+test plantuml::timingscene::tests::should_bound_generated_ticks_before_allocation_and_check_cancellation ... ok
+test plantuml::sequence::tests::should_paint_activations_between_lifelines_and_event_foreground ... ok
+test plantuml::preprocess::tests::should_bound_lineage_to_thirty_two_without_recursive_expansion ... ok
+test plantuml::tree::tests::should_reject_wbs_smart_depth_that_mindmap_normalizes ... ok
+test plantuml::tree::tests::should_resolve_side_specific_mindmap_parents_and_depths ... ok
+test plantuml::tree::tests::should_use_wbs_global_chain_across_sides_and_retain_aliases ... ok
+test plantuml::sequence::tests::should_reserve_multiline_note_occupied_height_after_a_message ... ok
+test plantuml::sequence::tests::should_reserve_multiline_message_occupied_height_before_its_anchor ... ok
+test plantuml::yaml::tests::should_admit_flow_scalars_at_exact_depth_including_mandatory_empty_element ... ok
+test plantuml::yaml::tests::should_charge_trimmed_flow_copy_before_allocating_a_second_string ... ok
+test plantuml::yaml::tests::should_apply_literal_block_trimming_and_nonstructured_stopping_quirk ... ok
+test plantuml::yaml::tests::should_check_flow_scalar_depth_before_any_field_accumulation ... ok
+test plantuml::yaml::tests::should_enforce_flow_item_limit_before_next_field_accumulation ... ok
+test plantuml::sequence::tests::should_contain_nested_frames_and_end_lifelines_at_destruction ... ok
+test plantuml::yaml::tests::should_preserve_escaped_content_when_deciding_whether_quotes_open ... ok
+test plantuml::yaml::tests::should_distinguish_map_unquoting_from_flow_list_escaping ... ok
+test plantuml::yaml::tests::should_preserve_list_of_maps_and_plain_dash_map_ownership ... ok
+test plantuml::yaml::tests::should_replace_yaml_duplicate_without_moving_first_key_and_keep_string_scalars ... ok
+test plantuml::timing::tests::should_own_constraint_and_message_endpoints_without_mutating_cursors ... ok
+test plantuml::stategraph::tests::should_contain_nested_state_descriptions_children_and_pseudostates ... ok
+test plantuml::treescene::tests::should_reserve_nonoverlapping_measured_mindmap_subtrees_on_actual_sides ... ok
+test plantuml::timing::tests::should_retain_typed_track_identity_initial_state_and_exact_sorted_changes ... ok
+test plantuml::nwscene::tests::should_reserve_measured_group_headers_interfaces_and_nodes_without_overlap ... ok
+test plantuml::timingscene::tests::should_keep_initial_signal_before_axis_without_a_synthetic_zero_event ... ok
+test plantuml::treescene::tests::should_draw_wbs_root_fork_and_attach_descendants_to_parent_trunks ... ok
+test plantuml::saltscene::tests::should_contain_nested_measured_controls_and_span_constraints_without_overlap ... ok
+test plantuml::timingscene::tests::should_share_one_monotonic_time_projection_across_tracks ... ok
+test plantuml::timingscene::tests::should_attach_message_endpoints_to_their_tracks_and_right_hand_states ... ok
+test plantuml::sequence::tests::should_reserve_measured_nested_frame_headers_at_small_and_large_fonts ... ok
+test plantuml::source::tests::should_consume_exactly_one_generated_document_and_validate_lexical_eof ... ok
+test plantuml::parser::token::tests::should_bound_wide_primitive_buffer_before_generated_syntax ... ok
+test plantuml::timingscene::tests::should_reserve_measured_constraint_caption_height_and_ribbon_labels ... ok
+test plantuml::saltscene::tests::should_keep_ragged_tables_sparse_and_charge_layout_propagation ... ok
+test plantuml::text::tests::should_bound_tokens_before_measuring_many_short_runs ... ok
+test plantuml::state::tests::should_charge_declaration_identity_search_before_scanning ... FAILED
+test plantuml::text::tests::should_bound_marker_activation_and_escaped_punctuation_with_linear_work ... ok
+test plantuml::nwscene::tests::should_keep_bus_membership_storage_sparse ... ok
+test plantuml::salt::tests::should_bound_escape_accumulation_and_lexical_work_before_retention ... ok
+test plantuml::activity::tests::should_parse_below_cap_multiline_actions_and_check_cancellation ... FAILED
+test plantuml::yaml::tests::should_scan_long_whitespace_flow_fields_with_linear_charged_work ... ok
+test plantuml::text::tests::should_bound_aggregate_body_and_chrome_measurement_requests_before_host_call ... ok
+test plantuml::yaml::tests::should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work ... ok
+test plantuml::activity::tests::should_scan_whitespace_only_multiline_actions_once ... FAILED
+
+failures:
+
+---- plantuml::state::tests::should_charge_declaration_identity_search_before_scanning stdout ----
+
+thread 'plantuml::state::tests::should_charge_declaration_identity_search_before_scanning' (3406489) panicked at engine/src/plantuml/state.rs:364:73:
+called `Result::unwrap()` on an `Err` value: Backend("PlantUML work units value 100002 exceeds limit 100000")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- plantuml::activity::tests::should_parse_below_cap_multiline_actions_and_check_cancellation stdout ----
+
+thread 'plantuml::activity::tests::should_parse_below_cap_multiline_actions_and_check_cancellation' (3406392) panicked at engine/src/plantuml/activity.rs:498:9:
+assertion failed: budget.work < source.len() * 8
+
+---- plantuml::activity::tests::should_scan_whitespace_only_multiline_actions_once stdout ----
+
+thread 'plantuml::activity::tests::should_scan_whitespace_only_multiline_actions_once' (3406393) panicked at engine/src/plantuml/activity.rs:474:73:
+called `Result::unwrap()` on an `Err` value: Cancelled("operation cancelled during unknown: deadline_exceeded")
+
+
+failures:
+    plantuml::activity::tests::should_parse_below_cap_multiline_actions_and_check_cancellation
+    plantuml::activity::tests::should_scan_whitespace_only_multiline_actions_once
+    plantuml::state::tests::should_charge_declaration_identity_search_before_scanning
+
+test result: FAILED. 128 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

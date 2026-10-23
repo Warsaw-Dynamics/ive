@@ -1,0 +1,71 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/engine)
+warning: function `parse` is never used
+ --> engine/src/plantuml/parser/sequence.rs:5:28
+  |
+5 | pub(in crate::plantuml) fn parse(_body: BodySource<'_>, _budget: &mut Budget) -> Result<Sequence, RenderError> {
+  |                            ^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diagram-engine` (lib) generated 1 warning
+    Finished `test` profile [optimized + debuginfo] target(s) in 4.88s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-2028a1e8cb1291f3)
+
+running 4 tests
+
+thread 'plantuml::parser::sequence::tests::should_reject_generated_sequence_suffix_and_unclosed_structures' (3922503) panicked at engine/src/plantuml/parser/sequence.rs:61:13:
+participant A : suffix: native diagram rendering failed: generated sequence parser unavailable
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test plantuml::parser::sequence::tests::should_reject_generated_sequence_suffix_and_unclosed_structures ... FAILED
+
+thread 'plantuml::parser::sequence::tests::should_continue_shared_comment_ownership_at_the_preamble_boundary' (3922502) panicked at engine/src/plantuml/parser/sequence.rs:47:62:
+called `Result::unwrap()` on an `Err` value: Backend("generated sequence parser unavailable")
+
+thread 'plantuml::parser::sequence::tests::should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation' (3922500) panicked at engine/src/plantuml/parser/sequence.rs:85:17:
+token: native diagram rendering failed: generated sequence parser unavailable
+test plantuml::parser::sequence::tests::should_continue_shared_comment_ownership_at_the_preamble_boundary ... FAILED
+test plantuml::parser::sequence::tests::should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation ... FAILED
+
+thread 'plantuml::parser::sequence::tests::should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle' (3922501) panicked at engine/src/plantuml/parser/sequence.rs:31:62:
+called `Result::unwrap()` on an `Err` value: Backend("generated sequence parser unavailable")
+test plantuml::parser::sequence::tests::should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle ... FAILED
+
+failures:
+
+failures:
+    plantuml::parser::sequence::tests::should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation
+    plantuml::parser::sequence::tests::should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle
+    plantuml::parser::sequence::tests::should_continue_shared_comment_ownership_at_the_preamble_boundary
+    plantuml::parser::sequence::tests::should_reject_generated_sequence_suffix_and_unclosed_structures
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 152 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

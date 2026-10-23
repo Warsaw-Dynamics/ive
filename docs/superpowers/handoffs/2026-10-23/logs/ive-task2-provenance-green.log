@@ -1,0 +1,75 @@
+TAP version 13
+# Subtest: should admit registered parser and grammar destinations and reject unregistered destinations
+ok 1 - should admit registered parser and grammar destinations and reject unregistered destinations
+  ---
+  duration_ms: 3.019367
+  ...
+# Subtest: should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+ok 2 - should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+  ---
+  duration_ms: 1.992331
+  ...
+# Subtest: should admit exact inventory semantics and reject unselected source siblings
+ok 3 - should admit exact inventory semantics and reject unselected source siblings
+  ---
+  duration_ms: 1.28706
+  ...
+# Subtest: should admit exact nwdiag semantics and reject unselected layout implementations
+ok 4 - should admit exact nwdiag semantics and reject unselected layout implementations
+  ---
+  duration_ms: 0.737328
+  ...
+# Subtest: should admit exact selected Salt paths and reject unselected rendering or resource code
+ok 5 - should admit exact selected Salt paths and reject unselected rendering or resource code
+  ---
+  duration_ms: 0.876246
+  ...
+# Subtest: should accept the exact authorized source and module inventory
+ok 6 - should accept the exact authorized source and module inventory
+  ---
+  duration_ms: 0.71002
+  ...
+# Subtest: should reject source escape and restricted implementation paths before reads
+ok 7 - should reject source escape and restricted implementation paths before reads
+  ---
+  duration_ms: 3.221212
+  ...
+# Subtest: should reject a different edition or artifact identity
+ok 8 - should reject a different edition or artifact identity
+  ---
+  duration_ms: 0.376382
+  ...
+# Subtest: should reject untranslated TIM runtime files
+ok 9 - should reject untranslated TIM runtime files
+  ---
+  duration_ms: 1.06503
+  ...
+# Subtest: should reject unselected timing waveform and resource implementation paths
+ok 10 - should reject unselected timing waveform and resource implementation paths
+  ---
+  duration_ms: 1.450911
+  ...
+# Subtest: should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+ok 11 - should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+  ---
+  duration_ms: 0.601973
+  ...
+# Subtest: should reject missing exact contributor credits despite colon spacing
+ok 12 - should reject missing exact contributor credits despite colon spacing
+  ---
+  duration_ms: 295.322087
+  ...
+# Subtest: should reject removed minimal-json copyright before accepting translated semantics
+ok 13 - should reject removed minimal-json copyright before accepting translated semantics
+  ---
+  duration_ms: 349.754988
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 701.62935

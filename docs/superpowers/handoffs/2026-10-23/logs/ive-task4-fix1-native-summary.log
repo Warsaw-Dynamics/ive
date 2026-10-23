@@ -1,0 +1,8 @@
+{"case": "sequence", "exit": 0, "pid": 38081, "png_bytes": 144803, "sha256": "bcce2be6099e2e026ba3d9decca9d5d86abc4967869d18272d90d4a103ec10c3", "metrics": [["7", "0"]]}
+{"case": "styledsequence", "exit": 0, "pid": 38158, "png_bytes": 224962, "sha256": "f553a1abff0e85af9d4fca63f8a94a1f74efb2eb818a3254c5c4c9de1ed6e2b7", "metrics": [["20", "0"]]}
+{"case": "constantsequence", "exit": 0, "pid": 38225, "png_bytes": 217879, "sha256": "2eb245de88313502ef4f15598d95405c5014a3d3d892033c549f453dcf33bc0e", "metrics": [["12", "0"]]}
+{"case": "note", "exit": 0, "pid": 38303, "png_bytes": 174733, "sha256": "90e3b2ec1f0165e3de27a84934b8db52f2b62090235b1107b0d1ca25f92e9f2b", "metrics": [["16", "0"]]}
+{"case": "primitive", "exit": 0, "pid": 38372, "png_bytes": 127739, "sha256": "dba27274c470b1a16a7bbc35499900d8db7c29627c31e1c69ca5e6dbe85e8d41", "metrics": [["6", "0"]]}
+{"empty_path": "sequence", "exit": 0, "svg_bytes": 3889, "stdout": "", "stderr": ""}
+{"empty_path": "note", "exit": 0, "svg_bytes": 8220, "stdout": "", "stderr": ""}
+{"started_pids": [38081, 38158, 38225, 38303, 38372], "viewer_worker_survivors": []}

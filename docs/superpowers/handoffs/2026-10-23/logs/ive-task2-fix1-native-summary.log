@@ -1,0 +1,14 @@
+plantuml-styled-sequence: exit 0; PNG 224962 bytes
+diagram-viewer: sequence · native PlantUML · native measurements 20 · deterministic fallbacks 0
+
+plantuml-styled-graph: exit 0; PNG 195213 bytes
+diagram-viewer: class · native PlantUML · native measurements 22 · deterministic fallbacks 0
+
+plantuml-constant-sequence: exit 0; PNG 217879 bytes
+diagram-viewer: sequence · native PlantUML · native measurements 12 · deterministic fallbacks 0
+
+plantuml-constant-graph: exit 0; PNG 208165 bytes
+diagram-viewer: class · native PlantUML · native measurements 14 · deterministic fallbacks 0
+
+empty-PATH constantsequence: exit 0; 
+empty-PATH styledgraph: exit 0; 

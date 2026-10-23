@@ -1,0 +1,724 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/engine)
+   Compiling diagram-viewer v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/viewer)
+    Finished `test` profile [optimized + debuginfo] target(s) in 11.61s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-c70c87610e8ede82)
+
+running 161 tests
+test plantuml::board::tests::should_reject_oversized_board_label_during_model_construction ... ok
+test plantuml::activitytile::tests::should_connect_labeled_join_bar_directly_to_following_instruction ... ok
+test plantuml::chen::tests::should_charge_tokens_before_scanning_the_next_token_or_retaining_nodes ... ok
+test plantuml::activitytile::tests::should_stop_activity_composition_when_work_is_exhausted ... ok
+test plantuml::activitytile::tests::should_route_while_false_exit_and_live_back_edge ... ok
+test plantuml::boardscene::tests::should_contain_long_board_labels_with_measured_card_pitches ... ok
+test plantuml::activitytile::tests::should_contain_nested_partition_shapes_and_all_labels ... ok
+test plantuml::chen::tests::should_check_owner_depth_before_retaining_composite_node_or_link ... ok
+test plantuml::activitytile::tests::should_route_repeat_positive_back_and_negative_out ... ok
+test plantuml::chenscene::tests::should_project_diagonal_routes_to_true_ellipse_and_diamond ... ok
+test plantuml::boardscene::tests::should_project_nearest_lower_ancestors_to_dfs_columns_and_empty_stages ... ok
+test plantuml::activitytile::tests::should_route_nested_group_inputs_clear_of_long_captions ... ok
+test plantuml::data::tests::should_reject_json_depth_and_items_before_descending_or_retaining_value ... ok
+test plantuml::chen::tests::should_keep_typed_owners_and_distinct_scoped_attribute_ids ... ok
+test plantuml::data::tests::should_keep_ordered_duplicate_members_and_exact_scalar_identities ... ok
+test plantuml::files::tests::should_bound_file_depth_items_names_and_wide_lookup_work ... ok
+test plantuml::data::tests::should_bound_numeric_lexemes_before_copying_and_report_original_line ... ok
+test plantuml::files::tests::should_keep_stable_parents_distinct_kinds_and_note_rows ... ok
+test plantuml::activitytile::tests::should_paint_incoming_group_flow_above_every_opaque_container ... ok
+test plantuml::chen::tests::should_reject_oversized_attribute_before_retaining_any_attribute ... ok
+test plantuml::datascene::tests::should_connect_actual_container_rows_without_compressing_scalar_placeholders ... ok
+test plantuml::activitytile::tests::should_separate_unequal_fork_lanes_and_span_join ... ok
+test plantuml::gantt::tests::should_keep_typed_task_identity_row_order_and_reference_ownership ... ok
+test plantuml::gantt::tests::should_freeze_predecessor_fields_without_reactive_rescheduling ... ok
+test plantuml::filesscene::tests::should_clear_complete_note_height_and_indent_preorder_rows ... ok
+test plantuml::gantt::tests::should_round_trip_bounded_civil_ordinals_and_gregorian_centuries ... ok
+test plantuml::graph::tests::should_intersect_usecase_ellipse_instead_of_its_bounding_rectangle ... ok
+test plantuml::graph::tests::should_keep_diagonal_endpoint_label_outside_a_wide_owning_node ... ok
+test plantuml::hcl::tests::should_check_hcl_value_depth_and_item_budget_before_scanning_content ... ok
+test plantuml::nwdiag::tests::should_bound_servers_and_memberships_before_retaining_them ... ok
+test plantuml::nwdiag::tests::should_bound_token_retention_and_property_text_before_allocating_values ... ok
+test plantuml::hcl::tests::should_preserve_hcl_block_field_types_order_and_duplicates ... ok
+test plantuml::nwdiag::tests::should_check_network_depth_before_retaining_the_block ... ok
+test plantuml::graph::tests::should_interrupt_inside_dagre_after_checked_graph_construction ... ok
+test plantuml::files::tests::should_charge_wide_sibling_lookup_before_retaining_a_new_folder ... ok
+test plantuml::graph::tests::should_reject_parent_cycles_without_panicking ... ok
+test plantuml::packet::tests::should_reject_oversized_packet_label_before_fragment_generation ... ok
+test plantuml::packetscene::tests::should_conserve_fragment_widths_and_retain_inclusive_field_identity ... ok
+test plantuml::origin::tests::should_map_only_overlapping_expanded_bytes_and_preserve_utf8_byte_columns ... ok
+test plantuml::parser::definition::tests::should_admit_generated_stacks_before_parser_entry ... ok
+test plantuml::parser::definition::tests::should_cancel_during_lexical_trivia_scanning_before_retention ... ok
+test plantuml::origin::tests::should_map_ordered_authored_rows_across_direct_and_expanded_segments ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_token_delivery_without_fake_eof ... ok
+test plantuml::packetscene::tests::should_reserve_variable_row_maximum_when_the_last_cell_is_shorter ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_reduction_and_literal_validation ... ok
+test plantuml::parser::definition::tests::should_bound_ascii_names_and_require_same_line_nonempty_literal ... ok
+test plantuml::parser::definition::tests::should_accept_boundary_names_literals_and_literal_comment_bytes ... ok
+test plantuml::parser::definition::tests::should_deliver_cancelled_at_exhausted_iterator_instead_of_eof ... ok
+test plantuml::parser::definition::tests::should_map_nonzero_utf8_definition_spans ... ok
+test plantuml::packetscene::tests::should_draw_proportional_cells_ticks_rtl_and_height_clearance ... ok
+test plantuml::parser::definition::tests::should_let_generated_syntax_reject_malformed_header_structure ... ok
+test plantuml::parser::definition::tests::should_parse_literal_definition_with_generated_grammar ... ok
+test plantuml::parser::definition::tests::should_preserve_unicode_literal_edges_and_unicode_leading_indentation ... ok
+test plantuml::parser::definition::tests::should_reject_insufficient_work_before_generated_parser_entry ... ok
+test plantuml::parser::definition::tests::should_reject_overflowing_or_mismatched_source_views_before_lexing ... ok
+test plantuml::ganttscene::tests::should_project_duration_bars_and_civil_day_diamonds_on_one_axis ... ok
+test plantuml::parser::document::tests::should_admit_stacks_and_preserve_cancellation_in_delivery_reductions_and_eof ... ok
+test plantuml::parser::definition::tests::should_reject_controls_continuations_and_parameterized_definitions ... ok
+test plantuml::parser::document::tests::should_let_generated_productions_own_pairing_placement_and_complete_eof ... ok
+test plantuml::parser::definition::tests::should_reject_overlong_literals_and_complete_input_after_a_line_break ... ok
+test plantuml::graph::tests::should_contain_long_multiline_compound_captions_in_both_directions ... ok
+test plantuml::parser::header::tests::should_admit_header_source_and_interrupt_primitive_scans_before_retention ... ok
+test plantuml::chen::tests::should_bound_expanded_owner_keys_before_deep_amplification ... ok
+test plantuml::nwscene::tests::should_preserve_stable_model_ids_and_separate_network_interface_and_group_ownership ... ok
+test plantuml::parser::document::tests::should_borrow_body_bytes_and_preserve_physical_utf8_lines ... ok
+test plantuml::parser::document::tests::should_map_generated_document_failures_to_one_frozen_definition_use ... ok
+test plantuml::parser::ownership::tests::should_check_cancellation_during_comment_ownership_before_retaining_text ... ok
+test plantuml::parser::preamble::tests::should_interrupt_region_validation_before_copying_a_long_label ... ok
+test plantuml::parser::preamble::tests::should_emit_empty_literals_for_whitespace_only_value_tails ... ok
+test plantuml::parser::preamble::tests::should_admit_actual_parser_storage_before_entry_and_cancel_generated_delivery_and_reductions ... ok
+test plantuml::graph::tests::should_place_endpoint_labels_outside_nodes_for_tb_lr_and_reverse_routes ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_region_tokens_and_preserve_the_body_span ... ok
+test plantuml::parser::preamble::tests::should_require_generated_whole_input_consumption_after_the_body_boundary ... ok
+test plantuml::parser::header::tests::should_derive_typed_headers_without_confusing_keyword_endpoints_or_empty_rows ... ok
+test plantuml::parser::preamble::tests::should_cancel_lexical_literal_scanning_before_allocating_the_value_token ... ok
+test plantuml::parser::sequence::tests::should_bound_token_retention_before_appending_a_fifth_token ... ok
+test plantuml::nwscene::tests::should_connect_every_membership_to_its_bus_and_leave_foreign_crossings_open ... ok
+test plantuml::parser::header::tests::should_freeze_state_header_facts_before_literal_label_payload ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_style_rules_without_spending_syntax_model_items ... ok
+test plantuml::ganttscene::tests::should_reserve_large_multiline_labels_ticks_and_rows_without_overlap ... ok
+test plantuml::chenscene::tests::should_contain_measured_text_in_real_shapes_and_intersect_link_boundaries ... ok
+test plantuml::parser::preamble::tests::should_borrow_the_remaining_family_body_with_physical_first_row_whitespace ... ok
+test plantuml::parser::token::tests::should_cancel_before_token_buffer_growth_and_keep_retained_capacity ... ok
+test plantuml::parser::token::tests::should_emit_primitive_tokens_without_requiring_header_separators ... ok
+test plantuml::parser::token::tests::should_lex_leading_carriage_return_as_original_indentation ... ok
+test plantuml::parser::sequence::tests::should_reject_direct_generated_suffix_eof_and_cancel_delivery_and_actions ... ok
+test plantuml::preprocess::tests::should_bound_frozen_literal_size_and_lineage_before_copying ... ok
+test plantuml::preprocess::tests::should_charge_raw_scanning_and_observe_cancel_before_retention ... ok
+test plantuml::parser::header::tests::should_preserve_complete_keyword_prefixed_endpoint_names_in_header_evidence ... ok
+test plantuml::preprocess::tests::should_bound_origin_segments_before_adding_another_expansion ... ok
+test plantuml::preprocess::tests::should_bound_retained_frozen_values_and_output_before_copying ... ok
+test plantuml::parser::sequence::tests::should_map_sequence_failure_once_at_a_frozen_expansion_use ... ok
+test plantuml::parser::sequence::tests::should_continue_shared_comment_ownership_at_the_preamble_boundary ... ok
+test plantuml::parser::sequence::tests::should_locate_generated_sequence_suffix_after_an_inline_utf8_comment ... ok
+test plantuml::preprocess::tests::should_retain_exact_direct_bytes_and_expansion_use_spans ... ok
+test plantuml::scene::tests::should_reject_nonfinite_or_negative_shape_geometry_before_retention ... ok
+test plantuml::parser::document::tests::should_preserve_authored_raw_rows_and_follow_expanded_next_row_terminators ... ok
+test plantuml::preprocess::tests::should_keep_consumed_comment_bytes_direct_and_expand_only_the_active_original_span ... ok
+test plantuml::salt::tests::should_freeze_distinct_widget_ids_nested_ownership_and_positive_spans ... ok
+test plantuml::parser::sequence::tests::should_preserve_raw_expanded_note_rows_crlf_and_original_comment_gaps ... ok
+test plantuml::saltscene::tests::should_suppress_internal_vertical_grid_segments_through_spans ... ok
+test plantuml::preprocess::tests::should_bound_definition_count_and_authored_or_expanded_literal_bytes ... ok
+test plantuml::preprocess::tests::should_bound_lineage_to_thirty_two_without_recursive_expansion ... ok
+test plantuml::parser::sequence::tests::should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation ... ok
+test plantuml::sequence::tests::should_preserve_lane_order_reverse_message_and_balanced_events ... ok
+test plantuml::sequence::tests::should_reserve_created_multiline_head_before_the_next_message ... ok
+test plantuml::parser::sequence::tests::should_reject_generated_sequence_suffix_and_unclosed_structures ... ok
+test plantuml::salt::tests::should_keep_escaped_braces_lexically_distinct_from_structural_tokens ... ok
+test plantuml::source::tests::should_charge_long_line_scanning_before_finishing_the_line ... ok
+test plantuml::parser::sequence::tests::should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle ... ok
+test plantuml::sequence::tests::should_paint_activations_between_lifelines_and_event_foreground ... ok
+test plantuml::source::tests::should_preserve_literal_raw_rows_around_nonleading_exclamation_marks ... ok
+test plantuml::text::tests::should_coalesce_equal_styles_and_keep_color_only_cache_changes ... ok
+test plantuml::state::tests::should_leave_state_identity_unchanged_when_rejecting_an_ancestor_endpoint ... ok
+test plantuml::stategraph::tests::should_interrupt_inside_checked_state_graph_layout ... ok
+test plantuml::svg::tests::should_include_negative_scene_coordinates_in_the_canvas ... ok
+test plantuml::svg::tests::should_reject_svg_growth_before_appending_or_allocating ... ok
+test plantuml::sequence::tests::should_contain_nested_frames_and_end_lifelines_at_destruction ... ok
+test plantuml::text::tests::should_reject_oversized_label_before_scanning_or_retaining_it ... ok
+test plantuml::sequence::tests::should_reserve_multiline_message_occupied_height_before_its_anchor ... ok
+test plantuml::timingscene::tests::should_bound_generated_ticks_before_allocation_and_check_cancellation ... ok
+test plantuml::nwscene::tests::should_reserve_measured_group_headers_interfaces_and_nodes_without_overlap ... ok
+test plantuml::sequence::tests::should_reserve_multiline_note_occupied_height_after_a_message ... ok
+test plantuml::stategraph::tests::should_contain_nested_state_descriptions_children_and_pseudostates ... ok
+test plantuml::tree::tests::should_reject_wbs_smart_depth_that_mindmap_normalizes ... ok
+test plantuml::yaml::tests::should_charge_trimmed_flow_copy_before_allocating_a_second_string ... ok
+test plantuml::timing::tests::should_own_constraint_and_message_endpoints_without_mutating_cursors ... ok
+test plantuml::tree::tests::should_resolve_side_specific_mindmap_parents_and_depths ... ok
+test plantuml::tree::tests::should_use_wbs_global_chain_across_sides_and_retain_aliases ... ok
+test plantuml::timing::tests::should_retain_typed_track_identity_initial_state_and_exact_sorted_changes ... ok
+test plantuml::yaml::tests::should_check_flow_scalar_depth_before_any_field_accumulation ... ok
+test plantuml::yaml::tests::should_admit_flow_scalars_at_exact_depth_including_mandatory_empty_element ... ok
+test plantuml::saltscene::tests::should_contain_nested_measured_controls_and_span_constraints_without_overlap ... ok
+test plantuml::yaml::tests::should_apply_literal_block_trimming_and_nonstructured_stopping_quirk ... ok
+test plantuml::treescene::tests::should_draw_wbs_root_fork_and_attach_descendants_to_parent_trunks ... ok
+test plantuml::yaml::tests::should_enforce_flow_item_limit_before_next_field_accumulation ... ok
+test plantuml::yaml::tests::should_preserve_escaped_content_when_deciding_whether_quotes_open ... ok
+test plantuml::yaml::tests::should_distinguish_map_unquoting_from_flow_list_escaping ... ok
+test plantuml::yaml::tests::should_preserve_list_of_maps_and_plain_dash_map_ownership ... ok
+test plantuml::treescene::tests::should_reserve_nonoverlapping_measured_mindmap_subtrees_on_actual_sides ... ok
+test plantuml::timingscene::tests::should_keep_initial_signal_before_axis_without_a_synthetic_zero_event ... ok
+test plantuml::yaml::tests::should_replace_yaml_duplicate_without_moving_first_key_and_keep_string_scalars ... ok
+test plantuml::sequence::tests::should_reserve_measured_nested_frame_headers_at_small_and_large_fonts ... ok
+test plantuml::timingscene::tests::should_attach_message_endpoints_to_their_tracks_and_right_hand_states ... ok
+test plantuml::timingscene::tests::should_share_one_monotonic_time_projection_across_tracks ... ok
+test plantuml::parser::token::tests::should_bound_wide_primitive_buffer_before_generated_syntax ... ok
+test plantuml::timingscene::tests::should_reserve_measured_constraint_caption_height_and_ribbon_labels ... ok
+test plantuml::origin::tests::should_interrupt_direct_origin_scanning_and_definition_advancement ... ok
+test plantuml::source::tests::should_consume_exactly_one_generated_document_and_validate_lexical_eof ... ok
+test plantuml::saltscene::tests::should_keep_ragged_tables_sparse_and_charge_layout_propagation ... ok
+test plantuml::state::tests::should_charge_declaration_identity_search_before_scanning ... ok
+test plantuml::text::tests::should_bound_tokens_before_measuring_many_short_runs ... ok
+test plantuml::text::tests::should_bound_marker_activation_and_escaped_punctuation_with_linear_work ... ok
+test plantuml::activity::tests::should_parse_below_cap_multiline_actions_and_check_cancellation ... ok
+test plantuml::nwscene::tests::should_keep_bus_membership_storage_sparse ... ok
+test plantuml::salt::tests::should_bound_escape_accumulation_and_lexical_work_before_retention ... ok
+test plantuml::origin::tests::should_validate_repeated_sheet_origins_with_linear_work ... ok
+test plantuml::yaml::tests::should_scan_long_whitespace_flow_fields_with_linear_charged_work ... ok
+test plantuml::text::tests::should_bound_aggregate_body_and_chrome_measurement_requests_before_host_call ... ok
+test plantuml::yaml::tests::should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work ... ok
+test plantuml::activity::tests::should_scan_whitespace_only_multiline_actions_once ... ok
+
+test result: ok. 161 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests/compatibility.rs (/mnt/data/Projects/ive/target/debug/deps/compatibility-4dc5364066b7c25c)
+
+running 11 tests
+test should_ignore_indentation_width_and_preserve_mindmap_decorations ... ok
+test should_color_typed_nodes_and_edges_by_structural_depth ... ok
+test should_cycle_depth_colors_after_eleven_non_root_levels ... ok
+test should_preserve_depth_sections_when_inserting_a_preceding_branch ... ok
+test should_preserve_default_and_explicit_branch_coloring ... ok
+test should_paint_tree_text_with_the_same_non_default_family_requested_for_layout ... ok
+test should_filter_font_css_injection_before_measurement_and_painting ... ok
+test should_preserve_usecase_node_font_overrides_in_measurement_and_paint ... ok
+test should_measure_and_paint_svg_usecase_labels_with_the_effective_global_font ... ok
+test should_preserve_quoted_commas_and_generic_fallbacks_in_effective_font_lists ... ok
+test should_render_depth_sections_through_the_public_engine ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/families.rs (/mnt/data/Projects/ive/target/debug/deps/families-79bb236dde438e3a)
+
+running 37 tests
+test should_render_info ... ok
+test should_render_railroad ... ok
+test should_render_pie ... ok
+test should_render_tree ... ok
+test should_render_packet ... ok
+test should_render_railroad_ebnf ... ok
+test should_render_railroad_peg ... ok
+test should_render_railroad_abnf ... ok
+test should_render_radar ... ok
+test should_render_git ... ok
+test should_render_ishikawa ... ok
+test should_render_gantt ... ok
+test should_render_venn ... ok
+test should_render_quadrant ... ok
+test should_render_sankey ... ok
+test should_render_cynefin ... ok
+test should_render_treemap ... ok
+test should_render_architecture ... ok
+test should_render_timeline ... ok
+test should_render_eventmodeling ... ok
+test should_render_zenuml ... ok
+test should_render_wardley ... ok
+test should_render_c4 ... ok
+test should_render_requirement ... ok
+test should_render_sequence ... ok
+test should_render_kanban ... ok
+test should_render_state ... ok
+test should_render_xychart ... ok
+test should_render_flowchart ... ok
+test should_render_agentflow ... ok
+test should_render_swimlane ... ok
+test should_render_journey ... ok
+test should_render_usecase ... ok
+test should_render_er ... ok
+test should_render_class ... ok
+test should_render_block ... ok
+test should_render_mindmap ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/mermaid.rs (/mnt/data/Projects/ive/target/debug/deps/mermaid-3f02c89d193342a8)
+
+running 21 tests
+test should_enforce_source_limit_before_parsing ... ok
+test should_observe_cancellation ... ok
+test should_observe_expired_deadline ... ok
+test should_reject_invalid_source ... ok
+test should_reject_unavailable_requested_layout ... ok
+test should_reject_external_image_resources ... ok
+test should_reject_external_navigation_link ... ok
+test should_reject_external_css_paint_resource ... ok
+test should_reject_relative_image_resources_before_layout ... ok
+test should_enforce_svg_output_budget ... ok
+test should_dispatch_plantuml_with_an_explicit_language ... ok
+test should_ignore_url_in_comment ... ok
+test should_render_metadata_as_literal_label_text ... ok
+test should_render_both_flowchart_labels ... ok
+test should_render_url_as_literal_label_text ... ok
+test should_preserve_xml_metacharacters_and_unicode ... ok
+test should_preserve_plain_xml_metacharacters ... ok
+test should_render_image_metadata_tokens_as_literal_label_text ... ok
+test should_render_sequence_message ... ok
+test should_render_class_members ... ok
+test should_produce_deterministic_svg_across_requests ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/plantuml.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml-9e168d711cd576ea)
+
+running 36 tests
+test should_observe_cancellation_after_a_host_measurement ... ok
+test should_reject_contradictory_family_declarations ... ok
+test should_reject_unimplemented_quoted_escape_instead_of_changing_label ... ok
+test should_reject_malformed_wrappers_comments_and_stacks ... ok
+test should_enforce_every_custom_resource_limit ... ok
+test should_bound_adversarial_comment_scanning_with_a_tiny_deadline ... ok
+test should_validate_limits_and_cancellation_before_parsing ... ok
+test should_reject_unsupported_syntax_with_a_source_location ... ok
+test should_reject_implicit_names_containing_unimplemented_syntax ... ok
+test should_report_actual_multiline_note_statement_line ... ok
+test should_keep_sequence_keywords_as_class_member_text ... ok
+test should_reject_label_markup_without_corrupting_literal_angle_text ... ok
+test should_bound_expanded_namespace_text_before_retaining_keys ... ok
+test should_reject_substantive_suffixes_and_validate_every_endpoint_branch ... ok
+test should_measure_italic_paint_with_italic_style_and_separate_cache_entries ... ok
+test should_keep_unpaired_punctuation_and_empty_object_slot_strings_literal ... ok
+test should_draw_named_graph_notes_with_authored_links ... ok
+test should_choose_sequence_when_actors_have_explicit_participant_context ... ok
+test should_draw_distinct_uml_extremities_and_underlined_object_headers ... ok
+test should_report_actual_host_success_and_invalid_answer_fallback ... ok
+test should_keep_quoted_apostrophes_urls_and_xml_text ... ok
+test should_keep_ambiguous_actor_database_declarations_in_sequence_context ... ok
+test should_keep_colons_in_quoted_multiline_note_targets ... ok
+test should_preserve_literal_angles_urls_and_escaped_markup ... ok
+test should_preserve_scoped_aliases_and_genuine_description_shapes ... ok
+test should_keep_command_prefixes_in_sequence_identifiers ... ok
+test should_preserve_parallel_self_cyclic_and_disconnected_uml_edges ... ok
+test should_keep_nested_container_labels_clear_of_children ... ok
+test should_keep_existing_description_relations_from_an_archimate_alias ... ok
+test should_preserve_sequence_direction_frames_and_lifecycle ... ok
+test should_reject_rich_text_variants_in_every_label_bearing_path ... ok
+test should_render_implicit_state_descriptions_with_literal_arrow_text ... ok
+test should_render_five_authorized_reference_sources ... ok
+test should_reject_url_adjacent_markup_in_every_label_bearing_path ... ok
+test should_render_keyword_prefixed_dotted_and_at_endpoints_as_implicit_sequence ... ok
+test should_normalize_url_adjacent_escapes_without_changing_literal_paths ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/plantuml_chen_archimate.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_chen_archimate-3b4c3e2fb53a06f5)
+
+running 12 tests
+test should_reject_archimate_empty_or_unsupported_quoted_alias_and_quoted_color ... ok
+test should_stop_both_extensions_after_first_cancelled_host_measurement ... ok
+test should_bound_models_output_and_cancel_both_extensions ... ok
+test should_reject_archimate_icons_colors_groups_and_invented_wrapper ... ok
+test should_reject_invalid_chen_ownership_endpoints_and_unsupported_semantics ... ok
+test should_extend_description_with_colored_icon_free_archimate ... ok
+test should_link_an_archimate_declaration_with_arrow_looking_quoted_display ... ok
+test should_keep_parallel_cyclic_disconnected_chen_associations ... ok
+test should_reject_svg_output_at_the_bounded_writer_for_both_extensions ... ok
+test should_preserve_description_precedence_and_reject_mixed_class_archimate ... ok
+test should_render_exact_fresh_original_sources_without_family_inflation ... ok
+test should_draw_chen_nodes_with_qualified_ownership_and_cardinalities ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/plantuml_constants.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_constants-1f558f7685acf65f)
+
+running 44 tests
+test should_deny_active_chen_resources_after_comment_ownership_ends ... ok
+test should_deny_generated_capabilities_and_active_tim_grammar ... ok
+test should_map_expanded_style_failure_to_use_and_definition ... ok
+test should_map_generated_label_resource_error_to_its_use_and_definition ... ok
+test should_accept_chen_comment_owned_directives_and_wrappers ... ok
+test should_avoid_constant_expansion_inside_chen_inline_block_comments ... ok
+test should_keep_chen_commented_definitions_inert_without_changing_identity ... ok
+test should_consume_comment_opener_before_recognizing_any_closing_delimiter ... ok
+test should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_chen_title ... ok
+test should_reject_generated_wrapper_after_expanded_action_terminator ... ok
+test should_reject_malformed_definition_headers_without_registering_partial_values ... ok
+test should_reject_invalid_literal_controls_even_when_unused ... ok
+test should_reject_ambiguous_non_ascii_adjacent_constant_boundaries ... ok
+test should_retain_chen_stylesheet_ownership_of_active_definitions ... ok
+test should_keep_chen_comments_inert_around_active_constants_and_shared_preamble ... ok
+test should_reject_shadowing_and_late_or_outside_definitions ... ok
+test should_reject_definitions_inside_style_sheets ... ok
+test should_expand_wrapper_looking_raw_note_rows ... ok
+test should_report_bounded_candidates_for_identical_expanded_late_labels ... ok
+test should_preserve_literal_data_wrappers_and_strict_generated_admission ... ok
+test should_identify_inert_duplicate_label_candidates_and_omitted_occurrences ... ok
+test should_keep_note_rows_raw_when_expansion_removes_authored_terminator ... ok
+test should_ignore_block_commented_wrappers_before_definitions ... ok
+test should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_message ... ok
+test should_freeze_prior_values_without_rescanning_insertions ... ok
+test should_keep_case_insensitive_uml_wrappers_and_unknown_names ... ok
+test should_keep_comment_looking_action_openings_raw ... ok
+test should_preserve_inert_comments_without_preprocessor_execution ... ok
+test should_preserve_inert_inline_comments_around_expanded_source ... ok
+test should_keep_quotes_and_mutual_looking_values_literal ... ok
+test should_expand_case_sensitive_boundaries_inside_quotes_and_after_backslash_n ... ok
+test should_preserve_inert_resource_and_dollar_percent_text ... ok
+test should_close_expanded_note_terminators_before_normal_syntax ... ok
+test should_preserve_separated_comment_delimiter_and_apostrophe_spacing ... ok
+test should_preserve_data_and_raw_note_payloads_after_expansion ... ok
+test should_recognize_comment_normalized_opening_wrappers ... ok
+test should_expand_raw_note_and_action_rows_before_comment_normalization ... ok
+test should_preserve_hash_tree_syntax_and_inert_literal_hashes ... ok
+test should_keep_comment_looking_bytes_active_in_explicit_literal_ownership ... ok
+test should_close_expanded_opening_and_continuation_actions_before_normal_syntax ... ok
+test should_preserve_leading_carriage_return_definition_indentation ... ok
+test should_reuse_options_without_retaining_constants ... ok
+test should_keep_raw_ownership_until_note_and_action_terminators ... ok
+test should_preserve_unrelated_unicode_and_blank_line_admission ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/plantuml_control.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_control-063386530520d5b3)
+
+running 23 tests
+test should_reject_preprocessing_inside_raw_action_and_note_bodies ... ok
+test should_reject_nonliteral_state_alias_forms ... ok
+test should_cancel_state_and_activity_inside_layout_measurement ... ok
+test should_reject_ancestor_state_references_without_synthesizing_local_copies ... ok
+test should_enforce_tiny_state_and_activity_limits ... ok
+test should_preserve_action_opening_line_whitespace_and_comment_like_text ... ok
+test should_bind_reverse_pseudostates_by_semantic_role ... ok
+test should_reject_unsupported_control_syntax_and_mismatched_stacks ... ok
+test should_keep_state_description_order_and_hyphenated_literal_text ... ok
+test should_preserve_text_commands_inside_class_members ... ok
+test should_keep_implicit_state_family_for_pseudostate_targets ... ok
+test should_preserve_raw_note_rows_after_keyword_named_sequence_messages ... ok
+test should_attach_ordered_state_descriptions_and_resolve_forward_composites ... ok
+test should_attach_descriptions_to_punctuated_quoted_state_displays ... ok
+test should_converge_only_live_activity_branches ... ok
+test should_keep_implicit_false_path_and_dead_branch_exit_contracts ... ok
+test should_retain_interior_semicolons_and_raw_multiline_action_and_note_rows ... ok
+test should_distinguish_synchronizing_join_from_merge_and_keep_dead_lanes_dead ... ok
+test should_reuse_initial_and_final_per_scope ... ok
+test should_select_families_without_reading_payload_as_commands ... ok
+test should_preserve_elseif_loop_fork_and_nested_partition_topology ... ok
+test should_admit_exact_original_state_and_activity_fixtures_deterministically ... ok
+test should_admit_sequence_participants_named_like_state_and_activity_commands ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/plantuml_gantt.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_gantt-fec1f348fad74ed3)
+
+running 17 tests
+test should_cancel_gantt_at_the_first_real_host_measurement ... ok
+test should_consume_only_admitted_start_complement_grammar ... ok
+test should_reject_incomplete_predecessors_wrong_wrappers_and_late_preambles ... ok
+test should_obey_custom_gantt_limits_and_cancellation ... ok
+test should_reject_missing_late_conflicting_unknown_and_cyclic_schedules ... ok
+test should_reject_invalid_dates_and_unimplemented_rules_with_offending_input ... ok
+test should_reject_unterminated_trailing_block_comment_after_gantt_wrapper ... ok
+test should_validate_real_project_dates_before_constructing_tasks ... ok
+test should_apply_shared_styles_chrome_constants_and_literal_task_text ... ok
+test should_apply_start_end_and_before_after_offsets ... ok
+test should_draw_duration_widths_diamonds_and_owned_routes ... ok
+test should_resolve_aliases_in_source_order_with_distinct_displays ... ok
+test should_use_exclusive_successor_and_last_occupied_milestone_dates ... ok
+test should_cross_leap_days_and_keep_seven_days_open ... ok
+test should_bound_sparse_calendar_ticks_and_reject_excessive_spans ... ok
+test should_bound_authored_identity_and_display_labels_before_measurement ... ok
+test should_admit_exact_original_gantt_reference_fixtures ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/plantuml_inventory.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_inventory-852fcb510b85567a)
+
+running 27 tests
+test should_reject_hcl_combined_prefix_statements_without_lowering_them_away ... ok
+test should_reject_hcl_style_statement_before_a_separate_block ... ok
+test should_reject_hcl_title_statement_before_a_separate_block ... ok
+test should_enforce_inventory_limits_and_cancellation ... ok
+test should_reject_orphan_board_release_and_denied_commands ... ok
+test should_reject_invalid_files_paths_notes_and_mixed_syntax ... ok
+test should_reject_repeated_packet_delimiters_and_unconsumed_attribute_suffixes ... ok
+test should_stop_each_inventory_family_after_the_first_cancelled_measurement ... ok
+test should_reject_hcl_header_token_continuation_after_any_complete_block ... ok
+test should_reject_hcl_data_loss_evaluation_and_malformed_input ... ok
+test should_reject_packet_invalid_ranges_attributes_and_braces ... ok
+test should_preserve_leading_blank_files_note_rows ... ok
+test should_preserve_significant_file_component_spaces_without_normalization ... ok
+test should_count_synthetic_hcl_multiblock_root_in_value_depth ... ok
+test should_keep_files_note_anchors_and_literal_names ... ok
+test should_keep_hcl_command_named_blocks_and_reject_escaped_physical_newlines ... ok
+test should_keep_files_ordered_folder_reuse_and_duplicate_identity ... ok
+test should_keep_board_stage_parent_and_activity_columns ... ok
+test should_expand_prefix_literals_in_all_inventory_families ... ok
+test should_conserve_packet_fragments_across_three_rows ... ok
+test should_apply_packet_rtl_ticks_height_and_colwidth_one ... ok
+test should_keep_hcl_blocks_literal_escapes_comments_and_empty_containers ... ok
+test should_unwrap_hcl_and_keep_duplicate_fields_as_strings_and_owned_rows ... ok
+test should_place_packet_ranges_by_width_and_auto_after_declared_end ... ok
+test should_keep_hcl_command_names_split_opening_braces_and_nested_value_newlines ... ok
+test should_admit_exact_original_inventory_reference_sources ... ok
+test should_measure_shared_display_markup_and_reject_actual_resource_labels ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/plantuml_nwdiag.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_nwdiag-c000568fe100ba2c)
+
+running 16 tests
+test should_stop_nwdiag_after_an_inflight_measurement_cancels ... ok
+test should_reject_late_chrome_and_wrong_or_incomplete_wrappers ... ok
+test should_reject_nested_or_duplicate_blocks_standalone_servers_and_extra_group_membership ... ok
+test should_bound_source_model_depth_work_output_and_cancellation ... ok
+test should_reject_unconsumed_malformed_duplicate_or_unsupported_properties ... ok
+test should_reject_unclosed_comments_and_preserve_inert_comment_and_property_text ... ok
+test should_split_server_and_interface_comma_space_labels_as_nwdiag_lines ... ok
+test should_apply_prefix_styles_constants_and_chrome_without_rejecting_literal_keywords ... ok
+test should_paint_only_description_as_group_header_and_support_network_groups ... ok
+test should_update_nonempty_membership_addresses_and_preserve_empty_updates ... ok
+test should_distinguish_network_and_group_names_from_complete_block_declarations ... ok
+test should_keep_top_level_group_references_separate_from_network_memberships ... ok
+test should_render_one_global_server_and_exact_owned_memberships ... ok
+test should_preserve_punctuated_global_identifiers_and_deterministic_sparse_buses ... ok
+test should_render_exact_reference_fixtures_deterministically ... ok
+test should_reject_every_shared_late_chrome_form_but_preserve_quoted_values ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/plantuml_salt.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_salt-419933e8966a3a3b)
+
+running 18 tests
+test should_stop_salt_after_an_inflight_measurement_cancels ... ok
+test should_reject_wrong_wrappers_late_definitions_and_interleaved_style_requests ... ok
+test should_bound_source_model_depth_work_output_and_cancel_before_measurement ... ok
+test should_reject_separate_tree_markers_and_line_widgets_until_drawn ... ok
+test should_reject_orphan_spans_and_unconsumed_or_unsupported_structure ... ok
+test should_preserve_escaped_leading_braces_and_split_unescaped_quoted_delimiters ... ok
+test should_use_closing_brace_terminator_for_parent_column_and_row ... ok
+test should_treat_inline_t_words_as_text_and_reserve_only_exact_tree_markers ... ok
+test should_apply_shared_styles_chrome_and_literal_constants_to_salt ... ok
+test should_preserve_salt_raw_apostrophes_escaped_delimiters_and_pua ... ok
+test should_reserve_field_padding_and_real_colspan_width ... ok
+test should_keep_ordinary_punctuation_and_resource_looking_data_literal ... ok
+test should_preserve_literal_controls_and_noncommand_text_near_chrome_keywords ... ok
+test should_keep_widget_kinds_and_checked_dispatch_distinct ... ok
+test should_own_nested_tables_and_same_row_spans_without_painting_stars ... ok
+test should_draw_only_selected_table_borders ... ok
+test should_render_exact_reference_fixtures_deterministically ... ok
+test should_reject_every_admitted_chrome_command_form_inside_tables ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/plantuml_styles.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_styles-334065d3147006a8)
+
+running 26 tests
+test should_map_style_values_once_through_inline_comment_and_expansion_spans ... ok
+test should_cancel_between_styled_run_host_calls ... ok
+test should_reject_blank_font_families_and_alignment_markup ... ok
+test should_keep_region_keyword_boundaries_before_raw_label_ownership ... ok
+test should_enforce_run_depth_and_all_public_limits_for_styled_input ... ok
+test should_reject_unimplemented_block_markup_without_rejecting_lone_punctuation ... ok
+test should_measure_and_paint_identical_nested_runs_with_composable_base_styles ... ok
+test should_reject_crossed_unclosed_and_unsupported_markup ... ok
+test should_reject_unknown_style_declarations_values_and_unbalanced_rules ... ok
+test should_allow_between_sheet_definitions_and_deny_later_expanded_sheet_definitions ... ok
+test should_follow_last_authored_matching_style_property_and_keep_color_cache_separate ... ok
+test should_preserve_escaped_markup_urls_angles_pua_and_lone_markers ... ok
+test should_replace_chrome_regions_and_their_alignment ... ok
+test should_decode_breaks_once_in_quoted_unquoted_and_chrome_labels ... ok
+test should_reserve_chrome_and_keep_default_element_size_separate ... ok
+test should_style_data_preamble_without_interpreting_literal_payload ... ok
+test should_preserve_member_and_raw_note_commands_but_reject_interleaved_preambles ... ok
+test should_preserve_late_region_boundaries_and_quoted_command_lookalikes ... ok
+test should_use_measured_frame_kind_and_multiline_caption_extents ... ok
+test should_keep_keyed_data_style_words_literal_and_reject_unsupported_data_preamble ... ok
+test should_keep_finite_font_axes_and_case_insensitive_multiline_rules ... ok
+test should_return_typed_errors_for_whitespace_only_preamble_values ... ok
+test should_preserve_case_colon_alignment_and_reject_physical_multiline_regions ... ok
+test should_keep_chrome_contained_and_separate_from_every_family_body ... ok
+test should_apply_each_region_skinparam_axis_to_its_owned_region ... ok
+test should_keep_repeated_stylesheets_linear_with_and_without_unrelated_definitions ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running tests/plantuml_timing.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_timing-d50e9b96935bccea)
+
+running 21 tests
+test should_reject_empty_track_display_at_its_declaration ... ok
+test should_validate_discarded_equal_time_state_markup_before_ignoring_its_change ... ok
+test should_obey_custom_limits_and_cancellation_for_timing ... ok
+test should_cancel_timing_during_actual_host_measurement ... ok
+test should_reject_connections_outside_explicit_axis_or_without_signal ... ok
+test should_reserve_message_caption_width_with_only_one_time_mark ... ok
+test should_reject_unsupported_timing_syntax_with_offending_text ... ok
+test should_keep_first_change_at_equal_numeric_time ... ok
+test should_treat_arrows_and_resource_looking_text_inside_quoted_states_as_data ... ok
+test should_apply_shared_fonts_chrome_and_constants_to_timing ... ok
+test should_keep_ordinary_special_looking_state_names_literal ... ok
+test should_accept_whitespace_between_timing_grammar_tokens ... ok
+test should_accept_time_before_declaration_without_changing_family_precedence ... ok
+test should_resolve_constraint_end_relative_to_constraint_start ... ok
+test should_bound_repeated_timing_owner_metadata_before_retention ... ok
+test should_preserve_grammar_words_in_connection_captions ... ok
+test should_keep_player_cursor_separate_from_time_cursor ... ok
+test should_resolve_message_offsets_from_current_time ... ok
+test should_draw_distinct_robust_steps_and_concise_ribbons ... ok
+test should_bound_sparse_ticks_and_render_deterministically ... ok
+test should_admit_exact_original_timing_reference_fixtures ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/plantuml_tree_data.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_tree_data-33d00b0d17c4c521)
+
+running 18 tests
+test should_fail_yaml_alias_bomb_at_first_token_before_value_construction ... ok
+test should_reject_active_preprocessor_lines_inside_yaml_literal_blocks ... ok
+test should_cancel_new_families_during_real_layout_measurement ... ok
+test should_enforce_source_model_depth_work_output_limits_for_new_families ... ok
+test should_reject_invalid_tree_structure_styles_crosslinks_and_data_syntax ... ok
+test should_preserve_data_literal_markup_apostrophes_unicode_and_resource_looking_text ... ok
+test should_normalize_mindmap_first_child_depth_without_guessing_visual_indent ... ok
+test should_reject_spaced_yaml_merge_keys_but_keep_escaped_quote_flow_literals ... ok
+test should_keep_inert_yaml_capability_looking_literals_and_original_block_stopping_rule ... ok
+test should_use_independent_mindmap_side_stacks_and_stack_new_roots ... ok
+test should_enforce_flow_scalar_depth_at_exact_limit_and_one_below ... ok
+test should_keep_wbs_global_parentage_direction_alias_and_pseudo_topology ... ok
+test should_admit_explicit_mindmap_roots_and_org_mode_smart_prefixes ... ok
+test should_keep_root_scalar_and_empty_container_policies_and_control_character_text ... ok
+test should_keep_yaml_string_types_duplicates_quotes_flow_and_literal_blocks ... ok
+test should_preserve_json_duplicate_rows_types_and_container_row_connections ... ok
+test should_admit_exact_fresh_original_tree_and_data_fixtures ... ok
+test should_render_long_whitespace_quote_and_escape_flow_fields_with_bounded_work ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_viewer-7ff6c02fde4a8e47)
+
+running 51 tests
+test cli::tests::should_open_default_example_without_a_file ... ok
+test cli::tests::should_parse_background_capture_and_language ... ok
+test cli::tests::should_parse_explicit_svg_export ... ok
+test cli::tests::should_reject_ambiguous_or_incomplete_arguments ... ok
+test cli::tests::should_select_plantuml_for_its_file_extensions_and_default_example ... ok
+test native_text::tests::should_resolve_a_family_list_to_the_first_installed_family ... ok
+test native_text::tests::should_resolve_a_quoted_css_family_containing_a_comma ... ok
+test native_text::tests::should_resolve_generic_serif_to_a_native_serif_family ... ok
+test svg::tests::should_reject_excessive_bitmap_glyph_decode_area ... ok
+test examples::tests::should_find_a_real_plantuml_example ... ok
+test examples::tests::should_find_native_gantt_example_with_aliases_bars_dependencies_and_milestones ... ok
+test examples::tests::should_find_substantive_native_timing_example ... ok
+test examples::tests::should_find_native_salt_example_with_nested_controls_and_spans ... ok
+test viewport::tests::should_bound_raster_area_even_for_extreme_svg_dimensions ... ok
+test viewport::tests::should_drop_a_result_after_the_request_changes ... ok
+test viewport::tests::should_enlarge_tall_diagrams_without_enlarging_the_bounded_bitmap ... ok
+test viewport::tests::should_fit_in_logical_space_at_device_scale_two ... ok
+test viewport::tests::should_fit_a_diagram_without_distorting_it ... ok
+test viewport::tests::should_keep_logical_zoom_independent_of_device_scale ... ok
+test viewport::tests::should_reject_invalid_dimensions_and_zoom ... ok
+test viewport::tests::should_reject_unscrollable_or_nonfinite_logical_sizes ... ok
+test examples::tests::should_find_chen_and_icon_free_archimate_with_honest_families ... ok
+test examples::tests::should_find_native_nwdiag_example_with_shared_router_and_three_buses ... ok
+test examples::tests::should_find_eager_constant_sequence_and_class_document_examples ... ok
+test examples::tests::should_find_four_native_inventory_examples_with_real_family_shapes ... ok
+test examples::tests::should_find_native_control_tree_and_data_examples ... ok
+test svg::tests::should_reject_filter_image_with_cancelling_pattern_shear_before_rasterization ... ok
+test svg::tests::should_unpremultiply_and_swap_all_color_channels ... ok
+test svg::tests::should_reject_oversize_or_cumulative_effect_surfaces_before_allocation ... ok
+test svg::tests::should_charge_paths_inside_svg_images_in_the_same_traversal ... ok
+test svg::tests::should_reject_repeated_legal_bitmaps_before_decoding_or_painting ... ok
+test svg::tests::should_bound_aggregate_bitmap_glyph_work_before_rasterization ... ok
+test svg::tests::should_preserve_fractional_original_sides_when_only_text_on_other_sides_expands ... ok
+test svg::tests::should_reject_cancelled_low_budget_and_extreme_bounds_before_raster_allocation ... ok
+test svg::tests::should_ignore_transparent_nontext_when_admitting_leftward_expansion ... ok
+test svg::tests::should_keep_expanded_logical_size_independent_of_raster_cap ... ok
+test svg::tests::should_contain_transformed_stroked_and_fallback_text_paint ... ok
+test svg::tests::should_ignore_invisible_and_transparent_paint_but_include_visible_strokes ... ok
+test svg::tests::should_preserve_root_clipping_when_leftward_text_would_expose_nontext ... ok
+test svg::tests::should_preserve_pattern_paint_without_normalizing ... ok
+test svg::tests::should_keep_percent_viewbox_alignment_and_negative_scene_origins ... ok
+test svg::tests::should_contain_builtin_tree_text_without_changing_its_connector_clip ... ok
+test svg::tests::should_preserve_explicit_effects_and_clips_without_normalizing ... ok
+test svg::tests::should_contain_actual_native_timing_ribbon_labels_and_connection_captions ... ok
+test svg::tests::should_match_pinned_font_selection_and_full_color_pixels ... ok
+test svg::tests::should_contain_actual_native_nwdiag_labels_inside_servers_groups_and_canvas ... ok
+test svg::tests::should_contain_actual_native_gantt_labels_and_calendar_ticks ... ok
+test svg::tests::should_contain_actual_native_salt_labels_inside_buttons_fields_and_canvas ... ok
+test svg::tests::should_contain_actual_native_tree_and_data_text_within_owning_boxes ... ok
+test svg::tests::should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint ... ok
+test svg::tests::should_contain_actual_native_inventory_labels_inside_owning_shapes ... ok
+
+test result: ok. 51 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running unittests src/main.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_viewer-6455dd09598f98fc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/export.rs (/mnt/data/Projects/ive/target/debug/deps/export-3dbf973427472575)
+
+running 5 tests
+test should_reject_a_named_pipe_without_blocking_file_open ... ok
+test should_reject_an_oversize_selected_file ... ok
+test should_leave_the_output_untouched_when_rendering_fails ... ok
+test should_export_plantuml_by_extension_without_a_display ... ok
+test should_export_svg_without_a_display_server ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/native_lifetime.rs (/mnt/data/Projects/ive/target/debug/deps/native_lifetime-79088926b9fa12ee)
+
+running 3 tests
+test should_keep_a_cancelled_callback_cache_alive_only_until_that_callback_finishes ... ok
+test should_drop_each_completed_native_render_cache_while_reusing_fonts ... ok
+test should_measure_plantuml_in_native_worker_and_release_each_cache ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/worker.rs (/mnt/data/Projects/ive/target/debug/deps/worker-19a2cf5e33ad72dc)
+
+running 6 tests
+test should_cancel_and_reap_an_active_worker ... ok
+test should_enforce_hard_deadline_independently_of_worker_io ... ok
+test should_report_early_worker_exit_without_waiting_for_deadline ... ok
+test should_report_invalid_source_from_worker ... ok
+test should_reject_worker_svg_over_output_limit ... ok
+test should_render_real_svg_in_an_isolated_worker ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/worker_faults.rs (/mnt/data/Projects/ive/target/debug/deps/worker_faults-323b9fe90aa7d0e6)
+passed worker fault: blocked-stdin
+passed worker fault: blocked-stdout
+passed worker fault: stderr-flood
+passed worker fault: oversize-frame
+passed worker fault: early-exit
+passed worker fault: memory
+passed worker fault: cancel
+   Doc-tests diagram_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests diagram_viewer
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

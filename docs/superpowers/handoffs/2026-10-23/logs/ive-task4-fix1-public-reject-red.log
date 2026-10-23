@@ -1,0 +1,46 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.16s
+     Running tests/plantuml.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml-d31deaecb3ea5437)
+
+running 1 test
+
+thread 'should_reject_reserved_first_primitives_as_sequence_message_endpoints' (4180422) panicked at engine/tests/plantuml.rs:42:13:
+accepted participant->B : hello: Ok(RenderedDiagram { svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"446\" height=\"182.8\" viewBox=\"0 0 446 182.8\"><rect x=\"0\" y=\"0\" width=\"446\" height=\"182.8\" fill=\"#ffffff\"/><g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\" id=\"lane-0\" data-kind=\"lifeline\" data-name=\"\" data-owner=\"p0\" data-target=\"\"><polyline fill=\"none\" stroke-dasharray=\"6 4\" points=\"190,67.4 190,158.8 \"/></g><g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\" id=\"lane-1\" data-kind=\"lifeline\" data-name=\"\" data-owner=\"p1\" data-target=\"\"><polyline fill=\"none\" stroke-dasharray=\"6 4\" points=\"380,67.4 380,158.8 \"/></g><g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\" id=\"p0\" data-kind=\"participant\" data-name=\"participant\" data-owner=\"\" data-target=\"\"><rect x=\"146.99\" y=\"24\" width=\"86.02\" height=\"43.400000000000006\" rx=\"0\" fill=\"#eef2ff\"/><text x=\"158.99\" y=\"52.28888888888889\" fill=\"#172033\" stroke=\"none\" font-size=\"14\" font-weight=\"400\" text-decoration=\"none\" font-style=\"normal\" xml:space=\"preserve\" font-family=\"sans-serif\">participant</text></g><g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\" id=\"p1\" data-kind=\"participant\" data-name=\"B\" data-owner=\"\" data-target=\"\"><rect x=\"338\" y=\"24\" width=\"84\" height=\"43.400000000000006\" rx=\"0\" fill=\"#eef2ff\"/><text x=\"375.8\" y=\"52.28888888888889\" fill=\"#172033\" stroke=\"none\" font-size=\"14\" font-weight=\"400\" text-decoration=\"none\" font-style=\"normal\" xml:space=\"preserve\" font-family=\"sans-serif\">B</text></g><g stroke=\"#334155\" stroke-width=\"1.5\" stroke-linejoin=\"round\" id=\"event-0\" data-kind=\"message\" data-name=\"\" data-owner=\"p0\" data-target=\"p1\"><polyline fill=\"none\" stroke-dasharray=\"none\" points=\"190,114.80000000000001 380,114.80000000000001 \"/><polygon fill=\"#334155\" points=\"380,114.80000000000001 370,109.80000000000001 370,119.80000000000001 \"/><text x=\"200\" y=\"107.6888888888889\" fill=\"#172033\" stroke=\"none\" font-size=\"14\" font-weight=\"400\" text-decoration=\"none\" font-style=\"normal\" xml:space=\"preserve\" font-family=\"sans-serif\">hello</text></g></svg>", language: PlantUml, backend: "native PlantUML", upstream: "PlantUML MIT 1.2026.9", family: "sequence", diagnostics: ["Native subset: sequence, UML graphs including icon-free ArchiMate description rectangles, Chen entity/relationship/attribute graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds."], measurement: TextMeasurementReport { entries: [TextMeasurementSummary { provenance: TextMeasurementProvenance { phase: Layout, operation: Measure, source: Profile, identity: TextMeasurementProfileIdentity { profile: MeasurementProfileId("merman.deterministic-text"), version: "merman-render@0.9.2", decorators: [] }, fallback_reason: None }, count: 3 }] }, layout_work_units: 4055 })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test should_reject_reserved_first_primitives_as_sequence_message_endpoints ... FAILED
+
+failures:
+
+failures:
+    should_reject_reserved_first_primitives_as_sequence_message_endpoints
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p diagram-engine --test plantuml`

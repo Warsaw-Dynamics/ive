@@ -1,0 +1,10 @@
+plantuml-styled-sequence: exit 0, PNG 224962 bytes, native/fallback [('20', '0')]
+plantuml-styled-graph: exit 0, PNG 195213 bytes, native/fallback [('22', '0')]
+plantuml-constant-sequence: exit 0, PNG 217879 bytes, native/fallback [('12', '0')]
+plantuml-constant-graph: exit 0, PNG 208165 bytes, native/fallback [('14', '0')]
+font-6: exit 0, PNG 135717 bytes, native/fallback [('8', '0')]
+font-14: exit 0, PNG 140890 bytes, native/fallback [('8', '0')]
+font-96: exit 0, PNG 147517 bytes, native/fallback [('8', '0')]
+empty-PATH constantsequence: exit 0; 
+empty-PATH styledgraph: exit 0; 
+Viewer/worker survivors: []; started PIDs: [3877690, 3877835, 3877968, 3878079, 3878175, 3878268, 3878421]

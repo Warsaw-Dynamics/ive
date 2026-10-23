@@ -1,0 +1,216 @@
+# Review package: 6f1244cf87cedad7a4656ab23e249e2557d32ac3..0c2ee0e3b52d4d5a02a360fd5f4ae61931fdb089
+
+## Commits
+0c2ee0e Restore raw-byte boundary for UML quoted tokens
+
+## Files changed
+ diagram-ports/engine/src/plantuml/parser/uml.rs | 114 ++++++++++++++++++++++++
+ diagram-ports/engine/tests/plantuml.rs          |  29 ++++++
+ 2 files changed, 143 insertions(+)
+
+## Diff
+diff --git a/diagram-ports/engine/src/plantuml/parser/uml.rs b/diagram-ports/engine/src/plantuml/parser/uml.rs
+index 3a5a380..b028776 100644
+--- a/diagram-ports/engine/src/plantuml/parser/uml.rs
++++ b/diagram-ports/engine/src/plantuml/parser/uml.rs
+@@ -397,20 +397,25 @@ impl Lexer<'_> {
+         row: &Row,
+         location: (usize, usize),
+     ) -> Result<(Name, usize), ParseFailure> {
+         let (base, cursor) = location;
+         let mut value = String::new();
+         let mut escaped = false;
+         for (index, ch) in row.text[cursor..].char_indices().skip(1) {
+             self.budget
+                 .charge(ch.len_utf8())
+                 .map_err(ParseFailure::terminal)?;
++            bound("label bytes", index - 1, 16 * 1024).map_err(ParseFailure::terminal)?;
++            if ch != '"' || escaped {
++                bound("label bytes", index - 1 + ch.len_utf8(), 16 * 1024)
++                    .map_err(ParseFailure::terminal)?;
++            }
+             bound("label bytes", value.len() + ch.len_utf8(), 16 * 1024 + 1)
+                 .map_err(ParseFailure::terminal)?;
+             if value.len() + ch.len_utf8() + 1 > value.capacity() {
+                 self.budget
+                     .charge(value.len())
+                     .map_err(ParseFailure::terminal)?;
+             }
+             if escaped {
+                 match ch {
+                     'n' | '\\' | '~' => {
+@@ -910,11 +915,120 @@ mod tests {
+                                 RenderError::Cancelled(_)
+                             ),
+                             ..
+                         }
+                     })
+                 ),
+                 "checkpoint {checkpoint}: {result:?}"
+             );
+         }
+     }
++
++    #[test]
++    fn should_bound_escaped_uml_quoted_tokens_by_raw_bytes() {
++        // given
++        let mut accepted_over_limit = Vec::new();
++        for count in [8192, 8193] {
++            let raw = "\\\"".repeat(count);
++            let decoded = "\"".repeat(count);
++            for (context, body) in [
++                ("declaration", format!("class \"{raw}\" as A")),
++                ("endpoint", format!("class A\nA --> \"{raw}\"")),
++                ("left role", format!("class A\nclass B\nA \"{raw}\" --> B")),
++                ("right role", format!("class A\nclass B\nA --> \"{raw}\" B")),
++            ] {
++                // when
++                let result = model(&body);
++                // then
++                match result {
++                    Ok(result) if count == 8192 => {
++                        let actual = match context {
++                            "declaration" => &result.entities[0].label,
++                            "endpoint" => &result.entities[1].alias,
++                            "left role" => &result.relations[0].left,
++                            _ => &result.relations[0].right,
++                        };
++                        assert_eq!(actual, &decoded, "{context}");
++                    }
++                    Ok(_) => accepted_over_limit.push(context),
++                    Err(error) if count == 8193 => assert!(
++                        matches!(error, RenderError::Backend(_))
++                            && error.to_string().contains("label bytes"),
++                        "{context}: {error}"
++                    ),
++                    Err(error) => panic!("rejected {context} at the raw boundary: {error}"),
++                }
++            }
++        }
++        assert!(
++            accepted_over_limit.is_empty(),
++            "accepted 16,386 raw interior bytes in {accepted_over_limit:?}"
++        );
++    }
++
++    #[test]
++    fn should_preserve_uml_quote_utf8_escape_and_eof_boundaries() {
++        // given
++        for (raw, expected) in [
++            (
++                format!("\"{}\"", r#"\n\\\~\""#),
++                Ok("\\n\\\\\\~\"".to_owned()),
++            ),
++            (format!("\"{}\"", "é".repeat(8192)), Ok("é".repeat(8192))),
++            (format!("\"{}\"", "a".repeat(16384)), Ok("a".repeat(16384))),
++            (
++                format!("\"{}", "\\\"".repeat(8192)),
++                Err("unterminated quoted identifier"),
++            ),
++            (
++                format!("\"{}", "a".repeat(16384)),
++                Err("unterminated quoted identifier"),
++            ),
++            (
++                format!("\"{}\\", "a".repeat(16383)),
++                Err("unterminated quoted identifier"),
++            ),
++            (format!("\"{}", "a".repeat(16385)), Err("label bytes")),
++            (format!("\"{}a\"", "é".repeat(8192)), Err("label bytes")),
++            ("\"\\q\"".into(), Err("quoted escape")),
++        ] {
++            let mut budget = Budget::new(&RenderOptions::default());
++            let row = super::super::ownership::Ownership::default()
++                .classify(&raw, &mut budget)
++                .unwrap();
++            let mut lexer = Lexer {
++                tokens: Vec::new(),
++                budget: &mut budget,
++                members: false,
++            };
++            // when
++            let result = lexer.quoted(&row, (0, 0));
++            // then
++            match expected {
++                Ok(expected) => {
++                    let (name, used) = result.unwrap();
++                    assert_eq!(name.text, expected);
++                    assert!(name.quoted);
++                    assert_eq!(used, raw.len());
++                }
++                Err(detail) => {
++                    let error = result.unwrap_err();
++                    assert!(format!("{error:?}").contains(detail), "{error:?}");
++                    match detail {
++                        "unterminated quoted identifier" => assert!(matches!(
++                            error.kind,
++                            super::super::error::FailureKind::Syntax(_)
++                        )),
++                        "quoted escape" => assert!(matches!(
++                            error.kind,
++                            super::super::error::FailureKind::Unsupported(_)
++                        )),
++                        _ => assert!(matches!(
++                            error.kind,
++                            super::super::error::FailureKind::Terminal(RenderError::Backend(_))
++                        )),
++                    }
++                }
++            }
++        }
++    }
+ }
+diff --git a/diagram-ports/engine/tests/plantuml.rs b/diagram-ports/engine/tests/plantuml.rs
+index de97c58..5b6cab7 100644
+--- a/diagram-ports/engine/tests/plantuml.rs
++++ b/diagram-ports/engine/tests/plantuml.rs
+@@ -4,20 +4,49 @@ fn options() -> RenderOptions {
+     RenderOptions {
+         language: Language::PlantUml,
+         ..Default::default()
+     }
+ }
+ 
+ fn diagram(body: &str) -> String {
+     format!("@startuml\n{body}\n@enduml")
+ }
+ 
++#[test]
++fn should_reject_uml_quoted_tokens_beyond_raw_byte_limit() {
++    // given
++    let raw = "\\\"".repeat(8193);
++    let mut accepted_over_limit = Vec::new();
++    for (context, body) in [
++        ("declaration", format!("class \"{raw}\" as A")),
++        ("endpoint", format!("class A\nA --> \"{raw}\"")),
++        ("left role", format!("class A\nclass B\nA \"{raw}\" --> B")),
++        ("right role", format!("class A\nclass B\nA --> \"{raw}\" B")),
++    ] {
++        // when
++        let result = render(&diagram(&body), &options());
++        // then
++        match result {
++            Ok(_) => accepted_over_limit.push(context),
++            Err(error) => assert!(
++                matches!(error, RenderError::Backend(_))
++                    && error.to_string().contains("label bytes"),
++                "{context}: {error}"
++            ),
++        }
++    }
++    assert!(
++        accepted_over_limit.is_empty(),
++        "accepted 16,386 raw interior bytes in {accepted_over_limit:?}"
++    );
++}
++
+ #[test]
+ fn should_render_adjacent_quoted_sequence_command_primitives() {
+     // given
+     for body in [
+         "participant\"A\"\nA -> B : hello",
+         "participant A\nactivate\"A\"\nA -> B : hello\ndeactivate\"A\"",
+         "\"participant\"\"Alpha\" as A\n\"activate\"\"A\"\nA -> B : hello\n\"deactivate\"\"A\"",
+     ] {
+         // when
+         let rendered = render(&diagram(body), &options()).unwrap();

@@ -1,0 +1,85 @@
+warning[unmatched-source]: allowed source was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:39:6
+   │
+39 │     "https://github.com/Warsaw-Dynamics/pgui.git",
+   │      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ no crate source matched these criteria
+
+warning[unmatched-source]: allowed source was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:40:6
+   │
+40 │     "https://github.com/zed-industries/font-kit",
+   │      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ no crate source matched these criteria
+
+warning[unmatched-source]: allowed source was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:41:6
+   │
+41 │     "https://github.com/zed-industries/xim-rs.git",
+   │      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ no crate source matched these criteria
+
+warning[unmatched-source]: allowed source was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:42:6
+   │
+42 │     "https://github.com/gfx-rs/wgpu",
+   │      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ no crate source matched these criteria
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:12:6
+   │
+12 │     "0BSD",
+   │      ━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:14:6
+   │
+14 │     "Apache-2.0 WITH LLVM-exception",
+   │      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:15:6
+   │
+15 │     "BSD-2-Clause",
+   │      ━━━━━━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:16:6
+   │
+16 │     "BSD-3-Clause",
+   │      ━━━━━━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:17:6
+   │
+17 │     "BSL-1.0",
+   │      ━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:18:6
+   │
+18 │     "CC0-1.0",
+   │      ━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:19:6
+   │
+19 │     "ISC",
+   │      ━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:21:6
+   │
+21 │     "MIT-0",
+   │      ━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:23:6
+   │
+23 │     "MPL-2.0",
+   │      ━━━━━━━ unmatched license allowance
+
+warning[license-not-encountered]: license was not encountered
+   ┌─ /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/../deny.toml:24:6
+   │
+24 │     "Unicode-3.0",
+   │      ━━━━━━━━━━━ unmatched license allowance
+
+licenses ok, sources ok

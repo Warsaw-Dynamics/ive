@@ -1,0 +1,46 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-2028a1e8cb1291f3)
+
+running 1 test
+
+thread 'plantuml::parser::sequence::tests::should_reject_reserved_first_primitives_as_sequence_message_endpoints' (4180127) panicked at engine/src/plantuml/parser/sequence.rs:518:17:
+accepted participant->B : hello: Ok(Sequence { participants: [Participant { name: "participant", label: "participant", kind: Participant }, Participant { name: "B", label: "B", kind: Participant }], events: [Message { from: 0, to: 1, arrow: Arrow { start: None, end: Filled, dash: Solid }, label: "hello" }] })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test plantuml::parser::sequence::tests::should_reject_reserved_first_primitives_as_sequence_message_endpoints ... FAILED
+
+failures:
+
+failures:
+    plantuml::parser::sequence::tests::should_reject_reserved_first_primitives_as_sequence_message_endpoints
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 162 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

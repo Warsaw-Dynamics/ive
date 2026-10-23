@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running `/mnt/data/Projects/ive/target/debug/plantuml-grammar-gen generate`
+Generated 5 PlantUML parser(s) with LALRPOP 0.23.2.

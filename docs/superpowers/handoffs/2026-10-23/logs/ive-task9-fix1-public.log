@@ -1,0 +1,134 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-tree-parallel/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 7.97s
+     Running tests/plantuml_constants.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_constants-98a411f5a7ef27a1)
+
+running 44 tests
+test should_accept_chen_comment_owned_directives_and_wrappers ... ok
+test should_avoid_constant_expansion_inside_chen_inline_block_comments ... ok
+test should_close_expanded_note_terminators_before_normal_syntax ... ok
+test should_close_expanded_opening_and_continuation_actions_before_normal_syntax ... ok
+test should_consume_comment_opener_before_recognizing_any_closing_delimiter ... ok
+test should_deny_active_chen_resources_after_comment_ownership_ends ... ok
+test should_deny_generated_capabilities_and_active_tim_grammar ... ok
+test should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_chen_title ... ok
+test should_expand_active_constant_after_closed_comment_and_literal_apostrophe_in_message ... ok
+test should_expand_case_sensitive_boundaries_inside_quotes_and_after_backslash_n ... ok
+test should_expand_raw_note_and_action_rows_before_comment_normalization ... ok
+test should_expand_wrapper_looking_raw_note_rows ... ok
+test should_freeze_prior_values_without_rescanning_insertions ... ok
+test should_identify_inert_duplicate_label_candidates_and_omitted_occurrences ... ok
+test should_ignore_block_commented_wrappers_before_definitions ... ok
+test should_keep_case_insensitive_uml_wrappers_and_unknown_names ... ok
+test should_keep_chen_commented_definitions_inert_without_changing_identity ... ok
+test should_keep_chen_comments_inert_around_active_constants_and_shared_preamble ... ok
+test should_keep_comment_looking_action_openings_raw ... ok
+test should_keep_comment_looking_bytes_active_in_explicit_literal_ownership ... ok
+test should_keep_note_rows_raw_when_expansion_removes_authored_terminator ... ok
+test should_keep_quotes_and_mutual_looking_values_literal ... ok
+test should_keep_raw_ownership_until_note_and_action_terminators ... ok
+test should_map_expanded_style_failure_to_use_and_definition ... ok
+test should_map_generated_label_resource_error_to_its_use_and_definition ... ok
+test should_preserve_data_and_raw_note_payloads_after_expansion ... ok
+test should_preserve_hash_tree_syntax_and_inert_literal_hashes ... ok
+test should_preserve_inert_comments_without_preprocessor_execution ... ok
+test should_preserve_inert_inline_comments_around_expanded_source ... ok
+test should_preserve_inert_resource_and_dollar_percent_text ... ok
+test should_preserve_leading_carriage_return_definition_indentation ... ok
+test should_preserve_literal_data_wrappers_and_strict_generated_admission ... ok
+test should_preserve_separated_comment_delimiter_and_apostrophe_spacing ... ok
+test should_preserve_unrelated_unicode_and_blank_line_admission ... ok
+test should_recognize_comment_normalized_opening_wrappers ... ok
+test should_reject_ambiguous_non_ascii_adjacent_constant_boundaries ... ok
+test should_reject_definitions_inside_style_sheets ... ok
+test should_reject_generated_wrapper_after_expanded_action_terminator ... ok
+test should_reject_invalid_literal_controls_even_when_unused ... ok
+test should_reject_malformed_definition_headers_without_registering_partial_values ... ok
+test should_reject_shadowing_and_late_or_outside_definitions ... ok
+test should_report_bounded_candidates_for_identical_expanded_late_labels ... ok
+test should_retain_chen_stylesheet_ownership_of_active_definitions ... ok
+test should_reuse_options_without_retaining_constants ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+     Running tests/plantuml_control.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_control-4c0dab511128ff4a)
+
+running 23 tests
+test should_admit_exact_original_state_and_activity_fixtures_deterministically ... ok
+test should_admit_sequence_participants_named_like_state_and_activity_commands ... ok
+test should_attach_descriptions_to_punctuated_quoted_state_displays ... ok
+test should_attach_ordered_state_descriptions_and_resolve_forward_composites ... ok
+test should_bind_reverse_pseudostates_by_semantic_role ... ok
+test should_cancel_state_and_activity_inside_layout_measurement ... ok
+test should_converge_only_live_activity_branches ... ok
+test should_distinguish_synchronizing_join_from_merge_and_keep_dead_lanes_dead ... ok
+test should_enforce_tiny_state_and_activity_limits ... ok
+test should_keep_implicit_false_path_and_dead_branch_exit_contracts ... ok
+test should_keep_implicit_state_family_for_pseudostate_targets ... ok
+test should_keep_state_description_order_and_hyphenated_literal_text ... ok
+test should_preserve_action_opening_line_whitespace_and_comment_like_text ... ok
+test should_preserve_elseif_loop_fork_and_nested_partition_topology ... ok
+test should_preserve_raw_note_rows_after_keyword_named_sequence_messages ... ok
+test should_preserve_text_commands_inside_class_members ... ok
+test should_reject_ancestor_state_references_without_synthesizing_local_copies ... ok
+test should_reject_nonliteral_state_alias_forms ... ok
+test should_reject_preprocessing_inside_raw_action_and_note_bodies ... ok
+test should_reject_unsupported_control_syntax_and_mismatched_stacks ... ok
+test should_retain_interior_semicolons_and_raw_multiline_action_and_note_rows ... ok
+test should_reuse_initial_and_final_per_scope ... ok
+test should_select_families_without_reading_payload_as_commands ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running tests/plantuml_tree_data.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_tree_data-224103ecb58be6ca)
+
+running 19 tests
+test should_admit_exact_fresh_original_tree_and_data_fixtures ... ok
+test should_admit_explicit_mindmap_roots_and_org_mode_smart_prefixes ... ok
+test should_cancel_new_families_during_real_layout_measurement ... ok
+test should_enforce_flow_scalar_depth_at_exact_limit_and_one_below ... ok
+test should_enforce_source_model_depth_work_output_limits_for_new_families ... ok
+test should_fail_yaml_alias_bomb_at_first_token_before_value_construction ... ok
+test should_keep_inert_yaml_capability_looking_literals_and_original_block_stopping_rule ... ok
+test should_keep_long_root_prefixes_and_aliases_distinct_from_display_labels ... ok
+test should_keep_root_scalar_and_empty_container_policies_and_control_character_text ... ok
+test should_keep_wbs_global_parentage_direction_alias_and_pseudo_topology ... ok
+test should_keep_yaml_string_types_duplicates_quotes_flow_and_literal_blocks ... ok
+test should_normalize_mindmap_first_child_depth_without_guessing_visual_indent ... ok
+test should_preserve_data_literal_markup_apostrophes_unicode_and_resource_looking_text ... ok
+test should_preserve_json_duplicate_rows_types_and_container_row_connections ... ok
+test should_reject_active_preprocessor_lines_inside_yaml_literal_blocks ... ok
+test should_reject_invalid_tree_structure_styles_crosslinks_and_data_syntax ... ok
+test should_reject_spaced_yaml_merge_keys_but_keep_escaped_quote_flow_literals ... ok
+test should_render_long_whitespace_quote_and_escape_flow_fields_with_bounded_work ... ok
+test should_use_independent_mindmap_side_stacks_and_stack_new_roots ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.44s
+

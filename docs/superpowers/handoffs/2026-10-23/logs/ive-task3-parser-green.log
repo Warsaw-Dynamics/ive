@@ -1,0 +1,43 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 2.07s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-2028a1e8cb1291f3)
+
+running 7 tests
+test plantuml::parser::preamble::tests::should_interrupt_region_validation_before_copying_a_long_label ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_region_tokens_and_preserve_the_body_span ... ok
+test plantuml::parser::preamble::tests::should_require_generated_whole_input_consumption_after_the_body_boundary ... ok
+test plantuml::parser::preamble::tests::should_admit_actual_parser_storage_before_entry_and_cancel_generated_delivery_and_reductions ... ok
+test plantuml::parser::preamble::tests::should_cancel_lexical_literal_scanning_before_allocating_the_value_token ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_style_rules_without_spending_syntax_model_items ... ok
+test plantuml::parser::preamble::tests::should_borrow_the_remaining_family_body_with_physical_first_row_whitespace ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.00s
+

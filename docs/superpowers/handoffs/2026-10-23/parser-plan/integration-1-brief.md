@@ -1,0 +1,13 @@
+# Integration batch 1: sequence, state and tree/files/board
+
+Central sole-writer checkout `/mnt/data/Projects/ive/.worktree/diagram-ports`, branch `diagram-ports`, clean BASE1506eb1f14248eb6dfe109164308f6914e3421ec. Sequence at this base is independently reviewed, including both compatibility fixes.
+
+Merge reviewed state branch head ec608400b2fb375cd899c23301bb7472c27b558e and reviewed tree branch head4a31cb7a3a3ceffefeaf17be2471e1dd20bee1e2, preserving source commits with local no-ff merges. Both complete task and scoped fix reviews approve; reports task-7-report.md/task-9-report.md and final verdicts /tmp/ive-plantuml-lalrpop-{state,tree}-rereview-1.md. No user-main merge/push, no worker-worktree edits.
+
+Resolve shared-file unions only: parser/generated registration, actual preparse dispatch, provenance destinations, admission proofs and mechanically generated manifest. Preserve sequence fix2, state normalized-arrow adjacency/origin spans, and tree syntax-versus-label bounds. All family models/scenes/typed grammars remain the reviewed versions. Common BodySource::reborrow and actual fixed live-view admission occur once; all six generated family routes parse before legacy error mapping, each facade maps once. Keep bounded ownership checkpoint and raw/expanded behavior. No fallback, alternate parser or new feature.
+
+Preview conflicts: merging state into sequence only admission.md; merging state/tree additionally parser/mod.rs, plantuml/mod.rs, generated/manifest.json and provenance/plantuml-parser.json. Union lists/registration/dispatch, do not choose one whole side. Regenerate manifest mechanically using private integration generator target; nine generated outputs expected. Do not hand-edit generated outputs. Keep source/license/fixture hashes unchanged.
+
+All Cargo/spawn-Cargo outer `/tmp/ive-diagram-build-locked.sh`, shared engine target `/mnt/data/Projects/ive/target`, locked/offline; generator private target `/mnt/data/Projects/ive/target/diagram-generator-integration`, cwd/tmp/absolute manifest. No shared clean/metadata tricks or worker example binaries. Existing public API/default limits/semantic IDs/geometry unchanged. Use apply_patch for conflict edits. Do not change root-owned ledgers/master/task briefs or .cargo configs.
+
+Run integration compilation, fmt, private generator check and exact source audit; root runs full16 Rust/Clippy/release/audits/43baseline/native/empty-PATH checks once after freeze. No duplicated full suites/captures. Freeze clean and write concise integration-1-report.md here with merge heads, exact conflict files/decisions, commands/results and any genuine unresolved issue. Root creates independent integration review and verification next.

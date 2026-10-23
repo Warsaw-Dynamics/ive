@@ -1,0 +1,6 @@
+dotted: exit 0
+at: exit 0
+dotted-control: exit 0
+label-arrow: exit 0
+label-control: exit 0
+label-arrow-control: exit 0

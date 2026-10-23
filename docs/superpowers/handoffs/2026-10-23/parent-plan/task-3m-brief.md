@@ -1,0 +1,13 @@
+# Task 3M: Native ASCII Git history
+
+Read first: dedicated Task8 Git requirements. HOLD until explicit release from recorded reviewed base. `native-global-constraints.md` binding; read it, preceding reports and `/tmp/ive-plantuml-inventory-remaining-semantics.md` completely. Only ASCII Git new family; no on-disk repository or git execution.
+
+Exact @startgit/@endgit, preserve raw rows/columns/connector cells. Typed GitHistory commits, parent edges and source lanes, newest→older ancestry. Minimum useful linear chain AND simple two-parent branch/merge; unique IDs vs optional parenthesized comments, measured labels and genuine commit nodes/ancestor links. Not Mermaid gitGraph command aliases and not a generic text block.
+
+Source GitTextArea/Commit/CursorPosition grammar only; DO NOT inspect/translate SmetanaForGit. Native dedicated lane layout or checked existing Dagre okay with honest geometry difference. Star rows, verticalcontinuation/diagonalbranch-merge and any admitted *-tip form must be fully interpreted. Connector-only rows consumed/validated; reject dangling/ambiguous/unknowncrossings, duplicate/emptycommitnames, malformedcomments, unmodeledmultiple-stars/octopus/horizontalpatterns rather than dropping them. Originalprobetwo-parentcase before claiming upstream admission (source-derived proposal in report is NOT verified oracle).
+
+Sparse grid by actual row bytes, no width×height padding amplification. Each connector walk tracks visited(row,column,direction), charges every transition, ends at commit or error; precomputed indices/no unbounded retry/recursive trace. Count parent edges/pathvertices/labels under item/text/work limits and cancel during traversal/layout.
+
+RED tests: preserved columns, linearchain ancestors, verified two-parentmerge with both parents reaching base, commentlabelretention, newest→older placement and one visible node/label/owned edge per identity, dangling/duplicate/malformed/commandlanguage failure, longrow+manyshortrows amplification/work/depth/output/cancellation. Full terminal/usvg/finitegeometry and textcontainment.
+
+Use exact `/tmp/ive-plantuml-native-oracles/git-linear-history.puml`, fresh bounded originalmerge probe and meaningful nativecases without modifying originals. Source/license traces as commoncontract; no excludedlayout import. Honest viewer example, real background merge capture and native counts, inspect/stopinstances. Focused/full verification, scopedcommit, `task-3m-report.md` here with grid/trace/layoutinterfaces, syntax/rejections, REDGREEN/counts/commands/sourceproof/captures/residuals. Independent spec+quality gate.

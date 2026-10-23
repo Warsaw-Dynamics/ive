@@ -1,0 +1,47 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-uml-parallel/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 5.59s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-19a7b1ebd9bb364e)
+
+running 11 tests
+test plantuml::parser::uml::tests::should_cancel_generated_delivery_and_model_actions ... ok
+test plantuml::parser::uml::tests::should_keep_archimate_contextual_names_and_quoted_arrow_labels ... ok
+test plantuml::parser::uml::tests::should_map_generated_and_semantic_failures_once_through_expansion_origins ... ok
+test plantuml::parser::uml::tests::should_keep_shared_comment_ownership_at_the_family_boundary ... ok
+test plantuml::parser::uml::tests::should_build_generated_scopes_members_aliases_and_relation_roles ... ok
+test plantuml::parser::uml::tests::should_keep_direction_spacing_and_quotes_exact ... ok
+test plantuml::parser::uml::tests::should_bound_syntax_tokens_depth_work_and_cancel_before_generated_delivery ... ok
+test plantuml::parser::uml::tests::should_reject_generated_suffixes_and_unclosed_scopes_at_eof ... ok
+test plantuml::parser::uml::tests::should_keep_every_safe_archimate_fill_and_reject_icons_in_every_position ... ok
+test plantuml::parser::uml::tests::should_preserve_uml_quote_utf8_escape_and_eof_boundaries ... ok
+test plantuml::parser::uml::tests::should_bound_escaped_uml_quoted_tokens_by_raw_bytes ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 165 filtered out; finished in 0.49s
+

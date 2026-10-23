@@ -1,0 +1,14 @@
+ive-task3-review-empty-region-control.puml: exit 1; diagram-viewer: diagram worker: unsupported diagram feature: PlantUML at line 2, column 6: multiline/empty document region (expanded bytes 15..15); direct candidate at line 2, column 6
+
+ive-task3-review-empty-region-spaces.puml: exit 1; diagram-viewer: diagram worker: unsupported diagram feature: PlantUML at line 2, column 9: multiline/empty document region (expanded bytes 18..18); direct candidate at line 2, column 9
+
+ive-task3-review-empty-skinparam-spaces.puml: exit 1; diagram-viewer: diagram worker: unsupported diagram feature: PlantUML at line 2, column 29: font size requires an integer from 6 through 96 (expanded bytes 38..38); direct candidate at line 2, column 29
+
+ive-task3-review-empty-style-property-spaces.puml: exit 1; diagram-viewer: diagram worker: unsupported diagram feature: PlantUML at line 4, column 12: font size requires an integer from 6 through 96 (expanded bytes 36..36); direct candidate at line 4, column 12
+
+ive-task3-review-repeated-sheets-1.puml: exit 0; 
+repeated-sheet SVG SHA256 e290420a78de0b23539d99b01b4951c19681839c1479ea954665dba42c3f4594
+ive-task3-review-repeated-sheets-100.puml: exit 0; 
+repeated-sheet SVG SHA256 e290420a78de0b23539d99b01b4951c19681839c1479ea954665dba42c3f4594
+ive-task3-review-repeated-sheets-500.puml: exit 0; 
+repeated-sheet SVG SHA256 e290420a78de0b23539d99b01b4951c19681839c1479ea954665dba42c3f4594

@@ -1,0 +1,61 @@
+{
+  "sha256": "8aaa54075c1e0ad039cf36db378650ea5284e455cec2f86c4aee064a94e83b7c",
+  "states": 59,
+  "terminals": 18,
+  "proof": [
+    {
+      "depth": 0,
+      "reachable": 52,
+      "max_live": 8,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 14,
+      "max_diagnostic_growth_peak": 21
+    },
+    {
+      "depth": 1,
+      "reachable": 107,
+      "max_live": 10,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 18,
+      "max_diagnostic_growth_peak": 27
+    },
+    {
+      "depth": 2,
+      "reachable": 162,
+      "max_live": 12,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 22,
+      "max_diagnostic_growth_peak": 33
+    },
+    {
+      "depth": 8,
+      "reachable": 492,
+      "max_live": 24,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 46,
+      "max_diagnostic_growth_peak": 69
+    },
+    {
+      "depth": 64,
+      "reachable": 3572,
+      "max_live": 136,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 270,
+      "max_diagnostic_growth_peak": 405
+    },
+    {
+      "depth": 65,
+      "reachable": 3627,
+      "max_live": 138,
+      "max_reductions": 4,
+      "max_expected": 8,
+      "max_diagnostic_capacity": 274,
+      "max_diagnostic_growth_peak": 411
+    }
+  ]
+}

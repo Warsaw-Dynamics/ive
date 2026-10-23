@@ -1,0 +1,83 @@
+{
+  "sha256": "965aeffbee0584b443512415e6651a25639777d2ffc6effcaee42702b2851d49",
+  "states": 92,
+  "terminals": 27,
+  "open_states": [
+    2,
+    3,
+    4,
+    7,
+    18,
+    42,
+    43
+  ],
+  "proof": [
+    {
+      "depth": 0,
+      "reachable": 11,
+      "states": 14,
+      "edges": 18,
+      "max_live": 6,
+      "max_reductions": 4,
+      "max_expected": 9,
+      "max_diagnostic_capacity": 8,
+      "max_diagnostic_growth_peak": 9
+    },
+    {
+      "depth": 1,
+      "reachable": 76,
+      "states": 48,
+      "edges": 90,
+      "max_live": 13,
+      "max_reductions": 4,
+      "max_expected": 12,
+      "max_diagnostic_capacity": 16,
+      "max_diagnostic_growth_peak": 24
+    },
+    {
+      "depth": 2,
+      "reachable": 684,
+      "states": 89,
+      "edges": 183,
+      "max_live": 22,
+      "max_reductions": 4,
+      "max_expected": 12,
+      "max_diagnostic_capacity": 34,
+      "max_diagnostic_growth_peak": 51
+    },
+    {
+      "depth": 3,
+      "reachable": 5581,
+      "states": 92,
+      "edges": 187,
+      "max_live": 31,
+      "max_reductions": 4,
+      "max_expected": 12,
+      "max_diagnostic_capacity": 52,
+      "max_diagnostic_growth_peak": 78
+    },
+    {
+      "depth": 4,
+      "reachable": 44790,
+      "states": 92,
+      "edges": 187,
+      "max_live": 40,
+      "max_reductions": 4,
+      "max_expected": 12,
+      "max_diagnostic_capacity": 70,
+      "max_diagnostic_growth_peak": 105
+    }
+  ],
+  "viable_prefix_edges": 187,
+  "reduction_closure_edges": 187,
+  "max_plus_induction": "all 92 end-state distances reachable by depth3; D4<=D3+9 componentwise; max D3=33",
+  "weighted_path_bounds": {
+    "0": 6,
+    "1": 15,
+    "2": 24,
+    "8": 78,
+    "64": 582,
+    "65": 591,
+    "128": 1158
+  }
+}

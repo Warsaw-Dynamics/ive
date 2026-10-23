@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running `/mnt/data/Projects/ive/target/diagram-generator-state/debug/plantuml-grammar-gen check`
+Verified 6 reproducible PlantUML generated parser(s); check wrote no tracked outputs.

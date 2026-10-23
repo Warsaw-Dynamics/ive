@@ -1,0 +1,50 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-state-parallel/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 6.19s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-19a7b1ebd9bb364e)
+
+running 1 test
+test plantuml::parser::state::tests::should_reject_generated_state_arrows_split_between_operator_primitives ... FAILED
+
+failures:
+
+---- plantuml::parser::state::tests::should_reject_generated_state_arrows_split_between_operator_primitives stdout ----
+
+thread 'plantuml::parser::state::tests::should_reject_generated_state_arrows_split_between_operator_primitives' (208217) panicked at engine/src/plantuml/parser/state.rs:402:13:
+accepted split arrow "- >"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    plantuml::parser::state::tests::should_reject_generated_state_arrows_split_between_operator_primitives
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 176 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

@@ -1,0 +1,41 @@
+TAP version 13
+# Subtest: should admit registered parser and grammar destinations and reject unregistered destinations
+not ok 1 - should admit registered parser and grammar destinations and reject unregistered destinations
+  ---
+  duration_ms: 2.856703
+  location: '/mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/tools/audit-plantuml.test.mjs:8:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Got unwanted exception.
+    Actual message: "unregistered Rust destination: net/sourceforge/plantuml/filesdiagram/FEntry.java"
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  actual:
+  error: 'unregistered Rust destination: net/sourceforge/plantuml/filesdiagram/FEntry.java'
+  stack: |-
+    validateManifest (file:///mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/tools/audit-plantuml.mjs:20:83)
+    file:///mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/tools/audit-plantuml.test.mjs:13:29
+    getActual (node:assert:840:5)
+    Function.doesNotThrow (node:assert:1006:32)
+    TestContext.<anonymous> (file:///mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/tools/audit-plantuml.test.mjs:13:10)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.start (node:internal/test_runner/test:877:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  operator: 'doesNotThrow'
+  stack: |-
+    TestContext.<anonymous> (file:///mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/tools/audit-plantuml.test.mjs:13:10)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:979:25)
+    Test.start (node:internal/test_runner/test:877:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 38.386208

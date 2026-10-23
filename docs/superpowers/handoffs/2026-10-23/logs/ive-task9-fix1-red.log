@@ -1,0 +1,73 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-tree-parallel/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 6.60s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-19a7b1ebd9bb364e)
+
+running 12 tests
+test plantuml::activitytile::tests::should_route_nested_group_inputs_clear_of_long_captions ... ok
+test plantuml::boardscene::tests::should_contain_long_board_labels_with_measured_card_pitches ... ok
+test plantuml::graph::tests::should_contain_long_multiline_compound_captions_in_both_directions ... ok
+test plantuml::parser::definition::tests::should_reject_overlong_literals_and_complete_input_after_a_line_break ... ok
+test plantuml::parser::outline::tests::should_cancel_shared_row_lexing_before_owning_long_literals ... ok
+test plantuml::parser::outline::tests::should_copy_long_syntax_with_source_literal_and_work_admission ... FAILED
+test plantuml::parser::preamble::tests::should_interrupt_region_validation_before_copying_a_long_label ... ok
+test plantuml::parser::tree::tests::should_preserve_long_normalized_root_prefixes ... FAILED
+test plantuml::parser::tree::tests::should_preserve_long_parenthesized_and_quoted_label_aliases ... FAILED
+test plantuml::source::tests::should_charge_long_line_scanning_before_finishing_the_line ... ok
+test plantuml::yaml::tests::should_scan_long_quoted_and_escaped_flow_fields_with_linear_charged_work ... ok
+test plantuml::yaml::tests::should_scan_long_whitespace_flow_fields_with_linear_charged_work ... ok
+
+failures:
+
+---- plantuml::parser::outline::tests::should_copy_long_syntax_with_source_literal_and_work_admission stdout ----
+
+thread 'plantuml::parser::outline::tests::should_copy_long_syntax_with_source_literal_and_work_admission' (201136) panicked at engine/src/plantuml/parser/outline.rs:246:41:
+called `Result::unwrap()` on an `Err` value: ParseFailure { span: 0..0, kind: Terminal(Backend("PlantUML label bytes value 16385 exceeds limit 16384")) }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- plantuml::parser::tree::tests::should_preserve_long_normalized_root_prefixes stdout ----
+
+thread 'plantuml::parser::tree::tests::should_preserve_long_normalized_root_prefixes' (201138) panicked at engine/src/plantuml/parser/tree.rs:353:93:
+called `Result::unwrap()` on an `Err` value: Backend("PlantUML label bytes value 16385 exceeds limit 16384")
+
+---- plantuml::parser::tree::tests::should_preserve_long_parenthesized_and_quoted_label_aliases stdout ----
+
+thread 'plantuml::parser::tree::tests::should_preserve_long_parenthesized_and_quoted_label_aliases' (201139) panicked at engine/src/plantuml/parser/tree.rs:373:63:
+called `Result::unwrap()` on an `Err` value: Backend("PlantUML label bytes value 16385 exceeds limit 16384")
+
+
+failures:
+    plantuml::parser::outline::tests::should_copy_long_syntax_with_source_literal_and_work_admission
+    plantuml::parser::tree::tests::should_preserve_long_normalized_root_prefixes
+    plantuml::parser::tree::tests::should_preserve_long_parenthesized_and_quoted_label_aliases
+
+test result: FAILED. 9 passed; 3 failed; 0 ignored; 0 measured; 167 filtered out; finished in 0.51s
+
+error: test failed, to rerun pass `-p diagram-engine --lib`

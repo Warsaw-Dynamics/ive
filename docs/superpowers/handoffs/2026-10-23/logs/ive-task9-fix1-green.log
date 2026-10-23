@@ -1,0 +1,118 @@
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-core-0.9.2/src/operation.rs:449:14
+    |
+449 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |              ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+449 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+449 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+    |
+
+warning: `merman-core` (lib) generated 1 warning (run `cargo fix --lib -p merman-core` to apply 1 suggestion)
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /mnt/data/Projects/ive/.worktree/diagram-ports/diagram-ports/vendor/merman-render-0.9.2/src/environment.rs:585:25
+    |
+585 |         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |                         ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+    |
+585 -         let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+585 +         let _ = counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+    |
+
+warning: `merman-render` (lib) generated 1 warning (run `cargo fix --lib -p merman-render` to apply 1 suggestion)
+   Compiling diagram-engine v0.1.0 (/mnt/data/Projects/ive/.worktree/diagram-tree-parallel/diagram-ports/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 6.73s
+     Running unittests src/lib.rs (/mnt/data/Projects/ive/target/debug/deps/diagram_engine-19a7b1ebd9bb364e)
+
+running 64 tests
+test plantuml::parser::board::tests::should_cancel_generated_board_delivery_and_stage_actions ... ok
+test plantuml::parser::board::tests::should_generate_nearest_lower_stage_parents_and_gaps ... ok
+test plantuml::parser::board::tests::should_reject_direct_generated_incomplete_stage_rows ... ok
+test plantuml::parser::definition::tests::should_accept_boundary_names_literals_and_literal_comment_bytes ... ok
+test plantuml::parser::definition::tests::should_admit_generated_stacks_before_parser_entry ... ok
+test plantuml::parser::definition::tests::should_bound_ascii_names_and_require_same_line_nonempty_literal ... ok
+test plantuml::parser::definition::tests::should_cancel_during_lexical_trivia_scanning_before_retention ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_reduction_and_literal_validation ... ok
+test plantuml::parser::definition::tests::should_cancel_generated_token_delivery_without_fake_eof ... ok
+test plantuml::parser::definition::tests::should_deliver_cancelled_at_exhausted_iterator_instead_of_eof ... ok
+test plantuml::parser::definition::tests::should_let_generated_syntax_reject_malformed_header_structure ... ok
+test plantuml::parser::definition::tests::should_map_nonzero_utf8_definition_spans ... ok
+test plantuml::parser::definition::tests::should_parse_literal_definition_with_generated_grammar ... ok
+test plantuml::parser::definition::tests::should_preserve_unicode_literal_edges_and_unicode_leading_indentation ... ok
+test plantuml::parser::definition::tests::should_reject_controls_continuations_and_parameterized_definitions ... ok
+test plantuml::parser::definition::tests::should_reject_insufficient_work_before_generated_parser_entry ... ok
+test plantuml::parser::definition::tests::should_reject_overflowing_or_mismatched_source_views_before_lexing ... ok
+test plantuml::parser::definition::tests::should_reject_overlong_literals_and_complete_input_after_a_line_break ... ok
+test plantuml::parser::document::tests::should_admit_stacks_and_preserve_cancellation_in_delivery_reductions_and_eof ... ok
+test plantuml::parser::document::tests::should_borrow_body_bytes_and_preserve_physical_utf8_lines ... ok
+test plantuml::parser::document::tests::should_let_generated_productions_own_pairing_placement_and_complete_eof ... ok
+test plantuml::parser::document::tests::should_map_generated_document_failures_to_one_frozen_definition_use ... ok
+test plantuml::parser::document::tests::should_preserve_authored_raw_rows_and_follow_expanded_next_row_terminators ... ok
+test plantuml::parser::files::tests::should_cancel_generated_file_delivery_and_path_actions ... ok
+test plantuml::parser::files::tests::should_generate_literal_paths_and_raw_sibling_notes ... ok
+test plantuml::parser::files::tests::should_reject_direct_generated_empty_components_and_unclosed_notes ... ok
+test plantuml::parser::header::tests::should_admit_header_source_and_interrupt_primitive_scans_before_retention ... ok
+test plantuml::parser::header::tests::should_derive_typed_headers_without_confusing_keyword_endpoints_or_empty_rows ... ok
+test plantuml::parser::header::tests::should_freeze_state_header_facts_before_literal_label_payload ... ok
+test plantuml::parser::header::tests::should_preserve_complete_keyword_prefixed_endpoint_names_in_header_evidence ... ok
+test plantuml::parser::outline::tests::should_admit_actual_generated_stacks_and_arenas_before_allocation ... ok
+test plantuml::parser::outline::tests::should_cancel_shared_row_lexing_before_owning_long_literals ... ok
+test plantuml::parser::outline::tests::should_copy_long_syntax_with_source_literal_and_work_admission ... ok
+test plantuml::parser::ownership::tests::should_check_cancellation_during_comment_ownership_before_retaining_text ... ok
+test plantuml::parser::preamble::tests::should_admit_actual_parser_storage_before_entry_and_cancel_generated_delivery_and_reductions ... ok
+test plantuml::parser::preamble::tests::should_borrow_the_remaining_family_body_with_physical_first_row_whitespace ... ok
+test plantuml::parser::preamble::tests::should_cancel_lexical_literal_scanning_before_allocating_the_value_token ... ok
+test plantuml::parser::preamble::tests::should_emit_empty_literals_for_whitespace_only_value_tails ... ok
+test plantuml::parser::preamble::tests::should_interrupt_region_validation_before_copying_a_long_label ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_region_tokens_and_preserve_the_body_span ... ok
+test plantuml::parser::preamble::tests::should_lower_generated_style_rules_without_spending_syntax_model_items ... ok
+test plantuml::parser::preamble::tests::should_require_generated_whole_input_consumption_after_the_body_boundary ... ok
+test plantuml::parser::sequence::tests::should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation ... ok
+test plantuml::parser::sequence::tests::should_bound_token_retention_before_appending_a_fifth_token ... ok
+test plantuml::parser::sequence::tests::should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle ... ok
+test plantuml::parser::sequence::tests::should_continue_shared_comment_ownership_at_the_preamble_boundary ... ok
+test plantuml::parser::sequence::tests::should_locate_generated_sequence_suffix_after_an_inline_utf8_comment ... ok
+test plantuml::parser::sequence::tests::should_map_sequence_failure_once_at_a_frozen_expansion_use ... ok
+test plantuml::parser::sequence::tests::should_preserve_raw_expanded_note_rows_crlf_and_original_comment_gaps ... ok
+test plantuml::parser::sequence::tests::should_reject_direct_generated_suffix_eof_and_cancel_delivery_and_actions ... ok
+test plantuml::parser::sequence::tests::should_reject_generated_sequence_suffix_and_unclosed_structures ... ok
+test plantuml::parser::token::tests::should_bound_wide_primitive_buffer_before_generated_syntax ... ok
+test plantuml::parser::token::tests::should_cancel_before_token_buffer_growth_and_keep_retained_capacity ... ok
+test plantuml::parser::token::tests::should_emit_primitive_tokens_without_requiring_header_separators ... ok
+test plantuml::parser::token::tests::should_lex_leading_carriage_return_as_original_indentation ... ok
+test plantuml::parser::tree::tests::should_cancel_both_generated_tree_entries_during_delivery_and_actions ... ok
+test plantuml::parser::tree::tests::should_generate_distinct_wbs_aliases_and_pseudo_nodes ... ok
+test plantuml::parser::tree::tests::should_generate_independent_mindmap_sides ... ok
+test plantuml::parser::tree::tests::should_keep_oversized_display_labels_rejected ... ok
+test plantuml::parser::tree::tests::should_map_generated_alias_failure_once_to_frozen_definition_use ... ok
+test plantuml::parser::tree::tests::should_preserve_long_normalized_root_prefixes ... ok
+test plantuml::parser::tree::tests::should_preserve_long_parenthesized_and_quoted_label_aliases ... ok
+test plantuml::parser::tree::tests::should_preserve_zero_marker_literal_tail_and_shared_comment_checkpoint ... ok
+test plantuml::parser::tree::tests::should_reject_direct_generated_tree_openers_modifiers_and_suffixes ... ok
+
+test result: ok. 64 passed; 0 failed; 0 ignored; 0 measured; 115 filtered out; finished in 0.18s
+
+     Running tests/plantuml_constants.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_constants-98a411f5a7ef27a1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.00s
+
+     Running tests/plantuml_control.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_control-4c0dab511128ff4a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+     Running tests/plantuml_tree_data.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_tree_data-224103ecb58be6ca)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+

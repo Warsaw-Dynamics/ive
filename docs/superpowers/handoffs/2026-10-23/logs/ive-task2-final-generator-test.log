@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running unittests src/main.rs (/mnt/data/Projects/ive/target/debug/deps/plantuml_grammar_gen-889ace8d1b129a46)
+
+running 3 tests
+test tests::should_reject_unknown_output_conflicts ... ok
+test tests::should_generate_reproducibly_and_check_without_writing ... ok
+test tests::should_reject_drift_missing_outputs_and_version_mismatch_read_only ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

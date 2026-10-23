@@ -1,0 +1,58 @@
+[
+  {
+    "family": "tree",
+    "entry": "Mindmap",
+    "sha256": "46efd9c392b300833e8fa021f7f5dbb691f30d0e04c8445f18819495175a04c3",
+    "states": 14,
+    "terminals": 15,
+    "reachable": 10,
+    "max_live": 6,
+    "max_diagnostic": 6,
+    "max_reductions": 4,
+    "max_expected": 3,
+    "max_diagnostic_capacity": 8,
+    "max_diagnostic_growth_peak": 9
+  },
+  {
+    "family": "tree",
+    "entry": "Wbs",
+    "sha256": "46efd9c392b300833e8fa021f7f5dbb691f30d0e04c8445f18819495175a04c3",
+    "states": 165,
+    "terminals": 15,
+    "reachable": 161,
+    "max_live": 13,
+    "max_diagnostic": 13,
+    "max_reductions": 4,
+    "max_expected": 6,
+    "max_diagnostic_capacity": 13,
+    "max_diagnostic_growth_peak": 9
+  },
+  {
+    "family": "files",
+    "entry": "Files",
+    "sha256": "54e8692400cd49a5b57718ec911a330e277957a6666037c752ac5d2d6b2ebdb3",
+    "states": 21,
+    "terminals": 6,
+    "reachable": 14,
+    "max_live": 6,
+    "max_diagnostic": 6,
+    "max_reductions": 4,
+    "max_expected": 2,
+    "max_diagnostic_capacity": 8,
+    "max_diagnostic_growth_peak": 9
+  },
+  {
+    "family": "board",
+    "entry": "Board",
+    "sha256": "bbd732d9384e12db4faab021b965620d17dc46ae1875cb1ca0dd8bb718eafab1",
+    "states": 8,
+    "terminals": 3,
+    "reachable": 4,
+    "max_live": 5,
+    "max_diagnostic": 5,
+    "max_reductions": 4,
+    "max_expected": 2,
+    "max_diagnostic_capacity": 8,
+    "max_diagnostic_growth_peak": 9
+  }
+]

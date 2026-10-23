@@ -1,0 +1,4 @@
+    Blocking waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running `/mnt/data/Projects/ive/target/debug/plantuml-grammar-gen check`
+Verified 3 reproducible PlantUML generated parser(s); check wrote no tracked outputs.

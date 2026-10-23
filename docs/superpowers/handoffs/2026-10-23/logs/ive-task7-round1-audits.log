@@ -1,0 +1,86 @@
+Verified 220 MIT-edition source/ZIP hashes, 43 fresh fixture hashes and 43 native modules.
+TAP version 13
+# Subtest: should admit registered parser and grammar destinations and reject unregistered destinations
+ok 1 - should admit registered parser and grammar destinations and reject unregistered destinations
+  ---
+  duration_ms: 3.973976
+  ...
+# Subtest: should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+ok 2 - should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+  ---
+  duration_ms: 2.437577
+  ...
+# Subtest: should admit exact inventory semantics and reject unselected source siblings
+ok 3 - should admit exact inventory semantics and reject unselected source siblings
+  ---
+  duration_ms: 1.760802
+  ...
+# Subtest: should admit exact nwdiag semantics and reject unselected layout implementations
+ok 4 - should admit exact nwdiag semantics and reject unselected layout implementations
+  ---
+  duration_ms: 1.222945
+  ...
+# Subtest: should admit exact selected Salt paths and reject unselected rendering or resource code
+ok 5 - should admit exact selected Salt paths and reject unselected rendering or resource code
+  ---
+  duration_ms: 0.775323
+  ...
+# Subtest: should accept the exact authorized source and module inventory
+ok 6 - should accept the exact authorized source and module inventory
+  ---
+  duration_ms: 0.719518
+  ...
+# Subtest: should reject source escape and restricted implementation paths before reads
+ok 7 - should reject source escape and restricted implementation paths before reads
+  ---
+  duration_ms: 3.405247
+  ...
+# Subtest: should reject a different edition or artifact identity
+ok 8 - should reject a different edition or artifact identity
+  ---
+  duration_ms: 0.410815
+  ...
+# Subtest: should reject untranslated TIM runtime files
+ok 9 - should reject untranslated TIM runtime files
+  ---
+  duration_ms: 1.841541
+  ...
+# Subtest: should reject unselected timing waveform and resource implementation paths
+ok 10 - should reject unselected timing waveform and resource implementation paths
+  ---
+  duration_ms: 1.156454
+  ...
+# Subtest: should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+ok 11 - should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+  ---
+  duration_ms: 0.636406
+  ...
+# Subtest: should reject missing exact contributor credits despite colon spacing
+ok 12 - should reject missing exact contributor credits despite colon spacing
+  ---
+  duration_ms: 295.444336
+  ...
+# Subtest: should reject removed minimal-json copyright before accepting translated semantics
+ok 13 - should reject removed minimal-json copyright before accepting translated semantics
+  ---
+  duration_ms: 338.252134
+  ...
+# Subtest: should detect source family SVG and configuration drift
+ok 14 - should detect source family SVG and configuration drift
+  ---
+  duration_ms: 1.855788
+  ...
+# Subtest: should refuse a second recording without modifying the immutable baseline
+ok 15 - should refuse a second recording without modifying the immutable baseline
+  ---
+  duration_ms: 22.09611
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 693.968623

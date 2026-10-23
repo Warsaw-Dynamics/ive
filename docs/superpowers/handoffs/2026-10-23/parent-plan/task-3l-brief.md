@@ -1,0 +1,13 @@
+# Task 3L: Native categorical charts
+
+Read first: requirements for a dedicated Task8 chart increment. HOLD until controller release from recorded reviewed base. Read `native-global-constraints.md` here (binding), preceding reports/current interfaces, and `/tmp/ive-plantuml-inventory-remaining-semantics.md` completely. No other new family. Inspect actual authorized sources translated; chart originals additionally credit David Fyfe, retain notices/hashes/destination mappings.
+
+Exact @startchart/@endchart and fully consumed chart-specific grammar. Immutable category/numeric axis, scale, ordered series/samples, typed Bar/Line, LabelsMode and LegendPosition. Initial useful subset: categoryxaxis/title, finite signed categorical bars AND lines, series names/order, default or explicit nondegenerateyrange, bar labels and genuinely measured admitted legend positions. No raw Mermaid XY conversion.
+
+Actual original default y range0..100 with autoscale EXPANDING only;3,5,4 must not silently normalize to0..5. Map every value to real barheight/linepoint, clamped zero baseline/sign-aware bars, measured axis/ticks/categories/title/legend. Validate finite numbers, bounded magnitude (documentchosen policy), min<max/finite denominator, samplecount vs categories. Reject mismatch rather than truncate values. Grouped/stacked/horizontal/coordinatepairs/secondaryaxis/area/customticks/grids/spacing/annotations only admitted when modeled and drawn; otherwise precise errors including mixed supported/unsupported flags.
+
+Generate bounded ticks under model/work quota before allocation, charge checked series×samples products; no huge axis/range blankscene or unbounded tickspacing loop. Reserve labels/legend before plot geometry, all real shapes/text contained/nonoverlapping. Shared style/chrome coherently measured+painted or explicitly rejected, never ignored.
+
+RED model/geometry tests: category/seriesorder; default0..100 and range expansion; positive/zero/negative height ratios and baseline; categorical linecoordinates, labels/legendcontainment; invalidnonfinite/inverted/mismatched/unimplementedstack/secondary/annotation cases; tick/sampleproduct/model/work/SVG/cancel/determinism bounds. Terminal/usvg admission and actual sample count required.
+
+Use exact `/tmp/ive-plantuml-native-oracles/chart-bars.puml` plus meaningful signedbar/line cases and original probes if needed, preserving existing artifact hashes. Honest viewer example, real background chart capture, inspect axis/values/shapes/host counts and stop instances. Common focused/full checks, scopedcommit and `task-3l-report.md` here with source traces, actualgrammar/modelprojection contracts, REDGREEN/counts/commands/captures/residuals. Independent spec+quality gate.

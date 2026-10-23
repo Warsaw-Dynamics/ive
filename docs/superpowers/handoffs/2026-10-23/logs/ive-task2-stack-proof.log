@@ -1,0 +1,2 @@
+document {'states': 56, 'terminals': 31, 'reachable_shift_stacks': 123, 'max_live_states': 7, 'max_diagnostic_states': 7, 'max_consecutive_reductions': 3, 'max_expected_terminals': 14, 'max_diagnostic_capacity': 10, 'max_diagnostic_growth_peak': 15}
+header {'states': 55, 'terminals': 25, 'reachable_shift_stacks': 51, 'max_live_states': 4, 'max_diagnostic_states': 4, 'max_consecutive_reductions': 4, 'max_expected_terminals': 25, 'max_diagnostic_capacity': 8, 'max_diagnostic_growth_peak': 10}

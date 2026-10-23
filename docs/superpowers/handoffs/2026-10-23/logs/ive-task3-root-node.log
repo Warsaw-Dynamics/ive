@@ -1,0 +1,100 @@
+TAP version 13
+# Subtest: should_accept_the_original_imports_with_only_recorded_patches
+ok 1 - should_accept_the_original_imports_with_only_recorded_patches
+  ---
+  duration_ms: 174.104606
+  ...
+# Subtest: should_reject_an_unrecorded_change_to_an_imported_source
+ok 2 - should_reject_an_unrecorded_change_to_an_imported_source
+  ---
+  duration_ms: 192.809725
+  ...
+# Subtest: should_reject_an_added_unimported_source_file
+ok 3 - should_reject_an_added_unimported_source_file
+  ---
+  duration_ms: 898.737435
+  ...
+# Subtest: should admit registered parser and grammar destinations and reject unregistered destinations
+ok 4 - should admit registered parser and grammar destinations and reject unregistered destinations
+  ---
+  duration_ms: 3.522794
+  ...
+# Subtest: should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+ok 5 - should admit exact Chen and icon-free rectangle semantics without subtype or asset paths
+  ---
+  duration_ms: 2.270166
+  ...
+# Subtest: should admit exact inventory semantics and reject unselected source siblings
+ok 6 - should admit exact inventory semantics and reject unselected source siblings
+  ---
+  duration_ms: 1.352363
+  ...
+# Subtest: should admit exact nwdiag semantics and reject unselected layout implementations
+ok 7 - should admit exact nwdiag semantics and reject unselected layout implementations
+  ---
+  duration_ms: 0.774136
+  ...
+# Subtest: should admit exact selected Salt paths and reject unselected rendering or resource code
+ok 8 - should admit exact selected Salt paths and reject unselected rendering or resource code
+  ---
+  duration_ms: 0.843
+  ...
+# Subtest: should accept the exact authorized source and module inventory
+ok 9 - should accept the exact authorized source and module inventory
+  ---
+  duration_ms: 0.56398
+  ...
+# Subtest: should reject source escape and restricted implementation paths before reads
+ok 10 - should reject source escape and restricted implementation paths before reads
+  ---
+  duration_ms: 3.451554
+  ...
+# Subtest: should reject a different edition or artifact identity
+ok 11 - should reject a different edition or artifact identity
+  ---
+  duration_ms: 0.396567
+  ...
+# Subtest: should reject untranslated TIM runtime files
+ok 12 - should reject untranslated TIM runtime files
+  ---
+  duration_ms: 1.143394
+  ...
+# Subtest: should reject unselected timing waveform and resource implementation paths
+ok 13 - should reject unselected timing waveform and resource implementation paths
+  ---
+  duration_ms: 1.515027
+  ...
+# Subtest: should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+ok 14 - should admit selected Gantt semantics while rejecting calendar resource and layout implementations
+  ---
+  duration_ms: 0.624533
+  ...
+# Subtest: should reject missing exact contributor credits despite colon spacing
+ok 15 - should reject missing exact contributor credits despite colon spacing
+  ---
+  duration_ms: 288.150745
+  ...
+# Subtest: should reject removed minimal-json copyright before accepting translated semantics
+ok 16 - should reject removed minimal-json copyright before accepting translated semantics
+  ---
+  duration_ms: 323.683824
+  ...
+# Subtest: should detect source family SVG and configuration drift
+ok 17 - should detect source family SVG and configuration drift
+  ---
+  duration_ms: 1.728745
+  ...
+# Subtest: should refuse a second recording without modifying the immutable baseline
+ok 18 - should refuse a second recording without modifying the immutable baseline
+  ---
+  duration_ms: 20.221334
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1300.959253
