@@ -49,6 +49,7 @@ mod prompt;
 mod saved_tabs;
 mod scratch;
 mod script;
+mod selectable;
 mod settings;
 mod settings_page;
 #[cfg(unix)]
@@ -189,6 +190,8 @@ fn run(startup: Startup, background: bool) {
         cx.set_global(theme::Fonts::default());
         cx.set_global(store);
         cx.set_global(click_targets::ClickTargets::default());
+        let text_selection = selectable::TextSelection::new(cx);
+        cx.set_global(text_selection);
         // where gpui would draw its own fallback prompt; elsewhere the OS's prompt stays
         if cfg!(target_os = "linux") {
             cx.set_prompt_builder(prompt::build);
