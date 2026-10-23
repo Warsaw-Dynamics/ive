@@ -1,6 +1,5 @@
 use std::cell::Cell;
 use std::io;
-use std::ops::Range;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::rc::Rc;
@@ -10,7 +9,8 @@ use alacritty_terminal::Term;
 use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::index::{Column, Line, Point as GridPoint, Side};
-use alacritty_terminal::selection::SelectionType;
+use alacritty_terminal::grid::Scroll;
+use alacritty_terminal::selection::{Selection, SelectionType};
 use alacritty_terminal::term::TermMode;
 use alacritty_terminal::vte::ansi::CursorShape;
 use futures::StreamExt;
@@ -26,11 +26,11 @@ use gpui::{
 use super::colors::{ColorResolver, unpack};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
-use super::layout::{CursorMark, Frame, Run, Segment, Underline, Window as GridWindow, columns_shift, layout, layout_window, top_showing};
+use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::progress::Progress;
 use super::session::{GridSize, Session};
-use super::text::{ScreenText, output_point, output_rows, output_text, screen_text};
+use super::text::{OutputRow, ScreenText, output_rows, output_text, screen_text};
 #[cfg(unix)]
 use super::hosted::HostedTerminals;
 #[cfg(unix)]
@@ -234,23 +234,32 @@ impl TerminalView {
         self.session.with_term(|term| output_text(term, last))
     }
 
-    /// Scrolls the terminal to what `at` names, its match selected; to the bottom when that is gone.
-    pub fn reveal(&self, at: &FrameAt) {
-        let target = self.session.with_term(|term| {
-            let (window, _) = window_at(term, at, term.screen_lines());
-            window.mark.map(|mark| (window.top, mark))
-        });
-        match target {
-            Some((top, mark)) => self.session.reveal(top, mark),
-            None => self.session.scroll_to_bottom(),
-        }
+    /// Scrolls the terminal to the output line `find` picks, its match selected, all under one lock so output arriving
+    /// meanwhile cannot move it; to the bottom when `find` finds none, with its reason.
+    pub fn reveal<E>(&self, find: impl FnOnce(&[OutputRow]) -> Result<LineAt, E>) -> Result<(), E> {
+        self.session.with_term(|term| {
+            let output = output_rows(term);
+            let found = find(&output).map(|at| match_window(term, &output[at.index], at.bytes, term.screen_lines()).0);
+            match &found {
+                Ok(window) => reveal_window(term, window),
+                Err(_) => term.scroll_display(Scroll::Bottom),
+            }
+            found.map(|_| ())
+        })
     }
 
-    /// `rows` lines of the terminal as `at` says, laid out without touching what its tab shows.
-    pub fn snapshot(&self, at: &FrameAt, rows: usize, palette: &TerminalPalette) -> Snapshot {
+    /// The terminal's last `rows` lines laid out, without touching what its tab shows.
+    pub fn snapshot_bottom(&self, rows: usize, palette: &TerminalPalette) -> Snapshot {
+        self.session.with_term(|term| Snapshot { frame: Rc::new(layout_window(term, &bottom_window(term, rows), palette)), shown: Shown::Bottom })
+    }
+
+    /// `rows` lines around the output line `find` picks laid out, its match marked, under one lock.
+    pub fn snapshot_found<E>(&self, find: impl FnOnce(&[OutputRow]) -> Result<LineAt, E>, rows: usize, palette: &TerminalPalette) -> Result<Snapshot, E> {
         self.session.with_term(|term| {
-            let (window, shown) = window_at(term, at, rows);
-            Snapshot { frame: Rc::new(layout_window(term, &window, palette)), shown }
+            let output = output_rows(term);
+            let at = find(&output)?;
+            let (window, shown) = match_window(term, &output[at.index], at.bytes, rows);
+            Ok(Snapshot { frame: Rc::new(layout_window(term, &window, palette)), shown })
         })
     }
 
@@ -729,14 +738,6 @@ fn grid(session: Rc<Session>, pointer: Rc<Pointer>, metrics: CellMetrics, palett
     .size_full()
 }
 
-/// Where a snapshot of a terminal looks: its last lines, or around line `index` of its output, with `bytes` of
-/// that line marked.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FrameAt {
-    Bottom,
-    Line { index: usize, bytes: Range<usize> },
-}
-
 /// Lines of a terminal laid out, and what of them to keep in view.
 #[derive(Debug, Clone)]
 pub struct Snapshot {
@@ -744,34 +745,16 @@ pub struct Snapshot {
     pub shown: Shown,
 }
 
-/// What a snapshot keeps in view when it is painted in less room than it has lines and columns.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Shown {
-    /// its last line, at the bottom
-    Bottom,
-    /// the match on frame line `line`, a third of the way down, and its `columns`
-    Match { line: usize, columns: Range<usize> },
-}
-
-/// The grid lines `at` shows, and what of them to keep in view; a line no longer in the output shows the bottom.
-fn window_at<T: EventListener>(term: &Term<T>, at: &FrameAt, rows: usize) -> (GridWindow, Shown) {
-    let (history, screen) = (term.grid().history_size(), term.screen_lines());
-    let output = output_rows(term);
-    let found = match at {
-        FrameAt::Line { index, bytes } => output.get(*index).map(|row| (row, bytes)),
-        FrameAt::Bottom => None,
-    };
-    let Some((row, bytes)) = found else {
-        let last = output.last().map_or(0, |row| row.first);
-        let top = (last + 1 - rows as i32).min(screen as i32 - rows as i32).max(-(history as i32));
-        return (GridWindow { top, rows, mark: None }, Shown::Bottom);
-    };
-    let start = output_point(term, row, bytes.start);
-    let last_char = row.text.get(..bytes.end).and_then(|text| text.char_indices().last()).map_or(bytes.start, |(at, _)| at.max(bytes.start));
-    let end = output_point(term, row, last_char);
-    let top = top_showing(start.line.0, rows, history, screen);
-    let shown = Shown::Match { line: (start.line.0 - top) as usize, columns: start.column.0..end.column.0.max(start.column.0) + 1 };
-    (GridWindow { top, rows, mark: Some((start, end)) }, shown)
+/// Scrolls so `window`'s top line is the screen's first (kept inside the history) and selects its mark, as the mouse
+/// would.
+fn reveal_window<T: EventListener>(term: &mut Term<T>, window: &GridWindow) {
+    let current = term.grid().display_offset() as i32;
+    term.scroll_display(Scroll::Delta((-window.top).max(0) - current));
+    if let Some((start, end)) = window.mark {
+        let mut selection = Selection::new(SelectionType::Simple, start, Side::Left);
+        selection.update(end, Side::Right);
+        term.selection = Some(selection);
+    }
 }
 
 /// Paints `snapshot` as the terminal draws, taking no input, scrolled so what it keeps in view is in view.

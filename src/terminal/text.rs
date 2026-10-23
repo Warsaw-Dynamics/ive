@@ -55,6 +55,12 @@ pub struct OutputRow {
     pub text: String,
 }
 
+impl AsRef<str> for OutputRow {
+    fn as_ref(&self) -> &str {
+        &self.text
+    }
+}
+
 /// The lines of [`output_text`], each with the grid line it starts on.
 pub fn output_rows<T: EventListener>(term: &Term<T>) -> Vec<OutputRow> {
     let grid = term.grid();
@@ -74,6 +80,13 @@ pub fn output_rows<T: EventListener>(term: &Term<T>) -> Vec<OutputRow> {
         rows.pop();
     }
     rows
+}
+
+/// The last grid line with anything on it; the first screen line when there is none.
+pub fn last_output_line<T: EventListener>(term: &Term<T>) -> i32 {
+    let grid = term.grid();
+    let blank = |line: i32| (0..term.columns()).all(|column| grid[Line(line)][Column(column)].c == ' ');
+    (-(grid.history_size() as i32)..term.screen_lines() as i32).rev().find(|line| !blank(*line)).unwrap_or(0)
 }
 
 /// Adds the characters of grid line `line` to `text`; whether the line wraps onto the next.
@@ -201,6 +214,18 @@ mod tests {
 
         // then
         assert_eq!(point, Point::new(Line(0), Column(4)));
+    }
+
+    #[test]
+    fn should_find_the_last_row_of_a_wrapped_last_line() {
+        // given
+        let term = term_of(b"one\r\nabcdefghijklmnopq");
+
+        // when
+        let last = last_output_line(&term);
+
+        // then
+        assert_eq!(last, 2);
     }
 
     #[test]

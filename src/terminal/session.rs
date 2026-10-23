@@ -305,22 +305,6 @@ impl Session {
         self.with_term(|term| term.scroll_display(Scroll::Delta(lines)));
     }
 
-    /// Scrolls so grid line `top` is the screen's first (kept inside the history), and selects `mark`, its first and
-    /// last cell, as the mouse would.
-    pub fn reveal(&self, top: i32, mark: (Point, Point)) {
-        self.with_term(|term| {
-            let current = term.grid().display_offset() as i32;
-            term.scroll_display(Scroll::Delta((-top).max(0) - current));
-            let mut selection = Selection::new(SelectionType::Simple, mark.0, Side::Left);
-            selection.update(mark.1, Side::Right);
-            term.selection = Some(selection);
-        });
-    }
-
-    pub fn scroll_to_bottom(&self) {
-        self.with_term(|term| term.scroll_display(Scroll::Bottom));
-    }
-
     pub fn start_selection(&self, kind: SelectionType, point: Point, side: Side) {
         self.with_term(|term| term.selection = Some(Selection::new(kind, point, side)));
     }

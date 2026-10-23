@@ -530,7 +530,7 @@ mod tests {
             process: crate::process::ProcessId::for_tests(1),
             title: "cargo".to_owned(),
             line: 3,
-            from_bottom: 0,
+            top: "a foo".to_owned(),
             whole: "a foo".to_owned(),
             text: "a foo".to_owned(),
             ranges: std::iter::once(2..5).collect(),

@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use alacritty_terminal::Term;
+use alacritty_terminal::event::EventListener;
 use alacritty_terminal::grid::{Dimensions, Indexed};
 use alacritty_terminal::index::{Line, Point};
 use alacritty_terminal::selection::SelectionRange;
@@ -9,6 +10,7 @@ use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor};
 
 use super::colors::{ColorResolver, dim};
+use super::text::{OutputRow, last_output_line, output_point};
 use crate::theme::TerminalPalette;
 
 /// One screen of the terminal, ready to paint: per line, background fills and text segments, by column.
@@ -98,7 +100,7 @@ pub struct Window {
 }
 
 /// Lays out `window` of the terminal's lines without a cursor, whatever it shows on screen.
-pub fn layout_window<T>(term: &Term<T>, window: &Window, palette: &TerminalPalette) -> Frame {
+pub fn layout_window<T: EventListener>(term: &Term<T>, window: &Window, palette: &TerminalPalette) -> Frame {
     let grid = term.grid();
     let bottom = window.top + window.rows as i32;
     // the iterator yields the cells after its start: the first is the window's top left
@@ -110,6 +112,40 @@ pub fn layout_window<T>(term: &Term<T>, window: &Window, palette: &TerminalPalet
         selection: window.mark.map(|(start, end)| SelectionRange::new(start, end, false)),
     };
     lay_out(cells, &painting)
+}
+
+/// A line of a terminal's output to show: its index among [`output_rows`](super::text::output_rows), and the bytes
+/// of it to mark.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LineAt {
+    pub index: usize,
+    pub bytes: Range<usize>,
+}
+
+/// What a window keeps in view when it is painted in less room than it has lines and columns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Shown {
+    /// its last line, at the bottom
+    Bottom,
+    /// the match on window line `line`, a third of the way down, and its `columns`
+    Match { line: usize, columns: Range<usize> },
+}
+
+/// The last `rows` lines of the output, down to its last row with anything on it.
+pub fn bottom_window<T: EventListener>(term: &Term<T>, rows: usize) -> Window {
+    let top = last_output_line(term) + 1 - rows as i32;
+    Window { top: top.max(-(term.grid().history_size() as i32)), rows, mark: None }
+}
+
+/// `rows` lines showing `bytes` of output line `row` a third of the way down, marked.
+pub fn match_window<T: EventListener>(term: &Term<T>, row: &OutputRow, bytes: Range<usize>, rows: usize) -> (Window, Shown) {
+    let (history, screen) = (term.grid().history_size(), term.screen_lines());
+    let start = output_point(term, row, bytes.start);
+    let last_char = row.text.get(..bytes.end).and_then(|text| text.char_indices().last()).map_or(bytes.start, |(at, _)| at.max(bytes.start));
+    let end = output_point(term, row, last_char);
+    let top = top_showing(start.line.0, rows, history, screen);
+    let shown = Shown::Match { line: (start.line.0 - top) as usize, columns: start.column.0..end.column.0.max(start.column.0) + 1 };
+    (Window { top, rows, mark: Some((start, end)) }, shown)
 }
 
 /// The first line of a window of `rows` that shows grid line `line` a third of the way down, kept inside the
@@ -450,5 +486,32 @@ mod tests {
 
         // then
         assert_eq!(shifted, [28, 0, 0]);
+    }
+
+    #[test]
+    fn should_end_the_bottom_window_at_the_last_row() {
+        // given
+        let term = scrolled_term();
+
+        // when
+        let window = bottom_window(&term, 4);
+
+        // then
+        assert_eq!((window.top, window.rows, window.mark), (-1, 4, None));
+    }
+
+    #[test]
+    fn should_put_a_match_a_third_down_with_its_columns() {
+        // given
+        let term = scrolled_term();
+        let rows = crate::terminal::text::output_rows(&term);
+
+        // when
+        let (window, shown) = match_window(&term, &rows[5], 1..2, 6);
+
+        // then
+        assert_eq!(window.top, -4);
+        assert_eq!(window.mark, Some((Point::new(Line(-2), Column(1)), Point::new(Line(-2), Column(1)))));
+        assert_eq!(shown, Shown::Match { line: 2, columns: 1..2 });
     }
 }

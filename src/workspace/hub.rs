@@ -13,7 +13,7 @@ use crate::hub::history::{History, Shown, TabIdentity};
 use crate::hub::matcher::Query;
 use crate::hub::model::{Effect, HubState, Mode, mode};
 use crate::hub::content::{self, ContentFound, ContentQuery, Ignored, Picked, Root, Search};
-use crate::hub::output::{self, OutputHit, OutputLines, in_scope, search_output};
+use crate::hub::output::{self, OutputHit, OutputLines, Taken, in_scope, search_output};
 use crate::hub::rows::{List, Located, Places, content_list, list, thousands};
 use crate::hub::search::{Found, search};
 use crate::hub::sources::{BackTab, FreeBranch, HubAction, HubScope, Item, Place, ProjectInfo, Sources, StateIn, Target, WorktreeInfo};
@@ -29,8 +29,7 @@ use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
 use crate::hub::preview::{Reveal, reveal_cast};
-use crate::terminal::FrameAt;
-use crate::hub::view::{Drawn, HubTab, Preview, escape_does, render_hub};
+use crate::hub::view::{Drawn, HubTab, Preview, ReadOutput, escape_does, render_hub};
 use crate::run::file::ConfigKind;
 use crate::hub::{corpus::Corpus, key_label};
 use crate::icons;
@@ -212,6 +211,7 @@ impl Workspace {
             input,
             found: None,
             content: None,
+            read_output: ReadOutput::Unread,
             searched: self.corpus.clone(),
             search: None,
             generations: Generations::default(),
@@ -424,18 +424,17 @@ impl Workspace {
     /// A process's terminal, at its bottom or at a line of its output; drawn again each time, as it prints.
     fn terminal_preview(&self, wanted: Wanted, cx: &App) -> Wanted {
         let palette = cx.global::<crate::theme::Theme>().terminal;
-        let (id, at) = match wanted {
-            Wanted::Process(id) => (id, Ok(FrameAt::Bottom)),
-            Wanted::Output(hit) => {
-                let lines = self.processes.get(hit.process).map(|process| process.view.output_text(None));
-                (hit.process, output::frame_at(lines.as_deref(), &hit))
-            }
+        let ended = || Preview::Message(output::PROCESS_ENDED.to_owned());
+        let preview = match wanted {
+            Wanted::Process(id) => self.processes.get(id).map_or_else(ended, |process| Preview::Terminal {
+                title: process.title(),
+                snapshot: process.view.snapshot_bottom(TERMINAL_PREVIEW_ROWS, &palette),
+            }),
+            Wanted::Output(hit) => self.processes.get(hit.process).map_or_else(ended, |process| {
+                let found = process.view.snapshot_found(|rows| output::frame_at(Some(rows), &hit), TERMINAL_PREVIEW_ROWS, &palette);
+                found.map_or_else(|why| Preview::Message(why.to_owned()), |snapshot| Preview::Terminal { title: process.title(), snapshot })
+            }),
             other => return other,
-        };
-        let preview = match (self.processes.get(id), at) {
-            (Some(process), Ok(at)) => Preview::Terminal { title: process.title(), snapshot: process.view.snapshot(&at, TERMINAL_PREVIEW_ROWS, &palette) },
-            (None, _) => Preview::Message(output::PROCESS_ENDED.to_owned()),
-            (Some(_), Err(why)) => Preview::Message(why.to_owned()),
         };
         Wanted::Ready(preview)
     }
@@ -653,7 +652,7 @@ impl Workspace {
         if let Some(query) = hub.state.content_query() {
             let state = hub.state.clone();
             let roots = if state.files_searched() { self.content_roots(id) } else { Vec::new() };
-            let outputs = if state.output_searched() { self.output_lines(&state.scope) } else { Vec::new() };
+            let outputs = if state.output_searched() { self.read_output(id, &state.scope) } else { Arc::default() };
             return self.start_content_search(id, ContentSearch { roots, outputs, query, ticket }, cx);
         }
         let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) else {
@@ -753,6 +752,23 @@ impl Workspace {
             roots.extend(scratches.map(|store| Root { path: store.dir().to_path_buf(), picked: Picked::Scope }));
         }
         roots
+    }
+
+    /// The output a contents search of `scope` searches: what the hub read a moment ago, else read now.
+    fn read_output(&mut self, id: TabId, scope: &HubScope) -> Arc<Vec<OutputLines>> {
+        let now = Instant::now();
+        if let Some(Tab::Hub(hub)) = self.tabs.get(id)
+            && let ReadOutput::Read(taken) = &hub.read_output
+            && taken.reusable(scope, now)
+        {
+            return taken.outputs();
+        }
+        let taken = Taken::new(scope.clone(), now, self.output_lines(scope));
+        let outputs = taken.outputs();
+        if let Some(Tab::Hub(hub)) = self.tabs.get_mut(id) {
+            hub.read_output = ReadOutput::Read(taken);
+        }
+        outputs
     }
 
     /// The output of the processes in `scope`, of the projects shown, for a contents search off the UI thread.
@@ -1105,12 +1121,9 @@ impl Workspace {
             eprintln!("ive: cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED);
             return;
         };
-        let lines = process.view.output_text(None);
-        let at = output::frame_at(Some(&lines), hit).unwrap_or_else(|why| {
+        if let Err(why) = process.view.reveal(|rows| output::frame_at(Some(rows), hit)) {
             eprintln!("ive: {}:{}: {why}", hit.title, hit.line);
-            FrameAt::Bottom
-        });
-        process.view.reveal(&at);
+        }
         self.show_process(hit.process, window, cx);
         cx.notify();
     }
@@ -1239,7 +1252,7 @@ impl Workspace {
 /// A contents search to start: where, what, and its ticket.
 struct ContentSearch {
     roots: Vec<Root>,
-    outputs: Vec<OutputLines>,
+    outputs: Arc<Vec<OutputLines>>,
     query: ContentQuery,
     ticket: Ticket,
 }

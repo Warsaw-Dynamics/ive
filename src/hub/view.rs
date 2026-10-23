@@ -13,6 +13,7 @@ use super::content::ContentFound;
 use super::corpus::Corpus;
 use super::files::Class;
 use super::model::{HubState, mode, Mode};
+use super::output::Taken;
 use super::rows::{List, Row, Tag};
 use super::search::Found;
 use super::sources::HubScope;
@@ -44,6 +45,8 @@ pub struct HubTab {
     pub input: Entity<TextInput>,
     /// the last search's result, over `searched`
     pub found: Option<Found>,
+    /// the output the last contents search read, searched again while fresh
+    pub read_output: ReadOutput,
     /// the last contents search's lines
     pub content: Option<ContentFound>,
     pub searched: Arc<Corpus>,
@@ -59,6 +62,12 @@ pub struct HubTab {
     /// said above the list: a worktree being created for a new terminal, or why it could not be
     pub notice: Option<String>,
     pub _input_events: Subscription,
+}
+
+/// The processes' output a hub's contents searches read.
+pub enum ReadOutput {
+    Unread,
+    Read(Taken),
 }
 
 /// The preview right of the list, as `fzf --preview`.
