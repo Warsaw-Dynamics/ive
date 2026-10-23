@@ -623,6 +623,28 @@ Every colour and size IVE draws with is in `config.theme`. `init` gets it alread
 so `init.rn` sets only what it changes, and can read the defaults to compute from them. IVE writes the whole default
 theme next to `ive.rn` as `theme.toml`, read-only, for you to read; like `ive.rn`, editing it changes nothing.
 
+**User themes.** A theme is a file `themes/<name>.toml` next to `init.rn`, in `theme.toml`'s shape but holding only
+what it changes; it has both looks, `[dark]` and `[light]`. Settings › Appearance › Theme picks one (Default is
+IVE's own; the choice is kept in `settings.toml` as `user_theme`), and Mode picks the look. The theme is merged
+over the default, tables key by key, anything else (arrays included) replaced whole, and `config.theme` starts from
+the result, so `init.rn` changes it further. Saving, adding or removing a theme reloads it. A theme is checked like
+`init.rn`'s theme, with the file in the message (`themes/nord.toml: theme.dark.tre: unknown field …`), larger than
+256 KB is refused, and a failed load keeps the previous one; at start, a broken theme leaves the default theme with
+`init.rn`'s bindings. A picked theme whose file is gone draws the default and stays picked, muted, until its file
+is back. Settings › Scripts says where every customisation goes, with Copy instructions for an agent's prompt.
+
+```toml
+# themes/dim.toml
+[sizes]
+rem = 15.0
+
+[dark]
+tree = "#202124"
+
+[light.git]
+modified = "#1F5FBF"
+```
+
 ```rune
 pub fn init(config) {
     config.theme.dark.tree = "#202124";
@@ -774,7 +796,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own), `copy-script-instructions`, `open-ive-readme` |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |

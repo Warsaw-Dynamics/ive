@@ -1,5 +1,9 @@
 # THIS FILE IS A READ-ONLY COPY OF IVE'S BUILT-IN theme.toml, FOR VIEWING ONLY. EDITING IT DOES NOT AFFECT THE
-# RUNNING IVE, AND IVE REPLACES IT AT EVERY START. PUT YOUR CHANGES IN init.rn NEXT TO THIS FILE.
+# RUNNING IVE, AND IVE REPLACES IT AT EVERY START. PUT YOUR CHANGES IN themes/<name>.toml OR init.rn NEXT TO
+# THIS FILE.
+#
+# A theme is themes/<name>.toml next to this file: the same tables as here, holding only the values it changes, and
+# picked under Settings › Appearance › Theme.
 #
 # Sizes written in rem follow sizes.rem (16 px by default): change it to zoom the whole UI.
 #
