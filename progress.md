@@ -20,7 +20,7 @@ This is the visible master checklist for further work. The controller updates it
 | --- | --- |
 | Product worktree / branch | `/mnt/data/Projects/ive/.worktree/diagram-ports` / `diagram-ports` |
 | Standalone Rust workspace | `diagram-ports/` |
-| Latest integrated product checkpoint | `0f9d1c0` — Flow and standalone Creole joined Git/Wire/BPM/charts/railroad; scoped final tooling repair integrated; focused combined Rust/Node, source/generator and unchanged43 baseline checks pass; final full gate pending |
+| Latest integrated product checkpoint | `0e8d847` — Flow and standalone Creole joined Git/Wire/BPM/charts/railroad; authenticated import/fresh-oracle and native-corpus developer tools integrated; focused combined Rust/Node, source/generator and unchanged43 baseline checks pass; final full gate pending |
 | Last fully reviewed product checkpoint | `0c5177e1f4cf50dcc23dc97ff3e0812b42d4070f` — sequence/state/mindmap/WBS/files/board generated routes |
 | Current implementers | Advanced state, Creole styled-run spacing fix, and final corpus native-export driver in isolated worktrees |
 | Architecture preparation | Complete; full report read and independent builder check found nothing important unanswered |
@@ -248,7 +248,7 @@ Every increment requires source inspection/provenance, meaningful TDD, typed sem
 | 7 | 3P directional flow — INTEGRATED8ebb34e | Combined828 Rust+seven worker faults,30 Node, strict/generator/source/closure,28 parsers and unchanged43 baseline pass; native Flow/cursor3/3 zero-fallback captures and empty-PATH exports pass |
 | 8 | 3Q standalone Creole — INTEGRATED465b9c8; PAINT FIX ACTIVE | Combined595 focused Rust+13 viewer+30 Node, strict/generator/source/closure,29 parsers and unchanged43 baseline pass. Real native7/zero-fallback capture exposed overlapping styled runs despite retained space tokens; isolated correction/regression underway |
 | 9 | 3B2 advanced state — ACTIVE | Fresh isolated implementation from 465b9c8: concurrent regions/orientation/ownership, history, choice/junction/fork/join, actual shapes/boundaries and scoped transitions |
-| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import and fresh-oracle tooling integrated0f9d1c0;50 Node tests and source audits pass. Isolated native corpus driver underway; coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
+| 10 | 4B final evidence/tooling/docs — PARTLY ACTIVE | Authenticated import/fresh-oracle tooling integrated0f9d1c0; native corpus export/closure driver integrated0e8d847. Source audits pass; private driver73 Node and actual two-case smoke pass. Central first all-tools run had one transient failure, then six consecutive73/73 runs pass; identify only if it recurs. Coherent final corpus, honest coverage, documentation, durable archive and broad review remain |
 
 Existing inventory briefs/source-semantic research are prepared and read; the parser migration is complete. Do not restart completed source research or redispatch prior model/render work. New family briefs require LALRPOP and current generated interfaces; broad review is deferred to the end.
 
