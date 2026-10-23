@@ -393,3 +393,55 @@ fn should_preserve_literal_data_wrappers_and_strict_generated_admission() {
         assert!(render(&format!("@startuml\n{body}\n@enduml"), &options()).is_err());
     }
 }
+
+#[test]
+fn should_reject_generated_wrapper_after_expanded_action_terminator() {
+    // given
+    let source = "@startuml\n!define FIN ;\n!define END @enduml\nstart\n:hello FIN\nstop\nEND\n";
+    // when
+    let error = render(source, &options()).unwrap_err().to_string();
+    // then
+    assert!(error.contains("generated directive or wrapper"), "{error}");
+    assert!(error.contains("used at line 7, column 1"), "{error}");
+    assert!(error.contains("defined at line 3, column 1"), "{error}");
+}
+
+#[test]
+fn should_close_expanded_opening_and_continuation_actions_before_normal_syntax() {
+    // given
+    for action in [":hello FIN", ":opening /' literal\n' X\nending FIN"] {
+        let source = format!(
+            "@startuml\n!define FIN ;\n!define X Ready\nstart\n{action}\n' %getenv(\"HOME\")\n:next X;\nstop\n@enduml"
+        );
+        // when
+        let text = labels(&source);
+        // then
+        assert!(text.contains(&"next Ready".into()), "{text:?}");
+    }
+}
+
+#[test]
+fn should_close_expanded_note_terminators_before_normal_syntax() {
+    // given
+    let prefix = "@startuml\n!define CLOSE end note\n!define END @enduml\n!define X Ready\nparticipant A\nnote over A\n@enduml X\nCLOSE\n";
+    // when
+    let text = labels(&format!("{prefix}' %getenv(\"HOME\")\nA -> B : X\n@enduml"));
+    let error = render(&format!("{prefix}END"), &options())
+        .unwrap_err()
+        .to_string();
+    // then
+    assert!(text.contains(&"@enduml Ready".into()), "{text:?}");
+    assert!(text.contains(&"Ready".into()), "{text:?}");
+    assert!(error.contains("generated directive or wrapper"), "{error}");
+}
+
+#[test]
+fn should_keep_note_rows_raw_when_expansion_removes_authored_terminator() {
+    // given
+    let source = "@startuml\n!define OPEN note over A\n!define CLOSE end note\n!define note body\n!define X Ready\nparticipant A\nOPEN\nend note\n' X\nCLOSE\n@enduml";
+    // when
+    let text = labels(source);
+    // then
+    assert!(text.contains(&"end body".into()), "{text:?}");
+    assert!(text.contains(&"' Ready".into()), "{text:?}");
+}

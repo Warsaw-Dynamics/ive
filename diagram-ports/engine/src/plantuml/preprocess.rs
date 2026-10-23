@@ -54,13 +54,9 @@ impl Processor<'_> {
                 column: 1,
             };
             self.source_comment = block;
-            let mut raw_text = false;
-            if (body != super::source::TextBody::None || (inside && !graph && !block && !raw_data))
-                && let Some(next) = body.consume_raw(raw)
-            {
-                raw_text = true;
-                body = next;
-            }
+            let raw_text = (body != super::source::TextBody::None
+                || (inside && !graph && !block && !raw_data))
+                && body.consume_raw(raw).is_some();
             self.literal_input = raw_text || raw_data;
             let classified =
                 if self.literal_input || (!block && raw.trim_start().starts_with("!define")) {
@@ -134,7 +130,14 @@ impl Processor<'_> {
                         self.budget,
                     ));
                 }
-                if !raw_text && !raw_data && inside && !block {
+                if raw_text {
+                    // Current-row ownership precedes normalization; next-row
+                    // ownership follows the expanded terminator seen by parsing.
+                    self.budget.charge(expanded.len())?;
+                    body = body
+                        .consume_raw(expanded)
+                        .unwrap_or(super::source::TextBody::None);
+                } else if !raw_data && inside && !block {
                     self.budget.text(expanded.len())?;
                     let statement = super::source::Line {
                         number: span.line,
