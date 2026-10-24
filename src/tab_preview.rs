@@ -22,7 +22,7 @@ impl TabPreview {
 impl Render for TabPreview {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
-        window.set_rem_size(theme.sizes.rem.px());
+        crate::theme::apply_to_window(&theme, window);
         let sizes = &theme.sizes.tabs;
         let header = div()
             .flex()

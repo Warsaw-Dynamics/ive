@@ -911,7 +911,7 @@ impl Render for Workspace {
         theme::set_tabs(window, cx);
         let theme = theme::for_panel(theme::Panel::Window, window, cx);
         // text without a size of its own, and text fields, follow the theme's zoom
-        window.set_rem_size(theme.sizes.rem.px());
+        theme::apply_to_window(&theme, window);
         let content = if self.is_welcome() {
             self.render_welcome(theme, window, cx)
         } else {

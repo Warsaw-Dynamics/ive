@@ -558,6 +558,12 @@ highlight = "#2E436E"
 highlight_text = "#DFE1E5"
 separator = "#43454A"
 
+# How text is drawn (Linux): `gamma` from 1.0 (none) to 2.2, and `contrast`, extra weight for text darker than 75%
+# brightness, from 0.0 (none) to 4.0; higher values draw text bolder. Zed draws with gamma 1.8 and contrast 1.0.
+[dark.text_rendering]
+gamma = 1.0
+contrast = 0.0
+
 [dark.unfocused]
 selected = "#33353B"
 tab_active = "#26282C"
@@ -641,6 +647,10 @@ disabled = "#A8ADBD"
 highlight = "#D5E1FF"
 highlight_text = "#000000"
 separator = "#EBECF0"
+
+[light.text_rendering]
+gamma = 1.0
+contrast = 0.0
 
 # IntelliJ Islands Light's unfocused greys.
 [light.unfocused]

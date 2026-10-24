@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, WindowAppearance};
+use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, TextRendering, Window, WindowAppearance};
 
 use crate::settings::{SettingsStore, ThemePreference};
 use crate::theme_config::{GitColors, MenuColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
@@ -69,6 +69,7 @@ pub struct Theme {
     pub tree_states: TreeStates,
     pub virtual_folders: VirtualFolders,
     pub menu: MenuColors,
+    pub text_rendering: TextRendering,
     pub panels: Panels,
     pub sizes: &'static Sizes,
 }
@@ -152,6 +153,12 @@ pub fn for_panel(panel: Panel, window: &Window, cx: &App) -> Theme {
     cx.try_global::<UnfocusedTheme>().map_or_else(|| *cx.global::<Theme>(), |unfocused| unfocused.0)
 }
 
+/// Sizes `window`'s rem and draws its text as `theme` says; a window's root view calls it as it renders.
+pub fn apply_to_window(theme: &Theme, window: &mut Window) {
+    window.set_rem_size(theme.sizes.rem.px());
+    window.set_text_rendering(theme.text_rendering);
+}
+
 /// The theme of the tab area in the window being drawn: set by each window's root view as it renders, read by
 /// the views drawn inside it, which have no window at hand. Windows draw one at a time.
 #[derive(Debug, Clone, Copy)]
@@ -220,6 +227,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         tree_states: palette.tree_states,
         virtual_folders: palette.virtual_folders,
         menu: palette.menu,
+        text_rendering: palette.text_rendering.gpui(),
         panels: spec.panels,
         sizes: intern(&spec.sizes),
     }

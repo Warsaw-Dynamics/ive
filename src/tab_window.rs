@@ -73,7 +73,7 @@ impl Render for TabWindow {
         self.place.observe(window);
         self.drag.follow(&self.place, window);
         let theme = crate::theme::set_tabs(window, cx);
-        window.set_rem_size(theme.sizes.rem.px());
+        crate::theme::apply_to_window(&theme, window);
         let drawn = self.workspace.upgrade().and_then(|workspace| {
             workspace.update(cx, |workspace, cx| editor::render_detached(workspace, self.tab, &self.drag, window, cx))
         });

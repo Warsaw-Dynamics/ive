@@ -676,6 +676,10 @@ pub fn init(config) {
 - Syntax and diff colours are `config.theme.dark.syntax` and `config.theme.light.syntax`, by colour key, as the
   Settings colour pages name them: `foreground`, `background` (`"RRGGBB"`, without `#`), `bold`, `italic`, or
   `inherit: true` for the key's parent's look.
+- How thick text looks is `config.theme.dark.text_rendering` (and `light.text_rendering`), on Linux: `gamma` from
+  1.0 to 2.2 and `contrast` (extra weight for text darker than 75% brightness) from 0.0 to 4.0; higher values draw
+  text bolder. IVE draws with 1.0 and 0.0, the glyphs' coverage as rasterised, which is closer to IntelliJ than Zed's
+  1.8 and 1.0 (`config.theme.dark.text_rendering.gamma = 1.4;`). A change applies to open windows at once.
 - The project tree marks folders as excluded when git ignores them or `config.excluded` names them (see "Excluded
   folders"), and colours files by git status: `config.theme.dark.git` has `modified`,
   `added`, `deleted`, `unversioned`, `renamed`, `conflicted`. Rows in a state are drawn by
