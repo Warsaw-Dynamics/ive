@@ -3,6 +3,7 @@ mod age;
 mod api;
 mod args;
 mod assets;
+mod attention;
 mod build_info;
 mod click_targets;
 mod clipboard;
