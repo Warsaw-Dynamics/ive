@@ -32,7 +32,10 @@ impl TabWindow {
             cx.notify();
             let active = window.is_window_active();
             let _ = tab_window.workspace.update(cx, |workspace, cx| match active {
-                true => workspace.refresh_on_activation(cx),
+                true => {
+                    workspace.look_at_shown(cx);
+                    workspace.refresh_on_activation(cx);
+                }
                 // edits in the tab reach the disk when the user turns to another window
                 false => workspace.flush_edits(cx),
             });

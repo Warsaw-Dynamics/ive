@@ -343,6 +343,7 @@ impl Workspace {
             "id": process.id.value(), "tab": tab, "kind": process.kind.name(), "title": process.title(),
             "progress": process.progress().describe(),
             "checkout": process.checkout.as_ref().map(|checkout| &checkout.path),
+            "attention": process.attention().map(|attention| json!({ "text": attention.text, "since": crate::age::unix_seconds(attention.since) })),
         });
         if let Some(origin) = &process.run {
             described["folder"] = json!(origin.folder);

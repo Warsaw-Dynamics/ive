@@ -57,6 +57,7 @@ mod projects;
 mod quit;
 mod restart;
 mod runs;
+mod attention;
 mod saves;
 mod waits;
 mod scratches;
@@ -247,6 +248,7 @@ impl Workspace {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
                 if window.is_window_active() {
+                    workspace.look_at_shown(cx);
                     return workspace.refresh_on_activation(cx);
                 }
                 workspace.flush_edits(cx);
@@ -603,6 +605,7 @@ impl Workspace {
             self.hub_return = None;
         }
         self.sync_watches();
+        self.look_at_shown(cx);
         cx.notify();
     }
 

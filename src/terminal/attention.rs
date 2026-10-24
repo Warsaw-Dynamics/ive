@@ -92,7 +92,7 @@ fn notification_text(params: &[&[u8]]) -> Option<String> {
 }
 
 fn is_number(param: &[u8]) -> bool {
-    param.first().is_some() && param.iter().all(u8::is_ascii_digit)
+    !param.is_empty() && param.iter().all(u8::is_ascii_digit)
 }
 
 /// kitty's `e=1`: the payload is base64, which IVE does not decode.
