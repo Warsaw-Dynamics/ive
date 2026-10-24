@@ -27,6 +27,11 @@ impl Progress {
         }
     }
 
+    /// Whether the program reports work under way, however it goes.
+    pub fn is_busy(self) -> bool {
+        self != Self::None
+    }
+
     /// The report in OSC parameters `9;4;<state>[;<percent>]`; `None` for any other OSC or a state ConEmu does not define.
     fn parse(params: &[&[u8]]) -> Option<Self> {
         let [b"9", b"4", state, rest @ ..] = params else {
