@@ -4,10 +4,11 @@ use std::time::SystemTime;
 
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
-use gpui::{App, Context, Task, Window};
+use gpui::{AnyWindowHandle, Context, Task, Window};
 
 use super::Workspace;
 use crate::attention::{Sight, WindowFocus, counts};
+use crate::sidebar::view::HeaderMenu;
 use crate::process::ProcessId;
 
 /// Shows the process of each desktop notification the user clicks, bringing the main window to the front.
@@ -22,6 +23,15 @@ pub(super) fn show_clicked(mut clicks: UnboundedReceiver<ProcessId>, window: &mu
 }
 
 impl Workspace {
+    /// Window `handle`, the main one or a detached tab's, became active or stopped being so; once active, the
+    /// processes it shows stop waiting.
+    pub(crate) fn window_activated(&mut self, handle: AnyWindowHandle, focus: WindowFocus, cx: &mut Context<Self>) {
+        self.active_window.observe(handle, focus);
+        if focus == WindowFocus::Active {
+            self.look_at_shown(cx);
+        }
+    }
+
     /// Takes process `id`'s newest call, if any it has not taken: the process waits for the user unless they see it.
     pub(super) fn take_call(&mut self, id: ProcessId, cx: &mut Context<Self>) {
         let Some(report) = self.processes.get(id).and_then(|process| process.view.call()) else {
@@ -29,17 +39,17 @@ impl Workspace {
         };
         let text = report.call.text();
         let fresh = self.processes.take_call(id, report);
-        let (sight, focus) = self.sight_of(id, cx);
+        let (sight, focus) = self.sight_of(id);
         if fresh && counts(sight, focus) {
             self.processes.raise(id, text.clone(), SystemTime::now());
-            self.notify_desktop(id, &text, cx);
+            self.notify_desktop(id, &text);
             self.waiting_changed(cx);
         }
     }
 
     /// With no IVE window active, a desktop notification `<title> — <worktree>` saying `text`.
-    fn notify_desktop(&mut self, id: ProcessId, text: &str, cx: &App) {
-        if cx.active_window().is_some() {
+    fn notify_desktop(&mut self, id: ProcessId, text: &str) {
+        if self.active_window.is_any() {
             return;
         }
         let Some(process) = self.processes.get(id) else {
@@ -60,9 +70,9 @@ impl Workspace {
     /// The waiting processes the user now sees, their tab shown in an active window, stop waiting.
     pub(crate) fn look_at_shown(&mut self, cx: &mut Context<Self>) {
         let ids: Vec<ProcessId> = self.processes.waiting().iter().map(|process| process.id).collect();
-        let seen: Vec<ProcessId> = ids.into_iter().filter(|id| self.is_seen(*id, cx)).collect();
+        let seen: Vec<ProcessId> = ids.into_iter().filter(|id| self.is_seen(*id)).collect();
         // in front, the bell lists what still waits: the desktop needs none of IVE's notifications
-        if cx.active_window().is_some() {
+        if self.active_window.is_any() {
             self.desktop_notices.withdraw_all();
         }
         let mut cleared = false;
@@ -75,15 +85,14 @@ impl Workspace {
         }
     }
 
-    fn is_seen(&self, id: ProcessId, cx: &App) -> bool {
-        self.sight_of(id, cx) == (Sight::Shown, WindowFocus::Active)
+    fn is_seen(&self, id: ProcessId) -> bool {
+        self.sight_of(id) == (Sight::Shown, WindowFocus::Active)
     }
 
     /// Whether process `id`'s tab is the one its window shows, and whether that window has the keyboard; a process
     /// without a tab is hidden in the main window.
-    fn sight_of(&self, id: ProcessId, cx: &App) -> (Sight, WindowFocus) {
-        let active = cx.active_window();
-        let focus = |handle| if active == Some(handle) { WindowFocus::Active } else { WindowFocus::Inactive };
+    fn sight_of(&self, id: ProcessId) -> (Sight, WindowFocus) {
+        let focus = |handle| self.active_window.focus_of(handle);
         let tab = self.tabs.find(|tab| tab.shows_process(id));
         match tab {
             Some(tab) => match self.tab_windows.handle_of(tab) {
@@ -98,6 +107,10 @@ impl Workspace {
 
     /// Redraws what shows waiting processes: the tree, the tab row, an open hub and the windows of detached tabs.
     fn waiting_changed(&mut self, cx: &mut Context<Self>) {
+        // the bell goes with the last waiting process: its list must not open again with the next one
+        if self.processes.waiting().is_empty() && self.header_menu == Some(HeaderMenu::Waiting) {
+            self.header_menu = None;
+        }
         self.tree_changed(cx);
         self.settle_open_hub(cx);
         self.redraw_tab_windows(cx);

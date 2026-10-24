@@ -185,6 +185,8 @@ pub struct Workspace {
     /// the desktop notifications of waiting processes, sent while IVE is in the background
     desktop_notices: crate::desktop_notice::DesktopNotices,
     _notice_clicks: Task<()>,
+    /// which IVE window has the keyboard, as the activation observers last told
+    active_window: crate::attention::ActiveWindow<AnyWindowHandle>,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -250,8 +252,8 @@ impl Workspace {
             cx.observe_window_activation(window, |workspace, window, cx| {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
+                workspace.window_activated(window.window_handle(), window_focus(window), cx);
                 if window.is_window_active() {
-                    workspace.look_at_shown(cx);
                     return workspace.refresh_on_activation(cx);
                 }
                 workspace.flush_edits(cx);
@@ -340,7 +342,9 @@ impl Workspace {
             updates: updates::start(window, cx),
             desktop_notices,
             _notice_clicks: attention::show_clicked(notice_clicks, window, cx),
+            active_window: crate::attention::ActiveWindow::default(),
         };
+        workspace.active_window.observe(window.window_handle(), window_focus(window));
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
         // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
         // do; a click on its Dock icon shows the window again.
@@ -1039,6 +1043,14 @@ impl Launch {
 }
 
 /// Whether the sidebar, or a field in it, has the keyboard in `window`.
+/// Whether `window` has the keyboard, as its activation observer reads it.
+pub(crate) fn window_focus(window: &Window) -> crate::attention::WindowFocus {
+    match window.is_window_active() {
+        true => crate::attention::WindowFocus::Active,
+        false => crate::attention::WindowFocus::Inactive,
+    }
+}
+
 fn sidebar_has_keys(window: &Window, cx: &App) -> bool {
     cx.try_global::<theme::SidebarFocus>().is_some_and(|sidebar| sidebar.0.contains_focused(window, cx))
 }

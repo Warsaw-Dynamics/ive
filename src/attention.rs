@@ -29,6 +29,37 @@ pub fn counts(sight: Sight, focus: WindowFocus) -> bool {
     (sight, focus) != (Sight::Shown, WindowFocus::Active)
 }
 
+/// Which of IVE's windows has the keyboard, as their activation observers tell it. gpui's own `active_window` is
+/// not set yet while those observers run on X11.
+#[derive(Debug)]
+pub struct ActiveWindow<H>(Option<H>);
+
+impl<H> Default for ActiveWindow<H> {
+    fn default() -> Self {
+        Self(None)
+    }
+}
+
+impl<H: Copy + PartialEq> ActiveWindow<H> {
+    /// Window `handle` became active or stopped being so; a late word of another window going changes nothing.
+    pub fn observe(&mut self, handle: H, focus: WindowFocus) {
+        match focus {
+            WindowFocus::Active => self.0 = Some(handle),
+            WindowFocus::Inactive if self.0 == Some(handle) => self.0 = None,
+            WindowFocus::Inactive => {}
+        }
+    }
+
+    pub fn focus_of(&self, handle: H) -> WindowFocus {
+        if self.0 == Some(handle) { WindowFocus::Active } else { WindowFocus::Inactive }
+    }
+
+    /// Whether any IVE window has the keyboard.
+    pub fn is_any(&self) -> bool {
+        self.0.is_some()
+    }
+}
+
 /// The most of what a process said that a row beside its title shows, in characters.
 const BRIEF: usize = 32;
 
@@ -45,6 +76,34 @@ pub fn brief(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_follow_the_window_that_became_active() {
+        // given
+        let mut active = ActiveWindow::default();
+
+        // when
+        active.observe("main", WindowFocus::Active);
+        active.observe("detached", WindowFocus::Active);
+        // X11 may tell of the first window going after the second came
+        active.observe("main", WindowFocus::Inactive);
+
+        // then
+        assert_eq!((active.focus_of("detached"), active.focus_of("main")), (WindowFocus::Active, WindowFocus::Inactive));
+    }
+
+    #[test]
+    fn should_have_no_active_window_once_it_goes() {
+        // given
+        let mut active = ActiveWindow::default();
+        active.observe("main", WindowFocus::Active);
+
+        // when
+        active.observe("main", WindowFocus::Inactive);
+
+        // then
+        assert_eq!((active.focus_of("main"), active.is_any()), (WindowFocus::Inactive, false));
+    }
 
     #[test]
     fn should_cut_long_texts_briefly() {

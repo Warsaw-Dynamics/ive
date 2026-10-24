@@ -237,7 +237,12 @@ impl Workspace {
     /// process `id`, which stops it waiting.
     pub fn show_waiting(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
         self.close_menu(window, cx);
-        let _ = self.main_window.update(cx, |_, main, _| main.activate_window());
+        // the window handling the event cannot be updated from inside: activate it directly
+        if window.window_handle() == self.main_window {
+            window.activate_window();
+        } else {
+            let _ = self.main_window.update(cx, |_, main, _| main.activate_window());
+        }
         self.show_process(id, window, cx);
     }
 
