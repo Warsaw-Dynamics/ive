@@ -370,10 +370,13 @@ Sizes {
     },
     terminal: TerminalSizes {
         text_size: FontPx(
-            14.0,
+            13.0,
         ),
         line_height_factor: Factor(
-            1.3,
+            1.32,
+        ),
+        column_spacing: Factor(
+            1.0,
         ),
         padding: Px(
             6.0,

@@ -294,6 +294,8 @@ pub struct TerminalSizes {
     pub text_size: FontPx,
     /// lines are this many font sizes apart
     pub line_height_factor: Factor,
+    /// cells are this many glyph widths wide
+    pub column_spacing: Factor,
     /// around the grid of cells
     pub padding: Px,
     pub cursor_thickness: Px,
@@ -718,7 +720,8 @@ mod tests {
         let terminal = defaults().sizes.terminal;
 
         // then
-        assert_eq!((terminal.text_size, terminal.line_height_factor, terminal.padding), (FontPx(14.), Factor(1.3), Px(6.)));
+        assert_eq!((terminal.text_size, terminal.line_height_factor, terminal.column_spacing), (FontPx(13.), Factor(1.32), Factor(1.0)));
+        assert_eq!(terminal.padding, Px(6.));
         assert_eq!((terminal.cursor_thickness, terminal.line_thickness), (Px(2.), Px(1.)));
         assert_eq!((terminal.normal_weight, terminal.bold_weight), (Weight::Normal, Weight::Bold));
     }

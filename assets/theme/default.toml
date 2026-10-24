@@ -187,10 +187,13 @@ header_weight = "medium"
 number_padding_right = 4.0
 
 # Terminal and Claude Code tabs.
+# IntelliJ's terminal defaults: JetBrains Mono 13, line and column spacing 1.0.
 [sizes.terminal]
-text_size = 14.0
-# lines are this many font sizes apart
-line_height_factor = 1.3
+text_size = 13.0
+# lines are this many font sizes apart; 1.32 is JetBrains Mono's own line height, IntelliJ's line spacing 1.0
+line_height_factor = 1.32
+# cells are this many glyph widths wide, as IntelliJ's column spacing
+column_spacing = 1.0
 # around the grid of cells
 padding = 6.0
 cursor_thickness = 2.0

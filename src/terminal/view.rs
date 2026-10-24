@@ -793,7 +793,8 @@ impl CellMetrics {
         let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
         let sizes = cx.global::<Theme>().sizes.terminal;
         let font_size = sizes.text_size.px();
-        let cell_width = text_system.advance(font_id, font_size, 'm').map_or(font_size * 0.6, |advance| advance.width);
+        let glyph_width = text_system.advance(font_id, font_size, 'm').map_or(font_size * 0.6, |advance| advance.width);
+        let cell_width = glyph_width * sizes.column_spacing.0;
         Self { font_size, cell_width, line_height: (font_size * sizes.line_height_factor.0).round(), sizes }
     }
 
