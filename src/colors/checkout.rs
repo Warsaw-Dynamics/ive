@@ -20,6 +20,15 @@ pub fn tinted(colour: u32, fraction: f32) -> Rgba {
     Rgba { a: fraction, ..rgb(colour) }
 }
 
+/// `colour` laid over `base` at `fraction`, both 0xRRGGBB, as one opaque colour: the shown tab's tint over its fill.
+pub fn mixed(base: u32, colour: u32, fraction: f32) -> u32 {
+    let channel = |shift: u32| {
+        let (from, to) = (((base >> shift) & 0xff) as f32, ((colour >> shift) & 0xff) as f32);
+        ((from + (to - from) * fraction).round() as u32) << shift
+    };
+    channel(16) | channel(8) | channel(0)
+}
+
 /// 64-bit FNV-1a: stable across runs and platforms, unlike `std`'s hasher.
 pub fn fnv1a(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, byte| (hash ^ u64::from(*byte)).wrapping_mul(0x0000_0100_0000_01b3))
@@ -47,6 +56,18 @@ mod tests {
         // then
         assert_eq!((tint.r, tint.g, tint.b), (f32::from(0x35_u8) / 255., f32::from(0x74_u8) / 255., f32::from(0xf0_u8) / 255.));
         assert!((tint.a - 0.12).abs() < 1e-6);
+    }
+
+    #[test]
+    fn should_mix_a_colour_into_a_base() {
+        // given
+        let (base, colour) = (0x000000, 0xff8000);
+
+        // when
+        let mixes = [mixed(base, colour, 0.), mixed(base, colour, 0.5), mixed(base, colour, 1.)];
+
+        // then
+        assert_eq!(mixes, [0x000000, 0x804000, 0xff8000]);
     }
 
     #[test]

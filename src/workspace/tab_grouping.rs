@@ -36,7 +36,8 @@ impl Workspace {
             (Some(project), None) => Some(owner_key(None, project)),
             (None, None) => None,
         };
-        TabFacts { id, project, checkout: checkout.map(|checkout| checkout.path), main, owner }
+        let worktrees = project.as_ref().and_then(|project| self.project(project)).is_some_and(|found| found.checkouts.len() > 1);
+        TabFacts { id, project, checkout: checkout.map(|checkout| checkout.path), main, owner, worktrees }
     }
 
     /// The row's groups, from the tabs and each project's folded flag, worktree order and tab shown last.
@@ -46,6 +47,14 @@ impl Workspace {
         let order: HashMap<ProjectId, Vec<PathBuf>> =
             self.projects.iter().map(|open| (open.project.id.clone(), open.worktree_order().to_vec())).collect();
         tab_groups::groups(facts, &GroupState { folded: &folded, order: &order, current: &self.group_current })
+    }
+
+    /// The favicon a tab's badge shows: its module's, else its project's.
+    pub fn tab_badge(&self, tab: &Tab) -> Option<PathBuf> {
+        match tab.checkout(self) {
+            Some(checkout) => self.owner_of(&checkout, tab.owner_path(self).as_deref()).icon,
+            None => tab.project(self).and_then(|project| self.project_icon(&project)),
+        }
     }
 
     /// The shown tab becomes its project's current tab, the one its group keeps out when folded.

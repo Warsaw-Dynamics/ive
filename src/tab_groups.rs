@@ -8,7 +8,8 @@ use crate::project::ProjectId;
 use crate::tabs::TabId;
 
 /// What grouping needs of a tab: its project (none for Settings, the hub), its checkout (none for the project's own
-/// tabs: scratches, Git log, commits), whether that is the main checkout, and its owner (project or module) key.
+/// tabs: scratches, Git log, commits), whether that is the main checkout, its owner (project or module) key, and
+/// whether its project has worktrees.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TabFacts {
     pub id: TabId,
@@ -16,6 +17,8 @@ pub struct TabFacts {
     pub checkout: Option<PathBuf>,
     pub main: bool,
     pub owner: Option<String>,
+    /// its project has worktrees besides the main checkout
+    pub worktrees: bool,
 }
 
 /// The groups' state: folded projects, each project's worktree order, each project's tab shown last.
@@ -95,6 +98,65 @@ pub fn worktree_runs<'a>(tabs: impl IntoIterator<Item = &'a TabFacts>, order: &[
     runs.into_iter().map(|(checkout, _, run)| (checkout, run)).collect()
 }
 
+/// What the tab row draws, in order: a group's head (by the group's index) or a tab shown (with its group's index).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RowItem {
+    Head(usize),
+    Tab(usize, TabId),
+}
+
+/// The row's items: each group's head when it has one, then its tabs, a folded group's current one alone.
+pub fn row_items(groups: &[TabGroup]) -> Vec<RowItem> {
+    let mut items = Vec::new();
+    for (index, group) in groups.iter().enumerate() {
+        if group.head {
+            items.push(RowItem::Head(index));
+        }
+        let shown: &[TabId] = if group.folded { std::slice::from_ref(&group.current) } else { &group.tabs };
+        items.extend(shown.iter().map(|id| RowItem::Tab(index, *id)));
+    }
+    items
+}
+
+/// Whether the row's tabs come from more than one checkout, and have more than one owner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Spread {
+    pub worktrees: bool,
+    pub owners: bool,
+}
+
+/// How a tab shows its worktree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CueKind {
+    Plain,
+    /// its background in its worktree's colour
+    Tint,
+    /// its worktree's name after its title: the tab out of a folded group, which nothing beside it names
+    Label,
+}
+
+/// A tab's worktree cue in its group: a label out of a folded group, a tint for a worktree other than the main
+/// checkout while the row spans worktrees; none for the project's own tabs.
+pub fn chip_cue(fact: &TabFacts, group: &TabGroup, spread: Spread) -> CueKind {
+    match (&fact.checkout, group.folded) {
+        (None, _) => CueKind::Plain,
+        (Some(_), true) if fact.worktrees => CueKind::Label,
+        (Some(_), true) => CueKind::Plain,
+        (Some(_), false) if spread.worktrees && !fact.main => CueKind::Tint,
+        (Some(_), false) => CueKind::Plain,
+    }
+}
+
+/// Whether a tab carries its owner's badge: only while the row has several owners, and under a head only a
+/// module's, the head naming the project.
+pub fn shows_badge(fact: &TabFacts, group: &TabGroup, spread: Spread) -> bool {
+    let Some(owner) = &fact.owner else {
+        return false;
+    };
+    let is_module = fact.project.as_ref().is_none_or(|project| project.as_str() != owner);
+    spread.owners && (is_module || !group.head)
+}
+
 /// Whether the tabs come from more than one checkout: only then are worktree tabs tinted.
 pub fn spread_worktrees(tabs: &[TabFacts]) -> bool {
     distinct(tabs.iter().filter_map(|tab| tab.checkout.as_ref())) > 1
@@ -134,6 +196,7 @@ mod tests {
             checkout: checkout.map(PathBuf::from),
             main,
             owner: project.map(str::to_owned),
+            worktrees: true,
         }
     }
 
@@ -292,6 +355,136 @@ mod tests {
 
         // then
         assert_eq!(spread, (false, true));
+    }
+
+    fn group_of(facts: &[TabFacts], head: bool, folded: bool) -> TabGroup {
+        TabGroup { project: facts[0].project.clone(), head, folded, tabs: facts.iter().map(|fact| fact.id).collect(), current: facts[0].id }
+    }
+
+    const SPREAD: Spread = Spread { worktrees: true, owners: true };
+
+    #[test]
+    fn should_tint_a_worktree_tab_when_tabs_span_worktrees() {
+        // given
+        let tab = fact(1, Some("a"), Some("/a-wt"), false);
+        let group = group_of(std::slice::from_ref(&tab), true, false);
+
+        // when
+        let cue = chip_cue(&tab, &group, SPREAD);
+
+        // then
+        assert_eq!(cue, CueKind::Tint);
+    }
+
+    #[test]
+    fn should_not_tint_the_main_checkout() {
+        // given
+        let tab = fact(1, Some("a"), Some("/a"), true);
+        let group = group_of(std::slice::from_ref(&tab), true, false);
+
+        // when
+        let cue = chip_cue(&tab, &group, SPREAD);
+
+        // then
+        assert_eq!(cue, CueKind::Plain);
+    }
+
+    #[test]
+    fn should_not_tint_when_one_worktree_is_open() {
+        // given
+        let tab = fact(1, Some("a"), Some("/a-wt"), false);
+        let group = group_of(std::slice::from_ref(&tab), false, false);
+
+        // when
+        let cue = chip_cue(&tab, &group, Spread { worktrees: false, owners: true });
+
+        // then
+        assert_eq!(cue, CueKind::Plain);
+    }
+
+    #[test]
+    fn should_label_the_tab_out_of_a_folded_group() {
+        // given
+        let worktree = fact(1, Some("a"), Some("/a-wt"), false);
+        let main = fact(2, Some("a"), Some("/a"), true);
+        let own = fact(3, Some("a"), None, false);
+        let group = group_of(&[worktree.clone(), main.clone(), own.clone()], true, true);
+
+        // when
+        let cues = [&worktree, &main, &own].map(|tab| chip_cue(tab, &group, SPREAD));
+
+        // then
+        assert_eq!(cues, [CueKind::Label, CueKind::Label, CueKind::Plain]);
+    }
+
+    #[test]
+    fn should_not_label_a_tab_of_a_project_without_worktrees() {
+        // given
+        let mut tab = fact(1, Some("a"), Some("/a"), true);
+        tab.worktrees = false;
+        let group = group_of(std::slice::from_ref(&tab), true, true);
+
+        // when
+        let cue = chip_cue(&tab, &group, SPREAD);
+
+        // then
+        assert_eq!(cue, CueKind::Plain);
+    }
+
+    #[test]
+    fn should_badge_a_module_tab_when_owners_spread() {
+        // given
+        let mut tab = fact(1, Some("a"), Some("/a"), true);
+        tab.owner = Some("a/idp".to_owned());
+        let group = group_of(std::slice::from_ref(&tab), true, false);
+
+        // when
+        let shown = (shows_badge(&tab, &group, SPREAD), shows_badge(&tab, &group, Spread { worktrees: true, owners: false }));
+
+        // then
+        assert_eq!(shown, (true, false));
+    }
+
+    #[test]
+    fn should_not_badge_the_project_itself_under_a_head() {
+        // given
+        let tab = fact(1, Some("a"), Some("/a"), true);
+        let group = group_of(std::slice::from_ref(&tab), true, false);
+
+        // when
+        let shown = shows_badge(&tab, &group, SPREAD);
+
+        // then
+        assert!(!shown);
+    }
+
+    #[test]
+    fn should_badge_the_project_without_heads_when_owners_spread() {
+        // given
+        let tab = fact(1, Some("a"), Some("/a"), true);
+        let group = group_of(std::slice::from_ref(&tab), false, false);
+
+        // when
+        let shown = shows_badge(&tab, &group, SPREAD);
+
+        // then
+        assert!(shown);
+    }
+
+    #[test]
+    fn should_list_heads_and_shown_tabs_in_row_order() {
+        // given
+        let tabs = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("a"), Some("/a"), true), fact(3, Some("b"), Some("/b"), true)];
+        let mut given = Given::new();
+        given.folded.insert(ProjectId::new("a"));
+        given.current.insert(ProjectId::new("a"), TabId::for_tests(2));
+        let groups = groups(&tabs, &given.state());
+
+        // when
+        let items = row_items(&groups);
+
+        // then
+        assert_eq!(items, [RowItem::Head(0), RowItem::Tab(0, TabId::for_tests(2)), RowItem::Head(1), RowItem::Tab(1, TabId::for_tests(3))]);
     }
 
     #[test]

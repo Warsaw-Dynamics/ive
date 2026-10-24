@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
@@ -12,7 +13,9 @@ use gpui::{
 };
 
 use crate::click_targets::target;
+use crate::colors::{mixed, tinted};
 use crate::colors::checkout_colour;
+use crate::favicon_badge::{Badge, badged, favicon};
 pub use crate::file_tab::FileTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
@@ -33,6 +36,7 @@ use crate::scratch::{self, ScratchRef, ScratchTab};
 use crate::scratch::icon::scratch_icon;
 use crate::script::temporary_tabs::{TabKind, TabMarker, TemporaryTabs};
 use crate::settings_page::{self, SettingsView};
+use crate::tab_groups::{self, CueKind, RowItem, Spread, TabFacts, TabGroup};
 use crate::tabs::TabId;
 use crate::theme::Theme;
 use crate::tooltip;
@@ -469,16 +473,6 @@ impl Tab {
         }
     }
 
-    /// The checkout colour a tab is underlined with (2 px): a diff's; `None` for the others.
-    pub fn underline(&self, workspace: &Workspace, theme: Theme) -> Option<u32> {
-        match self {
-            Self::Diff(tab) => workspace
-                .project(&tab.checkout.project)
-                .and_then(|project| project.checkout(&tab.checkout.path))
-                .map(|checkout| checkout_colour(checkout, theme)),
-            _ => None,
-        }
-    }
 
     fn render(&self, id: TabId, workspace: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> AnyElement {
         let theme = crate::theme::tabs(cx);
@@ -584,15 +578,18 @@ pub fn render_pane(workspace: &Workspace, window: &mut Window, cx: &mut Context<
 /// then Settings and the window buttons. Its empty space moves the window.
 fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let tabs = workspace.tabs();
-    let active = tabs.active_id();
     let last = tabs.row_len().saturating_sub(1);
-    // a gap stays marked after a drag ends outside the window, until the next drag
-    let drop_gap = workspace.tab_drop_gap().filter(|_| cx.has_active_drag());
-    let marker = move |place: usize| match drop_gap {
-        Some(gap) if gap == place => Some(Side::Left),
-        Some(gap) if gap == place + 1 && place == last => Some(Side::Right),
-        _ => None,
+    let facts = workspace.tab_group_facts();
+    let view = GroupView {
+        // a gap stays marked after a drag ends outside the window, until the next drag
+        drop: DropGap { gap: workspace.tab_drop_gap().filter(|_| cx.has_active_drag()), last },
+        places: tabs.row().enumerate().map(|(place, (id, _))| (id, place)).collect(),
+        spread: Spread { worktrees: tab_groups::spread_worktrees(&facts), owners: tab_groups::spread_owners(&facts) },
+        groups: workspace.tab_groups(&facts),
+        facts: &facts,
+        theme,
     };
+    let items = tab_groups::row_items(&view.groups);
     // past the last tab: a dragged tab goes last
     let sizes = &theme.sizes.tabs;
     let end = div().id("tab-strip-end").flex_1().h_full().min_w(sizes.gap.px()).on_drag_move(cx.listener(
@@ -620,9 +617,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
             workspace.hover_tab_drop(event.drag(cx).id, None, cx);
         }))
         .on_drop(cx.listener(|workspace, dragged: &DraggedTab, _window, cx| workspace.drop_dragged_tab(dragged.id, cx)))
-        .children(tabs.row().enumerate().map(|(place, (id, tab))| {
-            render_tab(Chip { id, place, tab, shown: Some(id) == active, temporary: tabs.is_temporary(id), marker: marker(place) }, workspace, cx)
-        }))
+        .children(items.into_iter().filter_map(|item| render_row_item(item, &view, workspace, cx)))
         .child(end);
     let restart = workspace.restart_script().map(|_| restart_button(theme, cx));
     let update = workspace.update_to_restart_onto().map(|tag| update_button(tag.to_owned(), theme, cx));
@@ -673,7 +668,6 @@ pub fn render_detached(workspace: &Workspace, id: TabId, drag: &WindowDrag, wind
         .child(tab.icon(workspace, theme))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(div().max_w(sizes.title_max_width.px()).overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.clone()))
-        .children(tab.underline(workspace, theme).map(|colour| underline(colour, theme)))
         .relative();
     // the window's only tab is always the shown one, so its chip marks the window having the keyboard instead
     let chip = if window.is_window_active() {
@@ -727,8 +721,121 @@ fn attach_button(id: TabId, theme: Theme, cx: &mut Context<Workspace>) -> Statef
         .on_click(target("attach-tab".to_owned(), cx.listener(move |workspace, _event, window, cx| workspace.attach_tab(id, window, cx)), cx))
 }
 
-/// A tab of the tab row: its place in the row, whether it is the shown one, and the side a dragged tab would
-/// land on.
+/// What the tab row's items are drawn with: where a dragged tab would land, each tab's place in the row, what the
+/// row spans, its groups and the tabs' facts.
+struct GroupView<'a> {
+    drop: DropGap,
+    places: HashMap<TabId, usize>,
+    spread: Spread,
+    groups: Vec<TabGroup>,
+    facts: &'a [TabFacts],
+    theme: Theme,
+}
+
+/// The gap a dragged tab would land in, and the last tab's place.
+#[derive(Clone, Copy)]
+struct DropGap {
+    gap: Option<usize>,
+    last: usize,
+}
+
+impl DropGap {
+    /// The side of the tab at `place` its drop marker shows on.
+    fn marker(self, place: usize) -> Option<Side> {
+        match self.gap {
+            Some(gap) if gap == place => Some(Side::Left),
+            Some(gap) if gap == place + 1 && place == self.last => Some(Side::Right),
+            _ => None,
+        }
+    }
+}
+
+/// One item of the tab row, drawn: a group's head or a tab; the row scrolls to a tab by its item's index.
+fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<AnyElement> {
+    match item {
+        RowItem::Head(group) => group_head(&view.groups[group], workspace, cx).map(IntoElement::into_any_element),
+        RowItem::Tab(group, id) => {
+            let tabs = workspace.tabs();
+            let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, view.facts.iter().find(|fact| fact.id == id)?);
+            let look = view.look(fact, &view.groups[group], workspace);
+            let chip = Chip { id, place, tab, shown: tabs.active_id() == Some(id), temporary: tabs.is_temporary(id), marker: view.drop.marker(place), look };
+            Some(render_tab(chip, workspace, cx).into_any_element())
+        }
+    }
+}
+
+/// A group's head: the chevron folds it; then the project's favicon (or initials), name and, folded, its count.
+fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<Stateful<Div>> {
+    let theme = crate::theme::tabs(cx);
+    let sizes = &theme.sizes.tabs;
+    let project = group.project.clone()?;
+    let name = workspace.project(&project).map_or_else(|| project.to_string(), |found| found.name.clone());
+    let toggled = project.clone();
+    let chevron = if group.folded { icons::CHEVRON_RIGHT } else { icons::CHEVRON_DOWN };
+    let fold = div()
+        .id(SharedString::from(format!("tab-group-fold-{}", project.as_str())))
+        .flex_none()
+        .p(px(3.))
+        .rounded(sizes.close_radius.px())
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)))
+        .child(img(icons::embedded(theme.appearance, chevron)).size(px(12.)))
+        .on_click(target(format!("tab-group-fold:{}", project.as_str()), cx.listener(move |workspace, _event, _window, cx| workspace.toggle_tab_group(&toggled, cx)), cx));
+    let icon = match workspace.project_icon(&project) {
+        Some(path) => favicon(&path, px(14.)).into_any_element(),
+        None => div().px(px(2.)).rounded(px(3.)).bg(rgb(theme.hover)).text_size(px(8.)).child(crate::sidebar::rows::initials(&name)).into_any_element(),
+    };
+    let count = group.folded.then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
+    let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);
+    let named = div().id(SharedString::from(format!("tab-group-name-{}", project.as_str()))).flex().items_center().gap(px(5.)).h(px(22.)).pl(px(3.)).pr(px(6.)).rounded(px(6.)).child(icon).child(label).children(count);
+    Some(
+        div()
+            .id(SharedString::from(format!("tab-group-{}", project.as_str())))
+            .flex()
+            .flex_none()
+            .items_center()
+            .text_size(sizes.group_head_text_size.px())
+            .text_color(rgb(theme.muted))
+            // a press on the head must not start a window drag
+            .ml(sizes.group_gap.px())
+            .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .child(fold)
+            .child(named),
+    )
+}
+
+impl GroupView<'_> {
+    /// How a tab shows where it belongs, from its facts and its group: the main checkout has no colour, its label
+    /// is muted.
+    fn look(&self, fact: &TabFacts, group: &TabGroup, workspace: &Workspace) -> ChipLook {
+        let checkout = fact.project.clone().zip(fact.checkout.clone()).map(|(project, path)| CheckoutRef { project, path });
+        let colour = checkout.as_ref().filter(|_| !fact.main).and_then(|checkout| workspace.checkout(checkout)).map(|found| checkout_colour(found, self.theme));
+        let cue = match (tab_groups::chip_cue(fact, group, self.spread), checkout.as_ref()) {
+            (CueKind::Tint, _) => colour.map_or(ChipCue::Plain, ChipCue::Tint),
+            (CueKind::Label, Some(checkout)) => ChipCue::Label { text: workspace.checkout_label(checkout), colour: colour.unwrap_or(self.theme.muted) },
+            (CueKind::Label | CueKind::Plain, _) => ChipCue::Plain,
+        };
+        let tab = workspace.tabs().get(fact.id);
+        let badge = tab.filter(|_| tab_groups::shows_badge(fact, group, self.spread)).and_then(|tab| workspace.tab_badge(tab));
+        ChipLook { cue, badge }
+    }
+}
+
+/// A tab's worktree cue as drawn: its worktree's colour as background, or its worktree's name after its title.
+enum ChipCue {
+    Plain,
+    Tint(u32),
+    Label { text: String, colour: u32 },
+}
+
+/// How a tab shows where it belongs: its worktree's cue, and its owner's favicon for the badge.
+struct ChipLook {
+    cue: ChipCue,
+    badge: Option<PathBuf>,
+}
+
+/// A tab of the tab row: its place in the row, whether it is the shown one, the side a dragged tab would land on,
+/// and how it shows where it belongs.
 struct Chip<'a> {
     id: TabId,
     place: usize,
@@ -736,6 +843,7 @@ struct Chip<'a> {
     shown: bool,
     temporary: bool,
     marker: Option<Side>,
+    look: ChipLook,
 }
 
 #[derive(Clone, Copy)]
@@ -784,7 +892,7 @@ impl Render for DraggedTab {
 /// on hover only.
 fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let theme = crate::theme::tabs(cx);
-    let Chip { id, place, tab, shown, temporary, marker } = chip;
+    let Chip { id, place, tab, shown, temporary, marker, look } = chip;
     let group = SharedString::from(format!("tab-{}", id.value()));
     let sizes = &theme.sizes.tabs;
     let close = div()
@@ -820,12 +928,11 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         .border(sizes.tab_border.px())
         .text_size(sizes.tab_text_size.px())
         .cursor_pointer()
-        .child(tab.icon(workspace, theme))
+        .child(badged(tab.icon(workspace, theme), look.badge.map(|path| Badge { path, ring: chip_ring(shown, theme) }), theme))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(title)
+        .children(worktree_label(&look.cue, theme))
         .child(close)
-        // a child bar: the chip's own border is its outline
-        .children(tab.underline(workspace, theme).map(|colour| underline(colour, theme)))
         .relative()
         .tooltip(tooltip::text_tooltip(tab.tooltip(workspace)))
         .children(marker.map(|side| drop_marker(side, theme)))
@@ -845,10 +952,34 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         // the workspace is gone only while the window closes
         let _ = handle.update(cx, |workspace, cx| workspace.run_tab_mouse(id, trigger, window, cx));
     });
-    if shown {
-        return chip.bg(rgb(theme.tab_active)).border_color(rgb(theme.tab_active_border));
+    filled(chip, shown, &look.cue, theme)
+}
+
+/// A chip's fill and outline: the shown one filled and outlined, a worktree's tinted with its colour.
+fn filled(chip: Stateful<Div>, shown: bool, cue: &ChipCue, theme: Theme) -> Stateful<Div> {
+    let sizes = &theme.sizes.tabs;
+    match (shown, cue) {
+        (true, ChipCue::Tint(colour)) => chip.bg(rgb(mixed(theme.tab_active, *colour, sizes.tint_shown.0))).border_color(tinted(*colour, sizes.tint_outline.0)),
+        (true, _) => chip.bg(rgb(theme.tab_active)).border_color(rgb(theme.tab_active_border)),
+        (false, ChipCue::Tint(colour)) => {
+            let hover = tinted(*colour, sizes.tint_hover.0);
+            chip.bg(tinted(*colour, sizes.tint.0)).border_color(transparent_black()).hover(move |style| style.bg(hover))
+        }
+        (false, _) => chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover))),
     }
-    chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover)))
+}
+
+/// The ring cutting a badge out of its icon: the shown chip's fill, else the tab row's.
+fn chip_ring(shown: bool, theme: Theme) -> u32 {
+    if shown { theme.tab_active } else { theme.sidebar }
+}
+
+/// A folded group's tab's worktree name, after its title.
+fn worktree_label(cue: &ChipCue, theme: Theme) -> Option<Div> {
+    let ChipCue::Label { text, colour } = cue else {
+        return None;
+    };
+    Some(div().flex_none().max_w(px(120.)).overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.tabs.group_head_text_size.px()).text_color(rgb(*colour)).child(text.clone()))
 }
 
 /// How a temporary tab's title shows it; italic until the scripts have loaded.
@@ -856,12 +987,6 @@ fn temporary_marker(cx: &App) -> TabMarker {
     cx.try_global::<TemporaryTabs>().map_or(TabMarker::Italic, |tabs| tabs.marker.clone())
 }
 
-/// The checkout colour bar under a tab.
-fn underline(colour: u32, theme: Theme) -> Div {
-    let sizes = &theme.sizes.tabs;
-    let inset = sizes.underline_inset.px();
-    div().absolute().bottom_0().left(inset).right(inset).h(sizes.underline_height.px()).rounded(sizes.underline_radius.px()).bg(rgb(colour))
-}
 
 /// The bar in the gap beside a tab where a dragged tab would land; centred on the gap, outside the tab.
 fn drop_marker(side: Side, theme: Theme) -> Div {

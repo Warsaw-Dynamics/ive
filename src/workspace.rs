@@ -528,9 +528,13 @@ impl Workspace {
 
     /// Scrolls the tab row just enough to show the shown tab; nothing for a detached one.
     fn scroll_to_shown_tab(&self) {
-        let shown = self.tabs.active_id();
-        if let Some(place) = self.tabs.row().position(|(id, _)| Some(id) == shown) {
-            self.tab_scroll.scroll_to_item(place);
+        let Some(shown) = self.tabs.active_id() else {
+            return;
+        };
+        // the row's items are its groups' heads and tabs
+        let items = crate::tab_groups::row_items(&self.tab_groups(&self.tab_group_facts()));
+        if let Some(item) = items.iter().position(|item| matches!(item, crate::tab_groups::RowItem::Tab(_, id) if *id == shown)) {
+            self.tab_scroll.scroll_to_item(item);
         }
     }
 
@@ -584,6 +588,8 @@ impl Workspace {
         let checkout = self.tabs.active().and_then(|tab| tab.checkout(self));
         let shown = self.tabs.active().and_then(|tab| self.tree_key_of(tab));
         self.tree.show_active(shown);
+        // a folded group keeps the shown tab out, so it is its current one before the row scrolls to it
+        self.record_group_current();
         self.scroll_to_shown_tab();
         if let Some(checkout) = checkout {
             self.remember_checkout(&checkout, cx);
@@ -592,7 +598,6 @@ impl Workspace {
             self.section_shown(tab, window, cx);
         }
         self.record_shown(cx);
-        self.record_group_current();
         if self.hub_return.as_ref().is_some_and(|opened| Some(opened.tab) != self.tabs.active_id()) {
             self.hub_return = None;
         }
