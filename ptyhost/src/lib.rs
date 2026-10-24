@@ -6,6 +6,7 @@
 pub mod cli;
 pub mod client;
 pub mod host;
+mod modes;
 pub mod protocol;
 pub mod registry;
 #[cfg(target_os = "linux")]

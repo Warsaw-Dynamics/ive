@@ -13,6 +13,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::protocol::{Frame, PROTOCOL, Size};
 use crate::registry::{DIR_ENV, Registry, SessionInfo, validate_id, validate_label};
+use crate::modes::ModeTracker;
 use crate::title::TitleTracker;
 
 /// Output kept for replay to the next client to attach.
@@ -450,12 +451,15 @@ impl Host {
 }
 
 /// The tail of the output. Once trimmed it starts after a newline, so replay does not begin inside an escape
-/// sequence (one spanning a newline is rare), and with the last title, which programs set only when it changes.
+/// sequence (one spanning a newline is rare), with the last title, which programs set only when it changes, and
+/// the modes set before the tail, which full-screen programs set only at their start.
 #[derive(Default)]
 struct Replay {
     bytes: VecDeque<u8>,
     trimmed: bool,
     title: TitleTracker,
+    /// the modes as of the first kept byte: it reads the output as it is trimmed
+    modes: ModeTracker,
 }
 
 impl Replay {
@@ -464,6 +468,10 @@ impl Replay {
         self.bytes.extend(data);
         let excess = self.bytes.len().saturating_sub(REPLAY_BYTES);
         if excess > 0 {
+            let (front, back) = self.bytes.as_slices();
+            let front_part = excess.min(front.len());
+            self.modes.scan(&front[..front_part]);
+            self.modes.scan(&back[..excess - front_part]);
             self.bytes.drain(..excess);
             self.trimmed = true;
         }
@@ -473,7 +481,9 @@ impl Replay {
         let bytes: Vec<u8> = self.bytes.iter().copied().collect();
         if self.trimmed {
             let start = bytes.iter().position(|&b| b == b'\n').map_or(bytes.len(), |newline| newline + 1);
-            return [self.title.sequence().unwrap_or_default().as_slice(), &bytes[start..]].concat();
+            let mut modes = self.modes.clone();
+            modes.scan(&bytes[..start]);
+            return [self.title.sequence().unwrap_or_default().as_slice(), &modes.sequence(), &bytes[start..]].concat();
         }
         bytes
     }
@@ -723,5 +733,33 @@ mod tests {
 
         // then
         assert_eq!(replay.snapshot(), b"\x1b]2;\xe2\x9c\xb3 Summary\x07prompt");
+    }
+
+    #[test]
+    fn should_replay_the_modes_set_before_the_kept_output_once_trimmed_past_them() {
+        // given
+        let mut replay = Replay::default();
+        replay.push(b"\x1b]0;codex\x07\x1b[?1049h\x1b[?1000h\x1b[?1006h");
+
+        // when
+        replay.push(&vec![b'a'; REPLAY_BYTES]);
+        replay.push(b"\x1b[?2004h\nscreen\x1b[?25l");
+
+        // then
+        assert_eq!(replay.snapshot(), b"\x1b]2;codex\x07\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[?2004hscreen\x1b[?25l");
+    }
+
+    #[test]
+    fn should_replay_the_screen_left_before_the_kept_output() {
+        // given
+        let mut replay = Replay::default();
+        replay.push(b"\x1b[?1049h\x1b[?1000hfull screen\x1b[?1000l\x1b[?1049l");
+
+        // when
+        replay.push(&vec![b'a'; REPLAY_BYTES]);
+        replay.push(b"\nshell\x1b[?1049h");
+
+        // then
+        assert_eq!(replay.snapshot(), b"\x1b[?1049l\x1b[?1000lshell\x1b[?1049h");
     }
 }
