@@ -1,7 +1,7 @@
 //! Read-only text the mouse selects, like text on a web page: drag, double click a word, triple click the block,
 //! Shift+click to extend. One selection in the window; the user's Copy and Select All act on it (`Place::Text`).
 
-use gpui::{App, CursorStyle, FocusHandle, Global, HighlightStyle, MouseButton, MouseDownEvent, MouseMoveEvent, SharedString, Stateful, StyledText, Div, Window, div, prelude::*, rgb};
+use gpui::{AnyWindowHandle, App, CursorStyle, FocusHandle, Global, HighlightStyle, MouseButton, MouseDownEvent, MouseMoveEvent, SharedString, Stateful, StyledText, Div, Window, div, prelude::*, rgb};
 
 use crate::theme::Theme;
 
@@ -101,25 +101,35 @@ pub struct TextSelection {
     /// what had the keyboard before the selection took it, to give it back: keys only reach views on the focused
     /// element's path, so a focus nothing draws would leave every key unheard
     previous: Option<FocusHandle>,
+    /// the window the selection is in, which gets its keyboard back when the user selects in another
+    window: Option<AnyWindowHandle>,
 }
 
 impl Global for TextSelection {}
 
 impl TextSelection {
     pub fn new(cx: &mut App) -> Self {
-        Self { selection: Selection::default(), anchor: 0, focus: cx.focus_handle(), previous: None }
+        Self { selection: Selection::default(), anchor: 0, focus: cx.focus_handle(), previous: None, window: None }
     }
 }
 
-/// Clears the selection and gives the keyboard back to what had it before, when the selection still has it; for
-/// when its text is about to go (another tab shown).
+/// Clears the selection and gives the keyboard back to what had it before, in the window the selection is in, when
+/// the selection still has it; for when its text is about to go (another tab shown).
 pub fn let_go(window: &mut Window, cx: &mut App) {
     let Some(state) = cx.try_global::<TextSelection>() else {
         return;
     };
-    let had_keys = state.focus.is_focused(window);
+    match state.window.filter(|held| *held != window.window_handle()) {
+        Some(held) => drop(held.update(cx, |_, held, cx| release_in(held, cx))),
+        None => release_in(window, cx),
+    }
+}
+
+fn release_in(window: &mut Window, cx: &mut App) {
+    let had_keys = cx.global::<TextSelection>().focus.is_focused(window);
     let state = cx.global_mut::<TextSelection>();
     state.selection.clear();
+    state.window = None;
     let previous = state.previous.take();
     if had_keys {
         match previous {
@@ -177,8 +187,15 @@ struct Press<'a> {
 
 fn press(press: Press, window: &mut Window, cx: &mut App) {
     let Press { id, text, index, event } = press;
+    let here = window.window_handle();
+    let left = cx.global::<TextSelection>().window.filter(|held| *held != here);
+    if let Some(left) = left {
+        // the window the selection leaves gets its keyboard back, as a press elsewhere in it would give
+        let _ = left.update(cx, |_, left, cx| release_in(left, cx));
+    }
     let focused = window.focused(cx);
     let state = cx.global_mut::<TextSelection>();
+    state.window = Some(here);
     if focused.as_ref() != Some(&state.focus) {
         state.previous = focused;
     }
@@ -266,6 +283,30 @@ mod tests {
         // then
         assert!(cx.update(|window, _cx| before.is_focused(window)));
         assert_eq!(keys.get(), 0);
+    }
+
+    #[gpui::test]
+    fn should_give_focus_back_in_the_window_the_selection_left(cx: &mut TestAppContext) {
+        // given
+        let (first, _) = window(cx);
+        let before = first.update(|window, cx| {
+            let handle = cx.focus_handle();
+            window.focus(&handle, cx);
+            handle
+        });
+        press(point(px(5.), px(5.)), 2, first);
+        redraw(first);
+        let first_handle = first.window_handle();
+        let keys = std::rc::Rc::new(std::cell::Cell::new(0));
+        let (_, second) = cx.add_window_view(|_window, _cx| Shown { keys });
+        redraw(second);
+
+        // when
+        press(point(px(5.), px(5.)), 2, second);
+
+        // then
+        let restored = cx.update_window(first_handle, |_, window, _cx| before.is_focused(window)).unwrap();
+        assert!(restored, "the first window's keyboard went back to what had it");
     }
 
     #[gpui::test]
