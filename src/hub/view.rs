@@ -20,6 +20,7 @@ use super::sources::HubScope;
 use crate::age::Clock;
 use crate::click_targets::target;
 use crate::colors::checkout_colour;
+use crate::favicon_badge::{Badge, badged};
 use codeview::panel::Panel;
 use crate::icons;
 use crate::overview::git_ui::{layout_switch, mark_label, tag};
@@ -302,7 +303,7 @@ fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace,
         .cursor_pointer()
         .hover(|style| style.bg(rgb(theme.hover)))
         .child(div().flex_none().w(px(12.)).text_xs().text_color(rgb(theme.muted)).child(row.number.map(|number| number.to_string()).unwrap_or_default()))
-        .child(img(icons::embedded(theme.appearance, item.icon)).flex_none().size(px(16.)).opacity(if item.faded { FADED_ICON } else { 1. }))
+        .child(badged(img(icons::embedded(theme.appearance, item.icon)).flex_none().size(px(16.)).opacity(if item.faded { FADED_ICON } else { 1. }), hub_badge(row, look, workspace, theme), theme))
         // a long title gives way before the tags at the row's end
         .child(div().flex_shrink_1().min_w_0().overflow_hidden().whitespace_nowrap().text_color(rgb(title_colour)).child(highlighted(&item.title, &row.title_hits, theme)))
         .child(div().flex_1().min_w_0().overflow_hidden().whitespace_nowrap().text_xs().text_color(rgb(theme.muted)).child(highlighted(&item.detail, &row.detail_hits, theme)))
@@ -316,6 +317,21 @@ fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace,
         line = line.bg(rgb(theme.selected));
     }
     line
+}
+
+/// A row's badge: its module's favicon, else its project's, in its worktree, or its project's main checkout when it
+/// is in several or none; ringed in the row's background.
+fn hub_badge(row: &Row, look: RowLook, workspace: &Workspace, theme: Theme) -> Option<Badge> {
+    let checkout = match &row.tag {
+        Tag::Worktree(checkout) => checkout.clone(),
+        Tag::None | Tag::Several(_) => {
+            let project = workspace.project(row.item.project.as_ref()?)?;
+            project.checkout_ref(project.main_checkout())
+        }
+    };
+    let owner = workspace.owner_of(&checkout, row.item.path.as_deref().map(std::path::Path::new));
+    let ring = if look.selected { theme.selected } else { theme.background };
+    owner.icon.map(|path| Badge { path, ring })
 }
 
 fn worktree_tag(row_tag: &Tag, workspace: &Workspace, theme: Theme) -> Option<Div> {
