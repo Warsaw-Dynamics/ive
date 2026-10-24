@@ -53,16 +53,24 @@ impl Workspace {
     }
 
     fn tab_facts(&self, id: TabId, tab: &Tab) -> TabFacts {
-        let project = tab.project(self);
-        let checkout = (!is_project_own(tab)).then(|| tab.checkout(self)).flatten();
+        // resolved once: where it runs, which a project's own tab has too (its last focused checkout)
+        let resolved = tab.checkout(self);
+        let project = resolved.as_ref().map(|checkout| checkout.project.clone()).or_else(|| tab.project(self));
+        let checkout = resolved.clone().filter(|_| !is_project_own(tab));
         let main = checkout.as_ref().and_then(|checkout| self.checkout(checkout)).is_some_and(|found| found.is_main);
-        let owner = match (&project, &checkout) {
-            (_, Some(checkout)) => Some(owner_key(self.owner_of(checkout, tab.owner_path(self).as_deref()).module.as_deref(), &checkout.project)),
-            (Some(project), None) => Some(owner_key(None, project)),
+        // a project's own tab has no path in a module: its owner is the project
+        let owner = resolved.as_ref().map(|at| self.owner_of(at, checkout.as_ref().and(tab.owner_path(self)).as_deref()));
+        let key = match (&owner, &project) {
+            (Some(owner), _) => Some(owner_key(owner.module.as_deref(), &owner.project)),
+            (None, Some(project)) => Some(owner_key(None, project)),
             (None, None) => None,
         };
+        let icon = match owner {
+            Some(owner) => owner.icon,
+            None => project.as_ref().and_then(|project| self.project_icon(project)),
+        };
         let worktrees = project.as_ref().and_then(|project| self.project(project)).is_some_and(|found| found.checkouts.len() > 1);
-        TabFacts { id, project, checkout: checkout.map(|checkout| checkout.path), main, owner, worktrees }
+        TabFacts { id, project, checkout: checkout.map(|checkout| checkout.path), main, owner: key, worktrees, icon }
     }
 
     /// The row's groups, from the tabs and each project's folded flag, worktree order and tab shown last.
@@ -131,14 +139,6 @@ impl Workspace {
         owner.module.and(owner.icon)
     }
 
-    /// The favicon a tab's badge shows: its module's, else its project's.
-    pub fn tab_badge(&self, tab: &Tab) -> Option<PathBuf> {
-        match tab.checkout(self) {
-            Some(checkout) => self.owner_of(&checkout, tab.owner_path(self).as_deref()).icon,
-            None => tab.project(self).and_then(|project| self.project_icon(&project)),
-        }
-    }
-
     /// The shown tab becomes its project's current tab, the one its group keeps out when folded.
     pub(super) fn record_group_current(&mut self) {
         let shown = self.tabs.active_id().zip(self.tabs.active()).and_then(|(id, tab)| tab.project(self).map(|project| (project, id)));
@@ -191,7 +191,7 @@ impl Workspace {
         let order: Vec<PathBuf> = shown.into_iter().filter_map(|(checkout, _)| checkout).collect();
         let order = tab_groups::placed(&order, &moved.moved.to_path_buf(), (&moved.beside.0.to_path_buf(), moved.beside.1));
         if let Some(open) = self.open_project_mut(moved.project) {
-            open.set_worktree_order(order);
+            open.set_worktree_order(tab_groups::merged_order(&saved, &order));
             self.schedule_save(cx);
             cx.notify();
         }

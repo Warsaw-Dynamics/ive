@@ -37,10 +37,13 @@ pub fn sections(tabs: &[TabFacts], order: &[PathBuf]) -> Vec<Section> {
 }
 
 /// The open group menu over a layer that closes it on a press outside.
-pub fn render(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut Context<Workspace>) -> Option<impl IntoElement> {
+pub fn render(workspace: &Workspace, window: &Window, cx: &mut Context<Workspace>) -> Option<impl IntoElement> {
     let menu = workspace.group_menu()?.clone();
+    let facts = workspace.tab_group_facts();
+    // a group whose last tab closed has nothing to list: its menu is gone with it
+    facts.iter().find(|fact| fact.project.as_ref() == Some(&menu.project))?;
     let size = window.viewport_size();
-    let panel = anchored().position(menu.at).snap_to_window().child(panel(&menu.project, workspace, theme, cx));
+    let panel = anchored().position(menu.at).snap_to_window().child(panel(&menu.project, &facts, workspace, cx));
     let layer = div()
         .id("group-menu-layer")
         .w(size.width)
@@ -51,11 +54,12 @@ pub fn render(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut Con
     Some(deferred(anchored().position(Point::default()).child(layer)).with_priority(1))
 }
 
-fn panel(project: &ProjectId, workspace: &Workspace, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+fn panel(project: &ProjectId, all: &[TabFacts], workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let theme = crate::theme::tabs(cx);
     let sizes = &theme.sizes.menu;
-    let facts: Vec<TabFacts> = workspace.tab_group_facts().into_iter().filter(|fact| fact.project.as_ref() == Some(project)).collect();
+    let facts: Vec<TabFacts> = all.iter().filter(|fact| fact.project.as_ref() == Some(project)).cloned().collect();
     let order = workspace.worktree_order(project);
-    let current = workspace.tab_groups(&workspace.tab_group_facts()).into_iter().find(|group| group.project.as_ref() == Some(project)).map(|group| group.current);
+    let current = workspace.tab_groups(all).into_iter().find(|group| group.project.as_ref() == Some(project)).map(|group| group.current);
     let rows: Vec<AnyElement> = sections(&facts, &order)
         .into_iter()
         .flat_map(|section| {
@@ -97,7 +101,7 @@ fn section_head(project: &ProjectId, checkout: Option<&Path>, workspace: &Worksp
         div().absolute().left(px(10.)).top(sizes.tabs.rail_inset.px()).bottom(sizes.tabs.rail_inset.px()).w(sizes.tabs.rail_width.px()).rounded(px(1.)).bg(rgb(colour))
     });
     let head = div()
-        .id(SharedString::from(format!("group-menu-head-{}", label)))
+        .id(SharedString::from(format!("group-menu-head-{}", checkout.map_or_else(|| "whole-project".to_owned(), |path| path.display().to_string()))))
         .relative()
         .flex()
         .items_center()
@@ -260,7 +264,7 @@ mod tests {
     use crate::tabs::TabId;
 
     fn fact(id: u64, checkout: Option<&str>, main: bool) -> TabFacts {
-        TabFacts { id: TabId::for_tests(id), project: Some(ProjectId::new("a")), checkout: checkout.map(PathBuf::from), main, owner: None, worktrees: true }
+        TabFacts { id: TabId::for_tests(id), project: Some(ProjectId::new("a")), checkout: checkout.map(PathBuf::from), main, owner: None, worktrees: true, icon: None }
     }
 
     #[test]

@@ -4,6 +4,8 @@
 use std::collections::BTreeMap;
 
 const STEM: &str = ".favicon.";
+/// A favicon file larger than this is left out: an icon drawn at 16 px needs far less, and decoding it is not free.
+pub const MAX_FAVICON_BYTES: u64 = 512 * 1024;
 /// When a folder has several, the first of these wins.
 const EXTENSIONS: [&str; 5] = ["svg", "png", "jpg", "jpeg", "ico"];
 
@@ -27,6 +29,12 @@ impl Favicons {
             }
         }
         Favicons { by_folder: ranked.into_iter().map(|(folder, (_, path))| (folder, path)).collect() }
+    }
+
+    /// These favicons but the files `rejected` names (by their checkout-relative path); their folders then have
+    /// none, so a module whose favicon is rejected is no module.
+    pub fn without(self, rejected: impl Fn(&str) -> bool) -> Favicons {
+        Favicons { by_folder: self.by_folder.into_iter().filter(|(_, file)| !rejected(file)).collect() }
     }
 
     /// The project's icon: the root folder's favicon file.
@@ -102,6 +110,18 @@ mod tests {
 
         // then
         assert_eq!(favicons, [true, true, false, false, false]);
+    }
+
+    #[test]
+    fn should_leave_out_a_favicon_too_big_to_draw() {
+        // given
+        let favicons = Favicons::from_paths(["a/.favicon.png", "b/.favicon.svg"]);
+
+        // when
+        let kept = favicons.without(|file| file == "a/.favicon.png");
+
+        // then
+        assert_eq!((kept.icon_of("a"), kept.icon_of("b")), (None, Some("b/.favicon.svg")));
     }
 
     #[test]

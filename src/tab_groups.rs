@@ -4,6 +4,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+use crate::open_project::TabsFolded;
 use crate::project::ProjectId;
 use crate::tabs::TabId;
 
@@ -19,6 +20,8 @@ pub struct TabFacts {
     pub owner: Option<String>,
     /// its project has worktrees besides the main checkout
     pub worktrees: bool,
+    /// its owner's favicon: its module's, else its project's
+    pub icon: Option<PathBuf>,
 }
 
 /// The groups' state: folded projects, each project's worktree order, each project's tab shown last.
@@ -32,10 +35,27 @@ pub struct GroupState<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TabGroup {
     pub project: Option<ProjectId>,
-    pub head: bool,
-    pub folded: bool,
+    pub head: GroupHead,
+    pub folded: TabsFolded,
     pub tabs: Vec<TabId>,
     pub current: TabId,
+}
+
+/// Whether a group shows a head: with tabs of more than one project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupHead {
+    Shown,
+    Hidden,
+}
+
+impl TabGroup {
+    pub fn has_head(&self) -> bool {
+        self.head == GroupHead::Shown
+    }
+
+    pub fn is_folded(&self) -> bool {
+        self.folded == TabsFolded::Folded
+    }
 }
 
 /// Where a dragged item lands beside another.
@@ -65,19 +85,20 @@ pub fn groups(tabs: &[TabFacts], state: &GroupState) -> Vec<TabGroup> {
 fn ungrouped(tabs: &[TabFacts], project: Option<ProjectId>) -> Option<TabGroup> {
     let ids: Vec<TabId> = tabs.iter().map(|tab| tab.id).collect();
     let current = *ids.first()?;
-    Some(TabGroup { project, head: false, folded: false, tabs: ids, current })
+    Some(TabGroup { project, head: GroupHead::Hidden, folded: TabsFolded::Open, tabs: ids, current })
 }
 
 fn project_group(tabs: &[TabFacts], project: Option<&ProjectId>, state: &GroupState) -> TabGroup {
     let own = tabs.iter().filter(|tab| tab.project.as_ref() == project);
     let Some(project) = project else {
         let ids: Vec<TabId> = own.map(|tab| tab.id).collect();
-        return TabGroup { project: None, head: false, folded: false, current: ids[0], tabs: ids };
+        return TabGroup { project: None, head: GroupHead::Hidden, folded: TabsFolded::Open, current: ids[0], tabs: ids };
     };
     let order = state.order.get(project).map_or(&[][..], Vec::as_slice);
     let ids: Vec<TabId> = worktree_runs(own, order).into_iter().flat_map(|(_, run)| run).collect();
     let current = state.current.get(project).filter(|current| ids.contains(current)).copied().unwrap_or(ids[0]);
-    TabGroup { project: Some(project.clone()), head: true, folded: state.folded.contains(project), tabs: ids, current }
+    let folded = if state.folded.contains(project) { TabsFolded::Folded } else { TabsFolded::Open };
+    TabGroup { project: Some(project.clone()), head: GroupHead::Shown, folded, tabs: ids, current }
 }
 
 /// A project's tabs in runs of one checkout each: those in `order` first, in its order, then the main checkout's,
@@ -109,10 +130,10 @@ pub enum RowItem {
 pub fn row_items(groups: &[TabGroup]) -> Vec<RowItem> {
     let mut items = Vec::new();
     for (index, group) in groups.iter().enumerate() {
-        if group.head {
+        if group.has_head() {
             items.push(RowItem::Head(index));
         }
-        let shown: &[TabId] = if group.folded { std::slice::from_ref(&group.current) } else { &group.tabs };
+        let shown: &[TabId] = if group.is_folded() { std::slice::from_ref(&group.current) } else { &group.tabs };
         items.extend(shown.iter().map(|id| RowItem::Tab(index, *id)));
     }
     items
@@ -138,7 +159,7 @@ pub enum CueKind {
 /// A tab's worktree cue in its group: a label out of a folded group, a tint for a worktree other than the main
 /// checkout while the row spans worktrees; none for the project's own tabs.
 pub fn chip_cue(fact: &TabFacts, group: &TabGroup, spread: Spread) -> CueKind {
-    match (&fact.checkout, group.folded) {
+    match (&fact.checkout, group.is_folded()) {
         (None, _) => CueKind::Plain,
         (Some(_), true) if fact.worktrees => CueKind::Label,
         (Some(_), true) => CueKind::Plain,
@@ -154,7 +175,7 @@ pub fn shows_badge(fact: &TabFacts, group: &TabGroup, spread: Spread) -> bool {
         return false;
     };
     let is_module = fact.project.as_ref().is_none_or(|project| project.as_str() != owner);
-    spread.owners && (is_module || !group.head)
+    spread.owners && (is_module || !group.has_head())
 }
 
 /// Whether the tabs come from more than one checkout: only then are worktree tabs tinted.
@@ -187,6 +208,12 @@ pub fn keep_group_order(before: &[TabFacts], after: &[TabId]) -> Vec<TabId> {
     let mut order = after.to_vec();
     order.sort_by_key(rank);
     order
+}
+
+/// A project's worktree order after a drag: the group's worktrees as dragged (`shown`), then those `saved` that have
+/// no tabs now, in their saved order, so their place among the ordered ones is not forgotten.
+pub fn merged_order(saved: &[PathBuf], shown: &[PathBuf]) -> Vec<PathBuf> {
+    shown.iter().chain(saved.iter().filter(|path| !shown.contains(path))).cloned().collect()
 }
 
 /// The gap of the row `order` (0 before the first tab, as `Tabs::move_tab` counts them before the move) that puts
@@ -223,6 +250,7 @@ mod tests {
             main,
             owner: project.map(str::to_owned),
             worktrees: true,
+            icon: None,
         }
     }
 
@@ -257,7 +285,7 @@ mod tests {
 
         // then
         assert_eq!(groups.len(), 1);
-        assert!(!groups[0].head);
+        assert!(!groups[0].has_head());
         assert_eq!(groups[0].tabs, ids(&[1, 2]));
     }
 
@@ -271,7 +299,7 @@ mod tests {
         let groups = groups(&tabs, &given.state());
 
         // then
-        let shown: Vec<(Option<ProjectId>, bool, Vec<TabId>)> = groups.into_iter().map(|group| (group.project, group.head, group.tabs)).collect();
+        let shown: Vec<(Option<ProjectId>, bool, Vec<TabId>)> = groups.into_iter().map(|group| (group.project.clone(), group.has_head(), group.tabs)).collect();
         assert_eq!(shown, [(Some(ProjectId::new("a")), true, ids(&[1, 3])), (Some(ProjectId::new("b")), true, ids(&[2]))]);
     }
 
@@ -320,9 +348,9 @@ mod tests {
         let groups = groups(&tabs, &given.state());
 
         // then
-        assert!(groups[0].folded);
+        assert!(groups[0].is_folded());
         assert_eq!(groups[0].current, TabId::for_tests(2));
-        assert!(!groups[1].folded);
+        assert!(!groups[1].is_folded());
     }
 
     #[test]
@@ -351,7 +379,7 @@ mod tests {
         // then
         let headless: Vec<&TabGroup> = groups.iter().filter(|group| group.project.is_none()).collect();
         assert_eq!(headless.len(), 1);
-        assert!(!headless[0].head);
+        assert!(!headless[0].has_head());
         assert_eq!(headless[0].tabs, ids(&[1, 4]));
     }
 
@@ -383,7 +411,7 @@ mod tests {
         assert_eq!(spread, (false, true));
     }
 
-    fn group_of(facts: &[TabFacts], head: bool, folded: bool) -> TabGroup {
+    fn group_of(facts: &[TabFacts], head: GroupHead, folded: TabsFolded) -> TabGroup {
         TabGroup { project: facts[0].project.clone(), head, folded, tabs: facts.iter().map(|fact| fact.id).collect(), current: facts[0].id }
     }
 
@@ -393,7 +421,7 @@ mod tests {
     fn should_tint_a_worktree_tab_when_tabs_span_worktrees() {
         // given
         let tab = fact(1, Some("a"), Some("/a-wt"), false);
-        let group = group_of(std::slice::from_ref(&tab), true, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Shown, TabsFolded::Open);
 
         // when
         let cue = chip_cue(&tab, &group, SPREAD);
@@ -406,7 +434,7 @@ mod tests {
     fn should_not_tint_the_main_checkout() {
         // given
         let tab = fact(1, Some("a"), Some("/a"), true);
-        let group = group_of(std::slice::from_ref(&tab), true, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Shown, TabsFolded::Open);
 
         // when
         let cue = chip_cue(&tab, &group, SPREAD);
@@ -419,7 +447,7 @@ mod tests {
     fn should_not_tint_when_one_worktree_is_open() {
         // given
         let tab = fact(1, Some("a"), Some("/a-wt"), false);
-        let group = group_of(std::slice::from_ref(&tab), false, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Hidden, TabsFolded::Open);
 
         // when
         let cue = chip_cue(&tab, &group, Spread { worktrees: false, owners: true });
@@ -434,7 +462,7 @@ mod tests {
         let worktree = fact(1, Some("a"), Some("/a-wt"), false);
         let main = fact(2, Some("a"), Some("/a"), true);
         let own = fact(3, Some("a"), None, false);
-        let group = group_of(&[worktree.clone(), main.clone(), own.clone()], true, true);
+        let group = group_of(&[worktree.clone(), main.clone(), own.clone()], GroupHead::Shown, TabsFolded::Folded);
 
         // when
         let cues = [&worktree, &main, &own].map(|tab| chip_cue(tab, &group, SPREAD));
@@ -448,7 +476,7 @@ mod tests {
         // given
         let mut tab = fact(1, Some("a"), Some("/a"), true);
         tab.worktrees = false;
-        let group = group_of(std::slice::from_ref(&tab), true, true);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Shown, TabsFolded::Folded);
 
         // when
         let cue = chip_cue(&tab, &group, SPREAD);
@@ -462,7 +490,7 @@ mod tests {
         // given
         let mut tab = fact(1, Some("a"), Some("/a"), true);
         tab.owner = Some("a/idp".to_owned());
-        let group = group_of(std::slice::from_ref(&tab), true, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Shown, TabsFolded::Open);
 
         // when
         let shown = (shows_badge(&tab, &group, SPREAD), shows_badge(&tab, &group, Spread { worktrees: true, owners: false }));
@@ -475,7 +503,7 @@ mod tests {
     fn should_not_badge_the_project_itself_under_a_head() {
         // given
         let tab = fact(1, Some("a"), Some("/a"), true);
-        let group = group_of(std::slice::from_ref(&tab), true, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Shown, TabsFolded::Open);
 
         // when
         let shown = shows_badge(&tab, &group, SPREAD);
@@ -488,7 +516,7 @@ mod tests {
     fn should_badge_the_project_without_heads_when_owners_spread() {
         // given
         let tab = fact(1, Some("a"), Some("/a"), true);
-        let group = group_of(std::slice::from_ref(&tab), false, false);
+        let group = group_of(std::slice::from_ref(&tab), GroupHead::Hidden, TabsFolded::Open);
 
         // when
         let shown = shows_badge(&tab, &group, SPREAD);
@@ -554,6 +582,19 @@ mod tests {
 
         // then
         assert_eq!(order, ids(&[1, 3, 2]));
+    }
+
+    #[test]
+    fn should_keep_ordered_worktrees_without_tabs_when_reordering() {
+        // given: /z was dragged first earlier and has no tabs now; the group shows /a, /x, /y
+        let saved = [PathBuf::from("/z"), PathBuf::from("/x"), PathBuf::from("/a")];
+        let shown = [PathBuf::from("/y"), PathBuf::from("/a"), PathBuf::from("/x")];
+
+        // when
+        let order = merged_order(&saved, &shown);
+
+        // then
+        assert_eq!(order, ["/y", "/a", "/x", "/z"].map(PathBuf::from));
     }
 
     #[test]

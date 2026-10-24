@@ -143,6 +143,16 @@ impl SavedTab {
         }
     }
 
+    /// The path whose module owns the tab before it loads, as `Tab::owner_path` gives it after: a file's, a diff's
+    /// file; `None` for the rest.
+    pub fn owner_path(&self) -> Option<PathBuf> {
+        match self {
+            Self::File { path, .. } => Some(path.clone()),
+            Self::Diff { request, .. } => Some(request.dir.join(&*String::from_utf8_lossy(&request.path))),
+            _ => None,
+        }
+    }
+
     pub fn paths(&self) -> Vec<&PathBuf> {
         match self {
             Self::File { path, .. } | Self::WorktreeOverview { checkout: path, .. } => vec![path],
@@ -156,6 +166,20 @@ impl SavedTab {
 mod tests {
     use super::*;
     use codeview::panel::DiffLayout;
+
+    #[test]
+    fn should_own_a_restored_diff_by_its_file_as_a_loaded_one() {
+        // given
+        let request = SavedDiffRequest { dir: PathBuf::from("/r"), path: b"svc/A.java".to_vec(), old_path: None, source: SavedDiffSource::Uncommitted };
+        let diff = SavedTab::Diff { checkout: PathBuf::from("/r"), request, panel: PanelState::default() };
+        let file = SavedTab::File { path: PathBuf::from("/r/lib/x.rs"), panel: PanelState::default() };
+
+        // when
+        let owners = [diff.owner_path(), file.owner_path(), SavedTab::Hub.owner_path()];
+
+        // then
+        assert_eq!(owners, [Some(PathBuf::from("/r/svc/A.java")), Some(PathBuf::from("/r/lib/x.rs")), None]);
+    }
 
     fn scroll() -> ScrollPosition {
         ScrollPosition { top_line: 12.5, left: 30. }

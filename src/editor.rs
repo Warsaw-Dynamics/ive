@@ -420,7 +420,7 @@ impl Tab {
                 let process = workspace.processes().get(*id)?;
                 process.directory().map(Path::to_path_buf).or_else(|| process.run.as_ref().map(|run| run.folder.clone()))
             }
-            Self::Unloaded(SavedTab::File { path, .. }) => Some(path.clone()),
+            Self::Unloaded(saved) => saved.owner_path(),
             _ => None,
         }
     }
@@ -594,7 +594,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         places,
         spread: Spread { worktrees: tab_groups::spread_worktrees(&facts), owners: tab_groups::spread_owners(&facts) },
         groups,
-        facts: &facts,
+        facts: facts.iter().map(|fact| (fact.id, fact)).collect(),
         theme,
     };
     // past the last tab: a dragged tab goes last
@@ -653,7 +653,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .child(strip)
         .child(tools)
         .children(crate::menu_view::render_menu(workspace, theme, window, cx))
-        .children(crate::tab_group_menu::render(workspace, theme, window, cx))
+        .children(crate::tab_group_menu::render(workspace, window, cx))
 }
 
 /// A detached tab's window: a row with the tab, Move to main window and the window buttons, then the tab. `None`
@@ -736,7 +736,7 @@ struct GroupView<'a> {
     places: HashMap<TabId, usize>,
     spread: Spread,
     groups: Vec<TabGroup>,
-    facts: &'a [TabFacts],
+    facts: HashMap<TabId, &'a TabFacts>,
     theme: Theme,
 }
 
@@ -764,7 +764,7 @@ fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, c
         RowItem::Head(group) => group_head(&view.groups[group], workspace, cx).map(IntoElement::into_any_element),
         RowItem::Tab(group, id) => {
             let tabs = workspace.tabs();
-            let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, view.facts.iter().find(|fact| fact.id == id)?);
+            let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, *view.facts.get(&id)?);
             let look = view.look(fact, &view.groups[group], workspace);
             let chip = Chip { id, place, tab, shown: tabs.active_id() == Some(id), temporary: tabs.is_temporary(id), marker: view.drop.marker(place), look };
             Some(render_tab(chip, workspace, cx).into_any_element())
@@ -779,7 +779,7 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
     let project = group.project.clone()?;
     let name = workspace.project(&project).map_or_else(|| project.to_string(), |found| found.name.clone());
     let toggled = project.clone();
-    let chevron = if group.folded { icons::CHEVRON_RIGHT } else { icons::CHEVRON_DOWN };
+    let chevron = if group.is_folded() { icons::CHEVRON_RIGHT } else { icons::CHEVRON_DOWN };
     let fold = div()
         .id(SharedString::from(format!("tab-group-fold-{}", project.as_str())))
         .flex_none()
@@ -795,7 +795,7 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
         Some(path) => favicon_or(&path, px(14.), initials).into_any_element(),
         None => initials(),
     };
-    let count = group.folded.then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
+    let count = group.is_folded().then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
     let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);
     let opened = project.clone();
     let row_height = sizes.row_height.px();
@@ -844,8 +844,7 @@ impl GroupView<'_> {
             (CueKind::Label, Some(checkout)) => ChipCue::Label { text: workspace.checkout_label(checkout), colour: colour.unwrap_or(self.theme.muted) },
             (CueKind::Label | CueKind::Plain, _) => ChipCue::Plain,
         };
-        let tab = workspace.tabs().get(fact.id);
-        let badge = tab.filter(|_| tab_groups::shows_badge(fact, group, self.spread)).and_then(|tab| workspace.tab_badge(tab));
+        let badge = fact.icon.clone().filter(|_| tab_groups::shows_badge(fact, group, self.spread));
         ChipLook { cue, badge }
     }
 }
