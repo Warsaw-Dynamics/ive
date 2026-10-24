@@ -39,7 +39,11 @@ impl Failure {
             report.push_str(&format!("{}\n", details.concat()));
         }
         if !self.output.is_empty() {
-            report.push_str(&format!("Output (last {} lines):\n{}\n\n", self.output.len(), self.output.join("\n")));
+            let lines = match self.output.len() {
+                1 => "line".to_owned(),
+                count => format!("{count} lines"),
+            };
+            report.push_str(&format!("Output (last {lines}):\n{}\n\n", self.output.join("\n")));
         }
         report.push_str(&format!("{}\nOS: {}\n", crate::build_info::summary(), std::env::consts::OS));
         report
@@ -93,7 +97,7 @@ mod tests {
         let report = failure.report("Terminal");
 
         // then
-        let expected_start = "Terminal: The shell exited right after start\n\nFolder: /p\nExit: SIGSEGV (11)\n\nOutput (last 1 lines):\nboom\n\n";
+        let expected_start = "Terminal: The shell exited right after start\n\nFolder: /p\nExit: SIGSEGV (11)\n\nOutput (last line):\nboom\n\n";
         assert!(report.starts_with(expected_start), "{report}");
         assert!(report.contains(&crate::build_info::summary()), "{report}");
         assert!(report.ends_with(&format!("OS: {}\n", std::env::consts::OS)), "{report}");
