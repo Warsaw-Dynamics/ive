@@ -18,6 +18,7 @@ use super::rows::{
 };
 use super::drop_place::DropHint;
 use super::selection::{Listed, PickGroup, Selection, pick_group};
+use crate::attention_dot::with_dot;
 use crate::dragged_files::{DraggedFiles, DraggedProcesses};
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
@@ -554,6 +555,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .child(chevron(row.expanded, theme, shared(&toggle)))
         .child(icon(theme, icons::BRANCH))
         .child(row.label.clone())
+        .children(waiting_tag(row.waiting, theme))
         .children(hide);
     bind_row(line, mouse, cx)
 }
@@ -566,8 +568,24 @@ fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> 
     let action = row_action(action, &line);
     let show: Listener = Rc::new(target(line.name("process"), cx.listener(move |workspace, _event, window, cx| workspace.show_process(id, window, cx)), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("process"), checkout: None, activate: show, keep: None, toggle: None };
-    let row_div = line.div.child(folder_view::slot(line.theme)).child(icon(line.theme, row.kind.icon())).children(progress_bar(row.progress, line.theme)).child(row.title.clone()).child(action);
+    let theme = line.theme;
+    let kind_icon = match &row.attention {
+        Some(_) => with_dot(icon(theme, row.kind.icon()), theme, theme.tree).into_any_element(),
+        None => icon(theme, row.kind.icon()).into_any_element(),
+    };
+    let said = row.attention.clone().map(|text| attention_text(format!("● {text}"), theme));
+    let row_div = line.div.child(folder_view::slot(theme)).child(kind_icon).children(progress_bar(row.progress, theme)).child(row.title.clone()).children(said).child(action);
     bind_row(row_div, mouse, cx)
+}
+
+/// What a process said when it called for the user, after its title, in the attention colour.
+fn attention_text(text: String, theme: Theme) -> Div {
+    div().flex_none().text_size(theme.sizes.tree.tag_text_size.px()).text_color(rgb(theme.attention)).child(text)
+}
+
+/// `● n waiting` on a folded row with processes below it that called for the user.
+pub(super) fn waiting_tag(waiting: usize, theme: Theme) -> Option<Div> {
+    (waiting > 0).then(|| attention_text(format!("● {waiting} waiting"), theme))
 }
 
 /// A file or folder row; dragged onto a terminal, it types its path, or the selection's when it is selected.
@@ -740,6 +758,7 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
         .child(div().font_weight(sizes.project_name_weight.font_weight()).text_color(rgb(name_color)).child(project.name.clone()))
         .children(tag)
         .children(running)
+        .children(waiting_tag(project.waiting, theme))
         .children(warning)
         .child(close);
     if present {

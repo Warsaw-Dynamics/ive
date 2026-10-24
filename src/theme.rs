@@ -36,6 +36,8 @@ pub struct Theme {
     pub selected: u32,
     pub hover: u32,
     pub error: u32,
+    /// a process that called for the user, until they look: its dot and text
+    pub attention: u32,
     /// backgrounds of added and removed diff lines, 0xRRGGBBAA
     pub diff_added: u32,
     pub diff_removed: u32,
@@ -196,6 +198,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         selected: palette.selected.0,
         hover: palette.hover.0,
         error: palette.error.0,
+        attention: palette.attention.0,
         diff_added: palette.diff_added.0,
         diff_removed: palette.diff_removed.0,
         find_match: palette.find_match.0,

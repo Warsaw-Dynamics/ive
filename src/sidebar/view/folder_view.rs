@@ -63,6 +63,7 @@ pub(super) fn folder_row(line: RowLine, row: &FolderRow, cx: &mut Context<Worksp
         .child(div().flex_none().when(row.nothing.is_some(), |slot| slot.opacity(MUTED_ICON)).child(icon(theme, kind.icon())))
         .child(kind.title())
         .children(row.count.filter(|count| *count > 0).map(|count| count_badge(count, theme)))
+        .children(super::waiting_tag(row.waiting, theme))
         .children(new_terminal);
     let line = match &row.nothing {
         Some(nothing) => line.text_color(rgb(secondary(theme))).child(dot_note(nothing.mark.to_owned(), theme)).tooltip(tooltip::text_tooltip(nothing.tip.clone())),

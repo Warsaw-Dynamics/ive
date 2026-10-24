@@ -291,6 +291,8 @@ pub struct FolderRow {
     pub empty: bool,
     /// why a git folder lists nothing, once read
     pub nothing: Option<Nothing>,
+    /// Processes folded: its processes that wait for the user; 0 otherwise
+    pub waiting: usize,
 }
 
 /// An empty git folder's row: muted, `· 0` or `· no base` after its name, and why in its tooltip.

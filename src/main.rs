@@ -4,6 +4,7 @@ mod api;
 mod args;
 mod assets;
 mod attention;
+mod attention_dot;
 mod build_info;
 mod click_targets;
 mod clipboard;

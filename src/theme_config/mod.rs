@@ -81,6 +81,8 @@ pub struct Palette {
     pub selected: Rgb,
     pub hover: Rgb,
     pub error: Rgb,
+    /// a process that called for the user, until they look
+    pub attention: Rgb,
     pub diff_added: Rgba,
     pub diff_removed: Rgba,
     /// the find box's matches, and the current one
