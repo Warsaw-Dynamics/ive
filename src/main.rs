@@ -14,6 +14,7 @@ mod editor;
 mod file_tab;
 mod file_write;
 mod favicon;
+mod favicon_badge;
 mod file_tree;
 mod frame;
 mod glow;

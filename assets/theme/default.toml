@@ -117,6 +117,22 @@ drop_marker_width = 2.0
 drop_marker_inset = 2.0
 drop_marker_radius = 4.0
 drag_chip_opacity = 0.85
+# a project's or module's favicon on a tab's icon, lower right, overhanging it, cut out by a ring
+badge_size = 10.0
+badge_offset = 3.0
+badge_ring = 1.5
+# a worktree's colour bar, in the tree and the project group's menu
+rail_width = 2.0
+rail_inset = 4.0
+# a worktree tab's background, of its colour: as it is, hovered, shown, and the shown one's outline
+tint = 0.12
+tint_hover = 0.18
+tint_shown = 0.22
+tint_outline = 0.45
+# a project's group of tabs: the gap around it, its head's text, its count's pill
+group_gap = "0.25rem"
+group_head_text_size = "0.75rem"
+group_count_radius = 8.0
 # Restart and Settings
 toolbar_button_padding = "0.25rem"
 toolbar_button_radius = 6.0
