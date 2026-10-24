@@ -1,0 +1,11 @@
+digraph uml_parallel_cycle_self {
+  graph [rankdir=TB];
+  node [shape=box];
+  n0 [label="A"];
+  n1 [label="B"];
+  n2 [label="C"];
+  n0 -> n1 [label="one"];
+  n0 -> n1 [label="two", style=dashed];
+  n1 -> n0 [label="back"];
+  n0 -> n0 [label="self"];
+}

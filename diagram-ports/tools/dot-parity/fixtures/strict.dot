@@ -1,0 +1,7 @@
+strict digraph G {
+  // Later attributes update the same strict edge.
+  graph [rankdir=TB];
+  node [shape=box];
+  "quoted id" -> b [id="e0",color=red];
+  "quoted id" -> b [color=blue,weight=3];
+}

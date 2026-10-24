@@ -1,0 +1,58 @@
+# Manual and branch-push native macOS evidence for the Rust DOT port.
+name: dot-macos-parity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [diagram-ports, 'codex/dot-macos-parity-*']
+    paths:
+      - .github/workflows/dot-macos-parity.yml
+      - diagram-ports/**
+      - dot-progress.md
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+        working-directory: diagram-ports
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record runner identity
+        run: |
+          mkdir -p "$RUNNER_TEMP/ive-dot-macos/evidence"
+          uname -a > "$RUNNER_TEMP/ive-dot-macos/evidence/runner-uname.txt"
+          test "$(uname -m)" = arm64
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Rust toolchain
+        run: |
+          version="$(awk '$1 == "rust" { print $2 }' ../.tool-versions)"
+          rustup toolchain install "$version" --profile minimal
+          rustup default "$version"
+      - name: macOS oracle and rasterizer dependencies
+        run: |
+          brew install pkgconf gd fontconfig expat
+          brew install --cask inkscape
+          python3 -m pip install pillow==11.3.0
+          pkg-config --modversion gdlib expat
+      - name: Pinned Graphviz 16.1.0 native parity
+        run: bash tools/dot-parity/run_macos_ci.sh "$RUNNER_TEMP/ive-dot-macos"
+      - name: Upload macOS parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dot-macos-arm64-parity-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/ive-dot-macos/evidence/**
+            ${{ runner.temp }}/ive-dot-macos/build/configure.log
+            ${{ runner.temp }}/ive-dot-macos/build/make.log
+            ${{ runner.temp }}/ive-dot-macos/build/install.log

@@ -1,0 +1,1 @@
+digraph G { a -> b [style=dashed,color=red]; b -> c [style=dotted,color="#336699"] }

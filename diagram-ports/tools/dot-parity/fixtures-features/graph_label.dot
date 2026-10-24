@@ -1,0 +1,4 @@
+digraph graph_label {
+  graph [label="A labeled graph", labelloc=t, labeljust=l];
+  a -> b;
+}

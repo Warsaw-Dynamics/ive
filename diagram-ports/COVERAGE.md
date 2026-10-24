@@ -2,6 +2,8 @@
 
 Coverage basis: `3478bbd`, 2026-10-23, including bounded advanced state and its declaration-name correction. This maps the checked-in implementation, rather than claiming complete Mermaid or PlantUML compatibility. The final coherent corpus and Linux gallery have completed, with their structured evidence archived at `8d41271`. Two scoped independent final reviews found no concrete Blocker or Important issue; neither establishes full upstream compatibility or pixel parity.
 
+Post-checkpoint viewer change: PlantUML UML/description and state graph layout now uses an in-process, bounded Rust layered layout. The pure engine API defaults to Dagre. Headless `--output FILE.png` and `--compare-png REFERENCE.png` enable exact RGBA pixel comparisons. The archived corpus, gallery and final reviews predate this change; their counts and verdicts are historical rather than validation of this geometry. See [the viewer commands](README.md) and the [PNG CLI regression](viewer/tests/png_cli.rs).
+
 Use [README](README.md) for build, run, export and capture commands, [examples](viewer/src/examples.rs) for selectable demonstrations, and the linked tests/fixtures for exact executable inputs. A demonstration is one admitted case, not a family-wide grammar guarantee.
 
 ## What each kind of evidence establishes
@@ -69,7 +71,7 @@ The four historical boundary exceptions are already repaired: contextual robust/
 
 ### Explicit non-admission and state frontier
 
-Unimplemented syntax fails rather than returning partial diagrams. No native formula typesetting is claimed: original math/LaTeX reference cases degraded to raw formula text when TeXFormula was missing. Ditaa's import is not functioning MIT wrapper/factory admission evidence; chronology's factory registration is commented out. Raw DOT, other languages, utility/help/font/icon outputs and IVE markdown/product integration are outside this workspace's admitted renderer scope. GPL/EPL/ELK/Smetana implementations and untraced themes/icons/fonts/math assets are excluded.
+Unimplemented syntax fails rather than returning partial diagrams. No native formula typesetting is claimed: original math/LaTeX reference cases degraded to raw formula text when TeXFormula was missing. Ditaa's import is not functioning MIT wrapper/factory admission evidence; chronology's factory registration is commented out. Raw DOT, other languages, utility/help/font/icon outputs and IVE markdown/product integration are outside this workspace's admitted renderer scope. No PlantUML GPL/EPL/ELK/Smetana implementation or untraced theme/icon/font/math asset is imported; no Graphviz helper is built or run.
 
 **Advanced state: integrated bounded subset at `95908d1`.** Composite `--` regions stack and `||` regions sit side by side; mixed separators keep the first axis, including empty/nested regions. Initial/final and shallow/deep `[H]`/`[H*]` singletons belong to their owning scope/region. Composite suffixes such as `S[H]` and `S.N[H]` resolve that composite's history. One supported `<<choice>>`, `<<junction>>`, `<<fork>>`, `<<join>>`, `<<history>>`, `<<history*>>`, `<<start>>` or `<<end>>` retains named identity and paints the actual shape. Fork/join preserve explicit edges without degree rules or broadcast; history is notation, not execution/replay.
 
@@ -83,7 +85,7 @@ The [advanced-state example](fixtures/plantuml/stateadvanced.puml), [public exte
 
 | Boundary | Current contract |
 | --- | --- |
-| Engine | GPUI-free caller-memory API; no file/network/environment/ambient clock/JVM/JS/browser/dot/git execution. Default256KiB source,16MiB SVG,10,000 model items, depth64,5,000,000 work and cooperative10s. Caller limits validated; cancellation and work/storage checks remain phase-specific. |
+| Engine | GPUI-free caller-memory API; default rendering has no file/network/environment/ambient clock/JVM/JS/browser/dot/git execution. Hosts can explicitly select the in-process Rust layered layout. Default256KiB source,16MiB SVG,10,000 model items, depth64,5,000,000 work and cooperative10s. Caller limits validated; cancellation and work/storage checks remain phase-specific. |
 | Worker | Same-binary isolated process; bounded protocol/query/output, independent10s watchdog with kill/reap, Unix2GiB address-space ceiling. This is not an OS filesystem/network sandbox. |
 | Host | Native font measurement, SVG parsing/font loading and rasterization have cooperative checks and explicit XML/tree/point/bitmap/effect limits; worker deadlines do not make every host library call preemptible. Raster4096 per axis/4,194,304 pixels, logical axes1,000,000, scale≤8. |
 | Platforms | Linux runtime/captures/native font and worker-fault evidence exists. macOS features/Unix implementation are present but runtime/font/capture enforcement is not verified here; non-Unix has no equivalent OS address-space ceiling. No Windows/platform-wide verification claim. |

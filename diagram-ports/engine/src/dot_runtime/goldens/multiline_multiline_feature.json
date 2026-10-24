@@ -1,0 +1,50 @@
+{
+  "name": "multiline_labels",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,173.61,187.26",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "height": "0.8171",
+      "label": "first line\\nsecond line",
+      "pos": "86.803,157.85",
+      "width": "1.559"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "height": "0.8171",
+      "label": "left\\lsecond\\l",
+      "pos": "38.803,29.416",
+      "width": "1.0779"
+    },
+    {
+      "_gvid": 2,
+      "name": "c",
+      "height": "0.8171",
+      "label": "right\\rsecond\\r",
+      "pos": "134.8,29.416",
+      "width": "1.0779"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 1,
+      "label": "edge\\nlabel",
+      "lp": "82.118,93.631",
+      "pos": "e,49.261,57.961 76.15,128.79 69.424,111.07 60.645,87.948 53.29,68.573"
+    },
+    {
+      "_gvid": 1,
+      "tail": 0,
+      "head": 2,
+      "label": "",
+      "pos": "e,124.35,57.961 97.456,128.79 104.18,111.07 112.96,87.948 120.32,68.573"
+    }
+  ]
+}

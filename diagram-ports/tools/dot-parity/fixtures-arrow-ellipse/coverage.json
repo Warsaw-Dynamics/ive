@@ -1,0 +1,20 @@
+{
+  "arrow_back.dot": ["back direction"],
+  "arrow_both.dot": ["both directions"],
+  "arrow_head_box.dot": ["box arrowhead"],
+  "arrow_head_diamond.dot": ["diamond arrowhead"],
+  "arrow_head_diamond_size2.dot": ["diamond arrowhead", "arrowsize 2"],
+  "arrow_head_none.dot": ["no arrowhead"],
+  "arrow_head_size2.dot": ["default arrowhead", "arrowsize 2"],
+  "arrow_head_vee.dot": ["vee arrowhead"],
+  "arrow_none.dot": ["no arrows"],
+  "arrow_tail_box.dot": ["box arrowtail"],
+  "arrow_tail_diamond.dot": ["diamond arrowtail"],
+  "arrow_tail_vee.dot": ["vee arrowtail"],
+  "ellipse-chain.dot": ["GD ellipse chain", "blank fixed nodes"],
+  "ellipse-cycle.dot": ["GD ellipse cycle", "blank fixed nodes"],
+  "ellipse-diamond.dot": ["GD ellipse diamond", "blank fixed nodes"],
+  "ellipse-filled-chain.dot": ["GD filled ellipse chain", "blank fixed nodes"],
+  "ellipse-mixed-chain.dot": ["GD ellipse to filled box", "blank fixed nodes"],
+  "ellipse-self.dot": ["GD ellipse self loop fallback", "blank fixed node"]
+}

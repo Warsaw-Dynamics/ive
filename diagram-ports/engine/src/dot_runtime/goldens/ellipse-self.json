@@ -1,0 +1,67 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,465,40",
+  "margin": "0",
+  "nodesep": "0.555556",
+  "rankdir": "TB",
+  "ranksep": "0.833333",
+  "splines": "polyline",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "fixedsize": "true",
+      "height": "0.55556",
+      "label": "",
+      "pos": "40,20",
+      "shape": "ellipse",
+      "width": "1.1111"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "fixedsize": "true",
+      "height": "0.55556",
+      "label": "",
+      "pos": "185,20",
+      "shape": "ellipse",
+      "width": "1.1111"
+    },
+    {
+      "_gvid": 2,
+      "name": "c",
+      "fixedsize": "true",
+      "height": "0.55556",
+      "label": "",
+      "pos": "305,20",
+      "shape": "ellipse",
+      "width": "1.1111"
+    },
+    {
+      "_gvid": 3,
+      "name": "d",
+      "fixedsize": "true",
+      "height": "0.55556",
+      "label": "",
+      "pos": "425,20",
+      "shape": "ellipse",
+      "width": "1.1111"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 0,
+      "fontname": "Courier",
+      "fontsize": "12",
+      "id": "e0",
+      "label": " ",
+      "lp": "123.6,20",
+      "pos": "e,77.861,12.912 77.861,27.088 99.684,28.535 120,26.172 120,20 120,14.889 106.07,12.39 88.884,12.504"
+    }
+  ]
+}

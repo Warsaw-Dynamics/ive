@@ -1,5 +1,7 @@
 use std::{fmt, time::Duration};
 
+pub mod dot;
+mod dot_runtime;
 mod limits;
 mod mermaid;
 mod plantuml;
@@ -19,6 +21,14 @@ pub enum Language {
     #[default]
     Mermaid,
     PlantUml,
+    Dot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GraphLayout {
+    #[default]
+    Dagre,
+    Layered,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +60,7 @@ pub struct RenderOptions {
     pub limits: RenderLimits,
     pub control: RenderControl,
     pub text_measurement: TextMeasurementPolicy,
+    pub graph_layout: GraphLayout,
 }
 
 #[derive(Debug, Clone)]
@@ -115,5 +126,27 @@ pub fn render(source: &str, options: &RenderOptions) -> Result<RenderedDiagram, 
     match options.language {
         Language::Mermaid => mermaid::render(source, options),
         Language::PlantUml => plantuml::render(source, options),
+        Language::Dot => dot_runtime::render(source, options),
     }
+}
+
+fn child_control(options: &RenderOptions) -> RenderControl {
+    let control = options.control.child();
+    #[cfg(not(target_arch = "wasm32"))]
+    let control = control.with_deadline(options.limits.timeout);
+    control
+}
+
+/// Parses standalone DOT and returns bounded Graphviz-style JSON0 geometry.
+pub fn render_dot_json(source: &str, options: &RenderOptions) -> Result<String, RenderError> {
+    dot_runtime::json0(source, options)
+}
+
+/// Returns a native GD-compatible PNG for the supported blank-label DOT scene subset.
+/// Returns `None` when the caller should use its validated SVG raster fallback.
+pub fn render_dot_png_native(
+    source: &str,
+    options: &RenderOptions,
+) -> Result<Option<Vec<u8>>, RenderError> {
+    dot_runtime::native_png(source, options)
 }

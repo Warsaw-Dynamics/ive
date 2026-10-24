@@ -1,0 +1,16 @@
+{
+  "box_colored_gd.dot": ["isolated box", "blue outline", "yellow fill", "native GD pixels"],
+  "box_dashed.dot": ["box", "dashed node outline"],
+  "box_dotted.dot": ["box", "dotted node outline"],
+  "box_rounded_filled.dot": ["box", "rounded outline", "filled lightblue"],
+  "diamond_filled_gold.dot": ["isolated diamond", "filled gold"],
+  "diamond_isolated.dot": ["isolated diamond"],
+  "diamond_long_label.dot": ["isolated diamond", "long label"],
+  "edge_bold_gray.dot": ["bold gray edge"],
+  "edge_colored_gd.dot": ["red edge", "blank node labels", "native GD pixels"],
+  "edge_dashed_red.dot": ["dashed red edge"],
+  "edge_dotted_gray.dot": ["dotted gray edge"],
+  "ellipse_dashed_bold.dot": ["ellipse", "dashed bold outline", "penwidth 2"],
+  "ranked_self.dot": ["upper-rank labeled self loop", "downward edge"],
+  "ranked_self_projection.dot": ["PlantUML topology projection", "parallel edges", "cycle", "upper-rank self loop"]
+}

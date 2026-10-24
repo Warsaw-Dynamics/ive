@@ -1,0 +1,7 @@
+digraph G {
+  graph [rankdir=LR,splines=polyline];
+  node [shape=record];
+  a [label="<left> left|<right> right"];
+  b [label="<top> top|<bottom> bottom"];
+  a:right:e -> b:top:w [id="e0",label="port"];
+}

@@ -1,0 +1,36 @@
+{
+  "oracle_sha256": "448ea1aca3473c78e6481dfcf974b33e8988d728c97cd7452ba1a30f7adcd983",
+  "candidate_sha256": "d61fdafb0ad8c503946b563d2ea37244d1ebbb6672aa385872b0d737f0b8b3fc",
+  "oracle_mode": "P",
+  "candidate_mode": "RGBA",
+  "oracle_size": [
+    132,
+    155
+  ],
+  "candidate_size": [
+    101,
+    155
+  ],
+  "different_pixels": 6558,
+  "difference_bbox": [
+    1,
+    0,
+    132,
+    155
+  ],
+  "categories": {
+    "black_to_blue": 3,
+    "black_to_gray_or_other": 16,
+    "black_to_white": 106,
+    "blue_to_white": 116,
+    "gray_or_other_to_black": 7,
+    "gray_or_other_to_gray_or_other": 67,
+    "gray_or_other_to_white": 242,
+    "outside_candidate_canvas": 4805,
+    "white_to_black": 159,
+    "white_to_blue": 171,
+    "white_to_gray_or_other": 866
+  },
+  "oracle_partial_alpha_pixels": 0,
+  "candidate_partial_alpha_pixels": 0
+}

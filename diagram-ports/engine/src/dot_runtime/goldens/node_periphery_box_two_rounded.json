@@ -1,0 +1,21 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,62,44",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "fillcolor": "red",
+      "height": "0.61111",
+      "label": "\\N",
+      "peripheries": "2",
+      "pos": "31,22",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "0.86111"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  {"name": "uml_class", "source": "fixtures/plantuml/class.puml"},
+  {"name": "uml_object", "source": "fixtures/plantuml/object.puml"},
+  {"name": "uml_usecase", "source": "fixtures/plantuml/usecase.puml"},
+  {"name": "uml_deployment", "source": "fixtures/plantuml/deployment.puml"},
+  {"name": "uml_parallel_cycle_self", "source": "engine/tests/plantuml.rs", "test": "should_preserve_parallel_self_cyclic_and_disconnected_uml_edges"}
+]

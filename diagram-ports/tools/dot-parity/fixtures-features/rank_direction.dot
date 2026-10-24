@@ -1,0 +1,7 @@
+digraph rank_direction {
+  graph [rankdir=LR, ranksep=0.8, nodesep=0.5];
+  a -> b;
+  a -> c;
+  b -> d;
+  c -> d;
+}

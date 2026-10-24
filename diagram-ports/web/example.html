@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram WASM renderer example</title>
+<style>
+  body { font: 16px system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  textarea { width: 100%; height: 11rem; box-sizing: border-box; font: 14px monospace; }
+  button { margin: 0.75rem 0.5rem 0.75rem 0; }
+  #preview { max-width: 100%; display: block; }
+  #message { color: #a22; white-space: pre-wrap; }
+</style>
+<h1>Diagram WASM renderer</h1>
+<label for="language">Language</label>
+<select id="language">
+  <option value="plantuml">PlantUML</option>
+  <option value="dot">DOT</option>
+</select>
+<textarea id="source">@startuml
+Alice -> Bob : hello from WASM
+Bob --> Alice : hi
+@enduml</textarea>
+<div>
+  <button id="svg">Render SVG</button>
+  <button id="png">Render PNG</button>
+  <button id="json">Export JSON geometry</button>
+  <a id="download" hidden>Download</a>
+</div>
+<p id="message" role="status"></p>
+<img id="preview" alt="Rendered diagram">
+<script type="module">
+  import { createDiagramRenderer } from "./diagram.js";
+
+  const source = document.querySelector("#source");
+  const language = document.querySelector("#language");
+  const preview = document.querySelector("#preview");
+  const message = document.querySelector("#message");
+  const download = document.querySelector("#download");
+  let previewUrl;
+  const renderer = createDiagramRenderer();
+
+  async function render(format) {
+    message.textContent = "Rendering…";
+    try {
+      const data = await (await renderer).render(source.value, { format, language: language.value });
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const blob = new Blob([data], { type: format === "svg" ? "image/svg+xml" : format === "png" ? "image/png" : "application/json" });
+      previewUrl = URL.createObjectURL(blob);
+      if (format !== "json") preview.src = previewUrl;
+      download.href = previewUrl;
+      download.download = `diagram.${format}`;
+      download.textContent = `Download ${format.toUpperCase()}`;
+      download.hidden = false;
+      message.textContent = "";
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
+  document.querySelector("#svg").onclick = () => render("svg");
+  document.querySelector("#png").onclick = () => render("png");
+  document.querySelector("#json").onclick = () => render("json");
+  language.onchange = () => {
+    source.value = language.value === "dot" ? "digraph G { Alice -> Bob [label=hello] }" : "@startuml\nAlice -> Bob : hello from WASM\nBob --> Alice : hi\n@enduml";
+    document.querySelector("#json").hidden = language.value !== "dot";
+    render("svg");
+  };
+  document.querySelector("#json").hidden = true;
+  await render("svg");
+  window.addEventListener("pagehide", () => renderer.then((ready) => ready.close()));
+</script>
+</html>

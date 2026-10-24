@@ -32,6 +32,7 @@ mod git;
 mod gitscene;
 mod graph;
 mod hcl;
+pub(crate) mod layered;
 mod lexer;
 mod nwdiag;
 mod nwscene;
@@ -379,7 +380,22 @@ pub(crate) fn render(
             .into_string();
         budget.checkpoint()?;
         crate::svg::validate(&svg, &options.limits)?;
-        Ok(RenderedDiagram{svg,language:Language::PlantUml,backend:"native PlantUML",upstream:"PlantUML MIT 1.2026.9",family:family.into(),diagnostics:vec!["Native subset: hierarchical wire blocks/columns and normal horizontal/vertical links; categorical charts with finite signed bars/lines and measured axes/legends; sequence, UML graphs including icon-free ArchiMate description rectangles, Chen entity/relationship/attribute graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Native/Dagre geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds.".into()],measurement:session.text_measurement_report(),layout_work_units:budget.work})
+        let layout = match &options.graph_layout {
+            crate::GraphLayout::Dagre => "checked Dagre graph layout",
+            crate::GraphLayout::Layered => "in-process Rust layered graph layout for UML/state",
+        };
+        Ok(RenderedDiagram {
+            svg,
+            language: Language::PlantUml,
+            backend: "native PlantUML",
+            upstream: "PlantUML MIT 1.2026.9",
+            family: family.into(),
+            diagnostics: vec![format!(
+                "Native subset: hierarchical wire blocks/columns and normal horizontal/vertical links; categorical charts with finite signed bars/lines and measured axes/legends; sequence, UML graphs including icon-free ArchiMate description rectangles, Chen entity/relationship/attribute graphs, scoped states, structured activities, integer timing, dated Gantt, Salt tables/controls, sparse nwdiag buses/shared servers, mindmap, WBS, ordered files/notes, inclusive packetdiag, staged boards and ordered JSON/narrow YAML/HCL; unsupported syntax fails explicitly. Using {layout} when applicable. Geometry differs from PlantUML; text baselines use the default descent approximation, not native glyph bounds."
+            )],
+            measurement: session.text_measurement_report(),
+            layout_work_units: budget.work,
+        })
     })();
     result.map_err(|error| expanded.map_error(error, &mut budget))
 }

@@ -1,0 +1,12 @@
+digraph G {
+  graph [rankdir=TB];
+  node [shape=plaintext];
+  order [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+      <TR><TD BGCOLOR="lightblue" COLSPAN="2"><B>Order</B></TD></TR>
+      <TR><TD><FONT COLOR="red">id</FONT></TD><TD>42</TD></TR>
+    </TABLE>
+  >];
+  line [shape=box,label="line"];
+  order -> line [id="e0"];
+}

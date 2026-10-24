@@ -1,4 +1,4 @@
-//! Checked native Dagre adapter. No PlantUML/Graphviz layout implementation is translated.
+//! Checked native graph adapter for Dagre and the in-process layered layout.
 use super::{
     arrow,
     budget::{Budget, invalid},
@@ -77,6 +77,9 @@ pub(super) fn layout_checked(
     graph: &mut Graph<NodeLabel, EdgeLabel, GraphLabel>,
     budget: &mut Budget,
 ) -> Result<(), RenderError> {
+    if budget.graph_layout == crate::GraphLayout::Layered {
+        return super::layered::layout(graph, budget);
+    }
     let mut work = Work {
         budget,
         failure: Failure::None,

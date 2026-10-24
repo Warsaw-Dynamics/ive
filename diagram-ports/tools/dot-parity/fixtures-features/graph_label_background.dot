@@ -1,0 +1,4 @@
+digraph graph_label_background {
+  graph [label="Graph\ncaption", bgcolor="#fff4cc", labelloc=b];
+  a -> b;
+}

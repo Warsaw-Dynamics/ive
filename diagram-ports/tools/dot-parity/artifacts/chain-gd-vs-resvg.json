@@ -1,0 +1,29 @@
+{
+  "oracle_sha256": "479f6ac470c77b5bc8d89cc79752299f2ad09df2cd4cad39af2ae68c0a1ee230",
+  "candidate_sha256": "1d78eb5fd6dbccc8d5a64bdf5d049841612cccc583432d1d43500f8aa1fb48ba",
+  "oracle_mode": "P",
+  "candidate_mode": "RGBA",
+  "oracle_size": [
+    277,
+    369
+  ],
+  "candidate_size": [
+    277,
+    369
+  ],
+  "different_pixels": 3014,
+  "difference_bbox": [
+    0,
+    4,
+    277,
+    369
+  ],
+  "categories": {
+    "black_to_gray_or_other": 1013,
+    "black_to_white": 112,
+    "white_to_black": 648,
+    "white_to_gray_or_other": 1241
+  },
+  "oracle_partial_alpha_pixels": 0,
+  "candidate_partial_alpha_pixels": 277
+}

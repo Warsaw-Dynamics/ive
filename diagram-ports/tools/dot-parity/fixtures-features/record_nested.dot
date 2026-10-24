@@ -1,0 +1,7 @@
+digraph record_nested {
+  node [shape=record];
+  a [label="{<left> left|{<top> top|<bottom> bottom}|<right> right}"];
+  b [label="{<in> input|<out> output}"];
+  a:right -> b:in;
+  a:bottom -> b:out;
+}

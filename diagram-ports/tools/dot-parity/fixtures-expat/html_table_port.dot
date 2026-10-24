@@ -1,0 +1,11 @@
+digraph G {
+  graph [rankdir=LR];
+  node [shape=plaintext];
+  record [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD PORT="key">key</TD><TD PORT="value">value</TD></TR>
+    </TABLE>
+  >];
+  sink [shape=box,label="sink"];
+  record:value -> sink [id="e0"];
+}

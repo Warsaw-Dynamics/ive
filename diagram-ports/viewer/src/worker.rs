@@ -1,4 +1,4 @@
-use diagram_engine::{Language, RenderLimits, RenderOptions};
+use diagram_engine::{GraphLayout, Language, RenderLimits, RenderOptions};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Write},
@@ -373,6 +373,7 @@ fn options(config: Config) -> Result<RenderOptions, String> {
     let language = match config.language.as_str() {
         "mermaid" => Language::Mermaid,
         "plantuml" => Language::PlantUml,
+        "dot" => Language::Dot,
         value => return Err(format!("unknown worker language {value:?}")),
     };
     if config.source_limit == 0
@@ -397,11 +398,16 @@ fn options(config: Config) -> Result<RenderOptions, String> {
         } else {
             Default::default()
         },
+        graph_layout: if matches!(language, Language::PlantUml | Language::Dot) {
+            GraphLayout::Layered
+        } else {
+            GraphLayout::Dagre
+        },
         ..Default::default()
     })
 }
 
-fn metadata(rendered: &diagram_engine::RenderedDiagram) -> Metadata {
+pub(crate) fn metadata(rendered: &diagram_engine::RenderedDiagram) -> Metadata {
     use diagram_engine::TextMeasurementSource;
     let host_calls = rendered
         .measurement

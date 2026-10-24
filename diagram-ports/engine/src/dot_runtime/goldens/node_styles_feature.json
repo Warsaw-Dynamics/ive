@@ -1,0 +1,57 @@
+{
+  "name": "node_styles",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,62,188",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "fillcolor": "#ddffee",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "31,170",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "0.75"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "color": "blue",
+      "height": "0.5",
+      "label": "\\N",
+      "penwidth": "2",
+      "pos": "31,98",
+      "shape": "ellipse",
+      "style": "dashed,bold",
+      "width": "0.75"
+    },
+    {
+      "_gvid": 2,
+      "name": "c",
+      "height": "0.61111",
+      "label": "\\N",
+      "peripheries": "2",
+      "pos": "31,22",
+      "shape": "box",
+      "style": "dotted",
+      "width": "0.86111"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 1,
+      "pos": "e,31,116.59 31,151.7 31,144.52 31,135.99 31,127.9"
+    },
+    {
+      "_gvid": 1,
+      "tail": 1,
+      "head": 2,
+      "pos": "e,31,44.435 31,79.087 31,72.074 31,63.802 31,55.797"
+    }
+  ]
+}

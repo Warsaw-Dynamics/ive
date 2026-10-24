@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "oracle": "@hpcc-js/wasm-graphviz 1.30.0, embedded Graphviz 16.1.0, Expat-enabled",
+  "oracle_archive_sha256": "0105defc8548e241a08a22e40ee0499a851402c345e38745a5b4d521d776d57f",
+  "source_provenance_reviewed": false,
+  "vendor_source_equivalence_verified": false,
+  "svg_generator_metadata": "Raw oracle SVG has generator stamp (0); golden test normalizes only that stamp to the product test stamp (20260904.0139).",
+  "cases": {
+    "node_periphery_box_two": {
+      "dot_sha256": "bcad2f39a00d7e445e3f128f2d19ffd951125249cae96d1c16619eaa8ce27892",
+      "json_sha256": "3e9d2995d960571f71a27c8c3400ad7558f7a3e8ac3ed99210c608114dedd733",
+      "svg_sha256": "9f256698b066a040c94e56ce723f3e0ebe2666138c56b2c5908ab8fbca64e126"
+    },
+    "node_periphery_box_two_fill": {
+      "dot_sha256": "45423f2426ffc8382d0bea1663f366a9a0441ed9ce2f3454fcfafb565c3b2fd5",
+      "json_sha256": "05f4cc4ddc29fa18a9af3b5075b43b99e09906424381757731464f11174e0b2d",
+      "svg_sha256": "0987ab255b1cdb4c4a616124525d394bc663deb56080283f4c476e3e467fd690"
+    },
+    "node_periphery_box_two_rounded": {
+      "dot_sha256": "889a13c3ad036e4987b6c762b6a7b7c0b41cb55576907bf3f159096b7611e0dc",
+      "json_sha256": "fe5a03250ab9fb312407c6f409634c95df594b41295ce3f9a9036a472065f2b0",
+      "svg_sha256": "da6098ba9a4aa874a67cde14fdaa7a0fe351ff5aedd7516c268a9eaf428df7b4"
+    },
+    "node_periphery_ellipse_two": {
+      "dot_sha256": "297ee80fdc68ddca6dc292851815700e1642dcd3b131f952fe4f0cbbc86acfd6",
+      "json_sha256": "a784953ce0368ee65380709fc703a1eeb4816529f2c21d103e71838368a46b1b",
+      "svg_sha256": "a70247fc4edda3b535d0ccc9d4a6c602bb9f39c1890db607e37117a7c80f69f5"
+    },
+    "node_periphery_box_two_edge": {
+      "dot_sha256": "9c3a26adf069ff4e8e2ebc9c0c504ded979bc6d57aa4efaf3daa03ef7df2e8f3",
+      "json_sha256": "229647ae4e792e740db4d5b4e0752740d81100084c94c7bbe985482d52510d11",
+      "svg_sha256": "331eb53cfab5b742664fc4a7f5b7f26a5de8303804fe7eac5a2a19900998e0e1"
+    },
+    "node_styles_feature": {
+      "dot_sha256": "cbb536590c8bbe31364424cc54f0328185218c9367255cd49c793b7c0de61e10",
+      "json_sha256": "a6d609858ee49cb365c2f8eb187e15f0e94e466a959af3d30507edbeee169479",
+      "svg_sha256": "f3af879730630a93ed2e6c16536b75e7ad64491f116856184b23629c3be83741"
+    }
+  }
+}

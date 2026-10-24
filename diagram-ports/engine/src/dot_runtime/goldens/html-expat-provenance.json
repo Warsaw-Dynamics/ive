@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "fixture": "tools/dot-parity/fixtures/html.dot",
+  "fixture_sha256": "c107b002aa9dc3d9a5a2c2dd26234ba65dc3bc08c219f6b194b5494d202f9f52",
+  "oracle": "@hpcc-js/wasm-graphviz 1.30.0, embedded Graphviz 16.1.0",
+  "oracle_archive_sha256": "0105defc8548e241a08a22e40ee0499a851402c345e38745a5b4d521d776d57f",
+  "json_sha256": "8175691db7e53f0f105f6aa3be1e2c2d30893b0653a454bf1fa390e984542a5d",
+  "svg_sha256": "d69c98c64784a819b88ae0e8de6c615ccd255c317df7bcc409b44e00b94aa824",
+  "source_provenance_reviewed": false,
+  "vendor_source_equivalence_verified": false
+}

@@ -145,9 +145,9 @@
     },
     {
       "generated": "engine/src/plantuml/generated/sequence.rs",
-      "generatedSha256": "add5ecf772bb37ce05df4a68a8050a7785d1ff06f82a2c1ec390c213f2fc356e",
+      "generatedSha256": "f1a07eddfdaf34ebdeea5a0f15dcfe74efab10424cdf9f0199ef7264e1c9f415",
       "grammar": "engine/src/plantuml/parser/grammar/sequence.lalrpop",
-      "grammarSha256": "7beb1315b2e7eec56b81ec30bcfce9edd040db232a0d8112725a144b95bdfeb7"
+      "grammarSha256": "289594b1ec8e482170764bfa232ceb960420324d0fb7fd8e355ed77253222a9d"
     },
     {
       "generated": "engine/src/plantuml/generated/state.rs",

@@ -113,6 +113,13 @@
       ]
     },
     {
+      "path": "engine/src/plantuml/dot.rs",
+      "groups": [
+        {"role": "layout", "reason": "Bounded host-supplied DOT geometry serialization, checked placement and route conversion; no authored syntax admission or external process in the engine.", "symbols": ["layout#1", "write_source#1", "write_node#1", "apply_layout#1", "route#1", "route_midpoint#1", "distance#1", "rectangle#1", "point#1", "number#1", "field#1"]},
+        {"role": "infrastructure", "reason": "Self-contained errors for invalid external layout output.", "symbols": ["backend#1"]}
+      ]
+    },
+    {
       "path": "engine/src/plantuml/gantt.rs",
       "groups": [
         {"role": "lexical", "reason": "Finite ISO date spelling/validation used as a primitive by generated Gantt syntax.", "symbols": ["parse#1"]},
@@ -368,7 +375,7 @@
       "groups": [
         {"role": "generated-facade", "reason": "Invokes the registered generated parser and maps structured failures once.", "symbols": ["parse#1", "parse_body#1"]},
         {"role": "infrastructure", "reason": "Bounded storage, work accounting, source ownership, error mapping or render dispatch.", "symbols": ["push#1", "copy#1", "admit#1"]},
-        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["row#1", "primitives#1", "frame_kind#1", "quoted_header_end#1", "first_primitive#1", "scan_primitive_end#1", "scan_end#1", "quoted#1", "command_token#1", "operator_prefix#1"]},
+        {"role": "lexical", "reason": "Bounded primitive tokenization, escapes, literal validation or finite spelling recognition; structural productions remain generated.", "symbols": ["row#1", "primitives#1", "frame_kind#1", "quoted_header_end#1", "first_primitive#1", "scan_primitive_end#1", "scan_end#1", "quoted#1", "command_token#1", "operator_prefix#1", "box_header#1", "stereotype#1", "sequence_color#1"]},
         {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["declare#1", "make_arrow#1", "note_row#1", "validate_caption_header#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["prepared#1", "model#1", "should_recognize_adjacent_quoted_sequence_command_primitives#1", "should_reject_reserved_first_primitives_as_sequence_message_endpoints#1", "should_preserve_primitive_command_caption_and_note_ownership#1", "should_reject_malformed_quoted_sequence_frame_headers#1", "should_keep_post_colon_sequence_frame_captions_literal#1", "should_reject_else_under_a_noncanonical_frame_spelling#1", "should_build_generated_sequence_aliases_messages_frames_notes_and_lifecycle#1", "should_continue_shared_comment_ownership_at_the_preamble_boundary#1", "should_map_sequence_failure_once_at_a_frozen_expansion_use#1", "should_preserve_raw_expanded_note_rows_crlf_and_original_comment_gaps#1", "should_locate_generated_sequence_suffix_after_an_inline_utf8_comment#1", "should_bound_token_retention_before_appending_a_fifth_token#1", "should_reject_direct_generated_suffix_eof_and_cancel_delivery_and_actions#1", "should_reject_generated_sequence_suffix_and_unclosed_structures#1", "should_bound_generated_sequence_tokens_depth_work_and_midparse_cancellation#1"]}
       ]
@@ -474,8 +481,8 @@
     {
       "path": "engine/src/plantuml/sequence.rs",
       "groups": [
-        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["width#1", "header_height#1", "layout#1", "paint_layer#1", "allocate_rows#1", "head_height#1", "event_extents#1", "event_label#1", "frame_depth#1", "draw_lanes#1", "draw_events#1"]},
-        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["name#1", "new#1", "tick#1", "single#1", "finish#1", "participant#1", "push#1", "declare#1", "lifecycle#1", "open#1", "branch#1", "close#1", "append_note#1", "separate_note#1", "append_note_part#1", "finish_note#1", "note#1", "message#1", "retain#1"]},
+        {"role": "layout", "reason": "Preserved measurement, placement, geometry and SVG assembly; does not admit diagram syntax.", "symbols": ["width#1", "width#2", "height#1", "header_height#1", "measure_head#1", "head_top#1", "draw_boxes#1", "layout#1", "paint_layer#1", "allocate_rows#1", "head_height#1", "event_extents#1", "event_label#1", "frame_depth#1", "draw_lanes#1", "draw_events#1"]},
+        {"role": "semantic", "reason": "Preserved typed model, identity, style, lowering or deterministic evaluation behavior after syntax recognition.", "symbols": ["text_len#1", "name#1", "new#1", "tick#1", "single#1", "finish#1", "participant#1", "push#1", "declare#1", "open_box#1", "close_box#1", "add_box_member#1", "lifecycle#1", "open#1", "branch#1", "close#1", "append_note#1", "separate_note#1", "append_note_part#1", "finish_note#1", "note#1", "message#1", "retain#1"]},
         {"role": "test-adapter", "reason": "Test assertions and setup, including cfg(test) adapters to the generated pipeline; no production syntax route.", "symbols": ["draw#1", "prepare#1", "occupied#1", "should_reserve_measured_nested_frame_headers_at_small_and_large_fonts#1", "should_paint_activations_between_lifelines_and_event_foreground#1", "should_reserve_multiline_message_occupied_height_before_its_anchor#1", "should_reserve_multiline_note_occupied_height_after_a_message#1", "should_reserve_created_multiline_head_before_the_next_message#1", "should_preserve_lane_order_reverse_message_and_balanced_events#1", "should_contain_nested_frames_and_end_lifelines_at_destruction#1"]}
       ]
     },

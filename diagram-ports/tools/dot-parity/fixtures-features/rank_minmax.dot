@@ -1,0 +1,5 @@
+digraph rank_minmax {
+  a -> b -> c -> d;
+  { rank=source; a; }
+  { rank=sink; d; }
+}

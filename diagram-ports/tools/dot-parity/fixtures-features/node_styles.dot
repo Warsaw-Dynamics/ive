@@ -1,0 +1,6 @@
+digraph node_styles {
+  a [shape=box, style="rounded,filled", fillcolor="#ddffee"];
+  b [shape=ellipse, style="dashed,bold", color="blue", penwidth=2];
+  c [shape=box, style=dotted, peripheries=2];
+  a -> b -> c;
+}

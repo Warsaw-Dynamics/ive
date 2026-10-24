@@ -1,0 +1,11 @@
+[package]
+name = "dot-grammar-gen"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "LicenseRef-WarsawDynamics-Proprietary"
+
+[workspace]
+
+[dependencies]
+lalrpop = { version = "=0.23.2", default-features = false }

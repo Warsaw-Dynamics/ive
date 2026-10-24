@@ -1,0 +1,14 @@
+{
+  "edge_arrows.dot": ["arrowhead", "arrowtail", "dir", "arrowsize"],
+  "edge_styles.dot": ["edge color", "edge penwidth", "edge dashed", "edge dotted"],
+  "graph_background.dot": ["graph bgcolor"],
+  "graph_label.dot": ["graph label", "graph labelloc", "graph labeljust"],
+  "graph_label_background.dot": ["graph label multiline", "graph bgcolor"],
+  "multiline_labels.dot": ["node multiline", "left line break", "right line break", "edge multiline"],
+  "node_shapes.dot": ["box", "diamond", "ellipse", "plaintext"],
+  "node_styles.dot": ["rounded", "filled", "dashed", "bold", "dotted", "peripheries"],
+  "rank_direction.dot": ["rankdir", "ranksep", "nodesep"],
+  "rank_minmax.dot": ["source rank", "sink rank"],
+  "rank_same.dot": ["same rank"],
+  "record_nested.dot": ["nested record", "record ports"]
+}

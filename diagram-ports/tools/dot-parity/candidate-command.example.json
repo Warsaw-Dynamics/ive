@@ -1,0 +1,1 @@
+["target/release/diagram-viewer", "--language", "dot", "--render", "{input}", "--output", "{output}"]

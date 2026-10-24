@@ -1,0 +1,1 @@
+digraph G { a [shape=record,label="<l>left|{<t>top|<b>bottom}|<r>right",width=3,height=2] }

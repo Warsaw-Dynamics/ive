@@ -1,0 +1,41 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,72,108",
+  "margin": "0",
+  "splines": "polyline",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "fixedsize": "true",
+      "height": "0.5",
+      "label": "",
+      "pos": "36,90",
+      "shape": "box",
+      "width": "1"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "fixedsize": "true",
+      "height": "0.5",
+      "label": "",
+      "pos": "36,18",
+      "shape": "box",
+      "width": "1"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 1,
+      "dir": "none",
+      "id": "e0",
+      "pos": "36,71.697 36,60.846 36,46.917 36,36.104"
+    }
+  ]
+}

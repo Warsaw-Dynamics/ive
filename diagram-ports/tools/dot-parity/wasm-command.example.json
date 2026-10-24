@@ -1,0 +1,1 @@
+["node", "tools/dot-parity/run_wasm.mjs", "--wasm", "web/pkg/diagram_web.wasm", "--input", "{input}", "--output", "{output}"]

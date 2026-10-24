@@ -49,12 +49,18 @@ pub fn source(name: &str) -> Result<&'static str, String> {
     EXAMPLES
         .iter()
         .chain(PLANTUML_EXAMPLES.iter())
+        .chain(DOT_EXAMPLES.iter())
         .find(|example| example.name == name)
         .map(|example| example.source)
         .ok_or_else(|| {
             format!("unknown built-in example {name:?}; choose one from the viewer's example list")
         })
 }
+
+pub const DOT_EXAMPLES: &[Example] = &[Example {
+    name: "dot-basic",
+    source: "digraph G {\n  node [shape=box];\n  Alice -> Bob [label=hello];\n  Bob -> Carol;\n}",
+}];
 
 pub const PLANTUML_EXAMPLES: &[Example] = &[
     Example {
@@ -200,10 +206,10 @@ pub const PLANTUML_EXAMPLES: &[Example] = &[
 ];
 
 pub fn for_language(language: &str) -> &'static [Example] {
-    if language == "plantuml" {
-        PLANTUML_EXAMPLES
-    } else {
-        EXAMPLES
+    match language {
+        "plantuml" => PLANTUML_EXAMPLES,
+        "dot" => DOT_EXAMPLES,
+        _ => EXAMPLES,
     }
 }
 

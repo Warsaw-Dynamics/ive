@@ -1,0 +1,37 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,54.876,149.6",
+  "label": "first\\nsecond",
+  "lheight": "0.47",
+  "lp": "27.438,20.8",
+  "lwidth": "0.54",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "27.438,131.6",
+      "width": "0.75"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "height": "0.5",
+      "label": "\\N",
+      "pos": "27.438,59.6",
+      "width": "0.75"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 1,
+      "pos": "e,27.438,77.704 27.438,113.3 27.438,106.01 27.438,97.326 27.438,89.136"
+    }
+  ]
+}

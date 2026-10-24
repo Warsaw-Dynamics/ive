@@ -1,0 +1,13 @@
+{
+  "fixture": "ranked_self_projection.dot",
+  "generated_fixture": "uml_parallel_cycle_self.dot",
+  "source": "engine/tests/plantuml.rs",
+  "test": "should_preserve_parallel_self_cyclic_and_disconnected_uml_edges",
+  "source_sha256": "bc00d5bb0d4456ccbeb2a9ba26fa072687f06660755f1e68fa8ce244f39ecede",
+  "plantuml_sha256": "49e2420a2790f8eb3247ac24be8b4e71c45ac1ff55e90043e471d7dbcca5bcf1",
+  "generator": "tools/dot-parity/generate_plantuml_corpus.py",
+  "generator_sha256": "c3ffa179f2f689392e90dd7692a5269dcedf4eda89e433f4a7228f1f0b21986f",
+  "dot_sha256": "c8aab923aa4d4cdc27699a6a8b890dd04b9f962fd3c9e7a5befc80dd5dafbb6d",
+  "nodes": 3,
+  "edges": 4
+}

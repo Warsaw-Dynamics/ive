@@ -1,0 +1,1 @@
+digraph G { graph [splines=polyline,margin=0]; node [shape=box,label="",fixedsize=true,width=1,height=.5]; a -> b [id="e0",arrowhead=box]; }

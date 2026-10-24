@@ -1,0 +1,7 @@
+strict graph G {
+  graph [splines=polyline];
+  node [shape=ellipse];
+  a -- b [id="e0"];
+  b -- c [id="e1"];
+  c -- a [id="e2"];
+}

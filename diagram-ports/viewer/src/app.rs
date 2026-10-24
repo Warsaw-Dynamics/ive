@@ -294,6 +294,17 @@ impl Viewer {
                     }),
                 ),
             )
+            .child(
+                button("language-dot", "DOT", self.language == "dot").on_click(cx.listener(
+                    |this, _, window, cx| {
+                        this.language = "dot".into();
+                        if matches!(this.input, Input::Example(_)) {
+                            this.input = Input::Example("dot-basic".into());
+                        }
+                        this.request(window, cx);
+                    },
+                )),
+            )
     }
 
     fn toolbar(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -356,16 +367,19 @@ impl Viewer {
                     .py_3()
                     .text_xs()
                     .text_color(rgb(0x94a3b8))
-                    .child(if self.language == "plantuml" {
-                        format!(
+                    .child(match self.language.as_str() {
+                        "plantuml" => format!(
                             "PLANTUML · {} EXAMPLES",
                             examples::for_language(&self.language).len()
-                        )
-                    } else {
-                        format!(
+                        ),
+                        "dot" => format!(
+                            "DOT · {} EXAMPLES",
+                            examples::for_language(&self.language).len()
+                        ),
+                        _ => format!(
                             "MERMAID · {} VARIANTS",
                             examples::for_language(&self.language).len()
-                        )
+                        ),
                     }),
             )
             .child(

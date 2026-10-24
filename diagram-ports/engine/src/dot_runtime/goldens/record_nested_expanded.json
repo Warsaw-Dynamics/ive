@@ -1,0 +1,19 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,216,145",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "height": "2.0139",
+      "label": "<l>left|{<t>top|<b>bottom}|<r>right",
+      "pos": "108,72.5",
+      "rects": "0,0.5,61.655,144.5 61.655,72.7,145.32,144.5 61.655,0.9,145.32,72.7 145.32,0.5,215.77,144.5",
+      "shape": "record",
+      "width": "3"
+    }
+  ]
+}

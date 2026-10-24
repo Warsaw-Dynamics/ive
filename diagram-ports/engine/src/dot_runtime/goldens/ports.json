@@ -1,0 +1,44 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,168.22,74.6",
+  "rankdir": "LR",
+  "splines": "polyline",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "height": "0.70278",
+      "label": "<left> left|<right> right",
+      "pos": "27,49.3",
+      "rects": "0,49.3,54,74.1 0,24.5,54,49.3",
+      "shape": "record",
+      "width": "0.75"
+    },
+    {
+      "_gvid": 1,
+      "name": "b",
+      "height": "0.70278",
+      "label": "<top> top|<bottom> bottom",
+      "pos": "140.39,25.3",
+      "rects": "112.55,25.3,168.22,50.1 112.55,0.5,168.22,25.3",
+      "shape": "record",
+      "width": "0.77318"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 0,
+      "head": 1,
+      "headport": "top:w",
+      "id": "e0",
+      "label": "port",
+      "lp": "83.276,45.841",
+      "pos": "e,112.55,37.7 54,36.9 54,36.9 84.248,37.313 101.26,37.546",
+      "tailport": "right:e"
+    }
+  ]
+}

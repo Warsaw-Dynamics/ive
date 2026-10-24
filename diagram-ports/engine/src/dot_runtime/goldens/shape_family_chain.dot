@@ -1,0 +1,8 @@
+digraph node_shapes {
+  node [width=0.9, height=0.5];
+  a [shape=box];
+  b [shape=diamond];
+  c [shape=ellipse];
+  d [shape=plaintext];
+  a -> b -> c -> d;
+}

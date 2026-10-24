@@ -1,0 +1,7 @@
+digraph ranked_self {
+  node [shape=box];
+  a [label="A"];
+  b [label="B"];
+  a -> b;
+  a -> a [label="self"];
+}

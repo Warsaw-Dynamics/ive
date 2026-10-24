@@ -1,0 +1,63 @@
+// Ordered DOT syntax. Attribute inheritance and graph semantics are a later phase.
+grammar<'input>(options: &'input ParseOptions, statement_count: &'input Cell<usize>);
+use std::cell::Cell;
+use crate::dot::{DotError, ParseOptions, Token, ast::{statement_from_endpoint, concat_quoted, Attribute, AttributeScope, Document, EdgeOp, Endpoint, GraphKind, Id, NodeId, Statement, Subgraph}};
+
+pub Document: Document = <strict:Strict> <kind:Kind> <id:Id?> "{" <statements:StatementItem*> "}" => Document { strict, kind, id, statements };
+Strict: bool = { "strict" => true, => false };
+Kind: GraphKind = { "graph" => GraphKind::Graph, "digraph" => GraphKind::Digraph };
+Statement: Statement = {
+    "graph" <_macro:MacroName?> <attributes:AttributeList+> => Statement::Attributes { scope: AttributeScope::Graph, attributes: attributes.into_iter().flatten().collect() },
+    "node" <_macro:MacroName?> <attributes:AttributeList+> => Statement::Attributes { scope: AttributeScope::Node, attributes: attributes.into_iter().flatten().collect() },
+    "edge" <_macro:MacroName?> <attributes:AttributeList+> => Statement::Attributes { scope: AttributeScope::Edge, attributes: attributes.into_iter().flatten().collect() },
+    <name:Id> "=" <value:Id> => Statement::Assignment { name, value },
+    <start:@L> <head:Endpoint> <steps:EdgeStep*> <attributes:AttributeLists> <end:@R> =>? statement_from_endpoint(head, steps, attributes, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+MacroName: Id = <name:Id> "=" => name;
+StatementItem: Statement = <start:@L> <statement:Statement> <end:@R> ";"? =>? {
+    let next = statement_count.get() + 1;
+    if next > options.statements {
+        Err(lalrpop_util::ParseError::User { error: DotError::new(start..end, format!("DOT statement count exceeds {}", options.statements)) })
+    } else {
+        statement_count.set(next);
+        Ok(statement)
+    }
+};
+EdgeStep: (EdgeOp, Endpoint) = { "->" <endpoint:Endpoint> => (EdgeOp::Directed, endpoint), "--" <endpoint:Endpoint> => (EdgeOp::Undirected, endpoint) };
+Endpoint: Endpoint = { <nodes:NodeList> => nodes, <subgraph:Subgraph> => Endpoint::Subgraph(subgraph) };
+NodeList: Endpoint = <first:NodeId> <rest:("," <NodeId>)*> => {
+    if rest.is_empty() { Endpoint::Node(first) } else {
+        let mut nodes = Vec::with_capacity(rest.len() + 1);
+        nodes.push(first);
+        nodes.extend(rest);
+        Endpoint::Nodes(nodes)
+    }
+};
+NodeId: NodeId = <id:Id> <port:Port?> => NodeId { id, port: port.unwrap_or_default() };
+Port: Vec<Id> = ":" <first:Id> <second:(":" <Id>)?> => {
+    let mut parts = vec![first]; if let Some(second) = second { parts.push(second); } parts
+};
+Subgraph: Subgraph = {
+    "subgraph" <id:Id?> "{" <statements:StatementItem*> "}" => Subgraph { id, statements },
+    "{" <statements:StatementItem*> "}" => Subgraph { id: None, statements },
+};
+AttributeLists: Vec<Attribute> = <lists:AttributeList*> => lists.into_iter().flatten().collect();
+AttributeList: Vec<Attribute> = "[" <entries:AttributeEntries> "]" => entries;
+AttributeEntries: Vec<Attribute> = <entries:Attribute*> => entries;
+Attribute: Attribute = <name:Id> "=" <value:Id> <_separator:AttributeSeparator> => Attribute { name, value: Some(value) };
+AttributeSeparator: () = { ";" => (), "," => (), => () };
+Id: Id = <start:@L> <first:"id"> <tail:QuotedTail*> <end:@R> =>? concat_quoted(first, tail, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+QuotedTail: Id = "+" <next:"id"> => next;
+
+extern {
+    type Location = usize;
+    type Error = DotError;
+    enum Token {
+        "strict" => Token::Strict, "graph" => Token::Graph, "digraph" => Token::Digraph,
+        "node" => Token::Node, "edge" => Token::Edge, "subgraph" => Token::Subgraph,
+        "id" => Token::Id(<Id>), "->" => Token::Arrow, "--" => Token::Dash,
+        "{" => Token::Open, "}" => Token::Close, "[" => Token::OpenAttrs, "]" => Token::CloseAttrs,
+        "=" => Token::Equal,
+        ":" => Token::Colon, "+" => Token::Plus, "," => Token::Comma, ";" => Token::Semicolon,
+    }
+}

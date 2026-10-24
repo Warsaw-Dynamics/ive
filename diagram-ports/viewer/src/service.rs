@@ -6,6 +6,7 @@ use crate::{
     viewport::{self, Viewport, Zoom},
     worker::{self, Job, Measurement, Metadata},
 };
+use diagram_engine::{GraphLayout, Language, RenderControl, RenderOptions, TextMeasurementPolicy};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gpui::{RenderImage, TextSystem};
 use std::{
@@ -42,7 +43,26 @@ enum Pending {
 }
 struct Queue {
     pending: Pending,
-    active: Arc<AtomicBool>,
+    active: Active,
+}
+#[derive(Clone)]
+struct Active {
+    cancelled: Arc<AtomicBool>,
+    control: RenderControl,
+}
+
+impl Active {
+    fn new() -> Self {
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+            control: RenderControl::new(),
+        }
+    }
+
+    fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+        self.control.cancel();
+    }
 }
 enum Thread {
     Running(JoinHandle<()>),
@@ -58,7 +78,7 @@ impl Service {
         let queue = Arc::new((
             Mutex::new(Queue {
                 pending: Pending::Idle,
-                active: Arc::new(AtomicBool::new(false)),
+                active: Active::new(),
             }),
             Condvar::new(),
         ));
@@ -76,7 +96,7 @@ impl Service {
     pub fn submit(&self, request: Request) {
         let (lock, signal) = &*self.queue;
         if let Ok(mut queue) = lock.lock() {
-            queue.active.store(true, Ordering::Release);
+            queue.active.cancel();
             queue.pending = Pending::Render(request);
             signal.notify_one();
         }
@@ -84,7 +104,7 @@ impl Service {
     pub fn stop(&mut self) -> impl FnOnce() + Send + 'static {
         let (lock, signal) = &*self.queue;
         if let Ok(mut queue) = lock.lock() {
-            queue.active.store(true, Ordering::Release);
+            queue.active.cancel();
             queue.pending = Pending::Closed;
             signal.notify_one();
         }
@@ -131,7 +151,8 @@ fn work(
                 source,
                 RenderContext {
                     text: &text,
-                    cancelled,
+                    cancelled: cancelled.cancelled.clone(),
+                    control: cancelled.control,
                     cache: &mut cache,
                 },
             )
@@ -147,13 +168,13 @@ fn work(
     }
 }
 
-fn next(queue: &Arc<(Mutex<Queue>, Condvar)>) -> Option<(Request, Arc<AtomicBool>)> {
+fn next(queue: &Arc<(Mutex<Queue>, Condvar)>) -> Option<(Request, Active)> {
     let (lock, signal) = &**queue;
     let mut queue = lock.lock().ok()?;
     loop {
         match std::mem::replace(&mut queue.pending, Pending::Idle) {
             Pending::Render(request) => {
-                let cancelled = Arc::new(AtomicBool::new(false));
+                let cancelled = Active::new();
                 queue.active = cancelled.clone();
                 return Some((request, cancelled));
             }
@@ -169,26 +190,35 @@ fn next(queue: &Arc<(Mutex<Queue>, Condvar)>) -> Option<(Request, Arc<AtomicBool
 struct RenderContext<'a> {
     text: &'a NativeTextResources,
     cancelled: Arc<AtomicBool>,
+    control: RenderControl,
     cache: &'a mut Cache,
 }
 
 fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result<Ready, String> {
     let same = matches!(context.cache, Cache::Parsed { source: cached, language, .. } if cached == source && language == &request.language);
     if !same {
-        let native = context.text.start_render();
-        let executable = std::env::current_exe()
-            .map_err(|error| format!("cannot locate diagram worker executable: {error}"))?;
-        let job = Job {
-            source: source.into(),
-            language: request.language.clone(),
-            cancelled: context.cancelled.clone(),
-            measurement: Measurement::Native(native.clone()),
-            ..Job::headless("")
+        let output = if request.language == "dot" {
+            let native = context.text.start_render();
+            let mut output = render_dot(source, context.control.clone(), native.policy()?)?;
+            output.metadata.diagnostics.extend(native.report());
+            output
+        } else {
+            let native = context.text.start_render();
+            let executable = std::env::current_exe()
+                .map_err(|error| format!("cannot locate diagram worker executable: {error}"))?;
+            let job = Job {
+                source: source.into(),
+                language: request.language.clone(),
+                cancelled: context.cancelled.clone(),
+                measurement: Measurement::Native(native.clone()),
+                ..Job::headless("")
+            };
+            let mut output = worker::run(&executable, job)?;
+            output.metadata.diagnostics.extend(native.report());
+            output
         };
-        let output = worker::run(&executable, job)?;
         let svg = DisplaySvg::parse(&output.svg, &context.cancelled)?;
         let mut metadata = output.metadata;
-        metadata.diagnostics.extend(native.report());
         metadata.diagnostics.extend(svg.diagnostic());
         *context.cache = Cache::Parsed {
             source: source.into(),
@@ -221,4 +251,80 @@ fn render(request: &Request, source: &str, context: RenderContext<'_>) -> Result
         metadata: metadata.clone(),
         display_note: svg.diagnostic().unwrap_or_default(),
     })
+}
+
+fn render_dot(
+    source: &str,
+    control: RenderControl,
+    text_measurement: TextMeasurementPolicy,
+) -> Result<worker::Output, String> {
+    let options = RenderOptions {
+        language: Language::Dot,
+        graph_layout: GraphLayout::Layered,
+        control,
+        text_measurement,
+        ..RenderOptions::default()
+    };
+    let rendered = diagram_engine::render(source, &options).map_err(|error| error.to_string())?;
+    let metadata = worker::metadata(&rendered);
+    Ok(worker::Output {
+        svg: rendered.svg,
+        metadata,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::render_dot;
+    use diagram_engine::{RenderControl, TextMeasurementPolicy};
+
+    #[test]
+    fn should_render_dot_in_process_with_native_metadata() {
+        // given
+        let source = "digraph G { a -> b }";
+        // when
+        let output = render_dot(
+            source,
+            RenderControl::new(),
+            TextMeasurementPolicy::default(),
+        )
+        .unwrap();
+        // then
+        assert!(output.svg.contains("<svg"));
+        assert_eq!(output.metadata.backend, "native Rust DOT");
+    }
+
+    #[test]
+    fn should_cancel_in_process_dot_before_parsing() {
+        // given
+        let control = RenderControl::new();
+        control.cancel();
+        // when
+        let result = render_dot(
+            "digraph G { a -> b }",
+            control,
+            TextMeasurementPolicy::default(),
+        );
+        // then
+        assert!(result.err().unwrap().contains("cancelled"));
+    }
+
+    #[test]
+    fn should_enforce_source_limit_in_process() {
+        // given
+        let source = format!("digraph G {{ /*{}*/ }}", "x".repeat(256 * 1024));
+        // when
+        let result = render_dot(
+            &source,
+            RenderControl::new(),
+            TextMeasurementPolicy::default(),
+        );
+        // then
+        assert!(
+            result
+                .err()
+                .unwrap()
+                .contains("exceeding the 262144-byte limit")
+        );
+    }
 }

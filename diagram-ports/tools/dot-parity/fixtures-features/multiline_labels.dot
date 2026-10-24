@@ -1,0 +1,7 @@
+digraph multiline_labels {
+  a [label="first line\nsecond line"];
+  b [label="left\lsecond\l"];
+  c [label="right\rsecond\r"];
+  a -> b [label="edge\nlabel"];
+  a -> c;
+}

@@ -1,0 +1,1 @@
+graph G { graph [splines=polyline]; node [shape=ellipse]; g; }

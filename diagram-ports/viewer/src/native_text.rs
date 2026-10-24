@@ -1,5 +1,9 @@
 use crate::worker::{MeasureQuery, MeasureReply, Measurer};
-use diagram_engine::{TextMeasurementOperation, TextMetrics};
+use diagram_engine::{
+    HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+    MeasurementProfileId, TextMeasurementOperation, TextMeasurementPhase, TextMeasurementPolicy,
+    TextMeasurementProfileIdentity, TextMetrics,
+};
 use gpui::{FontStyle, FontWeight, TextRun, TextSystem, WindowTextSystem, font, px};
 use std::{
     collections::BTreeSet,
@@ -16,6 +20,8 @@ pub struct NativeTextResources {
     system: Arc<TextSystem>,
     names: Arc<[String]>,
 }
+
+struct DirectHost(Arc<NativeText>);
 
 impl NativeTextResources {
     pub fn new(system: Arc<TextSystem>) -> Self {
@@ -42,6 +48,36 @@ impl NativeText {
             .lock()
             .map(|items| items.iter().take(8).cloned().collect())
             .unwrap_or_default()
+    }
+
+    pub fn policy(self: &Arc<Self>) -> Result<TextMeasurementPolicy, String> {
+        let profile = MeasurementProfileId::new("pgui-native-unwrapped")
+            .map_err(|error| error.to_string())?;
+        let identity = TextMeasurementProfileIdentity::new(profile, "f5d5fa2-v1")
+            .map_err(|error| error.to_string())?;
+        Ok(TextMeasurementPolicy::host_display(
+            identity,
+            Arc::new(DirectHost(self.clone())),
+            TextMeasurementPhase::ALL,
+        ))
+    }
+}
+
+impl HostTextMeasurer for DirectHost {
+    fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+        let query = MeasureQuery {
+            operation: request.operation.external_code(),
+            text: request.text.into(),
+            style: request.style.clone(),
+        };
+        if query.validate().is_err() {
+            return Ok(None);
+        }
+        Ok(match self.0.measure(&query) {
+            MeasureReply::Fallback => None,
+            MeasureReply::Length(length) => Some(HostTextMeasurement::Length(length)),
+            MeasureReply::Metrics(metrics) => Some(HostTextMeasurement::Metrics(metrics)),
+        })
     }
 }
 

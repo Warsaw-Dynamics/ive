@@ -4,6 +4,7 @@ use super::{
     arrow::{self, Arrow},
     budget::{Budget, invalid},
     scene::{Dash, Decoration, Element, Paint, Point, Rect, Scene, Shape, text_at},
+    style::Color,
     text::{Context, Label},
 };
 use crate::RenderError;
@@ -19,6 +20,36 @@ pub(super) struct Participant {
     pub name: String,
     pub label: String,
     pub kind: ParticipantKind,
+    pub stereotype: Stereotype,
+}
+#[derive(Clone, Debug)]
+pub(in crate::plantuml) enum Spot {
+    None,
+    Marker(char, Color),
+}
+#[derive(Clone, Debug)]
+pub(in crate::plantuml) enum Stereotype {
+    None,
+    Label { text: String, spot: Spot },
+}
+impl Stereotype {
+    fn text_len(&self) -> usize {
+        match self {
+            Self::None => 0,
+            Self::Label { text, .. } => text.len(),
+        }
+    }
+}
+#[derive(Clone, Debug)]
+pub(in crate::plantuml) struct BoxHeader {
+    pub title: String,
+    pub color: Color,
+}
+#[derive(Debug)]
+struct ParticipantBox {
+    title: String,
+    color: Color,
+    members: Vec<usize>,
 }
 #[derive(Clone, Copy, Debug)]
 pub(in crate::plantuml) enum Side {
@@ -53,6 +84,7 @@ enum Event {
 #[derive(Debug)]
 pub(super) struct Sequence {
     pub participants: Vec<Participant>,
+    boxes: Vec<ParticipantBox>,
     events: Vec<Event>,
 }
 enum Life {
@@ -65,6 +97,7 @@ pub(in crate::plantuml) struct Builder<'b> {
     active: Vec<usize>,
     life: Vec<Life>,
     frames: Vec<FrameKind>,
+    open_boxes: Vec<usize>,
     note: String,
     retained_bytes: usize,
 }
@@ -131,11 +164,13 @@ impl<'b> Builder<'b> {
             budget,
             model: Sequence {
                 participants: Vec::new(),
+                boxes: Vec::new(),
                 events: Vec::new(),
             },
             active: Vec::new(),
             life: Vec::new(),
             frames: Vec::new(),
+            open_boxes: Vec::new(),
             note: String::new(),
             retained_bytes,
         }
@@ -163,6 +198,12 @@ impl<'b> Builder<'b> {
         if self.active.iter().any(|n| *n > 0) {
             return Err(ParseFailure::syntax(span, "unclosed group or activation"));
         }
+        if self.open_boxes.last().is_some() {
+            return Err(ParseFailure::syntax(
+                span,
+                "unclosed sequence participant box",
+            ));
+        }
         if self.model.participants.is_empty() {
             return Err(ParseFailure::syntax(span, "sequence has no participants"));
         }
@@ -187,6 +228,7 @@ impl<'b> Builder<'b> {
                 name: name.into(),
                 label: name.into(),
                 kind: ParticipantKind::Participant,
+                stereotype: Stereotype::None,
             },
             self.budget,
         )?;
@@ -210,22 +252,97 @@ impl<'b> Builder<'b> {
 
     pub fn declare(
         &mut self,
-        declaration: (ParticipantKind, Declaration),
+        declaration: (ParticipantKind, Declaration, Stereotype),
         span: Range<usize>,
     ) -> Result<(), ParseFailure> {
-        let (kind, Declaration { name, label }) = declaration;
+        let (kind, Declaration { name, label }, stereotype) = declaration;
         self.budget
             .charge(self.model.participants.len())
             .map_err(ParseFailure::terminal)?;
-        if self.model.participants.iter().any(|p| p.name == name) {
+        if let Some(id) = self.model.participants.iter().position(|p| p.name == name) {
+            if self.open_boxes.last().is_some()
+                && label == name
+                && matches!(stereotype, Stereotype::None)
+            {
+                return self.add_box_member(id, span);
+            }
             return Err(ParseFailure::syntax(span, "duplicate sequence participant"));
         }
         let id = self.participant(&name)?;
         self.budget
-            .text(label.len())
+            .text(label.len() + stereotype.text_len())
             .map_err(ParseFailure::terminal)?;
-        self.model.participants[id] = Participant { name, label, kind };
+        self.model.participants[id] = Participant {
+            name,
+            label,
+            kind,
+            stereotype,
+        };
+        self.add_box_member(id, span)
+    }
+
+    pub fn open_box(&mut self, header: BoxHeader, span: Range<usize>) -> Result<(), ParseFailure> {
+        if self.open_boxes.last().is_some() {
+            return Err(ParseFailure::unsupported(
+                span,
+                "nested sequence participant box",
+            ));
+        }
+        self.budget.item().map_err(ParseFailure::terminal)?;
+        self.budget
+            .text(header.title.len())
+            .map_err(ParseFailure::terminal)?;
+        let index = self.model.boxes.len();
+        retain(
+            (&mut self.model.boxes, &mut self.retained_bytes),
+            ParticipantBox {
+                title: header.title,
+                color: header.color,
+                members: Vec::new(),
+            },
+            self.budget,
+        )?;
+        retain(
+            (&mut self.open_boxes, &mut self.retained_bytes),
+            index,
+            self.budget,
+        )
+    }
+
+    pub fn close_box(&mut self, span: Range<usize>) -> Result<(), ParseFailure> {
+        let index = self
+            .open_boxes
+            .pop()
+            .ok_or_else(|| ParseFailure::syntax(span.clone(), "end box without box"))?;
+        if self.model.boxes[index].members.is_empty() {
+            return Err(ParseFailure::syntax(span, "empty sequence participant box"));
+        }
         Ok(())
+    }
+
+    fn add_box_member(&mut self, id: usize, span: Range<usize>) -> Result<(), ParseFailure> {
+        let Some(&index) = self.open_boxes.last() else {
+            return Ok(());
+        };
+        if self
+            .model
+            .boxes
+            .iter()
+            .any(|group| group.members.contains(&id))
+        {
+            return Err(ParseFailure::syntax(
+                span,
+                "participant already belongs to a box",
+            ));
+        }
+        retain(
+            (
+                &mut self.model.boxes[index].members,
+                &mut self.retained_bytes,
+            ),
+            id,
+            self.budget,
+        )
     }
 
     pub fn lifecycle(
@@ -415,6 +532,101 @@ struct EventLabel {
     caption: Label,
     kind: Label,
 }
+enum StereotypeLabel {
+    None,
+    Present(Label),
+}
+struct HeadLabels {
+    name: Label,
+    stereotype: StereotypeLabel,
+    spot_width: f64,
+}
+impl HeadLabels {
+    fn width(&self) -> f64 {
+        let stereo = match &self.stereotype {
+            StereotypeLabel::None => 0.,
+            StereotypeLabel::Present(label) => label.width + self.spot_width,
+        };
+        self.name.width.max(stereo)
+    }
+
+    fn height(&self) -> f64 {
+        let stereo = match &self.stereotype {
+            StereotypeLabel::None => 0.,
+            StereotypeLabel::Present(label) => label.height + 4.,
+        };
+        self.name.height + stereo
+    }
+}
+fn measure_head(
+    participant: &Participant,
+    context: &mut Context<'_>,
+) -> Result<HeadLabels, RenderError> {
+    let name = context.label(&participant.label)?;
+    let (stereotype, spot_width) = match &participant.stereotype {
+        Stereotype::None => (StereotypeLabel::None, 0.),
+        Stereotype::Label { text, spot } => (
+            StereotypeLabel::Present(
+                context.styled_label(&format!("«{text}»"), Decoration::Italic)?,
+            ),
+            if matches!(spot, Spot::Marker(_, _)) {
+                22.
+            } else {
+                0.
+            },
+        ),
+    };
+    Ok(HeadLabels {
+        name,
+        stereotype,
+        spot_width,
+    })
+}
+fn head_top(model: &Sequence) -> f64 {
+    if model.boxes.is_empty() { 24. } else { 56. }
+}
+fn draw_boxes(
+    model: &Sequence,
+    heads: &[HeadLabels],
+    titles: &[Label],
+    xs: &[f64],
+    bottom: f64,
+    scene: &mut Scene,
+    budget: &mut Budget,
+) -> Result<(), RenderError> {
+    for (index, group) in model.boxes.iter().enumerate() {
+        budget.charge(group.members.len())?;
+        let left = group
+            .members
+            .iter()
+            .map(|id| xs[*id] - heads[*id].width().max(60.) / 2. - 24.)
+            .fold(f64::INFINITY, f64::min);
+        let right = group
+            .members
+            .iter()
+            .map(|id| xs[*id] + heads[*id].width().max(60.) / 2. + 24.)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let width = (right - left).max(titles[index].width + 24.);
+        let rect = Rect {
+            x: left,
+            y: 12.,
+            width,
+            height: bottom - 12.,
+        };
+        let mut element = Element::new(format!("box-{index}"), "sequence-box");
+        element.name = group.title.clone();
+        element
+            .shapes
+            .push(Shape::Rect(rect, 0., Paint::Color(group.color)));
+        element.shapes.push(Shape::Text(
+            Point::new(left + 10., 18.),
+            titles[index].clone(),
+            Decoration::Plain,
+        ));
+        scene.push(element, budget)?;
+    }
+    Ok(())
+}
 impl EventLabel {
     fn width(&self) -> f64 {
         self.caption.width.max(self.kind.width)
@@ -428,7 +640,12 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
     let heads = model
         .participants
         .iter()
-        .map(|p| context.label(&p.label))
+        .map(|p| measure_head(p, context))
+        .collect::<Result<Vec<_>, _>>()?;
+    let titles = model
+        .boxes
+        .iter()
+        .map(|group| context.label(&group.title))
         .collect::<Result<Vec<_>, _>>()?;
     let labels = model
         .events
@@ -446,7 +663,8 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
         .collect::<Result<Vec<_>, _>>()?;
     let widest = heads
         .iter()
-        .map(|label| label.width)
+        .map(HeadLabels::width)
+        .chain(titles.iter().map(|label| label.width))
         .chain(labels.iter().map(EventLabel::width))
         .fold(80., f64::max);
     let step = widest + 110.;
@@ -457,6 +675,15 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
         .collect();
     let mut scene = Scene::new();
     let (rows, bottom) = allocate_rows(model, (&heads, &labels), context.budget)?;
+    draw_boxes(
+        model,
+        &heads,
+        &titles,
+        &xs,
+        bottom,
+        &mut scene,
+        context.budget,
+    )?;
     draw_lanes(model, &heads, &xs, &rows, bottom, &mut scene, context)?;
     draw_events(model, &labels, &xs, &rows, &mut scene, context)?;
     // Closing an activation determines its extent, not its foreground paint order.
@@ -474,27 +701,29 @@ pub(super) fn layout(model: &Sequence, context: &mut Context<'_>) -> Result<Scen
 
 fn paint_layer(element: &Element) -> (u8, f64) {
     match element.kind {
-        "lifeline" => (0, 0.),
+        "sequence-box" => (0, 0.),
+        "lifeline" => (1, 0.),
         "activation" => match element.shapes.first() {
-            Some(Shape::Rect(rect, _, _)) => (1, rect.y),
-            _ => (1, 0.),
+            Some(Shape::Rect(rect, _, _)) => (2, rect.y),
+            _ => (2, 0.),
         },
-        _ => (2, 0.),
+        _ => (3, 0.),
     }
 }
 
 fn allocate_rows(
     model: &Sequence,
-    labels: (&[Label], &[EventLabel]),
+    labels: (&[HeadLabels], &[EventLabel]),
     budget: &mut Budget,
 ) -> Result<(Vec<f64>, f64), RenderError> {
     let (heads, events) = labels;
+    let top = head_top(model);
     let mut bottom = model
         .participants
         .iter()
         .zip(heads)
-        .map(|(p, label)| 24. + head_height(p.kind, label))
-        .fold(24., f64::max);
+        .map(|(p, label)| top + head_height(p.kind, label))
+        .fold(top, f64::max);
     let mut rows = Vec::with_capacity(events.len());
     for (event, label) in model.events.iter().zip(events) {
         budget.charge(1)?;
@@ -506,8 +735,8 @@ fn allocate_rows(
     Ok((rows, bottom + 36.))
 }
 
-fn head_height(kind: ParticipantKind, label: &Label) -> f64 {
-    label.height
+fn head_height(kind: ParticipantKind, label: &HeadLabels) -> f64 {
+    label.height()
         + if matches!(kind, ParticipantKind::Actor) {
             65.
         } else {
@@ -515,7 +744,7 @@ fn head_height(kind: ParticipantKind, label: &Label) -> f64 {
         }
 }
 
-fn event_extents(event: &Event, measured: &EventLabel, heads: &[Label]) -> (f64, f64) {
+fn event_extents(event: &Event, measured: &EventLabel, heads: &[HeadLabels]) -> (f64, f64) {
     let label = &measured.caption;
     match event {
         Event::Message { from, to, .. } => (label.height + 4., if from == to { 24. } else { 8. }),
@@ -556,7 +785,7 @@ fn frame_depth(model: &Sequence) -> usize {
 
 fn draw_lanes(
     model: &Sequence,
-    heads: &[Label],
+    heads: &[HeadLabels],
     xs: &[f64],
     rows: &[f64],
     end: f64,
@@ -569,7 +798,7 @@ fn draw_lanes(
             .events
             .iter()
             .position(|e| matches!(e, Event::Create(p) if *p == id))
-            .map_or(24., |i| rows[i]);
+            .map_or(head_top(model), |i| rows[i]);
         let death = model
             .events
             .iter()
@@ -577,9 +806,9 @@ fn draw_lanes(
             .map_or(end, |i| rows[i]);
         let height = head_height(participant.kind, &heads[id]);
         let rect = Rect {
-            x: xs[id] - heads[id].width.max(60.) / 2. - 12.,
+            x: xs[id] - heads[id].width().max(60.) / 2. - 12.,
             y: birth,
-            width: heads[id].width.max(60.) + 24.,
+            width: heads[id].width().max(60.) + 24.,
             height,
         };
         let mut lane = Element::new(format!("lane-{id}"), "lifeline");
@@ -611,7 +840,43 @@ fn draw_lanes(
         } else {
             rect
         };
-        head.shapes.push(text_at(label_rect, heads[id].clone()));
+        let labels = &heads[id];
+        match &labels.stereotype {
+            StereotypeLabel::None => head.shapes.push(text_at(label_rect, labels.name.clone())),
+            StereotypeLabel::Present(stereo) => {
+                let content_top = label_rect.y + (label_rect.height - labels.height()) / 2.;
+                let stereo_left = xs[id] - (stereo.width + labels.spot_width) / 2.;
+                if let Stereotype::Label {
+                    spot: Spot::Marker(mark, color),
+                    ..
+                } = &participant.stereotype
+                {
+                    let spot_rect = Rect {
+                        x: stereo_left,
+                        y: content_top,
+                        width: 16.,
+                        height: 16.,
+                    };
+                    head.shapes
+                        .push(Shape::Ellipse(spot_rect, Paint::Color(*color)));
+                    let marker = context.label(&mark.to_string())?;
+                    head.shapes.push(text_at(spot_rect, marker));
+                }
+                head.shapes.push(Shape::Text(
+                    Point::new(stereo_left + labels.spot_width, content_top),
+                    stereo.clone(),
+                    Decoration::Italic,
+                ));
+                head.shapes.push(Shape::Text(
+                    Point::new(
+                        xs[id] - labels.name.width / 2.,
+                        content_top + stereo.height + 4.,
+                    ),
+                    labels.name.clone(),
+                    Decoration::Plain,
+                ));
+            }
+        }
         scene.push(head, context.budget)?;
     }
     Ok(())

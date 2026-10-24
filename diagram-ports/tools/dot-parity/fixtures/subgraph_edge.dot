@@ -1,0 +1,6 @@
+digraph G {
+  graph [rankdir=TB];
+  subgraph cluster_left { label="left"; a; b; }
+  subgraph cluster_right { label="right"; c; d; }
+  { a; b; } -> { c; d; } [color=gray];
+}

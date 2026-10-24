@@ -1,0 +1,1 @@
+digraph G { graph [rankdir=LR,splines=polyline]; node [shape=record]; a [label="<left> left|{<top> top|<bottom> bottom}|<right> right"]; b [label="<in> input|<out> output"]; a:bottom:e -> b:in:w [id="e0"]; }

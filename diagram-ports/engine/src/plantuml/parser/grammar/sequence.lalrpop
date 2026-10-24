@@ -1,11 +1,13 @@
 // Original grammar for the MIT sequence subset; semantic traces are in provenance.
 grammar(builder: &mut crate::plantuml::sequence::Builder<'_>);
-use crate::plantuml::{sequence::{Anchor, Builder, Declaration, FrameKind, Lifecycle, Message, Name, ParticipantKind, Side}, arrow::{Arrow, End}, scene::Dash, parser::{sequence::{Token, declare, make_arrow}, error::ParseFailure}};
+use crate::plantuml::{sequence::{Anchor, BoxHeader, Builder, Declaration, FrameKind, Lifecycle, Message, Name, ParticipantKind, Side, Stereotype}, arrow::{Arrow, End}, scene::Dash, parser::{sequence::{Token, declare, make_arrow}, error::ParseFailure}};
 
 pub Sequence: () = <Items>;
 Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
 Item: () = {
-    <start:@L> <kind:"participant kind"> <value:Declaration> "newline" <end:@R> =>? builder.declare((kind, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <kind:"participant kind"> <value:Declaration> <stereotype:StereotypeOpt> "newline" <end:@R> =>? builder.declare((kind, value, stereotype), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <header:"box open"> "newline" <end:@R> =>? builder.open_box(header, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "box close" "newline" <end:@R> =>? builder.close_box(start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
     <start:@L> <kind:"lifecycle"> <name:Name> "newline" <end:@R> =>? builder.lifecycle((kind, name), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
     <start:@L> <left:Name> <arrow:Arrow> <right:Name> <label:Label> "newline" <end:@R> =>? builder.message(Message { left, right, arrow: arrow.0, reverse: arrow.1, label }, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
     <anchor:NoteAnchor> ":" <label:"label"> "newline" =>? builder.note(anchor, label).map_err(|error| lalrpop_util::ParseError::User { error }),
@@ -29,6 +31,7 @@ Declaration: Declaration = {
     <one:Name> =>? builder.single(one).map_err(|error| lalrpop_util::ParseError::User { error }),
     <left:Name> "as" <right:Name> => declare(left, right),
 };
+StereotypeOpt: Stereotype = { => Stereotype::None, <value:"stereotype"> => value };
 Name: Name = {
     <name:"name"> => name,
     "as" => Name { text: "as".into(), quoted: false },
@@ -48,6 +51,9 @@ extern {
     type Error = ParseFailure;
     enum Token {
         "participant kind" => Token::Participant(<ParticipantKind>),
+        "stereotype" => Token::Stereotype(<Stereotype>),
+        "box open" => Token::BoxOpen(<BoxHeader>),
+        "box close" => Token::BoxClose,
         "lifecycle" => Token::Lifecycle(<Lifecycle>),
         "frame kind" => Token::Frame(<FrameKind>),
         "note" => Token::Note,

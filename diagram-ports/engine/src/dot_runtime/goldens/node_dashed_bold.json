@@ -1,0 +1,21 @@
+{
+  "name": "G",
+  "directed": true,
+  "strict": false,
+  "bb": "0,0,54,36",
+  "_subgraph_cnt": 0,
+  "objects": [
+    {
+      "_gvid": 0,
+      "name": "a",
+      "color": "blue",
+      "height": "0.5",
+      "label": "\\N",
+      "penwidth": "2",
+      "pos": "27,18",
+      "shape": "ellipse",
+      "style": "dashed,bold",
+      "width": "0.75"
+    }
+  ]
+}

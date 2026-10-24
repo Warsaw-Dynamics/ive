@@ -1,6 +1,7 @@
 pub mod app;
 pub mod cli;
 pub mod examples;
+pub mod export;
 pub mod native_text;
 pub mod service;
 mod svg;

@@ -1222,8 +1222,11 @@ dependencies = [
  "merman",
  "merman-core",
  "merman-render",
+ "png 0.18.1",
  "roxmltree 0.21.1",
  "serde_json",
+ "sha2",
+ "swash",
  "usvg",
 ]
 
@@ -1245,6 +1248,16 @@ dependencies = [
  "svgtypes",
  "tempfile",
  "ttf-parser",
+ "usvg",
+]
+
+[[package]]
+name = "diagram-web"
+version = "0.1.0"
+dependencies = [
+ "diagram-engine",
+ "png 0.18.1",
+ "resvg",
  "usvg",
 ]
 

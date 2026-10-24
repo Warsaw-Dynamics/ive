@@ -5175,6 +5175,7 @@
     "engine/src/plantuml/treescene.rs",
     "engine/src/plantuml/data.rs",
     "engine/src/plantuml/datascene.rs",
+    "engine/src/plantuml/dot.rs",
     "engine/src/plantuml/yaml.rs",
     "engine/src/plantuml/state.rs",
     "engine/src/plantuml/stategraph.rs",

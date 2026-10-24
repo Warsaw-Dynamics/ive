@@ -1,0 +1,6 @@
+digraph G {
+  graph [rankdir=TB];
+  a [shape=plaintext,label=<<TABLE BORDER="1"><TR><TD>alpha</TD></TR></TABLE>>];
+  b [shape=box,label="beta"];
+  a -> b [id="e0"];
+}

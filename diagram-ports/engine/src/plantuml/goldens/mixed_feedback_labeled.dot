@@ -1,0 +1,1 @@
+digraph G { graph [rankdir=TB]; node [shape=box]; u [label=A]; v [label=B]; w [label=C]; u -> v [label=one]; u -> v [label=two,style=dashed]; v -> u [label=back]; u -> u [label=loop]; }

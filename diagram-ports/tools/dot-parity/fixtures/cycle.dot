@@ -1,0 +1,8 @@
+digraph G {
+  graph [rankdir=TB,nodesep=0.555556,ranksep=0.833333,margin=0,splines=polyline];
+  node [shape=box,label="",fixedsize=true,width=1.111111,height=0.555556];
+  a; b; c; d;
+  a -> b [id="e0",label=" ",fontname="Courier",fontsize=12];
+  b -> c [id="e1",label=" ",fontname="Courier",fontsize=12];
+  c -> a [id="e2",label=" ",fontname="Courier",fontsize=12];
+}
