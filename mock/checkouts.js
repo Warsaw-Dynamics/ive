@@ -24,6 +24,8 @@
   var TEMPORARY_KINDS = ['projectPage', 'settings', 'hub', 'runConfigs'];
   // Commits lists this many at first, and this many more on each Load more.
   var COMMITS_MORE = 20;
+  // pixels the pointer moves with a tab pressed before it drags (gpui's drag threshold)
+  var TAB_DRAG_THRESHOLD = 4;
 
   function file(name, text) { return { name: name, text: text }; }
   function dir(name, children) { return { name: name, children: children }; }
@@ -131,8 +133,12 @@
           file('run.sh', '#!/bin/sh\nexec cargo run "$@"')
         ]),
         dir('misc', [file('.run.toml', tomlOf('/internal-apps/misc')), file('pom.xml', '<project>\n  <artifactId>misc</artifactId>\n</project>')]),
-        dir('paas', [file('pom.xml', '<project>\n  <artifactId>paas</artifactId>\n</project>')])
+        dir('paas', [file('pom.xml', '<project>\n  <artifactId>paas</artifactId>\n</project>')]),
+        // ident.js (a proposal): idp, approval-path and external-share-jira hold a .favicon.svg, so they are modules
+        dir('communication', [dir('idp', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>idp</artifactId>\n</project>')])])
       ]),
+      dir('approval-path', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>approval-path</artifactId>\n</project>')]),
+      dir('external-share-jira', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>external-share-jira</artifactId>\n</project>')]),
       dir('lib', [file('.run.toml', LIB_RUN_TOML), file('package.json', '{\n  "name": "lib"\n}')]),
       dir('run', [file('.run.toml', tomlOf('/run'))]),
       file('CLAUDE.md', '# Java Guidelines\n- Use Java 26 features (records, var, etc.)\n- Avoid null where possible.'),
@@ -529,6 +535,8 @@
         savingTimers: {},
         // tabs.rs Tabs::temporary: the key of the tab that goes once another is shown; only ever the shown one.
         temporary: null,
+        // the tab being dragged: { key, title, x, y, gap }; gap is where it would land, null for nowhere
+        tabDrag: null,
         menu: null,
         // The tab context menu's tab and where it opened (menu === 'tab').
         tabMenu: { key: null, x: 0, y: 0 },
@@ -614,6 +622,7 @@
           if (p.get('layout')) this.gitLayout = p.get('layout');
           if (p.get('hidden')) this.hiddenProjects = p.get('hidden').split(',');
           if (p.get('rlayout')) this.runLayout = p.get('rlayout');
+          if (p.get('ident')) this.restoreIdent(p.get('ident'));
           // route.js: the whole state, as the mock last wrote it
           if (this.isRouteHash(p)) { this.restoreRoute(p); return; }
           var atl = this.project('atlassian');
@@ -814,6 +823,63 @@
           if (at !== -1) this.tabs.splice(at, 1);
           return at;
         },
+        // ---- editor.rs render_tab_row: dragging a tab to another gap (tabs.rs move_tab) ----
+        // A left press on a chip; the drag starts once the pointer moves, and shows the tab (drag_preview.rs).
+        // Released away from the row the app detaches the tab into a window of its own; the mock leaves it in place.
+        pressTab: function (tab, event) {
+          var self = this;
+          var start = { x: event.clientX, y: event.clientY };
+          var move = function (e) {
+            if (self.tabDrag === null && Math.hypot(e.clientX - start.x, e.clientY - start.y) < TAB_DRAG_THRESHOLD) return;
+            if (self.tabDrag === null) { self.tabDrag = { key: tab.key, title: self.tabTitle(tab), x: 0, y: 0, gap: null }; self.showTab(tab); }
+            self.tabDrag.x = e.clientX;
+            self.tabDrag.y = e.clientY;
+            self.tabDrag.gap = self.tabDropGap(tab, e);
+          };
+          var up = function () {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            if (self.tabDrag !== null && self.tabDrag.gap !== null) self.moveTab(tab, self.tabDrag.gap);
+            self.tabDrag = null;
+          };
+          window.addEventListener('mousemove', move);
+          window.addEventListener('mouseup', up);
+        },
+        // The left half of a chip is the gap before it, the right half the gap after it; the row past the last chip is
+        // the last gap. null away from the row, or where the order would not change (tabs.rs moves).
+        tabDropGap: function (tab, event) {
+          var under = document.elementFromPoint(event.clientX, event.clientY);
+          var row = under && under.closest('.tabs');
+          if (row === null) return null;
+          var chip = under.closest('.tabs__tab');
+          var gap = this.tabs.length;
+          if (chip !== null) {
+            var box = chip.getBoundingClientRect();
+            var place = Number(chip.dataset.place);
+            gap = event.clientX < box.left + box.width / 2 ? place : place + 1;
+          }
+          var from = this.tabs.indexOf(tab);
+          return gap === from || gap === from + 1 ? null : gap;
+        },
+        moveTab: function (tab, gap) {
+          var from = this.tabs.indexOf(tab);
+          var tabs = this.tabs.filter(function (t) { return t !== tab; });
+          tabs.splice(gap > from ? gap - 1 : gap, 0, tab);
+          this.tabs = tabs;
+        },
+        // The side of chip `place` its drop marker shows on: before it, or after the last one.
+        tabDropSide: function (place) {
+          if (this.tabDrag === null || this.tabDrag.gap === null) return null;
+          if (this.tabDrag.gap === place) return 'left';
+          return this.tabDrag.gap === place + 1 && place === this.tabs.length - 1 ? 'right' : null;
+        },
+        // Shift+wheel or a touchpad's sideways swipe scrolls the row; a plain wheel does not, as in the app.
+        scrollTabs: function (event) {
+          var dx = event.shiftKey ? event.deltaY || event.deltaX : event.deltaX;
+          if (dx === 0) return;
+          event.preventDefault();
+          event.currentTarget.scrollLeft += dx;
+        },
         isTemporary: function (tab) { return tab.key === this.temporary; },
         // Double click on the tab, middle click on its tree row, or Keep Tab: it stays when another tab is shown.
         keepTab: function (tab) { if (tab && this.isTemporary(tab)) this.temporary = null; },
@@ -926,8 +992,10 @@
           if (tab.co) return this.label(tab.co) + ' — ' + title;
           return tab.project + ' — ' + title;
         },
-        // editor.rs Tab::underline: a diff tab's checkout colour.
+        // editor.rs Tab::underline: a diff tab's checkout colour; ident.js's underline variant: any worktree tab's.
         tabUnderline: function (tab) {
+          if (this.ident.worktree === 'underline') { var cue = this.tabWorktreeCue(tab); return cue && cue.colour; }
+          if (this.ident.worktree !== 'today') return null;
           return tab.kind === 'diff' ? this.checkout(tab.co).colour : null;
         },
         // ---- diff layout, editing and saving (codeview design: "Saving: IntelliJ-style, no Ctrl+S") ----
@@ -1856,7 +1924,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods, window.IVE_IDENT.state(), window.IVE_IDENT.methods);
     });
   });
 })();

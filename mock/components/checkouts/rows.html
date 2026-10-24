@@ -7,8 +7,10 @@
      A changed file: its git mark after its name, a deleted file struck through.
      A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js). -->
 <template x-for="row in rows" :key="row.node.key">
-  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty }"
-       :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="activateNode(row.node)"
+  <!-- ident.js (a proposal): a worktree's colour on its own row: tint, underline, dot or rail -->
+  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty,
+         ['tree__row--wt-' + ident.tree]: row.wt !== undefined && row.wt.head }"
+       :style="Object.assign({ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }, row.wt ? { '--wt': row.wt.colour, '--wt-at': indent(row.wt.depth) } : {})" @click="activateNode(row.node)"
        @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && activateNodeToKeep(row.node)"
        @contextmenu.prevent="openTreeMenu(row.node, $event.clientX, $event.clientY)"
        :title="row.node.warning || row.node.hint || row.node.label">
@@ -17,9 +19,12 @@
            @click.stop="toggleNode(row.node)" />
     </template>
     <template x-if="row.node.slot"><span class="tree__slot"></span></template>
-    <template x-if="row.node.project"><span class="badge" x-text="initials(row.node.label)"></span></template>
-    <template x-if="row.node.icon"><img class="icon" :src="icon(row.node.icon)" alt="" /></template>
+    <!-- ident.js (a proposal): a project's favicon in place of its badge, a module's in place of its folder icon -->
+    <template x-if="row.node.project && treeFavicon(row.node) === null"><span class="badge" x-text="initials(row.node.label)"></span></template>
+    <template x-if="treeFavicon(row.node)"><img class="icon owner__icon owner__icon--tree" :src="treeFavicon(row.node)" alt="" /></template>
+    <template x-if="row.node.icon && treeFavicon(row.node) === null"><img class="icon" :src="icon(row.node.icon)" alt="" /></template>
     <span class="tree__label" :class="{ 'tree__label--strong': row.node.strong, 'tree__label--special': row.node.special, 'tree__label--weak': row.node.weak, 'tree__label--struck': row.node.struck, 'tree__label--link': row.node.link }" x-text="row.node.label"></span>
+    <template x-if="row.wt && row.wt.head && ident.tree === 'dot'"><span class="tabs__dot" :style="{ background: row.wt.colour }"></span></template>
     <template x-if="row.node.mark"><span class="mark" :class="'mark--' + row.node.mark" x-text="row.node.mark"></span></template>
     <template x-if="row.node.warning"><img class="icon" :src="icon('warning.svg')" alt="" /></template>
     <template x-if="row.node.state"><span class="tree__state" :class="'tree__state--' + row.node.state.tone" x-text="row.node.state.text"></span></template>

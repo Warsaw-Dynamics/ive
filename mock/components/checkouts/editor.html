@@ -1,24 +1,74 @@
 <!-- editor.rs render_pane: the tab row (tabs, then Settings and the window buttons), then the shown tab.
-     A temporary tab's title is italic; double click keeps it. A right press opens the tab menu without showing the tab. -->
+     A temporary tab's title is italic; double click keeps it. A right press opens the tab menu without showing the tab.
+     The row scrolls sideways (Shift+wheel or a touchpad); a tab dragged along it moves to the gap the accent bar marks. -->
 <section class="pane">
   <div class="tabbar">
-  <div class="tabs">
-    <template x-for="tab in tabs" :key="tab.key">
-      <div class="tabs__tab" :class="{ 'tabs__tab--current': focus === tab.key }"
+  <div class="tabs" @wheel="scrollTabs($event)">
+    <!-- ident.js (a proposal): flat, one group of every tab; or a group per worktree or per project under its head.
+         The chevron folds the group to its head, its count and its current tab (the one shown last); a click on the
+         name lists the group's tabs in a menu, to show another. -->
+    <template x-for="g in tabGroups()" :key="g.key">
+    <div class="tabs__group" :class="{ 'tabs__group--on': g.head !== null, 'tabs__group--folded': g.folded }" :style="{ '--co': g.colour || 'transparent' }">
+    <template x-if="g.head">
+      <span class="tabs__head">
+      <button class="tabs__head-fold" type="button" @click="toggleTabGroup(g.key)" :title="(g.folded ? 'Unfold ' : 'Fold ') + g.head.label"><img class="icon tabs__head-chevron" :src="icon(g.folded ? 'chevron-right.svg' : 'chevron-down.svg')" alt="" /></button>
+      <button class="tabs__head-name" type="button" @click.stop="openTabGroupMenu(g.key, $event)" :title="g.head.label + (g.head.sub ? ' · ' + g.head.sub : '') + ': its tabs'"><template x-if="g.head.owner"><span class="owner" :title="g.head.owner.module ? g.head.owner.project + ' › ' + g.head.owner.module : g.head.owner.project"><template x-if="g.head.owner.icon"><img class="owner__icon" :src="g.head.owner.icon" alt="" /></template><template x-if="g.head.owner.icon === null"><span class="owner__initials" x-text="g.head.owner.initials"></span></template></span></template><span class="tabs__head-label" x-text="g.head.label"></span><template x-if="g.folded"><span class="tabs__head-count" x-text="g.tabs.length"></span></template></button>
+      </span>
+    </template>
+    <template x-for="tab in g.shown" :key="tab.key">
+      <div class="tabs__tab" :class="{ 'tabs__tab--current': focus === tab.key }" :data-place="tabs.indexOf(tab)" x-data="{ get cue() { return tabWorktreeCue(tab); }, get owner() { return tabOwnerIcon(tab); }, get badge() { return tabOwnerBadge(tab); } }"
+           :style="cue && cue.mode === 'tint' ? { '--tint': cue.colour } : {}" :data-tint="cue && cue.mode === 'tint' ? '' : null"
            @click="showTab(tab)" @dblclick="keepTab(tab)" @auxclick.prevent="$event.button === 1 && closeTab(tab)" :title="tabTooltip(tab)"
-           @mousedown="if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent
+           @mousedown="if ($event.button === 0) pressTab(tab, $event); if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent @dragstart.prevent
            x-effect="focus === tab.key && $nextTick(() => $el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))">
-        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template></span>
+        <template x-if="owner"><span class="owner" :title="owner.module ? owner.project + ' › ' + owner.module : owner.project"><template x-if="owner.icon"><img class="owner__icon" :src="owner.icon" alt="" /></template><template x-if="owner.icon === null"><span class="owner__initials" x-text="owner.initials"></span></template></span></template>
+        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template><template x-if="badge"><img class="icon-stack__owner" :src="badge.icon" alt="" :title="badge.module ? badge.project + ' › ' + badge.module : badge.project" /></template></span>
+        <template x-if="cue && cue.mode === 'dot'"><span class="tabs__dot" :style="{ background: cue.colour }"></span></template>
         <span class="tabs__title" :class="{ 'tabs__title--temporary': isTemporary(tab) }" x-text="tabTitle(tab)"></span>
+        <template x-if="cue && cue.mode === 'label'"><span class="tabs__where" :style="cue.colour ? { '--co': cue.colour } : {}" x-text="cue.label"></span></template>
         <button class="tab__close" type="button" title="Close" @click.stop="closeTab(tab)">
           <img class="icon" :src="icon('close.svg')" alt="" />
         </button>
         <template x-if="tabUnderline(tab)"><span class="tabs__underline" :style="{ background: tabUnderline(tab) }"></span></template>
+        <template x-if="tabDropSide(tabs.indexOf(tab))"><span class="tabs__drop" :class="'tabs__drop--' + tabDropSide(tabs.indexOf(tab))"></span></template>
       </div>
+    </template>
+    </div>
     </template>
   </div>
   <div class="tabbar__tools" x-include="components/checkouts/tab-tools.html"></div>
   </div>
+  <!-- ident.js (a proposal): a tab group's menu, its tabs, the group's current one ticked; a project group's under a
+       head per worktree, with the worktree's rail as in the tree -->
+  <template x-for="m in (tabGroupMenu() ? [tabGroupMenu()] : [])" :key="m.key">
+    <!-- a tab drags within its worktree, a worktree's head among the project's; a line marks where it lands -->
+    <div class="menu menu--at" :style="{ left: m.x + 'px', top: m.y + 'px' }" role="menu" @mousedown.outside="menu = null" @dragstart.prevent>
+      <template x-for="s in tabGroupSections(m.group)" :key="s.key">
+        <div class="menu__wt" :data-menu-section="s.key" :data-drop="identMenuDrag && identMenuDrag.kind === 'section' ? groupMenuDropSide(s.key) : null">
+          <template x-if="s.label">
+            <div class="menu__section menu__section--wt" :class="{ 'menu__section--rail': s.colour, 'menu__section--grab': s.key !== 'project' }" :style="s.colour ? { '--wt': s.colour } : {}"
+                 @mousedown="$event.button === 0 && s.key !== 'project' && pressGroupMenu({ kind: 'section', key: s.key, section: s.key }, $event)">
+              <img class="icon" :src="icon(s.key === 'project' ? 'project-folder.svg' : 'branch.svg')" alt="" /><span x-text="s.label"></span>
+            </div>
+          </template>
+          <template x-for="tab in s.tabs" :key="tab.key">
+            <button class="menu__item" type="button" role="menuitem" :data-menu-tab="tab.key" :data-section="s.key"
+                    :data-drop="identMenuDrag && identMenuDrag.kind === 'tab' ? groupMenuDropSide(tab.key) : null"
+                    @mousedown="$event.button === 0 && pressGroupMenu({ kind: 'tab', key: tab.key, section: s.key }, $event)"
+                    @click="if (identMenuDragged === false) { menu = null; showTab(tab); }">
+              <span class="menu__tick" x-text="tab.key === m.group.current.key ? '✓' : ''"></span>
+              <span class="icon-stack" x-data="{ get badge() { return tabModuleBadge(tab); } }"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="badge"><img class="icon-stack__owner" :src="badge.icon" alt="" :title="badge.project + ' › ' + badge.module" /></template></span>
+              <span class="menu__grow" x-text="tabTitle(tab)"></span>
+            </button>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+  <!-- DraggedTab: the dragged tab's title under the pointer -->
+  <template x-if="tabDrag !== null">
+    <div class="tabs__drag" :style="{ left: tabDrag.x + 'px', top: tabDrag.y + 'px' }" x-text="tabDrag.title"></div>
+  </template>
 
   <!-- workspace/menu.rs: the menu of a tab or a tree row (menus.js). A tab's: Keep Tab (temporary tab), Stop and Kill
        (process tab; greyed with nothing in the foreground), a file's items, then the Close items (greyed with nothing to

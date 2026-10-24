@@ -10,6 +10,7 @@
 //   every   the folders every worktree shows (a proposal), when not all of them
 //   hidden  the projects the tree and the hub leave out
 //   dl      the diff layout last toggled, side (inline when absent); save, closing: mock-only, read but not written
+//   ident   ident.js's variant (a proposal): owner,worktree,layout,when
 //   theme, side, page, layout, sort, gap, radius, q, changed, excl, scope, nt: theme, tree width, Settings page, git
 //           layout and order, panel gap and radius, hub query, "changed only", "with excluded", scope and whether
 //           the hub asks where a new terminal goes (Ctrl+Shift+T)
@@ -65,6 +66,7 @@
         add('every', folders === Object.keys(every).join(',') ? null : folders);
         add('dl', this.diffLayout === 'inline' ? null : this.diffLayout);
         add('counts', this.countStyle === 'dot' ? null : this.countStyle);
+        add('ident', this.identParam());
         if (this.tabs.some(function (t) { return t.key === 'hub'; })) {
           add('q', this.hub.query);
           add('excl', this.hub.withExcluded ? '1' : null);

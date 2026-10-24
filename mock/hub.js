@@ -453,7 +453,7 @@
         var mode = this.hubMode();
         var split = splitLine(this.hubText());
         var groups = parseQuery(split.query);
-        var sections = this['hub_' + mode](groups, split);
+        var sections = this.identGroupSections(this['hub_' + mode](groups, split));
         var items = [];
         sections.forEach(function (s) { s.items.forEach(function (item) { item.index = items.length; items.push(item); }); });
         var stats = searchMemo.value && mode === 'files' && groups.length ? searchMemo.value : null;
@@ -797,7 +797,7 @@
         var self = this;
         var state = c.kind === 'run' ? this.runStatus(c) : c.kind === 'agent' ? 'running' : 'idle';
         return this.hubItem({
-          id: 'c:' + c.id, project: c.co.split('@')[0], icon: this.consoleIcon(c), title: c.title, detail: this.consoleKind(c) + (c.folder ? ' · ' + c.folder.slice(1) : ''), co: c.co, state: state,
+          id: 'c:' + c.id, project: c.co.split('@')[0], ownerPath: c.folder, icon: this.consoleIcon(c), title: c.title, detail: this.consoleKind(c) + (c.folder ? ' · ' + c.folder.slice(1) : ''), co: c.co, state: state,
           open: function () { self.openConsole(c); },
           preview: function () { return { title: c.title, sub: self.label(c.co) + ' · ' + self.consoleKind(c), lines: c.lines.slice(-30).map(textOf), mono: true }; }
         });

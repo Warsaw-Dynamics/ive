@@ -1,0 +1,80 @@
+/* ident.js (a proposal): where a tab or a hub row belongs. The owner is a project's or module's favicon, or its
+   initials; the worktree is one quiet cue in its colour, never on the main checkout. */
+.owner { flex: none; display: grid; place-items: center; width: 14px; height: 14px; }
+.owner__icon { width: 14px; height: 14px; border-radius: 3px; }
+/* badge: the favicon small on the file-type icon's lower right, over its corner; a ring in the row's colour cuts
+   it out of the icon below (the scratch clock sits top right, so both fit) */
+.icon-stack__owner { position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 2px;
+  box-shadow: 0 0 0 1.5px var(--sidebar); }
+.tabs__tab--current .icon-stack__owner { box-shadow: 0 0 0 1.5px var(--tab-active); }
+.hub .icon-stack__owner { box-shadow: 0 0 0 1.5px var(--background); }
+.menu .icon-stack__owner { box-shadow: 0 0 0 1.5px var(--sidebar); }
+.menu .menu__item:hover .icon-stack__owner { box-shadow: 0 0 0 1.5px var(--hover); }
+.hub .hub__row--on .icon-stack__owner { box-shadow: 0 0 0 1.5px var(--selected); }
+/* in the tree and its menus, a favicon stands in a 16 px icon's slot */
+.owner__icon--tree { flex: none; width: 16px; height: 16px; }
+/* no .favicon: the project badge's initials, muted, so it does not pass for a favicon */
+.owner__initials { display: grid; place-items: center; width: 14px; height: 14px; border-radius: 3px; background: var(--hover);
+  color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: -0.02em; }
+
+/* flat: the groups are not boxes, the tabs sit straight in the row */
+.tabs__group { display: contents; }
+/* groups: the head, then the worktree's tabs, a 2 px line in its colour under them all */
+.tabs__group--on { position: relative; flex: none; display: flex; align-items: center; gap: 2px; height: 100%; padding: 0 4px;
+  box-shadow: inset 0 -2px 0 var(--co); }
+.tabs__group--on + .tabs__group--on { margin-left: 4px; }
+.tabs__head { flex: none; display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px 0 4px; font-size: 12px; color: var(--muted); }
+.tabs__head-label { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the head: the chevron folds the group, the name opens its menu; the count shows while folded */
+.tabs__head { padding: 0; gap: 0; }
+.tabs__head-fold, .tabs__head-name { display: flex; align-items: center; gap: 5px; height: 22px; border-radius: 6px; color: inherit; font: inherit; }
+.tabs__head-fold { padding: 0 3px; }
+.tabs__head-name { padding: 0 6px 0 3px; }
+.tabs__head-fold:hover, .tabs__head-name:hover { background: var(--hover); color: var(--text); }
+.tabs__head-chevron { width: 12px; height: 12px; opacity: 0.7; }
+.tabs__head-count { padding: 0 5px; border-radius: 8px; background: var(--hover); font-size: 11px; }
+
+/* the tree: a worktree's row tinted, its name underlined, a dot after it, or a 2 px rail left of its chevron, on
+   that row only */
+.tree__row--wt-tint { background: color-mix(in srgb, var(--wt) 14%, transparent); }
+.tree__row--wt-tint:hover { background: color-mix(in srgb, var(--wt) 20%, transparent); }
+.tree__row--wt-underline .tree__label { text-decoration: underline 2px var(--wt); text-underline-offset: 4px; }
+.tree__row--wt-rail::after { content: ''; position: absolute; top: 4px; bottom: 4px; left: calc(var(--wt-at) - 5px); width: 2px; border-radius: 1px; background: var(--wt); }
+
+/* a project group's menu: a head per worktree, its rail (as the tree's) left of its branch icon */
+.menu__section--wt { position: relative; display: flex; align-items: center; gap: 6px; padding: 8px 8px 2px 26px; }
+.menu__section--wt .icon { width: 14px; height: 14px; opacity: 0.8; }
+.menu__section--grab { cursor: grab; }
+/* its rows drag, so none of its text selects (as the tab row's) */
+.menu__wt { user-select: none; }
+/* a drag in the menu: a 2 px accent line above or below the row or worktree it lands by */
+.menu__wt, .menu__wt .menu__item { position: relative; }
+.menu__wt[data-drop]::after, .menu__wt .menu__item[data-drop]::after { content: ''; position: absolute; left: 4px; right: 4px; height: 2px;
+  border-radius: 1px; background: var(--accent); }
+.menu__wt[data-drop="before"]::after, .menu__wt .menu__item[data-drop="before"]::after { top: -1px; }
+.menu__wt[data-drop="after"]::after, .menu__wt .menu__item[data-drop="after"]::after { bottom: -1px; }
+.menu__section--rail::before { content: ''; position: absolute; left: 18px; top: 9px; bottom: 3px; width: 2px; border-radius: 1px; background: var(--wt); }
+
+/* tint: a worktree's tabs washed with its colour, a little more on the shown one */
+.tabs__tab[data-tint] { background: color-mix(in srgb, var(--tint) 12%, transparent); }
+.tabs__tab[data-tint]:hover { background: color-mix(in srgb, var(--tint) 18%, transparent); }
+.tabs__tab--current[data-tint], .tabs__tab--current[data-tint]:hover { background: color-mix(in srgb, var(--tint) 22%, var(--tab-active));
+  border-color: color-mix(in srgb, var(--tint) 45%, transparent); }
+.tabs__dot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
+/* label: the worktree's name after the title, muted; coloured only off the main checkout */
+.tabs__where { max-width: 120px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: color-mix(in srgb, var(--co, var(--muted)) 70%, var(--muted)); }
+
+.hub__owner { flex: none; display: flex; width: 14px; }
+.hub__owner-head { display: flex; align-items: center; gap: 6px; height: 22px; padding: 4px 8px 0 18px; font-size: 12px; color: var(--muted); }
+/* the worktree tag's variants; today's is hub.css's left bar on a pill */
+.hub__co { display: flex; align-items: center; gap: 5px; }
+.hub__co--underline { border-left: 0; background: none; padding: 0 2px; box-shadow: inset 0 -2px 0 var(--co, transparent); border-radius: 0; }
+.hub__co--tint { border-left: 0; background: color-mix(in srgb, var(--co, var(--hover)) 18%, var(--hover)); }
+.hub__co--dot, .hub__co--label { border-left: 0; background: none; color: var(--muted); }
+.hub__co--label { color: color-mix(in srgb, var(--co, var(--muted)) 70%, var(--muted)); }
+
+/* the tab row's menu, under its button: each part's options in one row */
+.menu--ident { width: 300px; }
+.menu--ident .menu__item--switch { padding-top: 0; }
+.menu--ident .segmented { flex: 1; }
+.menu--ident .segmented button { flex: 1; padding: 2px 4px; font-size: 12px; }
