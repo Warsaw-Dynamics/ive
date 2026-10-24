@@ -57,9 +57,10 @@ impl Workspace {
         }
     }
 
-    /// Redraws what shows waiting processes: the tree, the tab row and the windows of detached tabs.
+    /// Redraws what shows waiting processes: the tree, the tab row, an open hub and the windows of detached tabs.
     fn waiting_changed(&mut self, cx: &mut Context<Self>) {
         self.tree_changed(cx);
+        self.settle_open_hub(cx);
         self.redraw_tab_windows(cx);
         cx.notify();
     }

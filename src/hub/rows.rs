@@ -79,6 +79,7 @@ pub fn list(state: &HubState, sources: &Sources, files: Option<(&Corpus, &Found)
         Mode::Pick => list.section("Worktrees", pick_rows(state, sources, states)),
         Mode::Empty if state.changed_only => list.section_of("Changed", list.matching(&sources.changed, "", RENDERED)),
         Mode::Empty => {
+            list.section_of("Waiting", list.matching(&sources.waiting, "", RENDERED));
             let recent = list.matching(&sources.recent, "", RECENT_EMPTY).rows;
             list.section("Recent", recent);
             list.section_of("Changed", list.matching(&sources.changed, "", RENDERED));
