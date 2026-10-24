@@ -745,8 +745,13 @@ impl Workspace {
     }
 
     fn picker_title(&self) -> sidebar_view::PickerTitle {
-        let shown: Vec<&str> = crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.name.as_str()).collect();
-        sidebar_view::picker_title(&shown, self.projects.len())
+        let shown: Vec<&OpenProject> = crate::project_list::shown(&self.projects, &self.hidden_projects).collect();
+        let names: Vec<&str> = shown.iter().map(|open| open.project.name.as_str()).collect();
+        let icon = match shown.as_slice() {
+            [one] => self.project_icon(&one.project.id),
+            _ => None,
+        };
+        sidebar_view::PickerTitle { icon, ..sidebar_view::picker_title(&names, self.projects.len()) }
     }
 
     /// What the picker's menu lists: the open projects in tree order, whether each shows, their live processes.
@@ -754,7 +759,8 @@ impl Workspace {
         let shown = self.shown_projects();
         let projects = self.projects.iter().map(|open| {
             let running = self.processes.in_project(&open.project.id).iter().filter(|process| process.is_live()).count();
-            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running }
+            let icon = self.project_icon(&open.project.id);
+            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running, icon }
         });
         sidebar_view::ProjectsMenu { projects: projects.collect() }
     }

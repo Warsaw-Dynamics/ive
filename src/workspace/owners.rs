@@ -39,10 +39,11 @@ impl Workspace {
         Owner { project: checkout.project.clone(), module, icon }
     }
 
-    /// The favicon of module `folder` (checkout-relative) in `checkout`; `None` for a folder that is no module.
-    pub fn module_icon(&self, checkout: &Path, folder: &str) -> Option<PathBuf> {
+    /// The favicon of module `folder` (absolute, or relative to `checkout`); `None` for a folder that is no module.
+    pub fn module_icon(&self, checkout: &Path, folder: &Path) -> Option<PathBuf> {
         let favicons = self.favicons(checkout)?;
-        let module = favicons.module_of(folder).filter(|module| *module == folder)?;
+        let folder = relative_text(checkout, folder)?;
+        let module = favicons.module_of(&folder).filter(|module| *module == folder)?;
         favicons.icon_of(module).map(|file| checkout.join(file))
     }
 }

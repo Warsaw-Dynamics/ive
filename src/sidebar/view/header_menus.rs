@@ -1,11 +1,13 @@
 //! The tree header's menus besides Open project: the folders every worktree shows, and which projects the tree shows.
 
 use std::collections::BTreeSet;
+use std::path::PathBuf;
 
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb};
 
 use super::{badge, closing_outside, header_button_press, menu_item, menu_panel, menu_section};
 use crate::click_targets::target;
+use crate::favicon_badge::favicon;
 use crate::hub::key_label;
 use crate::icons;
 use crate::overview::file_list::FileLayout;
@@ -70,6 +72,8 @@ pub struct PickedProject {
     pub shown: bool,
     /// live processes
     pub running: usize,
+    /// its favicon, drawn in place of its initials
+    pub icon: Option<PathBuf>,
 }
 
 impl ProjectsMenu {
@@ -84,14 +88,16 @@ impl ProjectsMenu {
 pub struct PickerTitle {
     pub text: String,
     pub badge: Option<String>,
+    /// the one project's favicon, drawn in place of its initials
+    pub icon: Option<PathBuf>,
 }
 
 /// The title for the projects `shown`, by name, of `open` open projects.
 pub fn picker_title(shown: &[&str], open: usize) -> PickerTitle {
     match shown {
-        _ if shown.len() == open => PickerTitle { text: "All projects".to_owned(), badge: None },
-        [one] => PickerTitle { text: (*one).to_owned(), badge: Some(initials(one)) },
-        many => PickerTitle { text: format!("{} of {open} projects", many.len()), badge: None },
+        _ if shown.len() == open => PickerTitle { text: "All projects".to_owned(), badge: None, icon: None },
+        [one] => PickerTitle { text: (*one).to_owned(), badge: Some(initials(one)), icon: None },
+        many => PickerTitle { text: format!("{} of {open} projects", many.len()), badge: None, icon: None },
     }
 }
 
@@ -111,7 +117,10 @@ pub(super) fn picker_button(title: &PickerTitle, theme: Theme, cx: &mut Context<
         .hover(|style| style.bg(rgb(theme.hover)))
         .text_size(sizes.header_title_size.px())
         .font_weight(sizes.header_title_weight.font_weight())
-        .children(title.badge.as_ref().map(|initials| badge(initials, theme.accent, theme.on_accent, theme)))
+        .children(title.badge.as_ref().map(|initials| match &title.icon {
+            Some(path) => favicon(path, theme.sizes.icon.px()).into_any_element(),
+            None => badge(initials, theme.accent, theme.on_accent, theme).into_any_element(),
+        }))
         .child(div().overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.text.clone()))
         .child(icon(theme, icons::CHEVRON_DOWN))
         .tooltip(tooltip::text_tooltip("Show all projects, or one"))
@@ -133,7 +142,10 @@ pub(super) fn projects_menu(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<
         let running = (project.running > 0).then(|| key_hint(format!("● {} running", project.running), theme));
         menu_item(("show-project", index), theme)
             .child(tick(project.shown, theme))
-            .child(badge(&initials(&project.name), theme.hover, theme.text, theme))
+            .child(match &project.icon {
+                Some(path) => favicon(path, theme.sizes.icon.px()).into_any_element(),
+                None => badge(&initials(&project.name), theme.hover, theme.text, theme).into_any_element(),
+            })
             .child(div().flex_1().overflow_hidden().text_ellipsis().child(project.name.clone()))
             .children(running)
             .on_click(show)
@@ -222,9 +234,9 @@ mod tests {
 
         // then
         assert_eq!(titles, [
-            PickerTitle { text: "All projects".to_owned(), badge: None },
-            PickerTitle { text: "notes".to_owned(), badge: Some("N".to_owned()) },
-            PickerTitle { text: "2 of 3 projects".to_owned(), badge: None },
+            PickerTitle { text: "All projects".to_owned(), badge: None, icon: None },
+            PickerTitle { text: "notes".to_owned(), badge: Some("N".to_owned()), icon: None },
+            PickerTitle { text: "2 of 3 projects".to_owned(), badge: None, icon: None },
         ]);
     }
 

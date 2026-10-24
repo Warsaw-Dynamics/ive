@@ -17,7 +17,9 @@ use super::rows::{
     initials, target_name,
 };
 use super::selection::{Listed, Selection, is_multi_selectable};
+use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use crate::dragged_files::DraggedFiles;
+use crate::favicon_badge::favicon;
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
 use crate::click_targets::{Listener, target};
@@ -104,7 +106,7 @@ pub fn render(sidebar: Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace>) -
         tree.rows.len(),
         cx.processor(|workspace: &mut Workspace, range, window, cx| {
             let theme = crate::theme::for_panel(crate::theme::Panel::Sidebar, window, cx);
-            render_rows(workspace.tree(), range, theme, cx)
+            render_rows(workspace, range, theme, cx)
         }),
     )
     .with_horizontal_sizing_behavior(ListHorizontalSizingBehavior::Unconstrained)
@@ -327,12 +329,13 @@ pub fn badge(text: &str, background: u32, color: u32, theme: Theme) -> Div {
         .child(text.to_owned())
 }
 
-fn render_rows(tree: &Tree, range: Range<usize>, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
-    range.map(|index| render_row(tree, index, theme, cx)).collect()
+fn render_rows(workspace: &Workspace, range: Range<usize>, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
+    range.map(|index| render_row(workspace, index, theme, cx)).collect()
 }
 
 /// Row `index` of the tree, drawn by its state, git mark, selection and whether it is the active tab's.
-fn render_row(tree: &Tree, index: usize, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let tree = workspace.tree();
     let row = &tree.rows[index];
     let key = row.key();
     let entry = match &row.item {
@@ -341,7 +344,7 @@ fn render_row(tree: &Tree, index: usize, theme: Theme, cx: &mut Context<Workspac
     };
     let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key) };
     let select = RowSelect { key, multi: is_multi_selectable(row), workspace: cx.entity().downgrade() };
-    let line = RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select);
+    let line = RowLine { mark: row_mark(row, workspace, theme), ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
     match &row.item {
         TreeItem::Project(project) => project_row(line, project, cx),
         TreeItem::Checkout(checkout) => checkout_row(line, checkout, cx),
@@ -407,6 +410,10 @@ struct RowLine {
     theme: Theme,
     target: String,
     select: RowSelect,
+    /// its project's or module's favicon, a worktree's rail
+    mark: RowMark,
+    /// its content's distance from the row's left edge, by its depth
+    indent: f32,
 }
 
 impl RowLine {
@@ -415,6 +422,7 @@ impl RowLine {
     fn new(row: &TreeRow, index: usize, theme: Theme, look: RowStyle, select: RowSelect) -> Self {
         let sizes = &theme.sizes.tree;
         let group = SharedString::from(format!("tree-row-{index}"));
+        let indent = sizes.padding_left.0 + row.depth as f32 * tree_indent(theme);
         let div = div()
             .id(("tree-row", index))
             .group(group.clone())
@@ -426,7 +434,7 @@ impl RowLine {
             .items_center()
             .gap(sizes.icon_gap.px())
             .h(sizes.row_height.px())
-            .pl(px(sizes.padding_left.0 + row.depth as f32 * tree_indent(theme)))
+            .pl(px(indent))
             .pr(sizes.padding_right.px())
             .text_size(sizes.text_size.px())
             .whitespace_nowrap()
@@ -440,12 +448,26 @@ impl RowLine {
                 styled(div.hover(move |style| hovered(style, row_hover)), foreground).child(highlight_box(look, group.clone(), theme))
             }
         };
-        Self { div, group, index, theme, target: row.target.clone(), select }
+        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent }
     }
 
     /// Click target `<verb>:<row's target>`, as `TreeRow::target_names` lists it.
     fn name(&self, verb: &str) -> String {
         target_name(verb, &self.target)
+    }
+}
+
+/// A worktree's colour, as a bar left of its row's chevron.
+fn worktree_rail(colour: u32, indent: f32, theme: Theme) -> Div {
+    let sizes = &theme.sizes.tabs;
+    div().absolute().left(px(indent - 5.)).top(sizes.rail_inset.px()).bottom(sizes.rail_inset.px()).w(sizes.rail_width.px()).rounded(px(1.)).bg(rgb(colour))
+}
+
+/// A folder row's icon: its module's favicon, else `embedded`.
+fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::AnyElement {
+    match folder_icon(embedded, mark.favicon.clone()) {
+        FolderIcon::Favicon(path) => favicon(&path, theme.sizes.icon.px()).into_any_element(),
+        FolderIcon::Embedded(name) => icon(theme, name).into_any_element(),
     }
 }
 
@@ -461,8 +483,10 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         let action = RowAction { id: "hide-worktree", icon: icons::HIDE, tip: "Hide worktree (the project page shows it again)".to_owned(), on_click: Box::new(on_click) };
         row_action(action, &line)
     });
+    let rail = line.mark.rail.map(|colour| worktree_rail(colour, line.indent, theme));
     let line = line
         .div
+        .children(rail)
         .child(chevron(row.expanded, theme, shared(&toggle)))
         .child(icon(theme, icons::BRANCH))
         .child(row.label.clone())
@@ -511,7 +535,8 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
         EntryKind::HiddenGroup => virtual_name(HIDDEN_GROUP, theme.virtual_folders.hidden, theme).into_any_element(),
         _ => entry.name.clone().into_any_element(),
     };
-    let line = line.div.child(disclosure).child(icon(theme, file_icon)).child(name).children(warning);
+    let file_icon = if entry.expands() { folder_mark(file_icon, &line.mark, theme) } else { icon(theme, file_icon).into_any_element() };
+    let line = line.div.child(disclosure).child(file_icon).child(name).children(warning);
     if multi {
         let dragged = DraggedFiles { pressed: entry.path.clone(), workspace: cx.entity().downgrade() };
         return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse, cx);
@@ -645,10 +670,15 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
     let chevron = toggle.as_ref().map(|toggle| chevron(project.expanded, theme, shared(toggle)));
     let project_target = line.name("project");
     let (badge_fill, badge_text) = if present { (theme.accent, theme.on_accent) } else { (theme.hover, theme.muted) };
+    // its favicon, else its initials on a badge
+    let mark = match line.mark.favicon.clone() {
+        Some(path) => favicon(&path, theme.sizes.icon.px()).into_any_element(),
+        None => badge(&project.initials, badge_fill, badge_text, theme).into_any_element(),
+    };
     let line = line
         .div
         .children(chevron)
-        .child(badge(&project.initials, badge_fill, badge_text, theme))
+        .child(mark)
         .child(div().font_weight(sizes.project_name_weight.font_weight()).text_color(rgb(name_color)).child(project.name.clone()))
         .children(tag)
         .children(running)
