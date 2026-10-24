@@ -233,6 +233,14 @@ impl Workspace {
         }
     }
 
+    /// A line of the bell's list, or a click on a desktop notification: the main window comes to the front and shows
+    /// process `id`, which stops it waiting.
+    pub fn show_waiting(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_menu(window, cx);
+        let _ = self.main_window.update(cx, |_, main, _| main.activate_window());
+        self.show_process(id, window, cx);
+    }
+
     /// The one way IVE ends a process: hangs up its shell, hosted or not, then removes it. Dropping a hosted process
     /// without this leaves its shell running.
     pub fn end_process(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {

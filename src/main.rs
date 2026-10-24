@@ -5,6 +5,7 @@ mod args;
 mod assets;
 mod attention;
 mod attention_dot;
+mod waiting_menu;
 mod build_info;
 mod click_targets;
 mod clipboard;

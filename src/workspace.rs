@@ -770,6 +770,10 @@ impl Workspace {
         cx.notify();
     }
 
+    pub(crate) fn header_menu(&self) -> Option<sidebar_view::HeaderMenu> {
+        self.header_menu
+    }
+
     /// A press on a header button, seen before the open menu's press-outside closes it.
     pub(crate) fn note_menu_press(&mut self) {
         self.header_menu_at_press = self.header_menu;

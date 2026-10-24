@@ -98,6 +98,8 @@ pub enum HeaderMenu {
     OpenProject,
     Folders,
     Projects,
+    /// the tab row's bell: the processes that wait for the user
+    Waiting,
 }
 
 /// What the sidebar draws besides the tree.
@@ -236,7 +238,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
 
 /// A header button's press: noted before the open menu's press-outside closes it (the capture phase comes first),
 /// and kept from moving the window.
-fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     button
         .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
         .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
@@ -287,7 +289,7 @@ fn render_menu(recent: &[RecentProject], theme: Theme, cx: &mut Context<Workspac
 }
 
 /// A header menu's box under the header, before its side, width and [`closing_outside`] are set.
-fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
@@ -305,11 +307,11 @@ fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
 }
 
 /// A header menu that a press outside closes.
-fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     menu.on_mouse_down_out(cx.listener(|workspace, _event, window, cx| workspace.close_menu(window, cx)))
 }
 
-fn menu_section(title: &'static str, theme: Theme) -> Div {
+pub(crate) fn menu_section(title: &'static str, theme: Theme) -> Div {
     let sizes = &theme.sizes.tree;
     div()
         .px(sizes.menu_section_padding_x.px())
@@ -320,7 +322,7 @@ fn menu_section(title: &'static str, theme: Theme) -> Div {
         .child(title)
 }
 
-fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)

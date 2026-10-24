@@ -13,6 +13,8 @@ pub const CHEVRON_DOWN: &str = "chevron-down.svg";
 pub const SETTINGS: &str = "settings.svg";
 /// IntelliJ settings@20x20.svg, drawn for 20 px toolbars
 pub const SETTINGS_20: &str = "settings-20.svg";
+/// IntelliJ toolwindows/notifications@20x20.svg: the tab row's bell for processes that wait for the user
+pub const NOTIFICATIONS_20: &str = "notifications-20.svg";
 pub const CLOSE: &str = "close.svg";
 pub const ADD: &str = "add.svg";
 pub const BRANCH: &str = "branch.svg";
