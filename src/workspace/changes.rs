@@ -46,7 +46,7 @@ impl Watches {
         }) {
             Ok(backend) => Box::new(backend),
             Err(reason) => {
-                eprintln!("ive: {reason}");
+                crate::notices::log_only(&reason);
                 Box::new(NoBackend { reason })
             }
         };

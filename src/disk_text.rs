@@ -1,5 +1,6 @@
 //! A file a panel shows as it is on disk: what IVE knows of it, and taking what re-reading it found.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use codeview::document::{self, Reread, Stamp};
@@ -49,17 +50,18 @@ impl Disk {
     }
 }
 
-/// When IVE last read the file, and why a re-read failed.
+/// Which file, when IVE last read it, and why a re-read failed.
 pub struct DiskText {
     disk: Disk,
+    path: PathBuf,
 }
 
 impl DiskText {
     /// Shows `document` in `panel`.
     pub fn show(document: Document, panel: &Entity<Panel>, cx: &mut App) -> Self {
-        let disk = document::stamp(document.path()).map_or(Disk::Unstamped, Disk::Read);
+        let (disk, path) = (document::stamp(document.path()).map_or(Disk::Unstamped, Disk::Read), document.path().to_path_buf());
         panel.update(cx, |panel, cx| panel.handle(Cast::Open(viewed(document)), cx));
-        Self { disk }
+        Self { disk, path }
     }
 
     /// What a re-read compares the file with; `None` after the file went away or a re-read failed, so the next
@@ -77,7 +79,7 @@ impl DiskText {
         self.disk = disk;
         let cast = match reread {
             Reread::Changed(document, _) => Cast::Open(viewed(document)),
-            Reread::Gone => Cast::MarkDeleted,
+            Reread::Gone => Cast::MarkDeleted(self.path.display().to_string()),
             Reread::Unchanged | Reread::Failed(_) => return,
         };
         panel.update(cx, |panel, cx| panel.handle(cast, cx));

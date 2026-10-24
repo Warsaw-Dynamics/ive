@@ -15,6 +15,7 @@ use gpui::{
 use super::store::{FileStamp, LineEnding, MAX_SCRATCH_BYTES, ScratchContent, ScratchError, ScratchStore};
 use super::{ScratchRef, log_error, run};
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::codeview_host;
 use crate::disk_text::DiskText;
 use crate::document::Document;
@@ -532,7 +533,7 @@ impl ScratchView {
             .text_color(rgb(theme.muted))
             .border_b(sizes.scratch_header_border.px())
             .border_color(rgb(theme.border))
-            .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().child(text))
+            .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().child(selectable(format!("scratch-header-{}", self.target.scratch.name), text, cx)))
             .when(run::shell_for(&self.target.scratch.name).is_some(), |header| header.child(run_button(theme, cx)))
     }
 

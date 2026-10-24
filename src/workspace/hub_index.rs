@@ -144,8 +144,11 @@ impl Workspace {
                 cx.notify();
             }
             Err(error) => {
-                eprintln!("ive: the hub cannot list the files of {}: {error}", checkout.display());
-                self.hub_index.failed(checkout, error);
+                let notice = format!("the hub cannot list the files of {}: {error}", checkout.display());
+                // read again on every hub open and change: told once, until it fails otherwise
+                if self.hub_index.failed(checkout, error) == crate::hub::index::Failed::New {
+                    crate::notices::notify(cx, notice);
+                }
                 // a shown Run configurations tab says why it lists nothing
                 cx.notify();
             }

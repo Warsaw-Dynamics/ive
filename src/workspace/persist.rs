@@ -165,7 +165,12 @@ impl Workspace {
             };
             if let Some(write) = write {
                 let result = cx.background_executor().spawn(async move { write.run() }).await;
-                if this.update(cx, |workspace, _cx| workspace.report_save(result)).is_err() {
+                let reported = this.update(cx, |workspace, cx| {
+                    if let Some(message) = workspace.new_save_failure(result) {
+                        crate::notices::notify(cx, message);
+                    }
+                });
+                if reported.is_err() {
                     return;
                 }
             }
@@ -195,22 +200,26 @@ impl Workspace {
         };
         if let Some((number, state)) = self.state.saves.take_final(self.saved_state(cx)) {
             let result = Write { number, state, path, writer: self.state.writer.clone() }.run();
-            self.report_save(result);
+            // IVE is closing: no window shows a notice any more
+            if let Some(message) = self.new_save_failure(result) {
+                crate::notices::log_only(&message);
+            }
         }
     }
 
-    fn report_save(&mut self, result: Result<(), StateError>) {
-        match result {
-            Ok(()) => self.state.reported = None,
-            Err(error) => {
-                self.state.saves.failed();
-                let message = error.to_string();
-                if self.state.reported.as_ref() != Some(&message) {
-                    eprintln!("ive: {message}");
-                    self.state.reported = Some(message);
-                }
-            }
+    /// Notes how a save went; the failure to report, unless it is the one reported last.
+    fn new_save_failure(&mut self, result: Result<(), StateError>) -> Option<String> {
+        let Err(error) = result else {
+            self.state.reported = None;
+            return None;
+        };
+        self.state.saves.failed();
+        let message = error.to_string();
+        if self.state.reported.as_ref() == Some(&message) {
+            return None;
         }
+        self.state.reported = Some(message.clone());
+        Some(message)
     }
 }
 

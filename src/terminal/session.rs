@@ -207,12 +207,12 @@ impl Session {
         }
     }
 
-    /// True once a hosted session's connection broke for good; its program may still run.
-    pub fn lost(&self) -> bool {
+    /// Why a hosted session's connection broke for good, once it has; its program may still run.
+    pub fn lost_reason(&self) -> Option<String> {
         match &self.transport {
-            Transport::InProcess(_) => false,
+            Transport::InProcess(_) => None,
             #[cfg(unix)]
-            Transport::Hosted(connection) => connection.lost(),
+            Transport::Hosted(connection) => connection.lost_reason(),
         }
     }
 

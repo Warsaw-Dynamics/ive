@@ -4,12 +4,13 @@
 use std::ops::Range;
 use std::rc::Rc;
 
-use gpui::{ClickEvent, Context, Div, Entity, FontWeight, SharedString, Stateful, div, img, prelude::*, px, rgb, uniform_list};
+use gpui::{App, ClickEvent, Context, Div, Entity, FontWeight, SharedString, Stateful, div, img, prelude::*, px, rgb, uniform_list};
 
 use super::git_ui::tag;
 use super::worktree_list::{HOOKS_NOTE, WorktreeList};
 use super::worktree_rows::{Group, GroupKind, Line, RowId};
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::icons;
 use crate::paging::more_row;
 use crate::project::ProjectId;
@@ -155,9 +156,16 @@ fn group_header(group: &DrawnGroup, hidden_open: bool, list: Option<&Entity<Work
             let toggle = target("worktree-hidden-group".to_owned(), move |_event: &ClickEvent, _window, cx| list.update(cx, |list, cx| list.toggle_hidden_group(cx)), cx);
             header.cursor_pointer().child(img(icons::embedded(theme.appearance, chevron)).flex_none().size(px(16.))).child(title).child(hint).on_click(toggle)
         }
-        (GroupKind::Branches, _) => header.child(title).child(hint).tooltip(text_tooltip(HOOKS_NOTE)),
-        _ => header.child(title).child(hint),
+        // a header nothing toggles: its hint (where new worktrees go) can be selected
+        (GroupKind::Branches, _) => header.child(title).child(selectable_hint(group, list, cx)).tooltip(text_tooltip(HOOKS_NOTE)),
+        _ => header.child(title).child(selectable_hint(group, list, cx)),
     }
+}
+
+/// Named after its project's list, so a selection in one project's list shows only there.
+fn selectable_hint(group: &DrawnGroup, list: Option<&Entity<WorktreeList>>, cx: &App) -> Stateful<Div> {
+    let list = list.map_or(0, |list| list.entity_id().as_u64());
+    selectable(format!("worktree-hint-{list}-{:?}", group.kind), group.hint.clone(), cx).font_weight(FontWeight::NORMAL)
 }
 
 /// A row's click targets: the row, and its Hide, Show or + Worktree.

@@ -225,7 +225,7 @@ impl Workspace {
             cx.notify();
             return;
         }
-        self.open_tab(Tab::Failed { title: "Open project".to_owned(), error: error.to_string().into() }, window, cx);
+        self.open_tab(Tab::Failed { title: "Open project".to_owned(), failure: crate::failure::Failure::new(error.to_string()) }, window, cx);
     }
 
     /// Re-reads a project's checkouts and the status of every checkout in the background; while one read runs,
@@ -540,7 +540,7 @@ impl Workspace {
             this.update_in(cx, |workspace, window, cx| {
                 workspace.apply_listings(&listings, cx);
                 if let Some(error) = failed {
-                    workspace.open_tab(Tab::Failed { title, error: error.to_string().into() }, window, cx);
+                    workspace.open_tab(Tab::Failed { title, failure: crate::failure::Failure::new(error.to_string()) }, window, cx);
                 }
             })
             .ok();
@@ -567,7 +567,7 @@ impl Workspace {
         let name = project::folder_name(path);
         let tab = match Document::open_stamped(path) {
             Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
-            Err(error) => Tab::Failed { title: name, error: error.to_string().into() },
+            Err(error) => Tab::Failed { title: name, failure: crate::failure::Failure::new(error.to_string()) },
         };
         self.open_tab(tab, window, cx);
     }

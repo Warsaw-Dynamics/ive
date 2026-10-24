@@ -6,7 +6,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
 use alacritty_terminal::event::{Event, EventListener};
@@ -50,11 +50,11 @@ impl HostedTerminals {
         match Self::with(registry, crate::pty_host_launcher()) {
             Ok(Some(terminals)) => Some(terminals),
             Ok(None) => {
-                eprintln!("ive: another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display()));
                 None
             }
             Err(error) => {
-                eprintln!("ive: cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display()));
                 None
             }
         }
@@ -98,7 +98,7 @@ impl HostedTerminals {
     /// Sessions running now, oldest first; an unreadable registry counts as none, reported to stderr.
     pub fn live(&self) -> Vec<SessionInfo> {
         self.registry.sessions().unwrap_or_else(|error| {
-            eprintln!("ive: cannot list running terminals in {}: {error}", self.registry.dir().display());
+            crate::notices::log_only(&format!("cannot list running terminals in {}: {error}", self.registry.dir().display()));
             Vec::new()
         })
     }
@@ -131,7 +131,8 @@ struct Shared {
     writer: Mutex<Writer>,
     /// the last size sent, sent again after a re-attach
     size: Mutex<Option<Size>>,
-    lost: AtomicBool,
+    /// why the connection broke for good, once it has
+    lost: OnceLock<String>,
     /// set by a hang-up: input still queued is dropped, so the hang-up goes out next
     hanging_up: AtomicBool,
     /// the program's last progress report
@@ -166,7 +167,7 @@ impl Connection {
             Arc::new(Shared {
                 writer: Mutex::new(Writer { client, detached: false, generation: 0 }),
                 size: Mutex::new(None),
-                lost: AtomicBool::new(false),
+                lost: OnceLock::new(),
                 hanging_up: AtomicBool::new(false),
                 progress: Mutex::new(Progress::None),
                 directory: Mutex::new(None),
@@ -187,7 +188,7 @@ impl Connection {
                     .spawn(move || output.run(reader))
                     .expect("cannot start a terminal reader thread");
             }
-            Err(_) => output.end_lost(),
+            Err(error) => output.end_lost(format!("cannot read from the terminal host: {error}")),
         }
         Self { id, program_pid, shared, outbox }
     }
@@ -200,9 +201,9 @@ impl Connection {
         self.program_pid
     }
 
-    /// True once the connection broke and could not be re-attached; the program may still run.
-    pub fn lost(&self) -> bool {
-        self.shared.lost.load(Ordering::Relaxed)
+    /// Why the connection broke and could not be re-attached, once it has; the program may still run.
+    pub fn lost_reason(&self) -> Option<String> {
+        self.shared.lost.get().cloned()
     }
 
     pub fn progress(&self) -> Progress {
@@ -350,9 +351,9 @@ impl Output {
                 }
                 Ok(None) => self.flush_synchronized(&mut parser),
                 Err(_) if self.shared.detached() => return,
-                Err(_) => match self.reattach() {
+                Err(error) => match self.reattach() {
                     Some(client) => reader = client,
-                    None => return self.end_lost(),
+                    None => return self.end_lost(format!("the connection to the terminal host broke ({error}) and attaching again failed")),
                 },
             }
         }
@@ -434,8 +435,8 @@ impl Output {
         Some(reader)
     }
 
-    fn end_lost(&self) {
-        self.shared.lost.store(true, Ordering::Relaxed);
+    fn end_lost(&self, reason: String) {
+        let _ = self.shared.lost.set(reason);
         self.listener.send_event(Event::Exit);
     }
 }
@@ -619,11 +620,11 @@ mod tests {
             _ => None,
         });
         assert_eq!(status.and_then(|status| status.code()), Some(3));
-        assert!(!fixture.connection.lost());
+        assert_eq!(fixture.connection.lost_reason(), None);
     }
 
     #[test]
-    fn should_mark_lost_when_host_disappears() {
+    fn should_say_why_when_host_disappears() {
         // given
         let mut fixture = fixture();
 
@@ -632,7 +633,8 @@ mod tests {
 
         // then
         fixture.events_until(|event| matches!(event, Event::Exit));
-        assert!(fixture.connection.lost());
+        let reason = fixture.connection.lost_reason().expect("lost");
+        assert!(!reason.is_empty(), "{reason}");
     }
 
     #[test]

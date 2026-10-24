@@ -56,8 +56,8 @@ pub enum Cast {
     RevealLine(usize),
     /// as [`Cast::RevealLine`], and selects `bytes` of the line and scrolls sideways to them; a diff reveals the line
     RevealRange { line: usize, bytes: Range<usize> },
-    /// the file went away on disk; its text stays
-    MarkDeleted,
+    /// the file at this path went away on disk; its text stays
+    MarkDeleted(String),
     SetPolicy(EditPolicy),
     /// the answer to [`Event::NeedChangeBase`], or a new base after HEAD moved: what the change markers compare the
     /// edited text with; the same HEAD again changes nothing

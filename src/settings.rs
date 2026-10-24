@@ -150,7 +150,7 @@ impl Settings {
         }
         let text = fs::read_to_string(path).map_err(|source| SettingsError::io(path, source))?;
         let invalid = |reason: String| SettingsError::Invalid { path: path.to_path_buf(), reason };
-        let settings: Self = toml::from_str(&text).map_err(|error| invalid(error.message().to_owned()))?;
+        let settings: Self = toml::from_str(&text).map_err(|error| invalid(format!("line {}: {}", crate::toml_error::line_of(error.span(), &text), error.message().trim_end())))?;
         Ok(settings)
     }
 
@@ -262,6 +262,20 @@ impl fmt::Display for SettingsError {
 mod tests {
     use super::*;
     use crate::overview::file_list::{FileLayout, FileSort};
+
+    #[test]
+    fn should_keep_line_of_settings_error() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        fs::write(&path, "theme = \"dark\"\n\nsidebar_width = \"wide\"\n").unwrap();
+
+        // when
+        let error = Settings::load(&path).unwrap_err().to_string();
+
+        // then
+        assert!(error.contains("line 3: "), "{error}");
+    }
 
     #[test]
     fn should_save_and_load_user_theme() {

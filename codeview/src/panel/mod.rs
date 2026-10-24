@@ -128,7 +128,7 @@ impl Panel {
             Cast::Command(command) => self.run(command, cx),
             Cast::RevealLine(line) => self.reveal_line(line, cx),
             Cast::RevealRange { line, bytes } => self.reveal_range(line, bytes, cx),
-            Cast::MarkDeleted => self.mark_deleted(cx),
+            Cast::MarkDeleted(path) => self.mark_deleted(&path, cx),
             Cast::Saved { revision, source } => self.saved(revision, source, cx),
             Cast::SaveFailed { revision, reason } => self.save_failed(revision, reason),
             Cast::CloseAsked => self.saving.ask_close(),
@@ -627,9 +627,9 @@ impl Panel {
         }
     }
 
-    fn mark_deleted(&self, cx: &mut Context<Self>) {
+    fn mark_deleted(&self, path: &str, cx: &mut Context<Self>) {
         if let Body::View(view) = &self.body {
-            view.update(cx, |view, cx| view.mark_deleted(cx));
+            view.update(cx, |view, cx| view.mark_deleted(path, cx));
         }
     }
 

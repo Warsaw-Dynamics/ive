@@ -446,7 +446,7 @@ impl Workspace {
                     view
                 })
             })
-            .map_err(|error| format!("cannot start {}: {error}", config.name))?;
+            .map_err(|error| format!("cannot start {} ({} in {}): {error}", config.name, written_command(config), cwd.display()))?;
         self.tree_changed(cx);
         Ok(id)
     }
@@ -460,7 +460,7 @@ impl Workspace {
 
     /// A run that cannot start says why in a tab of its own.
     fn run_failed(&mut self, request: &RunRequest, error: String, window: &mut Window, cx: &mut Context<Self>) {
-        self.open_tab(Tab::Failed { title: format!("Run {}", request.key), error: error.into() }, window, cx);
+        self.open_tab(Tab::Failed { title: format!("Run {}", request.key), failure: run_failure(request, error) }, window, cx);
     }
 
     /// The request that runs `id`'s configuration again.
@@ -524,6 +524,24 @@ pub(super) fn load_for_run(folder: &Path) -> Result<RunFile, String> {
 /// The live (or waiting) run of `key` among `rows`: Run shows it rather than starting another.
 pub(super) fn blocking_run(rows: &[RunRow], key: &str) -> Option<RunId> {
     rows.iter().find(|row| row.live && row.key == key).map(|row| row.id)
+}
+
+/// What `config` runs as its `.run.toml` writes it, `${name}` for values: never a secret, so an error can show it.
+fn written_command(config: &crate::run::file::Config) -> String {
+    match &config.kind {
+        crate::run::file::ConfigKind::Run(run) => format!("`{}`", run.command),
+        crate::run::file::ConfigKind::Serve(serve) => format!("a static server of {} on :{}", serve.root, serve.port),
+    }
+}
+
+/// Why `request` could not run, with which configuration of which `.run.toml` and in which worktree.
+fn run_failure(request: &RunRequest, error: String) -> crate::failure::Failure {
+    let folder = crate::run::values_tab::relative(&request.folder, &request.checkout.path);
+    let file = match folder.is_empty() {
+        true => ".run.toml".to_owned(),
+        false => format!("{folder}/.run.toml"),
+    };
+    crate::failure::Failure::new(error).with("Configuration", format!("{} in {file}", request.key)).with("Worktree", request.checkout.path.display().to_string())
 }
 
 /// The runs of `key` among `rows` that ended: a new run of it replaces them.
@@ -596,7 +614,11 @@ fn life_label(life: RunLife, url: Option<&str>) -> String {
         }
         RunLife::Exited { stopped: true, .. } => "■ stopped".to_owned(),
         RunLife::Exited { code: 0, .. } => "exit 0".to_owned(),
-        RunLife::Exited { code, .. } => format!("✕ exit {code}"),
+        // 128 + n is how shells report a program killed by signal n
+        RunLife::Exited { code, .. } => match crate::terminal::exit::signal_short_name(code - 128) {
+            Some(signal) => format!("✕ exit {code} ({signal})"),
+            None => format!("✕ exit {code}"),
+        },
     }
 }
 
@@ -628,6 +650,47 @@ mod tests {
     fn row(key: &str, id: RunId, live: bool) -> RunRow {
         let state = if live { RunBadge::Running } else { RunBadge::Exited(0) };
         RunRow { id, key: key.to_owned(), name: key.to_owned(), serve: false, state, status: String::new(), label: String::new(), live, link: None }
+    }
+
+    fn request(folder: &str) -> RunRequest {
+        let checkout = crate::project::CheckoutRef { project: crate::project::ProjectId::new("p"), path: PathBuf::from("/r") };
+        RunRequest { checkout, folder: PathBuf::from(folder), key: "web".to_owned(), show: ShowRun::Tab }
+    }
+
+    #[test]
+    fn should_name_configuration_and_file_of_failed_run() {
+        // given
+        let request = request("/r/apps/site");
+
+        // when
+        let report = run_failure(&request, "cannot start web (`npm run dev` in /r/apps/site): No such file or directory".to_owned()).report("Run web");
+
+        // then
+        assert!(report.contains("Configuration: web in apps/site/.run.toml\nWorktree: /r\n"), "{report}");
+    }
+
+    #[test]
+    fn should_name_root_run_file() {
+        // given
+        let request = request("/r");
+
+        // when
+        let report = run_failure(&request, "no configuration web".to_owned()).report("Run web");
+
+        // then
+        assert!(report.contains("Configuration: web in .run.toml\n"), "{report}");
+    }
+
+    #[test]
+    fn should_name_signal_of_run_exit() {
+        // given
+        let killed = RunLife::Exited { code: 137, stopped: false };
+
+        // when
+        let label = life_label(killed, None);
+
+        // then
+        assert_eq!(label, "✕ exit 137 (SIGKILL)");
     }
 
     #[test]

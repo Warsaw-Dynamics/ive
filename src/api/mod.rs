@@ -22,6 +22,8 @@ pub enum Request {
     SendToActive { text: String },
     /// how the last load of `init.rn` went, and the latest script log lines
     ScriptStatus,
+    /// the open notices, newest first, and the app log's path
+    Notices,
     ListProjects,
     OpenFile { path: PathBuf },
     /// in the checkout holding `directory`, or the current checkout as Alt+F12 picks it

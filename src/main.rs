@@ -14,6 +14,7 @@ mod dragged_files;
 mod editor;
 mod file_tab;
 mod file_write;
+mod failure;
 mod file_tree;
 mod frame;
 mod glow;
@@ -25,6 +26,7 @@ mod ive_toml;
 #[cfg(target_os = "linux")]
 mod memory_watch;
 mod mouse_binding;
+mod notices;
 mod mcp;
 mod menu;
 mod menu_view;
@@ -51,6 +53,7 @@ mod prompt;
 mod saved_tabs;
 mod scratch;
 mod script;
+mod selectable;
 mod settings;
 mod settings_page;
 #[cfg(unix)]
@@ -61,6 +64,7 @@ mod tab_preview;
 mod tab_window;
 mod tabs;
 mod third_party;
+mod toml_error;
 mod trace;
 mod transfer;
 mod terminal;
@@ -192,6 +196,9 @@ fn run(startup: Startup, background: bool) {
         cx.set_global(theme::Fonts::default());
         cx.set_global(store);
         cx.set_global(click_targets::ClickTargets::default());
+        let text_selection = selectable::TextSelection::new(cx);
+        cx.set_global(text_selection);
+        notices::init(cx);
         // where gpui would draw its own fallback prompt; elsewhere the OS's prompt stays
         if cfg!(target_os = "linux") {
             cx.set_prompt_builder(prompt::build);

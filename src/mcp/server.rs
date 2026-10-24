@@ -56,7 +56,7 @@ pub fn start(port: u16, token: Token, calls: UnboundedSender<Call>) -> io::Resul
     let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?;
     std::thread::Builder::new().name("mcp".to_owned()).spawn(move || {
         if let Err(error) = runtime.block_on(serve(listener, token, calls)) {
-            eprintln!("ive: MCP server stopped: {error}");
+            crate::notices::log_only(&format!("MCP server stopped: {error}"));
         }
     })?;
     Ok(bound)
@@ -378,6 +378,13 @@ opened_from_hub { seconds_ago, hub } (gone once another tab is shown; hub is for
 errors with file and line, how many bindings it made, and the latest log lines (printed output, run-time errors).")]
     async fn script_status(&self) -> Result<CallToolResult, ErrorData> {
         Ok(self.ask(Request::ScriptStatus).await)
+    }
+
+    #[tool(description = "Failures that happened away from any tab (a terminal that could not be re-attached, edits not \
+saved, a git action that failed): the notices shown at the bottom right, newest first, each with its time and text, \
+and the path of ive.log, which keeps every one of them.")]
+    async fn notices(&self) -> Result<CallToolResult, ErrorData> {
+        Ok(self.ask(Request::Notices).await)
     }
 
     #[tool(description = "List open projects with their checkouts (path, label, branch, changes, ahead, behind; hidden: a worktree the user hid \

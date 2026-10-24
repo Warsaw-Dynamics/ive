@@ -83,6 +83,7 @@ pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 pub use path_actions::is_path_action;
 pub use updates::activity_watcher;
+pub(crate) use scripts::run_text_key;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -572,6 +573,8 @@ impl Workspace {
     fn tab_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // the tab left behind saves now; a closed one saved as it went
         self.flush_edits(cx);
+        // its selected text went with it
+        crate::selectable::let_go(window, cx);
         self.close_stale_tab_windows(cx);
         if window.window_handle() == self.main_window {
             self.focus_active_tab(window, cx);
@@ -951,6 +954,7 @@ impl Render for Workspace {
             .flex_col()
             .size_full()
             .child(content.flex_1().min_h_0())
+            .children(crate::notices::render(cx))
             .children(quit_prompt)
             .child(updates::activity_watcher(cx.entity().downgrade()))
             .track_focus(&self.focus_handle)

@@ -40,6 +40,8 @@ impl Scope {
 pub enum Place {
     Terminal,
     Editor,
+    /// selected read-only text has the keyboard: editor-scope keys, of which Copy and Select All act
+    Text,
     Hub,
     /// the sidebar has the keyboard
     Tree,
@@ -449,7 +451,7 @@ impl Keymap {
         let in_scope = |scope| self.bindings.iter().find(|binding| binding.scope == scope && matches!(&binding.trigger, Trigger::Key(bound) if same_key(bound, keystroke)));
         let local = match place {
             Place::Terminal => in_scope(Scope::Terminal),
-            Place::Editor => in_scope(Scope::Editor),
+            Place::Editor | Place::Text => in_scope(Scope::Editor),
             Place::Hub => in_scope(Scope::Hub),
             Place::Tree => in_scope(Scope::Tree),
             Place::Elsewhere => None,
@@ -518,6 +520,30 @@ mod tests {
 
         // then
         assert_eq!(found, Some(&send("terminal")));
+    }
+
+    #[test]
+    fn should_match_editor_bindings_in_text_place() {
+        // given
+        let keymap = Keymap::new(vec![key("ctrl-c", Scope::Window, send("window")), key("ctrl-c", Scope::Editor, send("editor"))]).unwrap();
+
+        // when
+        let found = keymap.find_key(&pressed("ctrl-c"), Place::Text);
+
+        // then
+        assert_eq!(found, Some(&send("editor")));
+    }
+
+    #[test]
+    fn should_not_match_terminal_bindings_in_text_place() {
+        // given
+        let keymap = Keymap::new(vec![key("shift-enter", Scope::Terminal, send("terminal"))]).unwrap();
+
+        // when
+        let found = keymap.find_key(&pressed("shift-enter"), Place::Text);
+
+        // then
+        assert_eq!(found, None);
     }
 
     #[test]

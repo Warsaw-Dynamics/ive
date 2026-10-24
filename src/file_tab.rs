@@ -565,30 +565,30 @@ impl EditedFile {
     /// unless the file changed on disk, counted in [`WRITES_RUNNING`]. What cannot be written is logged.
     fn flush(&mut self, cx: &mut App) {
         if let Writing::Busy(_) = self.writing {
-            eprintln!("ive: {} closed while being saved; edits typed meanwhile are not saved", self.path.display());
+            crate::notices::notify(cx, format!("{} closed while being saved; edits typed meanwhile are not saved", self.path.display()));
         }
         let Some(request) = self.panel.update(cx, |panel, cx| panel.take_save(SaveKind::Checked, cx)) else {
             return self.log_unsaved(cx);
         };
         let job = match self.job(request) {
             Ok(job) => job,
-            Err(reason) => return eprintln!("ive: edits to {} not saved: {reason:?}", self.path.display()),
+            Err(reason) => return crate::notices::notify(cx, format!("edits to {} not saved: {reason:?}", self.path.display())),
         };
         let running = Running::start();
         cx.background_executor()
             .spawn(async move {
                 let _running = running;
                 if let Written::Failed(reason) | Written::Unconfirmed(reason) = job.run() {
-                    eprintln!("ive: edits to {} not saved or not confirmed: {reason:?}", job.path.display());
+                    crate::notices::log_only(&format!("edits to {} not saved or not confirmed: {reason:?}", job.path.display()));
                 }
             })
             .detach();
     }
 
     /// Logs edits left unsaved by a failed save or an unanswered conflict.
-    fn log_unsaved(&self, cx: &App) {
+    fn log_unsaved(&self, cx: &mut App) {
         if self.panel.read(cx).has_unsaved(cx) {
-            eprintln!("ive: edits to {} not saved: the last save failed or met a change on disk", self.path.display());
+            crate::notices::notify(cx, format!("edits to {} not saved: the last save failed or met a change on disk", self.path.display()));
         }
     }
 
@@ -658,7 +658,7 @@ impl EditedFile {
             }
             (Reread::Gone, Shows::File) => {
                 self.answer(Cast::Open(viewed(&self.base)), cx);
-                self.answer(Cast::MarkDeleted, cx);
+                self.answer(Cast::MarkDeleted(self.path.display().to_string()), cx);
             }
             (Reread::Gone, Shows::DiffSide) => {
                 self.answer(Cast::SetEditable(Editable::No), cx);

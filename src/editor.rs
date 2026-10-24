@@ -13,6 +13,7 @@ use gpui::{
 
 use crate::click_targets::target;
 use crate::colors::checkout_colour;
+use crate::failure::Failure;
 pub use crate::file_tab::FileTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
@@ -57,7 +58,7 @@ pub enum Tab {
     /// one per project
     GitLog(GitLogTab),
     Settings(SettingsView),
-    Failed { title: String, error: SharedString },
+    Failed { title: String, failure: Failure },
     /// a scratch of a project, in its editor
     Scratch(ScratchTab),
     /// the values a run needs and has none of; never saved
@@ -499,7 +500,7 @@ impl Tab {
             Self::Commit(tab) => tab.body.clone().into_any_element(),
             Self::GitLog(tab) => tab.body.clone().into_any_element(),
             Self::Settings(view) => settings_page::render(settings_page::Page { view, update_status: workspace.update_status() }, theme, cx).into_any_element(),
-            Self::Failed { error, .. } => centered_message(error.clone(), theme.error).into_any_element(),
+            Self::Failed { title, failure } => div().id("failure").flex_1().min_h_0().overflow_y_scroll().child(failure.render(&id.value().to_string(), title, cx)).into_any_element(),
             Self::Scratch(scratch) => scratch.view().clone().into_any_element(),
             Self::RunValues(tab) => run_values::render_values_tab(id, tab, cx),
             Self::RunConfigs(tab) => render_run_configs_tab(id, tab, workspace, cx),
@@ -976,7 +977,7 @@ mod tests {
         // given
         let settings = unloaded(SavedTab::Settings { page: "Appearance".to_owned() });
         let overview = unloaded(SavedTab::ProjectOverview { project: "p".to_owned(), section: "Git".to_owned() });
-        let failed = Tab::Failed { title: "a.rs".to_owned(), error: "gone".into() };
+        let failed = Tab::Failed { title: "a.rs".to_owned(), failure: Failure::new("gone") };
 
         // when
         let kinds = [settings.temporary_kind(), overview.temporary_kind(), failed.temporary_kind()];

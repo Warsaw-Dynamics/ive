@@ -74,11 +74,13 @@ pub struct RunFileError {
     pub line: usize,
     pub column: usize,
     pub message: String,
+    /// the file, as `.run.toml` until [`load`] names it with its folder
+    pub file: String,
 }
 
 impl fmt::Display for RunFileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{RUN_FILE}:{}:{}: {}", self.line, self.column, self.message)
+        write!(f, "{}:{}:{}: {}", self.file, self.line, self.column, self.message)
     }
 }
 
@@ -92,11 +94,11 @@ pub fn load(folder: &Path) -> Option<Result<RunFile, RunFileError>> {
     let path = folder.join(RUN_FILE);
     let metadata = std::fs::metadata(&path).ok().filter(|metadata| metadata.is_file())?;
     if metadata.len() > MAX_BYTES {
-        return Some(Err(RunFileError { line: 1, column: 1, message: "the file is over 64 KiB".to_owned() }));
+        return Some(Err(RunFileError { line: 1, column: 1, message: "the file is over 64 KiB".to_owned(), file: path.display().to_string() }));
     }
     Some(match std::fs::read_to_string(&path) {
-        Ok(text) => parse(&text),
-        Err(error) => Err(RunFileError { line: 1, column: 1, message: format!("cannot read it: {error}") }),
+        Ok(text) => parse(&text).map_err(|error| RunFileError { file: path.display().to_string(), ..error }),
+        Err(error) => Err(RunFileError { line: 1, column: 1, message: format!("cannot read it: {error}"), file: path.display().to_string() }),
     })
 }
 
@@ -380,7 +382,7 @@ fn at(text: &str, offset: usize, message: String) -> RunFileError {
     let before = &text[..offset.min(text.len())];
     let line = before.matches('\n').count() + 1;
     let column = before.rsplit('\n').next().map_or(0, |last| last.chars().count()) + 1;
-    RunFileError { line, column, message }
+    RunFileError { line, column, message, file: RUN_FILE.to_owned() }
 }
 
 fn build(raw: RawFile) -> RunFile {
@@ -432,6 +434,20 @@ fn serve_spec(serve: RawServe) -> ServeSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_name_run_file_in_error() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(RUN_FILE), "[run.build\n").unwrap();
+
+        // when
+        let error = load(dir.path()).expect("a file").unwrap_err();
+
+        // then
+        let expected = format!("{}:1:", dir.path().join(RUN_FILE).display());
+        assert!(error.to_string().starts_with(&expected), "{error}");
+    }
 
     const MISC: &str = r#"[vars.zoho_secret]
 description = "Zoho OAuth client secret"
@@ -683,7 +699,7 @@ script = "serve.rn"
         let loaded = load(dir.path());
 
         // then
-        assert_eq!(loaded.unwrap().unwrap_err().to_string(), ".run.toml:1:1: the file is over 64 KiB");
+        assert_eq!(loaded.unwrap().unwrap_err().to_string(), format!("{}:1:1: the file is over 64 KiB", dir.path().join(RUN_FILE).display()));
     }
 
     #[test]
