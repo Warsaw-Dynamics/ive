@@ -90,6 +90,7 @@ pub(crate) fn validate(svg: &str, limits: &RenderLimits) -> Result<(), RenderErr
 }
 
 fn validate_element(node: roxmltree::Node<'_, '_>) -> Result<(), RenderError> {
+    crate::resources::validate_resource_element(node)?;
     let name = node.tag_name().name();
     if matches!(
         name,
@@ -114,4 +115,42 @@ fn validate_element(node: roxmltree::Node<'_, '_>) -> Result<(), RenderError> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate;
+    use crate::{RenderError, RenderLimits};
+
+    #[test]
+    fn should_reject_external_svg_paint_urls_after_css_and_xml_decoding() {
+        // given
+        let paints = [
+            "url(https://example.invalid/x.svg#paint)",
+            "URl( https://example.invalid/x.svg#paint )",
+            r"u\72l(https://example.invalid/x.svg#paint)",
+            "&#x75;rl(https://example.invalid/x.svg#paint)",
+            "url(&quot;https://example.invalid/x.svg#paint&quot;)",
+        ];
+        // when and then
+        for paint in paints {
+            let svg =
+                format!("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"{paint}\"/></svg>");
+            let result = validate(&svg, &RenderLimits::default());
+            assert!(
+                matches!(result, Err(RenderError::ExternalResource(_))),
+                "external paint was accepted: {paint:?}: {result:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn should_allow_local_svg_paint_fragments() {
+        // given
+        let svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"url(#paint)\"/></svg>";
+        // when
+        let result = validate(svg, &RenderLimits::default());
+        // then
+        assert!(result.is_ok(), "{result:?}");
+    }
 }

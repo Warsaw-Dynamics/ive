@@ -1,0 +1,1 @@
+digraph styled_triangle { a -> b [style=dashed,color=red]; a -> c [style=dotted,color=blue]; b -> c [style=bold,color=gray]; }

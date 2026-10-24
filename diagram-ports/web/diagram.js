@@ -5,6 +5,7 @@ export async function createDiagramRenderer(options = {}) {
   const pending = new Map();
   let nextId = 0;
   let closed = false;
+  let renderTail = Promise.resolve();
 
   function rejectAll(error) {
     for (const request of pending.values()) {
@@ -60,7 +61,9 @@ export async function createDiagramRenderer(options = {}) {
       if (format === "json" && language !== "dot") {
         throw new Error("JSON geometry is available for DOT sources only");
       }
-      const result = await send({ type: "render", source, format, language });
+      const current = renderTail.then(() => send({ type: "render", source, format, language }));
+      renderTail = current.then(() => undefined, () => undefined);
+      const result = await current;
       return result.data;
     },
     close() {

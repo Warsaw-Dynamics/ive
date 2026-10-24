@@ -106,7 +106,7 @@ impl SvgPostprocessor for ResourceAdmission {
     }
 }
 
-fn validate_resource_element(node: roxmltree::Node<'_, '_>) -> Result<(), RenderError> {
+pub(crate) fn validate_resource_element(node: roxmltree::Node<'_, '_>) -> Result<(), RenderError> {
     for attribute in node.attributes() {
         match attribute.name().to_ascii_lowercase().as_str() {
             "href" | "src" => validate_reference(attribute.value())?,

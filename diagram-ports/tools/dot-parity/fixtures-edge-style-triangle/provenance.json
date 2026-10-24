@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "purpose": "bounded styled shortcut and penwidth topology diagnostic",
+  "oracle": "@hpcc-js/wasm-graphviz 1.30.0, embedded Graphviz 16.1.0, Expat-enabled",
+  "oracle_archive_sha256": "0105defc8548e241a08a22e40ee0499a851402c345e38745a5b4d521d776d57f",
+  "reviewed": false,
+  "source_provenance_reviewed": false,
+  "cases": [
+    {
+      "fixture": "edge_styles.dot",
+      "dot_sha256": "f919f0334984eebb8c601b9d7c8d62fe2a7b277ef5c7be4404de5afc6db49dbc",
+      "json_sha256": "bf46002b41b26fda3203fea0aab1dd9d098b99ece9df3a87957de16e7fada4f3",
+      "svg_sha256": "ad58cb3c1b6bb127a8eb311427b322fa445afefc66f85309b1f39c93bb8d7a87",
+      "source": "tools/dot-parity/fixtures-features/edge_styles.dot",
+      "source_sha256": "f919f0334984eebb8c601b9d7c8d62fe2a7b277ef5c7be4404de5afc6db49dbc"
+    },
+    {
+      "fixture": "plain_triangle.dot",
+      "dot_sha256": "4c3d5c9fecccb51ee9a614d7f1dd90f68482a122b82122adaa9dc7999c3fb6af",
+      "json_sha256": "52230046e901a397ee1907b0c3016f9c59ed5c857967ac633b0504e95a3fd997",
+      "svg_sha256": "d710e4f874407faa59a49ab56a3020a26cae33db9ce7b98ef5e6e85108794ba0"
+    },
+    {
+      "fixture": "styled_triangle.dot",
+      "dot_sha256": "76a42ec84c359e862b1733fac9208dd58f231adb263fe0b6d396787590acb231",
+      "json_sha256": "953ca6242009844a0f2d5c539a9fd98884e5ef13f3486e5bba4ed1b2986bd970",
+      "svg_sha256": "98bbf4b3767c077980526ab93c03d25f57752d992ec43bd7dbe9417c6891bb0e"
+    }
+  ]
+}

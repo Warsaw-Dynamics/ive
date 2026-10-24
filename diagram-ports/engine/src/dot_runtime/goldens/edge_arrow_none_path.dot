@@ -1,0 +1,1 @@
+digraph arrow_none_path { a -> b [dir=none,arrowhead=crow]; b -> c [dir=both,arrowhead=box,arrowtail=vee]; c -> d; }

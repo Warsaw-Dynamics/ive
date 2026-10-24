@@ -1,0 +1,5 @@
+digraph edge_arrows {
+  a -> b [dir=both, arrowtail=diamond, arrowhead=vee];
+  b -> c [arrowhead=none];
+  c -> d [arrowhead=box, arrowsize=1.5];
+}

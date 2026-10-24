@@ -133,7 +133,9 @@ fn layout_with_cluster_labels(
     flavor: LayoutFlavor,
     cluster_label_widths: &BTreeMap<String, f64>,
 ) -> Result<(), RenderError> {
-    let group = if matches!(flavor, LayoutFlavor::RawDot) && graph.nodes().any(is_dot_cluster) {
+    let group = if matches!(flavor, LayoutFlavor::RawDot)
+        && graph.nodes().any(|id| is_dot_cluster(graph, id))
+    {
         layout_raw_clusters(graph, budget, cluster_label_widths)?
     } else {
         group(graph, None, 0, budget, flavor)?
@@ -257,8 +259,8 @@ fn ancestor<'a>(graph: &'a LayoutGraph, id: &'a str, parent: Option<&str>) -> Op
     }
 }
 
-fn is_dot_cluster(id: &str) -> bool {
-    id.starts_with("__ive_dot_cluster_")
+fn is_dot_cluster(graph: &LayoutGraph, id: &str) -> bool {
+    graph.node(id).and_then(|node| node.dummy.as_deref()) == Some("ive-dot-cluster")
 }
 
 fn layout_raw_clusters(
@@ -268,7 +270,7 @@ fn layout_raw_clusters(
 ) -> Result<Group, RenderError> {
     let units = graph
         .nodes()
-        .filter(|id| !is_dot_cluster(id))
+        .filter(|id| !is_dot_cluster(graph, id))
         .map(|id| unit(graph, id, 0, budget, LayoutFlavor::RawDot))
         .collect::<Result<Vec<_>, _>>()?;
     let links = links(graph, None, &units, budget, LayoutFlavor::RawDot)?;
@@ -282,7 +284,7 @@ fn layout_raw_clusters(
         let parent = row
             .first()
             .and_then(|&index| graph.parent(&units[index].id));
-        if parent.is_some_and(is_dot_cluster)
+        if parent.is_some_and(|id| is_dot_cluster(graph, id))
             && row
                 .iter()
                 .all(|&index| graph.parent(&units[index].id) == parent)
@@ -294,7 +296,7 @@ fn layout_raw_clusters(
     separate_sibling_clusters(graph, &mut group.nodes, cluster_label_widths, budget)?;
     let clusters = graph
         .nodes()
-        .filter(|id| is_dot_cluster(id))
+        .filter(|id| is_dot_cluster(graph, id))
         .map(|id| {
             (
                 id.to_owned(),
@@ -356,12 +358,16 @@ fn layout_raw_clusters(
     // by nested integer cluster boundaries (position.c).
     let nested_clusters = graph
         .nodes()
-        .filter(|id| is_dot_cluster(id))
-        .any(|id| graph.parent(id).is_some_and(is_dot_cluster));
+        .filter(|id| is_dot_cluster(graph, id))
+        .any(|id| {
+            graph
+                .parent(id)
+                .is_some_and(|parent| is_dot_cluster(graph, parent))
+        });
     if nested_clusters {
         budget.charge(group.nodes.len())?;
         for (id, placed) in &mut group.nodes {
-            if is_dot_cluster(id) {
+            if is_dot_cluster(graph, id) {
                 continue;
             }
             let center = placed.x + placed.size.width / 2.;
@@ -383,7 +389,7 @@ fn align_single_cluster_chain_to_integer_bounds(
 ) -> Result<(), RenderError> {
     let clusters = graph
         .nodes()
-        .filter(|id| is_dot_cluster(id))
+        .filter(|id| is_dot_cluster(graph, id))
         .collect::<Vec<_>>();
     if clusters.len() != 1 || !matches!(graph.graph().rankdir, RankDir::TB) {
         return Ok(());
@@ -393,7 +399,7 @@ fn align_single_cluster_chain_to_integer_bounds(
     let outside = graph
         .children_root()
         .into_iter()
-        .filter(|id| !is_dot_cluster(id))
+        .filter(|id| !is_dot_cluster(graph, id))
         .collect::<Vec<_>>();
     if inside.len() != 2 || outside.len() != 1 || graph.edges().count() != 2 {
         return Ok(());
@@ -480,7 +486,7 @@ fn cluster_rect(
     let content = children
         .iter()
         .map(|child| {
-            if is_dot_cluster(child) {
+            if is_dot_cluster(graph, child) {
                 cluster_rect(
                     graph,
                     child,
@@ -535,7 +541,7 @@ fn separate_sibling_clusters(
 ) -> Result<(), RenderError> {
     let mut roots = graph
         .nodes()
-        .filter(|id| is_dot_cluster(id) && graph.parent(id).is_none())
+        .filter(|id| is_dot_cluster(graph, id) && graph.parent(id).is_none())
         .map(|id| {
             (
                 id.to_owned(),
@@ -1107,7 +1113,7 @@ fn cluster_entry_space(
     budget: &mut dyn LayoutWork,
 ) -> Result<f64, RenderError> {
     let mut space: f64 = 0.;
-    for cluster in graph.nodes().filter(|id| is_dot_cluster(id)) {
+    for cluster in graph.nodes().filter(|id| is_dot_cluster(graph, id)) {
         budget.charge(units.len())?;
         let entering = rows[rank]
             .iter()
@@ -1119,7 +1125,7 @@ fn cluster_entry_space(
             .any(|&index| cluster_contains(graph, cluster, &units[index].id));
         let disjoint_previous_cluster = rows[rank - 1].iter().any(|&index| {
             graph.parent(&units[index].id).is_some_and(|previous| {
-                is_dot_cluster(previous)
+                is_dot_cluster(graph, previous)
                     && previous != cluster
                     && !cluster_contains(graph, previous, cluster)
                     && !cluster_contains(graph, cluster, previous)
@@ -1814,7 +1820,7 @@ fn route(
                         .unwrap_or(false);
                     let enters_labeled_cluster =
                         graph.parent(&key.w).is_some_and(|target_parent| {
-                            is_dot_cluster(target_parent)
+                            is_dot_cluster(graph, target_parent)
                                 && graph.parent(&key.v) != Some(target_parent)
                                 && graph.parent(&key.v).is_none_or(|source_parent| {
                                     cluster_contains(graph, source_parent, target_parent)
@@ -2253,7 +2259,7 @@ fn has_clear_segment(
 ) -> bool {
     graph
         .nodes()
-        .filter(|id| *id != endpoints.0 && *id != endpoints.1 && !is_dot_cluster(id))
+        .filter(|id| *id != endpoints.0 && *id != endpoints.1 && !is_dot_cluster(graph, id))
         .all(|id| {
             graph
                 .node(id)
@@ -2350,7 +2356,7 @@ fn undirected_feedback_lane(
     let high = segment.0.y.max(segment.1.y);
     let obstacles = graph
         .nodes()
-        .filter(|id| *id != key.v && *id != key.w && !is_dot_cluster(id))
+        .filter(|id| *id != key.v && *id != key.w && !is_dot_cluster(graph, id))
         .filter_map(|id| graph.node(id))
         .filter(|node| node.y.is_some_and(|y| y > low && y < high))
         .collect::<Vec<_>>();
@@ -2375,8 +2381,8 @@ fn cluster_crossing_waypoint(
     let source_cluster = graph.parent(&key.v)?;
     let target_cluster = graph.parent(&key.w)?;
     if source_cluster == target_cluster
-        || !is_dot_cluster(source_cluster)
-        || !is_dot_cluster(target_cluster)
+        || !is_dot_cluster(graph, source_cluster)
+        || !is_dot_cluster(graph, target_cluster)
     {
         return None;
     }

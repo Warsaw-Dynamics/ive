@@ -1,0 +1,1 @@
+digraph plain_triangle { a -> b; a -> c; b -> c; }

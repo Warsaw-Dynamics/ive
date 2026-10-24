@@ -6,7 +6,8 @@ use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
 use swash::{
     FontRef,
-    scale::{Render, ScaleContext, Source},
+    scale::ScaleContext,
+    zeno::{Command, Mask, Origin, PathData, Point as GlyphPoint},
 };
 
 const SCALE: f64 = 4. / 3.;
@@ -37,6 +38,41 @@ fn gd_text_span_width(font: FontRef<'_>, glyph_id: u16) -> f64 {
     let advance = to_graphviz_points(f64::from(metrics.advance_width(glyph_id)));
     let bearing = to_graphviz_points(f64::from(metrics.lsb(glyph_id)));
     advance - bearing
+}
+
+fn hinted_coordinate(value: f32) -> i32 {
+    (value * 64.).round() as i32
+}
+
+fn translated_midpoint(
+    controls: (GlyphPoint, GlyphPoint),
+    current: GlyphPoint,
+    shift: (i32, i32),
+) -> GlyphPoint {
+    let (first, second) = controls;
+    let (first_x, first_y) = (hinted_coordinate(first.x), hinted_coordinate(first.y));
+    let (second_x, second_y) = (hinted_coordinate(second.x), hinted_coordinate(second.y));
+    if (hinted_coordinate(current.x), hinted_coordinate(current.y))
+        != ((first_x + second_x) / 2, (first_y + second_y) / 2)
+    {
+        return current;
+    }
+    let x = (first_x + second_x + 2 * shift.0) / 2 - shift.0;
+    let y = (first_y + second_y + 2 * shift.1) / 2 - shift.1;
+    GlyphPoint::new(x as f32 / 64., y as f32 / 64.)
+}
+
+fn adjust_implied_midpoints(commands: &mut [Command], shift: (i32, i32)) {
+    // FreeType 2.13.2 ftgrays.c translates outlines to bitmap origin before
+    // FT_Outline_Decompose rounds consecutive off-curve control midpoints.
+    for index in 0..commands.len().saturating_sub(1) {
+        if let (Command::QuadTo(first, current), Command::QuadTo(second, _)) =
+            (commands[index], commands[index + 1])
+        {
+            commands[index] =
+                Command::QuadTo(first, translated_midpoint((first, second), current, shift));
+        }
+    }
 }
 // libgd 2.3.3 gdtables.c, gdCosT[0..=90]. The other quadrants and gdSinT
 // are exact reflections of this integer table.
@@ -269,24 +305,31 @@ impl<'a> Canvas<'a> {
             .size((14. * SCALE) as f32)
             .hint(true)
             .build();
-        let image = Render::new(&[Source::Outline])
-            .render(&mut scaler, glyph_id)
-            .ok_or_else(|| {
-                RenderError::UnsupportedFeature(format!("DOT native GD glyph {label:?}"))
-            })?;
-        let placement = image.placement;
+        let outline = scaler.scale_outline(glyph_id).ok_or_else(|| {
+            RenderError::UnsupportedFeature(format!("DOT native GD glyph {label:?}"))
+        })?;
+        let bounds = outline.bounds();
+        let shift = (
+            -(bounds.min.x.floor() as i32) * 64,
+            -(bounds.min.y.floor() as i32) * 64,
+        );
+        let mut commands: Vec<_> = outline.path().commands().collect();
+        adjust_implied_midpoints(&mut commands, shift);
+        let mut mask = Mask::new(&commands);
+        mask.origin(Origin::BottomLeft);
+        let (pixels, placement) = mask.render();
         if placement.width > OFL_GLYPH_MAX_AXIS
             || placement.height > OFL_GLYPH_MAX_AXIS
-            || image.content != swash::scale::image::Content::Mask
-            || image.data.len() != (placement.width * placement.height) as usize
+            || pixels.len() != (placement.width * placement.height) as usize
         {
             return Err(RenderError::UnsupportedFeature(format!(
                 "DOT native GD glyph {label:?} exceeds bounded alpha mask"
             )));
         }
         let x = coordinate((position.x + 4. - width / 2.) * SCALE) + placement.left;
-        let y = coordinate((position.y + 4. + 14. * 0.35) * SCALE) - placement.top;
-        for (index, &alpha) in image.data.iter().enumerate() {
+        let top = placement.top + placement.height as i32;
+        let y = coordinate((position.y + 4. + 14. * 0.35) * SCALE) - top;
+        for (index, &alpha) in pixels.iter().enumerate() {
             // libgd 2.3.3 gdft.c palette text path: eight rounded coverage steps.
             let coverage = (u16::from(alpha) * 8 + 128) / 255;
             if coverage == 0 {
@@ -637,7 +680,7 @@ fn has_exact_ofl_glyph(label: &str) -> bool {
     let [glyph] = label.as_bytes() else {
         return false;
     };
-    glyph.is_ascii_alphanumeric() && !matches!(*glyph, b'Q' | b'y')
+    glyph.is_ascii_alphanumeric()
 }
 
 pub(super) fn is_supported(model: &Model, graph: &LayoutGraph) -> bool {
@@ -1147,7 +1190,7 @@ fn render_scene(
 ) -> Result<Vec<u8>, RenderError> {
     let mut canvas = Canvas::new(graph, work)?;
     for node in &model.nodes {
-        if node.id.starts_with("__ive_dot_cluster_") {
+        if model.synthetic_cluster_ids.contains(&node.id) {
             continue;
         }
         canvas.work.charge(1)?;
@@ -1579,7 +1622,6 @@ mod tests {
             ..RenderOptions::default()
         };
         let mut admitted = 0;
-        let mut fallback = 0;
 
         // when and then
         for row in manifest.lines().filter(|line| !line.starts_with('#')) {
@@ -1594,18 +1636,15 @@ mod tests {
             let source = format!(
                 "graph G {{ graph [splines=polyline]; node [shape=ellipse]; \"{glyph}\"; }}"
             );
-            let candidate = crate::render_dot_png_native(&source, &options).unwrap();
-            if matches!(glyph, "Q" | "y") {
-                assert!(candidate.is_none(), "{glyph} must use SVG fallback");
-                fallback += 1;
-                continue;
-            }
-            let ((actual_width, actual_height), rgb) = decode(&candidate.unwrap());
+            let candidate = crate::render_dot_png_native(&source, &options)
+                .unwrap()
+                .unwrap_or_else(|| panic!("{glyph} must use native GD"));
+            let ((actual_width, actual_height), rgb) = decode(&candidate);
             assert_eq!((actual_width, actual_height), (width, height), "{glyph}");
             assert_eq!(format!("{:x}", Sha256::digest(&rgb)), digest, "{glyph}");
             admitted += 1;
         }
-        assert_eq!((admitted, fallback), (60, 2));
+        assert_eq!(admitted, 62);
     }
 
     #[test]

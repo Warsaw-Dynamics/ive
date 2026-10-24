@@ -1,0 +1,5 @@
+digraph edge_styles {
+  a -> b [color="red", penwidth=2.5, style=dashed];
+  a -> c [color="#336699", penwidth=3, style=dotted];
+  b -> c [color="gray", style=bold];
+}

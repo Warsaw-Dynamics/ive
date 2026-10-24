@@ -1,7 +1,7 @@
 //! Bounded lowering and rendering for user-supplied DOT.
 mod font_metrics;
-mod html_table;
 mod gd_raster;
+mod html_table;
 mod svg_output;
 use crate::dot::{
     self, Attribute, AttributeScope, Document, EdgeOp, Endpoint, GraphKind, IdKind, NodeId,
@@ -207,6 +207,8 @@ enum ArrowShape {
 
 impl ArrowShape {
     fn parse(value: &str) -> Option<Self> {
+        // Graphviz arrows.c also composes up to four modified shapes. Keep
+        // those outside this bounded renderer until their routes and paint match.
         match value {
             "normal" => Some(Self::Normal),
             "vee" => Some(Self::Vee),
@@ -262,8 +264,19 @@ fn arrow_spec(edge: &Edge, kind: GraphKind) -> Result<ArrowSpec, RenderError> {
             ))
         })
     };
-    let head_shape = parse_shape("arrowhead", head)?;
-    let tail_shape = parse_shape("arrowtail", tail)?;
+    // Graphviz arrow_flags ignores the shape attribute at an inactive end.
+    let head_active = matches!(direction, "forward" | "both");
+    let tail_active = matches!(direction, "back" | "both");
+    let head_shape = if head_active {
+        parse_shape("arrowhead", head)?
+    } else {
+        ArrowShape::None
+    };
+    let tail_shape = if tail_active {
+        parse_shape("arrowtail", tail)?
+    } else {
+        ArrowShape::None
+    };
     let size = edge.attrs.get("arrowsize").map_or(Ok(1.), |raw| {
         raw.parse::<f64>().map_err(|_| {
             RenderError::InvalidSource(format!(
@@ -304,8 +317,8 @@ fn arrow_spec(edge: &Edge, kind: GraphKind) -> Result<ArrowSpec, RenderError> {
         )));
     }
     Ok(ArrowSpec {
-        head: matches!(direction, "forward" | "both") && head_shape != ArrowShape::None,
-        tail: matches!(direction, "back" | "both") && tail_shape != ArrowShape::None,
+        head: head_active && head_shape != ArrowShape::None,
+        tail: tail_active && tail_shape != ArrowShape::None,
         head_shape,
         tail_shape,
         size,
@@ -347,16 +360,63 @@ fn validate_extended_arrow(
         && edge.from != edge.to
         && fixed_box(&edge.from)
         && fixed_box(&edge.to);
-    if supported {
+    if supported || is_default_ellipse_arrow_path(model) {
         return Ok(());
     }
     Err(RenderError::UnsupportedFeature(format!(
-        "DOT edge {:?}->{:?} arrowhead/arrowtail/arrowsize/penwidth requires one straight TB polyline edge between fixed empty box nodes",
+        "DOT edge {:?}->{:?} arrowhead/arrowtail/arrowsize/penwidth requires one straight TB polyline edge between fixed empty box nodes or a default-ellipse directed path",
         edge.from, edge.to
     )))
 }
 
-fn validate_styled_shortcut_routes(model: &Model) -> Result<(), RenderError> {
+fn is_default_ellipse_arrow_path(model: &Model) -> bool {
+    model.kind == GraphKind::Digraph
+        && !model.strict
+        && model.graph_attrs.is_empty()
+        && model.subgraphs.is_empty()
+        && (2..=16).contains(&model.edges.len())
+        && model.nodes.len() == model.edges.len() + 1
+        && model.nodes.iter().all(|node| node.attrs.is_empty())
+        && model.edges.iter().all(|edge| {
+            edge.from != edge.to
+                && edge.attrs.keys().all(|key| {
+                    matches!(
+                        key.as_str(),
+                        "dir" | "arrowhead" | "arrowtail" | "arrowsize"
+                    )
+                })
+        })
+        && model
+            .edges
+            .windows(2)
+            .all(|pair| pair[0].to == pair[1].from)
+}
+
+fn is_plain_shortcut_triangle(model: &Model) -> bool {
+    let [first, shortcut, last] = model.edges.as_slice() else {
+        return false;
+    };
+    model.kind == GraphKind::Digraph
+        && !model.strict
+        && model.graph_attrs.is_empty()
+        && model.subgraphs.is_empty()
+        && model.nodes.len() == 3
+        && model.nodes.iter().all(|node| node.attrs.is_empty())
+        && model.edges.iter().all(|edge| edge.attrs.is_empty())
+        && first.from == shortcut.from
+        && first.to == last.from
+        && shortcut.to == last.to
+        && first.from != first.to
+        && first.from != last.to
+        && first.to != last.to
+}
+
+fn validate_shortcut_routes(model: &Model) -> Result<(), RenderError> {
+    if is_plain_shortcut_triangle(model) {
+        return Err(RenderError::UnsupportedFeature(
+            "DOT plain three-node shortcut triangle needs Graphviz multi-rank routing".into(),
+        ));
+    }
     if model.kind != GraphKind::Digraph
         || model.edges.len() < 3
         || !model
@@ -410,6 +470,8 @@ struct Model {
     edges: Vec<Edge>,
     subgraphs: Vec<SubgraphModel>,
     index: HashMap<String, usize>,
+    user_node_ids: HashSet<String>,
+    synthetic_cluster_ids: HashSet<String>,
     clusters: usize,
     anonymous: usize,
 }
@@ -458,7 +520,7 @@ impl LayoutWork for Work {
 }
 
 impl Model {
-    fn new(document: &Document) -> Self {
+    fn new(document: &Document, user_node_ids: HashSet<String>) -> Self {
         Self {
             kind: document.kind,
             strict: document.strict,
@@ -472,6 +534,8 @@ impl Model {
             edges: Vec::new(),
             subgraphs: Vec::new(),
             index: HashMap::new(),
+            user_node_ids,
+            synthetic_cluster_ids: HashSet::new(),
             clusters: 0,
             anonymous: if document.id.is_some() { 1 } else { 3 },
         }
@@ -568,8 +632,41 @@ fn label_kind(items: &[Attribute]) -> Option<IdKind> {
         .and_then(|item| item.value.as_ref().map(|value| value.kind))
 }
 
+fn collect_user_node_ids(statements: &[Statement]) -> HashSet<String> {
+    fn collect(statements: &[Statement], ids: &mut HashSet<String>) {
+        for statement in statements {
+            match statement {
+                Statement::Node { node, .. } => {
+                    ids.insert(node.id.text.clone());
+                }
+                Statement::Nodes { nodes, .. } => {
+                    ids.extend(nodes.iter().map(|node| node.id.text.clone()));
+                }
+                Statement::Edge { endpoints, .. } => {
+                    for endpoint in endpoints {
+                        match endpoint {
+                            Endpoint::Node(node) => {
+                                ids.insert(node.id.text.clone());
+                            }
+                            Endpoint::Nodes(nodes) => {
+                                ids.extend(nodes.iter().map(|node| node.id.text.clone()));
+                            }
+                            Endpoint::Subgraph(subgraph) => collect(&subgraph.statements, ids),
+                        }
+                    }
+                }
+                Statement::Subgraph(subgraph) => collect(&subgraph.statements, ids),
+                Statement::Attributes { .. } | Statement::Assignment { .. } => {}
+            }
+        }
+    }
+    let mut ids = HashSet::new();
+    collect(statements, &mut ids);
+    ids
+}
+
 fn lower(document: &Document, work: &mut Work) -> Result<Model, RenderError> {
-    let mut model = Model::new(document);
+    let mut model = Model::new(document, collect_user_node_ids(&document.statements));
     visit(
         &document.statements,
         &mut model,
@@ -796,9 +893,18 @@ fn visit_subgraph(
         .as_ref()
         .is_some_and(|id| id.text.starts_with("cluster"))
     {
-        let id = format!("__ive_dot_cluster_{}", model.clusters);
-        model.clusters += 1;
+        let id = loop {
+            work.charge(1)?;
+            let id = format!("__ive_dot_cluster_{}", model.clusters);
+            model.clusters = model.clusters.checked_add(1).ok_or_else(|| {
+                RenderError::Backend("DOT synthetic cluster ID count overflowed".into())
+            })?;
+            if !model.user_node_ids.contains(&id) {
+                break id;
+            }
+        };
         model.ensure_node(&id, defaults, work)?;
+        model.synthetic_cluster_ids.insert(id.clone());
         scoped.parent = id;
         model.subgraphs[index].layout_id = scoped.parent.clone();
     }
@@ -851,6 +957,11 @@ fn number(attrs: &Attributes, field: NumericField) -> Result<f64, RenderError> {
 }
 
 fn graph_label(attrs: &Attributes) -> Result<GraphLabel, RenderError> {
+    if let Some(size) = attrs.get("size") {
+        return Err(RenderError::UnsupportedFeature(format!(
+            "DOT graph size {size:?} requires output scaling"
+        )));
+    }
     let rankdir = match attrs
         .get("rankdir")
         .map(String::as_str)
@@ -1350,7 +1461,12 @@ fn node_peripheries(node: &Node) -> Result<usize, RenderError> {
     if raw == "1" {
         return Ok(1);
     }
-    if raw == "2" && matches!(shape, "box" | "rect" | "rectangle" | "square" | "ellipse" | "oval" | "circle") {
+    if raw == "2"
+        && matches!(
+            shape,
+            "box" | "rect" | "rectangle" | "square" | "ellipse" | "oval" | "circle"
+        )
+    {
         return Ok(2);
     }
     Err(RenderError::UnsupportedFeature(format!(
@@ -1362,10 +1478,7 @@ fn node_peripheries(node: &Node) -> Result<usize, RenderError> {
 fn node_penwidth(node: &Node) -> Result<f64, RenderError> {
     let width = node.attrs.get("penwidth").map_or(Ok(1.), |raw| {
         raw.parse::<f64>().map_err(|_| {
-            RenderError::UnsupportedFeature(format!(
-                "DOT node {:?} penwidth {raw:?}",
-                node.id
-            ))
+            RenderError::UnsupportedFeature(format!("DOT node {:?} penwidth {raw:?}", node.id))
         })
     })?;
     if !width.is_finite() || !(0. ..=100.).contains(&width) {
@@ -1400,6 +1513,12 @@ fn node_base_dimensions(
     session: &RenderSession,
     work: &mut Work,
 ) -> Result<(f64, f64), RenderError> {
+    if let Some(margin) = node.attrs.get("margin") {
+        return Err(RenderError::UnsupportedFeature(format!(
+            "DOT node {:?} margin {margin:?} requires Graphviz text padding",
+            node.id
+        )));
+    }
     if node
         .attrs
         .get("shape")
@@ -1414,14 +1533,7 @@ fn node_base_dimensions(
         .map(String::as_str)
         .unwrap_or("ellipse");
     if matches!(shape, "diamond" | "triangle" | "hexagon") {
-        for key in [
-            "orientation",
-            "skew",
-            "distortion",
-            "regular",
-            "margin",
-            "sides",
-        ] {
+        for key in ["orientation", "skew", "distortion", "regular", "sides"] {
             if let Some(value) = node.attrs.get(key) {
                 return Err(RenderError::UnsupportedFeature(format!(
                     "DOT {shape} node {:?} {key}={value:?}",
@@ -1453,9 +1565,14 @@ fn node_base_dimensions(
         (width, height)
     };
     if node.label_kind == IdKind::Html {
-        if node.attrs.get("fixedsize").is_some_and(|value| value == "true") {
+        if node
+            .attrs
+            .get("fixedsize")
+            .is_some_and(|value| value == "true")
+        {
             return Err(RenderError::UnsupportedFeature(format!(
-                "DOT HTML table node {:?} with fixedsize=true", node.id
+                "DOT HTML table node {:?} with fixedsize=true",
+                node.id
             )));
         }
         let label = node.attrs.get("label").ok_or_else(|| {
@@ -1585,6 +1702,10 @@ fn build_graph(
             NodeLabel {
                 width,
                 height,
+                dummy: model
+                    .synthetic_cluster_ids
+                    .contains(&node.id)
+                    .then(|| "ive-dot-cluster".into()),
                 ..Default::default()
             },
         );
@@ -1732,7 +1853,7 @@ fn build_graph(
                 ))
             })?;
     }
-    validate_styled_shortcut_routes(model)?;
+    validate_shortcut_routes(model)?;
     Ok((graph, cluster_label_widths))
 }
 
@@ -1831,7 +1952,7 @@ pub(crate) fn json0(source: &str, options: &RenderOptions) -> Result<String, Ren
     let node_ids = model
         .nodes
         .iter()
-        .filter(|node| !node.id.starts_with("__ive_dot_cluster_"))
+        .filter(|node| !model.synthetic_cluster_ids.contains(&node.id))
         .enumerate()
         .map(|(index, node)| (node.id.as_str(), model.subgraphs.len() + index))
         .collect::<HashMap<_, _>>();
@@ -1844,8 +1965,10 @@ pub(crate) fn json0(source: &str, options: &RenderOptions) -> Result<String, Ren
     } else {
         EdgeLabelPolicy::Absent
     };
+    let edge_ids = graphviz_edge_ids(&model);
     let context = JsonContext {
         node_ids: &node_ids,
+        edge_ids: &edge_ids,
         graph: &graph,
         height,
         rankdir: graph_label(&model.graph_attrs)?.rankdir,
@@ -1861,7 +1984,7 @@ pub(crate) fn json0(source: &str, options: &RenderOptions) -> Result<String, Ren
     for node in model
         .nodes
         .iter()
-        .filter(|node| !node.id.starts_with("__ive_dot_cluster_"))
+        .filter(|node| !model.synthetic_cluster_ids.contains(&node.id))
     {
         let id = node_ids[&node.id.as_str()];
         objects.push(node_json(node, id, &context)?);
@@ -1870,7 +1993,7 @@ pub(crate) fn json0(source: &str, options: &RenderOptions) -> Result<String, Ren
         .edges
         .iter()
         .enumerate()
-        .map(|(index, edge)| edge_json(edge, index, &context))
+        .map(|(index, edge)| edge_json(edge, (index, edge_ids[index]), &context))
         .collect::<Result<Vec<_>, _>>()?;
     let mut result = object();
     result.insert("name".into(), json!(model.name));
@@ -1925,8 +2048,28 @@ enum EdgeLabelPolicy {
     Declared,
 }
 
+fn graphviz_edge_ids(model: &Model) -> Vec<usize> {
+    // gvrender_core_json.c numbers outgoing edges by tail node sequence;
+    // cgraph/edge.c orders each adjacency by head node, then edge sequence.
+    // The JSON edge array itself remains in global edge creation order.
+    let mut outgoing = (0..model.edges.len()).collect::<Vec<_>>();
+    outgoing.sort_by_key(|&index| {
+        (
+            model.index[&model.edges[index].from],
+            model.index[&model.edges[index].to],
+            index,
+        )
+    });
+    let mut ids = vec![0; outgoing.len()];
+    for (id, index) in outgoing.into_iter().enumerate() {
+        ids[index] = id;
+    }
+    ids
+}
+
 struct JsonContext<'a> {
     node_ids: &'a HashMap<&'a str, usize>,
+    edge_ids: &'a [usize],
     graph: &'a LayoutGraph,
     height: f64,
     rankdir: RankDir,
@@ -2014,7 +2157,12 @@ fn subgraph_json(
         result.insert("nodes".into(), json!(children));
     }
     if !subgraph.edges.is_empty() {
-        result.insert("edges".into(), json!(subgraph.edges));
+        let ids = subgraph
+            .edges
+            .iter()
+            .map(|&index| context.edge_ids[index])
+            .collect::<Vec<_>>();
+        result.insert("edges".into(), json!(ids));
     }
     Ok(Value::Object(result))
 }
@@ -2065,11 +2213,15 @@ fn node_json(node: &Node, id: usize, context: &JsonContext<'_>) -> Result<Value,
     Ok(Value::Object(result))
 }
 
-fn edge_json(edge: &Edge, id: usize, context: &JsonContext<'_>) -> Result<Value, RenderError> {
+fn edge_json(
+    edge: &Edge,
+    (index, id): (usize, usize),
+    context: &JsonContext<'_>,
+) -> Result<Value, RenderError> {
     let placed = context
         .graph
-        .edge(&edge.from, &edge.to, Some(&format!("e{id}")))
-        .ok_or_else(|| RenderError::Backend(format!("DOT edge {id} layout is missing")))?;
+        .edge(&edge.from, &edge.to, Some(&format!("e{index}")))
+        .ok_or_else(|| RenderError::Backend(format!("DOT edge {index} layout is missing")))?;
     let tail = context
         .node_ids
         .get(edge.from.as_str())
@@ -2186,6 +2338,88 @@ mod tests {
     }
 
     #[test]
+    fn should_render_user_node_ids_that_resemble_internal_clusters() {
+        // given
+        let sources = [
+            "digraph G { __ive_dot_cluster_0; a }",
+            "digraph G { __ive_dot_cluster_0; subgraph cluster_x { a -> b } }",
+            "digraph G { subgraph cluster_x { a -> b } \"__ive_dot_cluster_0\" -> b }",
+            "digraph G { __ive_dot_cluster_0; __ive_dot_cluster_1; subgraph cluster_x { a -> b } }",
+        ];
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+        // when and then
+        for source in sources {
+            let geometry: Value = serde_json::from_str(&json0(source, &options).unwrap()).unwrap();
+            let image = super::render(source, &options).unwrap();
+            let names = geometry["objects"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|object| object["name"].as_str())
+                .collect::<Vec<_>>();
+            assert!(names.contains(&"__ive_dot_cluster_0"), "{source}");
+            assert!(
+                image.svg.contains("<title>__ive_dot_cluster_0</title>"),
+                "{source}"
+            );
+            if source.contains("__ive_dot_cluster_1") {
+                assert!(names.contains(&"__ive_dot_cluster_1"), "{source}");
+                assert!(
+                    image.svg.contains("<title>__ive_dot_cluster_1</title>"),
+                    "{source}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn should_reject_external_paint_urls_in_dot_svg() {
+        // given
+        let source = "digraph G { a [shape=box, color=\"url(https://example.invalid/p.svg#x)\"] }";
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+        // when
+        let result = render(source, &options);
+        // then
+        assert!(
+            matches!(result, Err(RenderError::ExternalResource(_))),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn should_reject_size_and_node_margin_until_geometry_matches() {
+        // given
+        let cases = [
+            ("digraph G { size=\"1,1\"; a -> b }", "graph size"),
+            ("digraph G { a [shape=ellipse, margin=0.2] }", "margin"),
+            ("digraph G { a [shape=box, margin=0.2] }", "margin"),
+        ];
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+        // when and then
+        for (source, expected) in cases {
+            let geometry = json0(source, &options);
+            let image = render(source, &options);
+            assert!(
+                matches!(geometry, Err(RenderError::UnsupportedFeature(message)) if message.contains(expected)),
+                "JSON accepted ignored attribute in {source:?}"
+            );
+            assert!(
+                matches!(image, Err(RenderError::UnsupportedFeature(message)) if message.contains(expected)),
+                "SVG accepted ignored attribute in {source:?}"
+            );
+        }
+    }
+
+    #[test]
     fn should_expand_node_lists_and_merge_strict_reverse_edges() {
         // given
         let source = "strict graph G { a,b -- c,d [color=red]; c -- a [label=x] }";
@@ -2281,6 +2515,29 @@ mod tests {
         let actual: Value = serde_json::from_str(&json0(source, &options).unwrap()).unwrap();
         // then
         assert_eq!(actual, oracle);
+    }
+
+    #[test]
+    fn should_number_feedback_edges_by_source_node_order() {
+        // given
+        let source =
+            include_str!("../../tools/dot-parity/fixtures-extensions/ranked_self_projection.dot");
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+
+        // when
+        let actual: Value = serde_json::from_str(&json0(source, &options).unwrap()).unwrap();
+        let ids = actual["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|edge| edge["_gvid"].as_u64().unwrap())
+            .collect::<Vec<_>>();
+
+        // then
+        assert_eq!(ids, [1, 2, 3, 0]);
     }
 
     #[test]
@@ -2539,6 +2796,27 @@ mod tests {
     }
 
     #[test]
+    fn should_reject_plain_shortcut_triangle_until_multi_rank_routing_matches() {
+        // given
+        let source =
+            include_str!("../../tools/dot-parity/fixtures-edge-style-triangle/plain_triangle.dot");
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+        // when
+        let json = json0(source, &options);
+        let svg = super::render(source, &options);
+        // then
+        assert!(
+            matches!(json, Err(RenderError::UnsupportedFeature(message)) if message.contains("plain three-node shortcut triangle"))
+        );
+        assert!(
+            matches!(svg, Err(RenderError::UnsupportedFeature(message)) if message.contains("plain three-node shortcut triangle"))
+        );
+    }
+
+    #[test]
     fn should_match_graphviz_161_arrow_mode_json0() {
         // given
         let cases = [
@@ -2576,6 +2854,7 @@ mod tests {
         // given
         let cases = [
             ("arrowhead=crow", "arrowhead"),
+            ("arrowhead=diamondvee", "arrowhead"),
             ("arrowtail=dot,dir=back", "arrowtail"),
             ("penwidth=2", "penwidth"),
         ];
@@ -2644,12 +2923,46 @@ mod tests {
     }
 
     #[test]
+    fn should_match_graphviz_161_multi_edge_arrow_directions_json0() {
+        // given
+        let cases = [
+            (
+                include_str!("dot_runtime/goldens/edge_arrows_feature.dot"),
+                include_str!("dot_runtime/goldens/edge_arrows_feature.json"),
+            ),
+            (
+                include_str!("dot_runtime/goldens/edge_arrow_back_path.dot"),
+                include_str!("dot_runtime/goldens/edge_arrow_back_path.json"),
+            ),
+            (
+                include_str!("dot_runtime/goldens/edge_arrow_none_path.dot"),
+                include_str!("dot_runtime/goldens/edge_arrow_none_path.json"),
+            ),
+            (
+                include_str!("dot_runtime/goldens/edge_arrow_head_size_path.dot"),
+                include_str!("dot_runtime/goldens/edge_arrow_head_size_path.json"),
+            ),
+        ];
+        let options = RenderOptions {
+            language: crate::Language::Dot,
+            ..Default::default()
+        };
+        // when and then
+        for (source, oracle) in cases {
+            let actual: Value = serde_json::from_str(&json0(source, &options).unwrap()).unwrap();
+            let expected: Value = serde_json::from_str(oracle).unwrap();
+            assert_eq!(actual, expected, "{source}");
+        }
+    }
+
+    #[test]
     fn should_reject_extended_arrow_outside_straight_fixed_box_scope() {
         // given
         let cases = [
             "digraph G { a -> b [arrowhead=vee] }",
             "digraph G { graph [splines=polyline,rankdir=LR]; node [shape=box,label=\"\",fixedsize=true,width=1,height=.5]; a -> b [arrowhead=box] }",
             "digraph G { graph [splines=polyline]; node [shape=box,label=\"\",fixedsize=true,width=1,height=.5]; a -> b [arrowsize=2]; b -> c }",
+            "digraph G { a -> b [arrowhead=vee]; a -> c }",
         ];
         let options = RenderOptions {
             language: crate::Language::Dot,

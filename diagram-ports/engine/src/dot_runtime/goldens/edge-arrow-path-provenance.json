@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "oracle": "@hpcc-js/wasm-graphviz 1.30.0, embedded Graphviz 16.1.0, Expat-enabled",
+  "oracle_archive_sha256": "0105defc8548e241a08a22e40ee0499a851402c345e38745a5b4d521d776d57f",
+  "source_provenance_reviewed": false,
+  "vendor_source_equivalence_verified": false,
+  "svg_generator_metadata": "Raw WASM SVG has generator stamp (0); golden test normalizes only this stamp to the product test stamp (20260904.0139).",
+  "cases": {
+    "edge_arrows_feature": {
+      "dot_sha256": "c7889bb5b848d2b9b54b217f3adaebf2dac253206f6b8cafc524d62a4a4f2df1",
+      "json_sha256": "613fcf29598de04a9b39a45df1e50302fd4987185313d2a7ec090afc322e4031",
+      "svg_sha256": "588f7603bf0df2a5464256ddc2997b21e9ec49fc2016b90b887d95416b349846"
+    },
+    "edge_arrow_back_path": {
+      "dot_sha256": "3f9a1836a45c2f816edd076afeb2084b68b8b426b94fd56c9c56a03618293b3c",
+      "json_sha256": "7a7c787b2d51bbbd7b26a2a23b04ffe61d516dae2135acab2d8e8f774fe70fb0",
+      "svg_sha256": "0aa8977be1f2ba4e777c2f0369af36626d7967fb8fb85f6b5c90c00e20562a1a"
+    },
+    "edge_arrow_none_path": {
+      "dot_sha256": "705d40910bab9f2e4f2380a569cf4d7dc77233fd078a808e4855007e56e9e0a8",
+      "json_sha256": "bcd96e355a375908b5d9494ea0addf63a202e1d9cecbd252a7399d492d0d21e6",
+      "svg_sha256": "de90f649aa52f201e8087435a0836f1f5b96d94e12a53deab7b76d6652468ffe"
+    },
+    "edge_arrow_head_size_path": {
+      "dot_sha256": "c2b1e2a8badff96da45d8cb6080afeeb39ad2c0c8677ea0e6640ffdd2dc65e96",
+      "json_sha256": "dbb3531f00bda787b0aef2bc5250015eaee1d9210d0dde4ff0921182806e13f5",
+      "svg_sha256": "6db8074214efc85f7072a6650a4329fbf410456c98c658e6b460ef7f4dfdc828"
+    }
+  }
+}

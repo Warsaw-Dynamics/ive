@@ -1,0 +1,1 @@
+digraph arrow_head_size_path { a -> b; b -> c [arrowhead=diamond,arrowsize=2]; c -> d; }

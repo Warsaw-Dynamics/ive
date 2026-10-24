@@ -1,0 +1,1 @@
+digraph arrow_back_path { a -> b [dir=back,arrowtail=diamond]; b -> c; c -> d; }
