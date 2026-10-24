@@ -1,0 +1,81 @@
+# Windows build and standalone DOT runtime check; native Graphviz parity is a separate gate.
+name: dot-windows-check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [diagram-ports, 'codex/dot-macos-parity-*']
+    paths:
+      - .github/workflows/dot-windows-check.yml
+      - diagram-ports/**
+      - dot-progress.md
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: diagram-ports
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record runner identity
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'ive-dot-windows/evidence'
+          New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+          [System.Runtime.InteropServices.RuntimeInformation]::OSDescription | Set-Content (Join-Path $evidence 'windows-version.txt')
+          [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() | Set-Content (Join-Path $evidence 'architecture.txt')
+          if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() -ne 'X64') {
+            throw 'DOT Windows check requires an x64 runner'
+          }
+      - name: Rust toolchain
+        run: |
+          $line = Get-Content ../.tool-versions | Where-Object { $_ -match '^rust\s+' } | Select-Object -First 1
+          if (-not $line) { throw 'No Rust toolchain in .tool-versions' }
+          $version = ($line -split '\s+')[1]
+          rustup toolchain install $version --profile minimal
+          rustup component add clippy --toolchain $version
+          rustup default $version
+          rustc -Vv | Set-Content (Join-Path $env:RUNNER_TEMP 'ive-dot-windows/evidence/rust-version.txt')
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: diagram-ports -> target
+      - name: Engine tests
+        run: cargo test --locked -p diagram-engine --lib
+      - name: Strict engine Clippy
+        run: cargo clippy --locked -p diagram-engine --all-targets -- -D warnings
+      - name: Build release desktop viewer
+        run: cargo build --locked --release -p diagram-viewer
+      - name: Standalone DOT JSON SVG PNG smoke
+        run: |
+          $viewer = 'target/release/diagram-viewer.exe'
+          $fixture = 'tools/dot-parity/fixtures/chain.dot'
+          $evidence = Join-Path $env:RUNNER_TEMP 'ive-dot-windows/evidence'
+          foreach ($format in @('json', 'svg', 'png')) {
+            $output = Join-Path $evidence "chain.$format"
+            & $viewer --language dot --render $fixture --output $output
+            if ($LASTEXITCODE -ne 0) { throw "DOT $format export failed with exit code $LASTEXITCODE" }
+          }
+          $geometry = Get-Content -Raw (Join-Path $evidence 'chain.json') | ConvertFrom-Json
+          if ($geometry.objects.Count -ne 4 -or $geometry.edges.Count -ne 2) {
+            throw 'DOT JSON chain geometry has the wrong node or edge count'
+          }
+          $svg = Get-Content -Raw (Join-Path $evidence 'chain.svg')
+          if (-not $svg.Contains('<svg')) { throw 'DOT SVG output lacks an SVG root' }
+          $png = [System.IO.File]::ReadAllBytes((Join-Path $evidence 'chain.png'))
+          if ($png.Length -lt 8 -or [Convert]::ToHexString($png[0..7]) -ne '89504E470D0A1A0A') {
+            throw 'DOT PNG output lacks the PNG signature'
+          }
+          Get-FileHash (Join-Path $evidence 'chain.*') -Algorithm SHA256 | Format-Table -AutoSize | Out-String | Set-Content (Join-Path $evidence 'output-sha256.txt')
+      - name: Upload Windows check evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dot-windows-x64-check-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: ${{ runner.temp }}/ive-dot-windows/evidence/**
