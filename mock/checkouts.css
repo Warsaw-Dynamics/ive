@@ -562,3 +562,33 @@ button.card:hover { border-color: var(--accent); }
 .conflicts__cleanrow { display: flex; gap: 16px; padding: 2px 0 2px 16px; font-family: var(--mono); }
 .conflicts__buttons { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
 .conflicts__buttons .button:disabled { opacity: 0.5; cursor: default; }
+
+/* A proposal (DESIGN.md "Attention"): a process that called. Its tab's icon gets a dot, its tree row what it said, a
+   folded row above it "● n waiting"; the tab row's bell lists them. One colour, not the run states' green or red. */
+:root, :root[data-theme="dark"] { --attention: #f0a732; }
+:root[data-theme="light"] { --attention: #b86e00; }
+.attention-dot {
+  position: absolute; top: -2px; right: -3px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--attention); box-shadow: 0 0 0 1.5px var(--background);
+}
+.tree__attention { flex: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--attention); }
+.tree__waiting { flex: none; font-size: 12px; color: var(--attention); }
+.hub__state.hub__state--attention { color: var(--attention); max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-stack--20 { width: 20px; height: 20px; }
+.menu--waiting { width: 340px; z-index: 30; }
+.menu__item--two { height: auto; padding: 4px 8px; align-items: flex-start; }
+.menu__item--two .menu__grow { display: flex; flex-direction: column; }
+.waiting__title { overflow: hidden; text-overflow: ellipsis; }
+.waiting__text { font-size: 12px; color: var(--attention); overflow: hidden; text-overflow: ellipsis; }
+.waiting__age { flex: none; font-size: 12px; color: var(--muted); }
+
+/* Mock-only: IVE in the background, and the desktop's notifications (the OS draws them, not IVE). */
+.window--behind .window__content { filter: saturate(0.6) brightness(0.92); }
+.os-notices { position: fixed; top: 12px; right: 12px; z-index: 80; display: flex; flex-direction: column; gap: 8px; width: 340px; }
+.os-notice {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; text-align: left;
+  background: #2b2d30f2; color: #dfe1e5; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); font-size: 13px;
+}
+.os-notice:hover { background: #393b40f2; }
+.os-notice__app { font-size: 11px; opacity: 0.6; }
+.os-notice__title { font-weight: 600; }

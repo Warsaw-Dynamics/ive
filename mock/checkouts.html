@@ -24,7 +24,7 @@
          @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
          @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event); clipKey($event)"
          @mousedown.window="findSideClick($event)">
-      <div class="window">
+      <div class="window" :class="{ 'window--behind': windowFocused === false }">
         <main class="window__content" :style="{ '--project-glow': projectGlow() }">
           <div class="fill" x-include="components/checkouts/sidebar.html"></div>
           <div class="fill" x-include="components/checkouts/editor.html"></div>
@@ -37,6 +37,24 @@
           <button type="button" @click="mockSave('error')" title="cannot save: Permission denied; then close the tab">error</button>
           <button type="button" @click="mockSave(null)">clear</button>
         </nav>
+        <!-- mock-only: what a program in a terminal sends (DESIGN.md "Attention"); IVE's window in front or behind -->
+        <nav class="mock-bar" aria-label="Mock attention controls">
+          <span>mock: attention</span>
+          <button type="button" @click="mockAttention('notify')" title="OSC 9 / 777 / 99 with a text, as Claude Code or Codex send it (ignored by the shown tab while the window is in front)">notification</button>
+          <button type="button" @click="mockAttention('bell')" title="BEL">bell</button>
+          <button type="button" @click="mockAttention('done')" title="OSC 9;4 busy, then 9;4;0">progress ended</button>
+          <button type="button" @click="windowFocused = windowFocused === false" x-text="windowFocused ? 'send IVE to background' : 'bring IVE to front'"></button>
+        </nav>
+        <!-- mock-only: the desktop's notifications (the OS draws them; a click raises IVE on that process) -->
+        <div class="os-notices">
+          <template x-for="n in desktopNotices" :key="n.c.id">
+            <button class="os-notice" type="button" @click="showWaiting(n.c)">
+              <span class="os-notice__app">IVE · desktop notification (mock)</span>
+              <span class="os-notice__title" x-text="n.c.title + ' — ' + label(n.c.co)"></span>
+              <span class="os-notice__text" x-text="n.text"></span>
+            </button>
+          </template>
+        </div>
         <!-- mock-only: back to the single-project mock -->
         <a class="mock-back" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file">← index</a>
       </div>

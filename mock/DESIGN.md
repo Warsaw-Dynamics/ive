@@ -521,6 +521,33 @@ not draw it yet.
 - Notices: panels stacked at the bottom right of the main window, 420 px wide, error-coloured border on the sidebar
   colour: a muted time line with Copy and ×, then the text in the error colour. At most five.
 
+## Attention: a process that wants the user (a proposal, *(not in the app yet)*)
+
+Claude Code, Codex or a build in a terminal says when it finished or waits for an answer; IVE shows it until the user
+looks. IVE reads only standard terminal sequences and knows no agent; each agent is set up to send them (README).
+
+- **What raises it**, from the program's output: `OSC 9;<text>` (iTerm2; not `9;4`), `OSC 777;notify;<title>;<body>`
+  (Ghostty, VTE), `OSC 99` (kitty): the text; `BEL`: "rang the bell"; `OSC 9;4` going from busy to `0`: "finished".
+  Claude Code: `preferredNotifChannel` `iterm2` (or `ghostty`, `kitty`, `terminal_bell`); Codex: `[tui] notifications`.
+- **Only while the user is not looking**: nothing is raised for the shown tab while IVE's window is in front.
+  Showing the tab with the window in front, or typing into it, clears it. A newer call replaces the text.
+- **Where it shows**, one colour (`--attention`, amber: not the green of running nor the red of failed):
+  - the process's tab: a dot at the top right of its icon, the text in the tooltip;
+  - its tree row: the same dot, then `● <text>` after the title (the full text in the tooltip);
+  - a folded project, worktree or Processes row: `● n waiting`;
+  - the tab row's right end, left of Settings: IntelliJ's Notifications bell (`notifications-20.svg`) with the dot,
+    only while something waits. A click lists them, longest waiting first (icon, title · worktree, the text, age);
+    a row shows that process;
+  - the hub (Ctrl+E): **Waiting** first, above Recent; Running shows the text instead of the state.
+- **IVE in the background**: a desktop notification through the OS (freedesktop notifications on Linux, the
+  notification centre on macOS), title `<process title> — <worktree>`, body the text; one per process, a newer call
+  replaces it. A click raises IVE and shows the process. The window also asks for attention (urgency hint, dock
+  bounce). When IVE comes to front it withdraws its desktop notifications: the bell lists what still waits.
+- Terminals outlive IVE in the ptyhost: a call made while IVE was closed is kept by the host and shown when IVE
+  attaches, as the replay restores modes.
+- Mock: the `mock: attention` bar sends a notification, a bell or a progress end to a process that is not shown,
+  and sends IVE to the background (the window dims; the dark panels at the top right stand in for the OS's).
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon
@@ -543,6 +570,8 @@ Editor › Color Scheme pages (read-only once colours moved to `init.rn`).
   diff tabs' underline.
 - "● N running" remains on the project tree row and worktree cards.
 - Databases: IntelliJ's toolbar and "1 of N" database counts are not mocked.
+- Attention: a key to show the process waiting longest; a Settings switch for desktop notifications; whether
+  silence after output (tmux `monitor-silence`) should count, for programs that send nothing.
 
 ## Code view: diffs, editing, saving
 
