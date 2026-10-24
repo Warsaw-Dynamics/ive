@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use gpui::{
-    AnyElement, Context, Div, Entity, EventEmitter, IntoElement, ListSizingBehavior, Render, Stateful, Subscription, Task, Window, div,
+    AnyElement, App, Context, Div, Entity, EventEmitter, IntoElement, ListSizingBehavior, Render, Stateful, Subscription, Task, Window, div,
     prelude::*, rgb, uniform_list,
 };
 
@@ -12,6 +12,7 @@ use super::git_event::{CommitLink, GitEvent};
 use super::git_ui::{Picked, error_with_retry, list_row, muted, segment, toggle_button};
 use super::project_git::{CheckoutLine, LogRow, ProjectContext, bordered, log_row, stash_row};
 use crate::age::Clock;
+use crate::selectable::selectable;
 use crate::click_targets::target;
 use crate::git::log::{self, CommitInfo, CommitRange, Page, Stash};
 use crate::git::refs::{self, BranchInfo, Refs};
@@ -241,10 +242,11 @@ impl GitLogView {
             return Vec::new();
         };
         let (theme, clock) = (crate::theme::tabs(cx), Clock::system());
+        let project = &self.context.project;
         let row = |index: usize| match self.section {
             Section::Stashes => data.stashes.get(index).map(|stash| stash_row(index, stash, theme)),
-            Section::Worktrees => self.context.checkouts.get(index).map(|checkout| worktree_row(index, checkout, theme)),
-            Section::Branches => data.branches.get(index).map(|branch| branch_row(index, branch, &clock, theme)),
+            Section::Worktrees => self.context.checkouts.get(index).map(|checkout| worktree_row(checkout, &RowAt { index, project, theme, clock }, cx)),
+            Section::Branches => data.branches.get(index).map(|branch| branch_row(branch, &RowAt { index, project, theme, clock }, cx)),
             Section::Log => None,
         };
         range.filter_map(row).map(|row| row.w_full()).collect()
@@ -327,21 +329,35 @@ impl Render for GitLogView {
     }
 }
 
-fn worktree_row(index: usize, checkout: &CheckoutLine, theme: Theme) -> Stateful<Div> {
+/// A Worktrees or Branches row: its place in the list, and the project its selectable texts are named after.
+struct RowAt<'a> {
+    index: usize,
+    project: &'a ProjectId,
+    theme: Theme,
+    clock: Clock,
+}
+
+/// Not clickable, so its label, branch and folder can be selected.
+fn worktree_row(checkout: &CheckoutLine, at: &RowAt, cx: &App) -> Stateful<Div> {
+    let (index, project, theme) = (at.index, at.project, at.theme);
+    let text = |part: &str, value: String| selectable(format!("git-log-{project}-worktree-{part}-{index}"), value, cx);
     list_row(("git-log-worktree", index), Picked::No, theme)
         .cursor_default()
         .child(icon(theme, icons::BRANCH))
-        .child(div().flex_none().child(checkout.label.clone()))
-        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.branch.clone().unwrap_or_else(|| "detached".to_owned())))
-        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(checkout.path.display().to_string()))
+        .child(div().flex_none().child(text("label", checkout.label.clone())))
+        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(text("branch", checkout.branch.clone().unwrap_or_else(|| "detached".to_owned()))))
+        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(text("path", checkout.path.display().to_string())))
 }
 
-fn branch_row(index: usize, branch: &BranchInfo, clock: &Clock, theme: Theme) -> Stateful<Div> {
+/// Not clickable, so its name can be selected.
+fn branch_row(branch: &BranchInfo, at: &RowAt, cx: &App) -> Stateful<Div> {
+    let (index, project, theme) = (at.index, at.project, at.theme);
+    let name = selectable(format!("git-log-{project}-branch-{index}"), branch.name.display().to_string(), cx);
     list_row(("git-log-branch", index), Picked::No, theme)
         .cursor_default()
         .child(icon(theme, icons::BRANCH))
-        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().child(branch.name.display()))
-        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(clock.age(branch.when.seconds)))
+        .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().child(name))
+        .child(div().flex_none().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(at.clock.age(branch.when.seconds)))
 }
 
 #[cfg(test)]
