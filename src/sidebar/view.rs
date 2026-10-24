@@ -18,6 +18,7 @@ use super::rows::{
 };
 use super::drop_place::DropHint;
 use super::selection::{Listed, PickGroup, Selection, pick_group};
+use crate::attention_dot::with_dot;
 use crate::dragged_files::{DraggedFiles, DraggedProcesses};
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
@@ -97,6 +98,8 @@ pub enum HeaderMenu {
     OpenProject,
     Folders,
     Projects,
+    /// the tab row's bell: the processes that wait for the user
+    Waiting,
 }
 
 /// What the sidebar draws besides the tree.
@@ -170,10 +173,13 @@ fn take_keys(sidebar_focus: FocusHandle) -> impl Fn(&MouseDownEvent, &mut Window
 
 fn row_width(row: &TreeRow) -> usize {
     let (slots, text) = match &row.item {
-        TreeItem::Project(project) => (2, project.name.chars().count() + 12),
-        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count()),
-        TreeItem::Folder(folder) => (2, folder.kind.title().chars().count() + 4 + folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count())),
-        TreeItem::Process(process) => (2, process.title.chars().count()),
+        TreeItem::Project(project) => (2, project.name.chars().count() + 12 + said_width(&waiting_text(project.waiting))),
+        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count() + said_width(&waiting_text(checkout.waiting))),
+        TreeItem::Folder(folder) => {
+            let nothing = folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count());
+            (2, folder.kind.title().chars().count() + 4 + nothing + said_width(&waiting_text(folder.waiting)))
+        }
+        TreeItem::Process(process) => (2, process.title.chars().count() + said_width(&process.attention.as_ref().map(|text| format!("● {text}")))),
         TreeItem::LiveRun(run) => (2, run.name.chars().count() + run.label.chars().count() + 1),
         TreeItem::Change(change) => (2, change.change.path.file_name().chars().count() + 2 + change.folder.as_ref().map_or(0, |folder| folder.chars().count() + 1)),
         TreeItem::ChangeFolder(folder) => (2, folder.label.chars().count() + 4),
@@ -235,7 +241,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
 
 /// A header button's press: noted before the open menu's press-outside closes it (the capture phase comes first),
 /// and kept from moving the window.
-fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     button
         .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
         .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
@@ -286,7 +292,7 @@ fn render_menu(recent: &[RecentProject], theme: Theme, cx: &mut Context<Workspac
 }
 
 /// A header menu's box under the header, before its side, width and [`closing_outside`] are set.
-fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
@@ -304,11 +310,11 @@ fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
 }
 
 /// A header menu that a press outside closes.
-fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     menu.on_mouse_down_out(cx.listener(|workspace, _event, window, cx| workspace.close_menu(window, cx)))
 }
 
-fn menu_section(title: &'static str, theme: Theme) -> Div {
+pub(crate) fn menu_section(title: &'static str, theme: Theme) -> Div {
     let sizes = &theme.sizes.tree;
     div()
         .px(sizes.menu_section_padding_x.px())
@@ -319,7 +325,7 @@ fn menu_section(title: &'static str, theme: Theme) -> Div {
         .child(title)
 }
 
-fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
@@ -554,6 +560,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .child(chevron(row.expanded, theme, shared(&toggle)))
         .child(icon(theme, icons::BRANCH))
         .child(row.label.clone())
+        .children(waiting_tag(row.waiting, theme))
         .children(hide);
     bind_row(line, mouse, cx)
 }
@@ -566,8 +573,33 @@ fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> 
     let action = row_action(action, &line);
     let show: Listener = Rc::new(target(line.name("process"), cx.listener(move |workspace, _event, window, cx| workspace.show_process(id, window, cx)), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("process"), checkout: None, activate: show, keep: None, toggle: None };
-    let row_div = line.div.child(folder_view::slot(line.theme)).child(icon(line.theme, row.kind.icon())).children(progress_bar(row.progress, line.theme)).child(row.title.clone()).child(action);
+    let theme = line.theme;
+    let kind_icon = match &row.attention {
+        Some(_) => with_dot(icon(theme, row.kind.icon()), theme, theme.tree).into_any_element(),
+        None => icon(theme, row.kind.icon()).into_any_element(),
+    };
+    let said = row.attention.as_ref().map(|text| attention_text(format!("● {text}"), theme));
+    let row_div = line.div.child(folder_view::slot(theme)).child(kind_icon).children(progress_bar(row.progress, theme)).child(row.title.clone()).children(said).child(action);
     bind_row(row_div, mouse, cx)
+}
+
+/// What a process said when it called for the user, after its title, in the attention colour.
+fn attention_text(text: String, theme: Theme) -> Div {
+    div().flex_none().text_size(theme.sizes.tree.tag_text_size.px()).text_color(rgb(theme.attention)).child(text)
+}
+
+/// `● n waiting` on a row with processes below it that called for the user and that its open rows do not show.
+pub(super) fn waiting_tag(waiting: usize, theme: Theme) -> Option<Div> {
+    waiting_text(waiting).map(|text| attention_text(text, theme))
+}
+
+fn waiting_text(waiting: usize) -> Option<String> {
+    (waiting > 0).then(|| format!("● {waiting} waiting"))
+}
+
+/// The characters a row's attention text adds, with the gap before it, so the tree scrolls far enough to show it.
+fn said_width(text: &Option<String>) -> usize {
+    text.as_ref().map_or(0, |text| text.chars().count() + 1)
 }
 
 /// A file or folder row; dragged onto a terminal, it types its path, or the selection's when it is selected.
@@ -740,6 +772,7 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
         .child(div().font_weight(sizes.project_name_weight.font_weight()).text_color(rgb(name_color)).child(project.name.clone()))
         .children(tag)
         .children(running)
+        .children(waiting_tag(project.waiting, theme))
         .children(warning)
         .child(close);
     if present {
@@ -1002,6 +1035,28 @@ fn render_resize_handle(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<D
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_widen_a_row_by_what_its_process_said() {
+        // given
+        let process = |attention: Option<&str>| TreeRow {
+            depth: 0,
+            item: TreeItem::Process(ProcessRow {
+                id: crate::process::ProcessId::for_tests(1),
+                kind: crate::process::ProcessKind::Terminal,
+                title: "zsh".to_owned(),
+                progress: crate::terminal::Progress::None,
+                attention: attention.map(str::to_owned),
+            }),
+            target: String::new(),
+        };
+
+        // when
+        let widths = [row_width(&process(None)), row_width(&process(Some("Claude needs you")))];
+
+        // then
+        assert_eq!(widths[1] - widths[0], "● Claude needs you".chars().count() + 1);
+    }
 
     #[test]
     fn should_keep_tree_selection_when_shown_tab_changes() {

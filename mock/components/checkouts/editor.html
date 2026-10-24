@@ -8,7 +8,7 @@
            @click="showTab(tab)" @dblclick="keepTab(tab)" @auxclick.prevent="$event.button === 1 && closeTab(tab)" :title="tabTooltip(tab)"
            @mousedown="if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent
            x-effect="focus === tab.key && $nextTick(() => $el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))">
-        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template></span>
+        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template><template x-if="tabAttention(tab) !== null"><span class="attention-dot" :title="tabAttention(tab)"></span></template></span>
         <span class="tabs__title" :class="{ 'tabs__title--temporary': isTemporary(tab) }" x-text="tabTitle(tab)"></span>
         <button class="tab__close" type="button" title="Close" @click.stop="closeTab(tab)">
           <img class="icon" :src="icon('close.svg')" alt="" />

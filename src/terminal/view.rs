@@ -29,6 +29,7 @@ use super::input::{KeyAction, key_action};
 use super::launch::Launch;
 use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
+use super::attention::CallReport;
 use super::progress::Progress;
 use super::session::{GridSize, Session};
 use super::text::{OutputRow, ScreenText, output_rows, output_text, screen_text};
@@ -172,6 +173,11 @@ impl TerminalView {
 
     pub fn progress(&self) -> Progress {
         self.session.progress()
+    }
+
+    /// The program's last call for the user's attention; see [`Session::call`].
+    pub fn call(&self) -> Option<CallReport> {
+        self.session.call()
     }
 
     /// What the program last reported as its working directory, for following it between checkouts.

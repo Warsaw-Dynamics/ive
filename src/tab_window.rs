@@ -1,5 +1,6 @@
 use gpui::{App, Context, Entity, FocusHandle, IntoElement, Render, Subscription, WeakEntity, Window, div, prelude::*, rgb};
 
+use crate::attention::WindowFocus;
 use crate::editor;
 use crate::frame;
 use crate::tabs::TabId;
@@ -30,11 +31,14 @@ impl TabWindow {
         let subscriptions = vec![cx.observe_window_activation(window, |tab_window, window, cx| {
             // the tab chip shows whether this window is active
             cx.notify();
-            let active = window.is_window_active();
-            let _ = tab_window.workspace.update(cx, |workspace, cx| match active {
-                true => workspace.refresh_on_activation(cx),
-                // edits in the tab reach the disk when the user turns to another window
-                false => workspace.flush_edits(cx),
+            let (handle, focus) = (window.window_handle(), crate::workspace::window_focus(window));
+            let _ = tab_window.workspace.update(cx, |workspace, cx| {
+                workspace.window_activated(handle, focus, cx);
+                match focus {
+                    WindowFocus::Active => workspace.refresh_on_activation(cx),
+                    // edits in the tab reach the disk when the user turns to another window
+                    WindowFocus::Inactive => workspace.flush_edits(cx),
+                }
             });
         })];
         let closing = workspace.clone();

@@ -201,7 +201,7 @@ mod tests {
         let entry = Entry { name: "a.rs".to_owned(), path: PathBuf::from("/p/a.rs"), kind: EntryKind::File, run: RunState::None };
         let checkout = CheckoutRef { project: ProjectId::new("p"), path: PathBuf::from("/p") };
         let file = TreeItem::Entry(EntryRow { checkout, entry, expanded: false, warning: None, run_file: false, state: EntryState::Plain, mark: None });
-        let process = TreeItem::Process(ProcessRow { id: ProcessId::for_tests(3), kind: ProcessKind::Terminal, title: "zsh".to_owned(), progress: Progress::None });
+        let process = TreeItem::Process(ProcessRow { id: ProcessId::for_tests(3), kind: ProcessKind::Terminal, title: "zsh".to_owned(), progress: Progress::None, attention: None });
         vec![TreeRow { depth: 1, item: file, target: "/p/a.rs".to_owned() }, TreeRow { depth: 1, item: process, target: "3".to_owned() }]
     }
 

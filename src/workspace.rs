@@ -57,6 +57,7 @@ mod projects;
 mod quit;
 mod restart;
 mod runs;
+mod attention;
 mod saves;
 mod waits;
 mod scratches;
@@ -181,6 +182,11 @@ pub struct Workspace {
     hub_return: Option<hub::HubReturn>,
     _signals: Option<Task<()>>,
     updates: updates::Updates,
+    /// the desktop notifications of waiting processes, sent while IVE is in the background
+    desktop_notices: crate::desktop_notice::DesktopNotices,
+    _notice_clicks: Task<()>,
+    /// which IVE window has the keyboard, as the activation observers last told
+    active_window: crate::attention::ActiveWindow<AnyWindowHandle>,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -246,6 +252,7 @@ impl Workspace {
             cx.observe_window_activation(window, |workspace, window, cx| {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
+                workspace.window_activated(window.window_handle(), window_focus(window), cx);
                 if window.is_window_active() {
                     return workspace.refresh_on_activation(cx);
                 }
@@ -264,11 +271,15 @@ impl Workspace {
             cx.on_app_quit(|workspace, cx| {
                 workspace.flush_state(cx);
                 workspace.apply_update_on_quit(cx);
+                // a notification left behind would show a process IVE no longer has
+                workspace.desktop_notices.withdraw_all();
                 async {}
             }),
         ];
         let (mut watches, events) = tracing::info_span!("start_watches").in_scope(changes::Watches::start);
         let scripts = scripts::ScriptWatch::start(startup.scripts, script::default_dir(), &mut watches.paths, window, cx);
+        let (clicked, notice_clicks) = futures::channel::mpsc::unbounded();
+        let desktop_notices = crate::desktop_notice::DesktopNotices::new(clicked);
         let mut workspace = Self {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
@@ -331,7 +342,11 @@ impl Workspace {
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
             updates: updates::start(window, cx),
+            desktop_notices,
+            _notice_clicks: attention::show_clicked(notice_clicks, window, cx),
+            active_window: crate::attention::ActiveWindow::default(),
         };
+        workspace.active_window.observe(window.window_handle(), window_focus(window));
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
         // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
         // do; a click on its Dock icon shows the window again.
@@ -603,6 +618,7 @@ impl Workspace {
             self.hub_return = None;
         }
         self.sync_watches();
+        self.look_at_shown(cx);
         cx.notify();
     }
 
@@ -765,6 +781,10 @@ impl Workspace {
         // so Escape reaches the workspace, not a focused terminal; the sidebar keeps the keyboard
         window.focus(&cx.global::<theme::SidebarFocus>().0.clone(), cx);
         cx.notify();
+    }
+
+    pub(crate) fn header_menu(&self) -> Option<sidebar_view::HeaderMenu> {
+        self.header_menu
     }
 
     /// A press on a header button, seen before the open menu's press-outside closes it.
@@ -1025,6 +1045,14 @@ impl Launch {
 }
 
 /// Whether the sidebar, or a field in it, has the keyboard in `window`.
+/// Whether `window` has the keyboard, as its activation observer reads it.
+pub(crate) fn window_focus(window: &Window) -> crate::attention::WindowFocus {
+    match window.is_window_active() {
+        true => crate::attention::WindowFocus::Active,
+        false => crate::attention::WindowFocus::Inactive,
+    }
+}
+
 fn sidebar_has_keys(window: &Window, cx: &App) -> bool {
     cx.try_global::<theme::SidebarFocus>().is_some_and(|sidebar| sidebar.0.contains_focused(window, cx))
 }

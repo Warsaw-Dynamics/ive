@@ -214,6 +214,26 @@ As a fallback, this repository also reports it: the root `.claude/settings.json`
 to Claude's terminal itself, because hooks run without a terminal and Claude Code drops `OSC 7` from a hook's
 `terminalSequence`. It needs only bash, and sends nothing when something is missing.
 
+### Processes that call for you
+
+A program in a terminal that finishes, or waits for an answer or a permission, can say so, and IVE shows it until
+you look. Three standard signals count, from a hosted terminal's live output: a notification (`OSC 9;<text>` as
+iTerm2 sends it, `OSC 777;notify;<title>;<body>` as Ghostty and VTE read it, kitty's `OSC 99`), the bell (`BEL`:
+"rang the bell"), and progress reported with `OSC 9;4` ending ("finished"). IVE knows no agent: set yours to send one.
+
+- Claude Code: `claude config set --global preferredNotifChannel iterm2` (or `ghostty`, `kitty`, `terminal_bell`).
+- Codex: in `~/.codex/config.toml`, `[tui]` `notifications = true`.
+
+A call counts only while you do not see the terminal: its tab is not the shown one, or IVE's window is in the
+background. Then its tab and its tree row get an orange dot, the row says what the program said, a folded project,
+worktree or Processes row says `● n waiting`, and a bell left of Settings lists them, longest waiting first (MCP:
+`waiting`, then `waiting:<n>`). The hub (Ctrl+E) lists them first, under Waiting. Showing the tab with the window in
+front clears it. MCP's `list_projects` gives each process's `attention` (`text`, and `since` in Unix seconds).
+
+With no IVE window active, a call also sends a desktop notification (`notify-send` on Linux, a click shows the
+process; `osascript` on macOS). IVE takes them back when it comes to the front. The first time sending one fails, it
+says so in `ive.log`. A call made while IVE was closed is not kept.
+
 ### Drag and drop, copy and paste
 
 Ctrl+click (macOS Cmd+click) picks tree rows one by one, Shift+click from the last one picked; files and folders pick
@@ -818,7 +838,7 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `active_tab` | the shown tab: id, kind, checkout path; nulls when no tab is shown |
 | `script_status` | scripts from `~/.config/ive/<profile>`: whether `init.rn` loaded (`loaded`, `failed`, `no-init`), its errors with file and line, bindings made, the log file and its last 50 lines |
 | `notices` | the failures shown at the bottom right, newest first (time, text), and the path of `ive.log`, which keeps them all |
-| `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; a run also its `folder`, `config` and `live`) |
+| `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; `attention` while it waits for the user; a run also its `folder`, `config` and `live`) |
 | `list_run_configs` | a folder's `.run.toml` read now: each configuration's key, name, kind (`run`, `serve`), command (secrets as `${name}`), live state and process id; or the file's error |
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
 | `list_targets` | what `click` can press now, by name: every tree row and its actions (also rows scrolled out of view), overview sections and cards, Settings, prompt buttons (see the names below) |

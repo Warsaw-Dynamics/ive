@@ -888,6 +888,7 @@ impl Workspace {
             projects: self.hub_projects(),
             recent: recent_items(&self.history, |shown| self.presence(shown, &open_tabs), |path| self.checkout_of_path(path)),
             changed: self.changed_items(),
+            waiting: self.processes.waiting().into_iter().map(|process| self.process_item(process)).collect(),
             running: self.process_items(true),
             processes: self.process_items(false),
             configs: self.config_items(),
@@ -983,22 +984,25 @@ impl Workspace {
 
     fn process_items(&self, live_only: bool) -> Vec<Item> {
         let processes = self.processes.iter().filter(|process| !live_only || process.is_live());
-        let item = |process: &crate::process::Process| {
-            let state = match &process.run {
-                Some(origin) if !process.is_live() => format!("ended · {}", origin.name),
-                Some(_) => "running".to_owned(),
-                None => "live".to_owned(),
-            };
-            let detail = process.checkout.as_ref().map_or_else(String::new, |checkout| self.checkout_label(checkout));
-            Item {
-                detail,
-                state: Some(state),
-                place: process.checkout.clone().map_or(Place::Nowhere, Place::One),
-                project: process.checkout.as_ref().map(|checkout| checkout.project.clone()),
-                ..Item::new(Target::Process(process.id), process.title(), process.icon())
-            }
+        processes.map(|process| self.process_item(process)).collect()
+    }
+
+    /// A process's row: its state, or what it said while it waits for the user.
+    fn process_item(&self, process: &crate::process::Process) -> Item {
+        let state = match (&process.run, process.attention()) {
+            (_, Some(attention)) => format!("● {}", crate::attention::brief(&attention.text)),
+            (Some(origin), None) if !process.is_live() => format!("ended · {}", origin.name),
+            (Some(_), None) => "running".to_owned(),
+            (None, None) => "live".to_owned(),
         };
-        processes.map(item).collect()
+        let detail = process.checkout.as_ref().map_or_else(String::new, |checkout| self.checkout_label(checkout));
+        Item {
+            detail,
+            state: Some(state),
+            place: process.checkout.clone().map_or(Place::Nowhere, Place::One),
+            project: process.checkout.as_ref().map(|checkout| checkout.project.clone()),
+            ..Item::new(Target::Process(process.id), process.title(), process.icon())
+        }
     }
 
     fn back_tab(&self, back: TabId, _cx: &App) -> Option<BackTab> {

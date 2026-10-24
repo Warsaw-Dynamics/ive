@@ -233,6 +233,19 @@ impl Workspace {
         }
     }
 
+    /// A line of the bell's list, or a click on a desktop notification: the main window comes to the front and shows
+    /// process `id`, which stops it waiting.
+    pub fn show_waiting(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_menu(window, cx);
+        // the window handling the event cannot be updated from inside: activate it directly
+        if window.window_handle() == self.main_window {
+            window.activate_window();
+        } else {
+            let _ = self.main_window.update(cx, |_, main, _| main.activate_window());
+        }
+        self.show_process(id, window, cx);
+    }
+
     /// The one way IVE ends a process: hangs up its shell, hosted or not, then removes it. Dropping a hosted process
     /// without this leaves its shell running.
     pub fn end_process(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
@@ -311,6 +324,7 @@ impl Workspace {
         let title = self.processes.get(id).map(|process| process.title()).unwrap_or_default();
         let was_live_run = self.processes.get(id).is_some_and(|process| process.run.is_some() && process.is_live());
         self.processes.close(id);
+        self.withdraw_notice(id);
         if was_live_run {
             self.run_removed(id, window, cx);
         }
@@ -348,6 +362,7 @@ impl Workspace {
         if renamed {
             self.retitle_hub_preview(cx);
         }
+        self.take_call(id, cx);
         match state {
             TerminalState::Running if renamed || progressed => self.tree_changed(cx),
             TerminalState::Running if shown => cx.notify(),

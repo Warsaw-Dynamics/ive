@@ -1,6 +1,28 @@
 <!-- editor.rs render_tab_row: right end of the tab row; there is no title bar. Restart (only with run's
      --restart, not mocked), Settings (20 px icon), then window_controls.rs: 46 px buttons, icons drawn in the text colour (white over the
      red close hover). -->
+  <!-- A proposal (DESIGN.md "Attention"): the processes that called, longest waiting first; only while there are any.
+       A row shows the process with the window in front, which clears it. -->
+  <template x-if="waitingConsoles().length">
+    <div class="anchor" @click.outside="menu === 'waiting' && (menu = null)">
+      <button class="icon-button" type="button" :title="waitingConsoles().length + ' waiting'" @click="toggleMenu('waiting')">
+        <span class="icon-stack icon-stack--20"><img class="icon icon--20" :src="icon('notifications-20.svg')" alt="Waiting" /><span class="attention-dot"></span></span>
+      </button>
+      <div class="menu menu--waiting" x-show="menu === 'waiting'">
+        <div class="menu__section">Waiting, longest first</div>
+        <template x-for="c in waitingConsoles()" :key="c.id">
+          <button class="menu__item menu__item--two" type="button" @click="showWaiting(c)" :title="label(c.co) + ' — ' + c.title">
+            <img class="icon" :src="icon(consoleIcon(c))" alt="" />
+            <span class="menu__grow">
+              <span class="waiting__title" x-text="c.title + ' · ' + label(c.co)"></span>
+              <span class="waiting__text" x-text="c.attention ? c.attention.text : ''"></span>
+            </span>
+            <span class="waiting__age" x-text="c.attention ? age(c.attention.at) : ''"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+  </template>
   <button class="icon-button tabbar__settings" type="button" title="Settings" @click="openSettings()">
     <img class="icon icon--20" :src="icon('settings-20.svg')" alt="Settings" />
   </button>

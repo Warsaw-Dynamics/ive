@@ -521,6 +521,11 @@
         recent: ['paas-ownhq', 'forge-ari'],
         consoles: [],
         consoleCount: 0,
+        // A proposal (DESIGN.md "Attention"): whether IVE's window has the keyboard (the mock bar flips it), and the
+        // desktop notifications IVE sent while it had not, one per process.
+        windowFocused: true,
+        desktopNotices: [],
+        attentionCount: 0,
         tabs: [],
         focus: null,
         // Mock-only: the diff layout last toggled (inline | side); a diff or commit tab opened later starts with it.
@@ -583,14 +588,19 @@
             var tab = self.currentTab();
             if (tab && tab.co) self.lastCheckout[tab.project] = tab.co;
             self.remember(tab);
+            self.seeShown();
           });
+          // back in front, IVE withdraws its desktop notifications: the tab row's bell lists what still waits
+          this.$watch('windowFocused', function (focused) { if (focused) self.desktopNotices = []; self.seeShown(); });
           this.toggled.push('p:forge-installer', 'p:platform', 'p:notes', 'w:atlassian@dev', 'w:atlassian@IDP-30-Reserved-subdomain-returns-404', 'w:atlassian@GEN-811-paas-infrastructure-reference');
-          this.addConsole('atlassian@GEN-817-ive', 'agent', AGENT_LINES.slice());
+          var agent = this.addConsole('atlassian@GEN-817-ive', 'agent', AGENT_LINES.slice());
           this.addConsole('atlassian@GEN-817-ive', 'shell', []);
           // restored tabs (saved_tabs.rs) are never temporary
           this.openProjectPage(this.project('atlassian'));
           this.keepTab(this.currentTab());
           this.openFile('atlassian@GEN-817-ive', '/internal-apps/ive/src/theme.rs');
+          this.raiseAttention(agent, 'notify', 'Claude needs your permission to use Bash');
+          agent.attention.at = new Date(window.IVE_SCALE.today.getTime() - 4 * 60000);
           this.hubInit();
           this.seedHistory();
           this.$nextTick(function () { self.showScreen(location.hash); self.routeInit(); });
@@ -1048,10 +1058,62 @@
         },
         deleteScratch: function (s) { this.scratches = this.scratches.filter(function (x) { return x !== s; }); },
 
+        // ---- attention (a proposal, DESIGN.md "Attention") ----
+        // What a program in a terminal says when it wants the user, from standard sequences only, nothing agent-specific:
+        // 'notify' (OSC 9;<text>, OSC 777;notify;<title>;<body>, OSC 99), 'bell' (BEL), 'done' (OSC 9;4 busy, then 0).
+        // It counts only while the user is not looking: the process's tab not shown, or IVE's window in the background.
+        raiseAttention: function (c, why, text) {
+          if (this.isLookingAt(c)) return;
+          var words = { bell: 'rang the bell', done: 'finished' };
+          // the mock's clock stands still at IVE_SCALE.today; a millisecond more each time keeps the order
+          c.attention = { why: why, text: text || words[why], at: new Date(window.IVE_SCALE.today.getTime() + (++this.attentionCount)) };
+          if (this.windowFocused) return;
+          // one desktop notification per process: a newer one replaces it
+          this.desktopNotices = this.desktopNotices.filter(function (n) { return n.c !== c; }).concat([{ c: c, text: c.attention.text }]);
+        },
+        isLookingAt: function (c) { return this.windowFocused && this.focus === 'c:' + c.id; },
+        clearAttention: function (c) {
+          c.attention = null;
+          this.desktopNotices = this.desktopNotices.filter(function (n) { return n.c !== c; });
+        },
+        // Showing a process's tab with the window in front clears what it raised.
+        seeShown: function () {
+          var c = this.currentTab() && this.currentTab().kind === 'console' ? this.consoleOf(this.currentTab()) : null;
+          if (c !== null && this.windowFocused) this.clearAttention(c);
+        },
+        // Oldest first: the one waiting longest comes up first.
+        waitingConsoles: function () {
+          return this.consoles.filter(function (c) { return c.attention !== null; }).sort(function (a, b) { return a.attention.at - b.attention.at; });
+        },
+        waitingIn: function (ids) { return this.consoles.filter(function (c) { return ids.includes(c.co) && c.attention !== null; }).length; },
+        waitingLabel: function (n) { return n ? '● ' + n + ' waiting' : null; },
+        // What a process tab's program said, or null.
+        tabAttention: function (tab) {
+          var c = tab.kind === 'console' ? this.consoleOf(tab) : null;
+          return c !== null && c.attention !== null ? c.attention.text : null;
+        },
+        // The tab row's bell and a desktop notification: show the process, its window in front.
+        showWaiting: function (c) {
+          this.menu = null;
+          this.windowFocused = true;
+          this.openConsole(c);
+        },
+        // Mock bar: what a program in a terminal would send; IVE's window in front or behind.
+        mockAttention: function (why) {
+          var kinds = { notify: ['agent'], bell: ['shell', 'agent'], done: ['run', 'shell'] };
+          var self = this;
+          var pick = kinds[why].map(function (kind) {
+            return self.consoles.find(function (c) { return c.kind === kind && self.isLookingAt(c) === false; });
+          }).find(function (c) { return c !== undefined; }) || this.consoles[0];
+          if (pick === undefined) return;
+          var texts = ['Claude is waiting for your input', 'Claude needs your permission to use Edit', 'Agent turn complete', 'Approval requested: cargo test'];
+          this.raiseAttention(pick, why, why === 'notify' ? texts[this.consoles.indexOf(pick) % texts.length] : null);
+        },
+
         // ---- processes ----
         // kind: shell (a terminal) | agent (Claude Code, which a terminal turns into while `claude` runs).
         addConsole: function (co, kind, lines) {
-          var c = { id: ++this.consoleCount, co: co, kind: kind, title: '', lines: lines, input: '' };
+          var c = { id: ++this.consoleCount, co: co, kind: kind, title: '', lines: lines, input: '', attention: null };
           c.title = kind === 'agent' ? 'Claude Code' : this.shellTitle(co);
           this.consoles.push(c);
           return c;
@@ -1111,6 +1173,7 @@
           c.input = '';
           this.useWorktree(c.co);
           this.usedConsole(c);
+          this.clearAttention(c);
           if (c.kind === 'agent' && command === '/exit') { c.lines.push('> /exit', ''); this.becomeShell(c); return; }
           if (c.kind === 'agent') {
             if (command) c.lines.push('> ' + command, '● (mock) Claude Code works on it in ' + this.checkout(c.co).path);
@@ -1237,6 +1300,7 @@
           var self = this;
           // a leaf: the empty chevron slot keeps its icon in the files' column
           return { key: 'c:' + c.id, tab: 'c:' + c.id, label: c.title, icon: this.consoleIcon(c), slot: true, click: function () { self.openConsole(c); },
+            attention: c.attention,
             action: c.kind === 'agent'
               ? { icon: 'stop.svg', title: 'Stop', run: function () { self.stop(c); } }
               : { icon: 'close.svg', title: 'Close', run: function () { self.closeConsole(c); } } };
@@ -1260,6 +1324,7 @@
           var content = {
             // empty: no chevron, the slot keeps its icon in line
             processes: { children: processes.length ? processes.map(function (c) { return self.processNode(c); }) : undefined, slot: processes.length === 0,
+              waiting: this.waitingLabel(this.waitingIn([co.id])),
               count: processes.length || null, action: this.newTerminalAction(co),
               tab: 'rcs:' + co.id, click: function () { self.openRunConfigs(co); } },
             uncommitted: co.changes.length ? { children: this.changedFileNodes(co, co.changes, 'work'), count: co.changes.length } : nothing('Nothing uncommitted'),
@@ -1372,6 +1437,7 @@
         worktreeNode: function (co) {
           var self = this;
           return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', open: true,
+            waiting: this.waitingLabel(this.waitingIn([co.id])),
             children: this.checkoutChildren(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };
         },
@@ -1386,6 +1452,7 @@
             project: project, strong: true, open: true, children: body,
             pill: single && project.git ? project.checkouts[0].label : null,
             meta: project.git ? null : 'no git', running: running ? '● ' + running + ' running' : null,
+            waiting: this.waitingLabel(this.waitingIn(project.checkouts.map(function (co) { return co.id; }))),
             action: { icon: 'close.svg', title: 'Close project', run: function () { self.closeProject(project); } } };
         },
 

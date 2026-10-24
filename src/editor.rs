@@ -201,6 +201,22 @@ impl Tab {
         img(icons::embedded(theme.appearance, self.icon_name(workspace))).flex_none().size(theme.sizes.tabs.tab_icon_size.px()).into_any_element()
     }
 
+    /// Its icon, with the attention dot while its process waits for the user; `behind` is the chip's colour.
+    pub fn marked_icon(&self, workspace: &Workspace, theme: Theme, behind: u32) -> AnyElement {
+        match self.attention(workspace) {
+            Some(_) => crate::attention_dot::with_dot(self.icon(workspace, theme), theme, behind).into_any_element(),
+            None => self.icon(workspace, theme),
+        }
+    }
+
+    /// What its process said when it called for the user, until they look.
+    fn attention(&self, workspace: &Workspace) -> Option<String> {
+        match self {
+            Self::Process(id) => workspace.processes().get(*id).and_then(|process| process.attention()).map(|attention| attention.text.clone()),
+            _ => None,
+        }
+    }
+
     fn icon_name(&self, workspace: &Workspace) -> &'static str {
         match self {
             Self::Document(file) => icons::file_icon(&file.file_name()),
@@ -438,9 +454,13 @@ impl Tab {
             }
             Self::Scratch(scratch) => Some(scratch.project_name().to_owned()),
         };
-        match owner {
+        let tooltip = match owner {
             Some(owner) => format!("{owner} — {title}"),
             None => title,
+        };
+        match self.attention(workspace) {
+            Some(said) => format!("{tooltip}\n● {said}"),
+            None => tooltip,
         }
     }
 
@@ -634,6 +654,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .pl(sizes.tools_padding_left.px())
         .children(update)
         .children(restart)
+        .children(crate::waiting_menu::waiting_button(workspace, theme, cx))
         .child(settings_button(theme, cx))
         .children(window_controls(theme, window, cx));
     workspace
@@ -669,7 +690,7 @@ pub fn render_detached(workspace: &Workspace, id: TabId, drag: &WindowDrag, wind
         .rounded(sizes.tab_radius.px())
         .border(sizes.tab_border.px())
         .text_size(sizes.tab_text_size.px())
-        .child(tab.icon(workspace, theme))
+        .child(tab.marked_icon(workspace, theme, theme.sidebar))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(div().max_w(sizes.title_max_width.px()).overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.clone()))
         .children(tab.underline(workspace, theme).map(|colour| underline(colour, theme)))
@@ -819,7 +840,7 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         .border(sizes.tab_border.px())
         .text_size(sizes.tab_text_size.px())
         .cursor_pointer()
-        .child(tab.icon(workspace, theme))
+        .child(tab.marked_icon(workspace, theme, if shown { theme.tab_active } else { theme.sidebar }))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(title)
         .child(close)

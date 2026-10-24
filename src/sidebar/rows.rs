@@ -88,6 +88,8 @@ pub struct CheckoutRow {
     pub expanded: bool,
     /// the main checkout, which cannot be hidden
     pub is_main: bool,
+    /// its processes that wait for the user, while it is folded; 0 while open
+    pub waiting: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,6 +98,8 @@ pub struct ProcessRow {
     pub kind: ProcessKind,
     pub title: String,
     pub progress: Progress,
+    /// what it said when it called for the user, until they look
+    pub attention: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,6 +146,8 @@ pub struct ProjectRow {
     pub expanded: bool,
     pub tag: Option<ProjectTag>,
     pub running: usize,
+    /// its processes that wait for the user, while it is folded; 0 while open
+    pub waiting: usize,
     /// the last refresh failed with this; shown as a warning icon
     pub error: Option<String>,
 }
@@ -267,7 +273,9 @@ fn push_checkouts<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, tree: &Sources
         let checkout_ref = project.checkout_ref(checkout);
         let expanded = open.is_checkout_expanded(&checkout.path);
         let target = checkout_target(open, checkout);
-        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, is_main: checkout.is_main });
+        // an open checkout's rows show its waiting processes
+        let waiting = if expanded { 0 } else { tree.processes.waiting_in(&[checkout.path.as_path()]) };
+        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, is_main: checkout.is_main, waiting });
         rows.push(TreeRow { depth: 1, item, target });
         if expanded {
             push_checkout_content(rows, open, &checkout_ref, 2, tree);
@@ -303,7 +311,12 @@ fn push_checkout_content<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, checkou
         let nothing = git.nothing(kind);
         // an empty Processes has no chevron, as an empty git folder; its + still starts a terminal
         let empty = nothing.is_some() || (kind == FolderKind::Processes && count == Some(0));
-        let item = TreeItem::Folder(FolderRow { checkout: checkout.clone(), kind, count, expanded, empty, nothing });
+        let waiting = match (kind, expanded) {
+            (FolderKind::Processes, false) => tree.processes.waiting_in(&[checkout.path.as_path()]),
+            (FolderKind::Processes, true) => waiting_past_page(open, checkout, tree),
+            _ => 0,
+        };
+        let item = TreeItem::Folder(FolderRow { checkout: checkout.clone(), kind, count, expanded, empty, nothing, waiting });
         rows.push(TreeRow { depth, item, target: format!("{target}/{}", kind.name()) });
         match kind {
             _ if !expanded || empty => {}
@@ -314,6 +327,13 @@ fn push_checkout_content<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, checkou
     }
 }
 
+/// The waiting terminals and Claude Code sessions an open Processes keeps under Show more.
+fn waiting_past_page<V>(open: &OpenProject, checkout: &CheckoutRef, tree: &Sources<V>) -> usize {
+    let running = tree.processes.by_checkout(&checkout.path);
+    let shown = open.paging(&PagedList::Processes(checkout.path.clone())).visible(running.len());
+    running[shown..].iter().filter(|process| process.attention().is_some()).count()
+}
+
 /// Terminals and Claude Code, ten at a time, then every run.
 fn push_processes<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, checkout: &CheckoutRef, depth: usize, tree: &Sources<V>) {
     let running = tree.processes.by_checkout(&checkout.path);
@@ -322,7 +342,8 @@ fn push_processes<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, checkout: &Che
     for process in &running[..shown] {
         // Stop removes the row once the process is gone; until then it says so
         let title = if tree.processes.is_closing(process.id) { format!("{} · stopping…", process.title()) } else { process.title() };
-        let item = TreeItem::Process(ProcessRow { id: process.id, kind: process.kind, title, progress: process.progress() });
+        let attention = process.attention().map(|attention| attention.text.clone());
+        let item = TreeItem::Process(ProcessRow { id: process.id, kind: process.kind, title, progress: process.progress(), attention });
         rows.push(TreeRow { depth, item, target: process.id.value().to_string() });
     }
     push_more(rows, open, list, running.len(), depth);
@@ -405,9 +426,11 @@ fn project_row<V>(open: &OpenProject, processes: &Processes<V>) -> ProjectRow {
         expanded: open.expanded,
         tag,
         running: processes.in_project(&project.id).iter().filter(|process| process.is_live()).count(),
+        waiting: if open.expanded { 0 } else { processes.waiting_in(&project.checkouts.iter().map(|checkout| checkout.path.as_path()).collect::<Vec<_>>()) },
         error: project.refresh_error.clone(),
     }
 }
+
 
 /// Up to two letters for a project badge: the first letter of the first two words, as IntelliJ does.
 pub fn initials(name: &str) -> String {
@@ -523,18 +546,25 @@ mod tests {
         outline_rows(&build(projects, processes, &FakeRuns::default(), &no_look()))
     }
 
+    fn waiting(count: usize) -> String {
+        if count == 0 { String::new() } else { format!(" waiting {count}") }
+    }
+
     fn outline_rows(rows: &[TreeRow]) -> Vec<String> {
         rows.iter()
             .map(|row| {
                 let text = match &row.item {
-                    TreeItem::Project(project) => format!("{} {:?} {}", project.name, project.tag, project.running),
-                    TreeItem::Checkout(checkout) => format!("checkout {}", checkout.label),
+                    TreeItem::Project(project) => format!("{} {:?} {}{}", project.name, project.tag, project.running, waiting(project.waiting)),
+                    TreeItem::Checkout(checkout) => format!("checkout {}{}", checkout.label, waiting(checkout.waiting)),
                     TreeItem::Folder(folder) => {
                         let count = folder.count.map_or(String::new(), |count| format!(" {count}"));
                         let chevron = if folder.empty { " (no chevron)" } else { "" };
-                        format!("{}{count}{chevron}", folder.kind.title())
+                        format!("{}{count}{chevron}{}", folder.kind.title(), waiting(folder.waiting))
                     }
-                    TreeItem::Process(process) => format!("process {}", process.title),
+                    TreeItem::Process(process) => {
+                        let said = process.attention.as_ref().map_or(String::new(), |text| format!(" ● {text}"));
+                        format!("process {}{said}", process.title)
+                    }
                     TreeItem::LiveRun(run) => format!("run {} {}", run.name, run.label),
                     TreeItem::Entry(entry) => entry.entry.name.clone(),
                     TreeItem::Change(change) => {
@@ -693,6 +723,64 @@ mod tests {
             rows,
             ["atlassian None 2", "  checkout dev", "  checkout wt00", "    Processes 2", "      process Terminal", "      process ✳ Claude Code", "    Files"]
         );
+    }
+
+    #[test]
+    fn should_show_what_a_process_said() {
+        // given
+        let mut project = git_project("atlassian", Path::new("/atlassian"), 1);
+        project.toggle();
+        project.toggle_checkout(Path::new("/atlassian/wt00"));
+        let mut processes: Processes<()> = Processes::default();
+        let worktree = Some(CheckoutRef { project: project.project.id.clone(), path: PathBuf::from("/atlassian/wt00") });
+        let claude = processes.start(worktree, |_| Ok::<_, ()>(())).unwrap();
+        processes.raise(claude, "Claude needs you".to_owned(), std::time::SystemTime::UNIX_EPOCH);
+
+        // when
+        let rows = outline(&[project], &processes);
+
+        // then
+        assert_eq!(rows[3..5], ["    Processes 1", "      process Terminal ● Claude needs you"]);
+    }
+
+    #[test]
+    fn should_count_waiting_on_folded_rows_only() {
+        // given
+        let project = git_project("atlassian", Path::new("/atlassian"), 1);
+        let mut processes: Processes<()> = Processes::default();
+        let worktree = Some(CheckoutRef { project: project.project.id.clone(), path: PathBuf::from("/atlassian/wt00") });
+        let waiting = processes.start(worktree.clone(), |_| Ok::<_, ()>(())).unwrap();
+        processes.start(worktree, |_| Ok::<_, ()>(())).unwrap();
+        processes.raise(waiting, "finished".to_owned(), std::time::SystemTime::UNIX_EPOCH);
+        let mut expanded = git_project("atlassian", Path::new("/atlassian"), 1);
+        expanded.toggle();
+
+        // when
+        let folded = outline(std::slice::from_ref(&project), &processes);
+        let open = outline(&[expanded], &processes);
+
+        // then
+        assert_eq!(folded, ["atlassian None 2 waiting 1"]);
+        assert_eq!(open, ["atlassian None 2", "  checkout dev", "  checkout wt00 waiting 1"]);
+    }
+
+    #[test]
+    fn should_count_waiting_hidden_under_more() {
+        // given
+        let mut project = git_project("atlassian", Path::new("/atlassian"), 1);
+        project.toggle();
+        project.toggle_checkout(Path::new("/atlassian/wt00"));
+        let mut processes: Processes<()> = Processes::default();
+        let worktree = Some(CheckoutRef { project: project.project.id.clone(), path: PathBuf::from("/atlassian/wt00") });
+        let ids: Vec<_> = (0..12).map(|_| processes.start(worktree.clone(), |_| Ok::<_, ()>(())).unwrap()).collect();
+        processes.raise(ids[11], "finished".to_owned(), std::time::SystemTime::UNIX_EPOCH);
+        processes.raise(ids[0], "rang the bell".to_owned(), std::time::SystemTime::UNIX_EPOCH);
+
+        // when
+        let rows = outline(&[project], &processes);
+
+        // then
+        assert_eq!(rows[3], "    Processes 12 waiting 1");
     }
 
     #[test]
