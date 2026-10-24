@@ -25,6 +25,8 @@ pub fn default_log_path() -> PathBuf {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notice {
+    /// counts up from 0 in each run, so two alike notices stay apart
+    pub number: u64,
     /// when it happened, local time
     pub time: String,
     pub text: String,
@@ -33,6 +35,7 @@ pub struct Notice {
 /// The open notices, oldest first, and the log every notice is also written to.
 pub struct Notices {
     list: Vec<Notice>,
+    added: u64,
     log: ScriptLog,
 }
 
@@ -40,13 +43,14 @@ impl Global for Notices {}
 
 impl Notices {
     pub fn new(log: ScriptLog) -> Self {
-        Self { list: Vec::new(), log }
+        Self { list: Vec::new(), added: 0, log }
     }
 
     /// Keeps `text` as a notice, dropping the oldest past five, and writes it to the log.
     pub fn add(&mut self, text: String) {
         self.log.append(&text);
-        self.list.push(Notice { time: age::date_time(Clock::system().when()), text });
+        self.list.push(Notice { number: self.added, time: age::date_time(Clock::system().when()), text });
+        self.added += 1;
         let excess = self.list.len().saturating_sub(MAX_NOTICES);
         self.list.drain(..excess);
     }
@@ -127,7 +131,7 @@ fn render_notice(index: usize, notice: Notice, theme: Theme, cx: &App) -> Div {
             window.refresh();
         }, cx));
     let head = div().flex().items_center().gap_3().text_xs().child(div().flex_1().text_color(rgb(theme.muted)).child(notice.time.clone())).child(copy).child(close);
-    let text = selectable(format!("notice-{}-{}", notice.time, notice.text.len()), notice.text, cx).text_color(rgb(theme.error));
+    let text = selectable(format!("notice-{}", notice.number), notice.text, cx).text_color(rgb(theme.error));
     div()
         .flex()
         .flex_col()
@@ -237,6 +241,21 @@ mod tests {
         let texts: Vec<&str> = described["notices"].as_array().unwrap().iter().map(|notice| notice["text"].as_str().unwrap()).collect();
         assert_eq!(texts, ["second", "first"]);
         assert!(described["log_file"].as_str().unwrap().ends_with("ive.log"));
+    }
+
+    #[test]
+    fn should_number_each_notice() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let mut notices = notices_in(dir.path());
+
+        // when
+        notices.add("same".to_owned());
+        notices.add("same".to_owned());
+
+        // then
+        let numbers: Vec<u64> = notices.newest_first().map(|notice| notice.number).collect();
+        assert_eq!(numbers, [1, 0]);
     }
 
     #[test]

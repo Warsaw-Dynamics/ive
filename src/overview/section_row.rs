@@ -63,7 +63,7 @@ pub fn section_row(sections: &[(SharedString, bool, Listener)], location: Locati
         .font_family(theme::mono_font(cx))
         .text_size(sizes.location_text_size.px())
         .text_color(rgb(theme.muted))
-        .child(selectable("overview-location-text", location.text.clone(), cx))
+        .child(selectable(format!("overview-location-{}", location.full), location.text.clone(), cx))
         .tooltip(tooltip::text_tooltip(location.full.clone()));
     div()
         .flex()

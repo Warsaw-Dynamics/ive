@@ -101,17 +101,17 @@ pub fn render_values_tab(id: TabId, tab: &RunValuesTab, cx: &mut Context<Workspa
     let fields: Vec<Div> = tab.fields.iter().map(|field| {
         let kept = if field.var.secret { "stored in the OS wallet; vars.toml keeps a reference" } else { "saved to vars.toml" };
         let label = if field.var.description.is_empty() { field.var.name.clone() } else { field.var.description.clone() };
-        let name = selectable(format!("run-values-var-{}", field.var.name), field.var.name.clone(), cx);
+        let name = selectable(format!("run-values-{}-var-{}", id.value(), field.var.name), field.var.name.clone(), cx);
         div()
             .flex()
             .flex_col()
             .gap_1()
             .child(div().flex().gap_2().child(label).child(name.font_family("JetBrains Mono").text_color(rgb(theme.muted))))
             .child(field.input.clone())
-            .child(div().text_xs().text_color(rgb(theme.muted)).child(selectable(format!("run-values-kept-{}", field.var.name), kept, cx)))
+            .child(div().text_xs().text_color(rgb(theme.muted)).child(selectable(format!("run-values-{}-kept-{}", id.value(), field.var.name), kept, cx)))
     }).collect();
-    let source = selectable("run-values-source", source, cx);
-    let error = tab.error.clone().map(|error| selectable("run-values-error", error, cx));
+    let source = selectable(format!("run-values-{}-source", id.value()), source, cx);
+    let error = tab.error.clone().map(|error| selectable(format!("run-values-{}-error", id.value()), error, cx));
     let request = tab.request.clone();
     let run = target(format!("run-values:{id}", id = id.value()), cx.listener(move |workspace, _event, window, cx| {
         workspace.submit_run_values(&request, window, cx);
