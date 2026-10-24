@@ -171,6 +171,14 @@ fn distinct<T: Eq + std::hash::Hash>(items: impl Iterator<Item = T>) -> usize {
     items.collect::<HashSet<T>>().len()
 }
 
+/// The gap of the row `order` (0 before the first tab, as `Tabs::move_tab` counts them before the move) that puts
+/// `moved` on `beside`'s side of `beside`'s tab; `None` when either is not in the row.
+pub fn move_gap(order: &[TabId], moved: TabId, beside: (TabId, Side)) -> Option<usize> {
+    order.iter().position(|id| *id == moved)?;
+    let at = order.iter().position(|id| *id == beside.0)?;
+    Some(if beside.1 == Side::After { at + 1 } else { at })
+}
+
 /// `items` with `moved` taken out and put on `beside`'s side of `beside`'s item.
 pub fn placed<T: PartialEq + Clone>(items: &[T], moved: &T, beside: (&T, Side)) -> Vec<T> {
     let mut rest: Vec<T> = items.iter().filter(|item| *item != moved).cloned().collect();
@@ -485,6 +493,25 @@ mod tests {
 
         // then
         assert_eq!(items, [RowItem::Head(0), RowItem::Tab(0, TabId::for_tests(2)), RowItem::Head(1), RowItem::Tab(1, TabId::for_tests(3))]);
+    }
+
+    #[test]
+    fn should_give_the_gap_that_puts_a_tab_beside_another() {
+        // given
+        let moves = |moved: usize, beside: (usize, Side)| {
+            let mut tabs = crate::tabs::Tabs::default();
+            let ids = [tabs.open("a"), tabs.open("b"), tabs.open("c")];
+            let order: Vec<TabId> = tabs.row().map(|(id, _)| id).collect();
+            let gap = move_gap(&order, ids[moved], (ids[beside.0], beside.1)).unwrap();
+            tabs.move_tab(ids[moved], gap);
+            tabs.row().map(|(_, title)| *title).collect::<Vec<_>>()
+        };
+
+        // when
+        let rows = [moves(0, (2, Side::After)), moves(2, (0, Side::Before)), moves(0, (1, Side::Before)), moves(2, (1, Side::After))];
+
+        // then
+        assert_eq!(rows, [["b", "c", "a"], ["c", "a", "b"], ["a", "b", "c"], ["a", "b", "c"]]);
     }
 
     #[test]

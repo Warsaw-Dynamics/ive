@@ -64,6 +64,7 @@ mod path_actions;
 mod send_paths;
 mod git_actions;
 mod tab_grouping;
+pub use tab_grouping::MenuDrop;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -164,6 +165,9 @@ pub struct Workspace {
     hub_index: HubIndex,
     /// each project's tab shown last: the one its folded group of tabs keeps out
     group_current: std::collections::HashMap<ProjectId, TabId>,
+    /// the open project group menu, and where a drag in it would land
+    group_menu: Option<crate::tab_group_menu::GroupMenu>,
+    group_menu_drop: Option<tab_grouping::MenuDrop>,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
     /// the projects `corpus` was built from, in its order
@@ -318,6 +322,8 @@ impl Workspace {
             terminal_use: Default::default(),
             hub_index: HubIndex::default(),
             group_current: std::collections::HashMap::new(),
+            group_menu: None,
+            group_menu_drop: None,
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
             corpus_build: hub_index::CorpusBuild::default(),
@@ -787,6 +793,7 @@ impl Workspace {
             return;
         }
         if event.keystroke.key == "escape" {
+            self.close_group_menu(cx);
             self.close_menu(window, cx);
         }
     }

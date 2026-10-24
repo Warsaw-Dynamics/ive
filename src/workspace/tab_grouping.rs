@@ -4,15 +4,24 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use gpui::Context;
+use gpui::{Context, Pixels, Point};
 
 use super::Workspace;
 use crate::editor::Tab;
 use crate::open_project::TabsFolded;
 use crate::project::ProjectId;
 use crate::saved_tabs::SavedTab;
+use crate::tab_group_menu::GroupMenu;
 use crate::tab_groups::{self, GroupState, Side, TabFacts, TabGroup};
 use crate::tabs::TabId;
+
+/// Where a drag in a project group's menu would land: a tab beside another of its worktree, a worktree beside
+/// another of the project.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MenuDrop {
+    Tab { moved: TabId, beside: TabId, side: Side },
+    Worktree { moved: PathBuf, beside: PathBuf, side: Side },
+}
 
 /// A worktree dragged in a project group's menu, to `beside`'s side of another (both checkout paths).
 pub struct WorktreeMove<'a> {
@@ -49,6 +58,61 @@ impl Workspace {
         tab_groups::groups(facts, &GroupState { folded: &folded, order: &order, current: &self.group_current })
     }
 
+    /// The open group menu.
+    pub fn group_menu(&self) -> Option<&GroupMenu> {
+        self.group_menu.as_ref()
+    }
+
+    /// Opens project `project`'s group menu at `at`, under its head.
+    pub fn open_group_menu(&mut self, project: ProjectId, at: Point<Pixels>, cx: &mut Context<Self>) {
+        self.group_menu = Some(GroupMenu { project, at });
+        self.group_menu_drop = None;
+        cx.notify();
+    }
+
+    pub fn close_group_menu(&mut self, cx: &mut Context<Self>) {
+        if self.group_menu.take().is_some() {
+            self.group_menu_drop = None;
+            cx.notify();
+        }
+    }
+
+    /// Where a drag in the group menu would land, for the menu to mark.
+    pub fn group_menu_drop(&self) -> Option<&MenuDrop> {
+        self.group_menu_drop.as_ref()
+    }
+
+    pub fn hover_group_menu_drop(&mut self, drop: Option<MenuDrop>, cx: &mut Context<Self>) {
+        if self.group_menu_drop != drop {
+            self.group_menu_drop = drop;
+            cx.notify();
+        }
+    }
+
+    /// A drag in the group menu ended on a row: what it marked moves; the menu stays open.
+    pub fn drop_in_group_menu(&mut self, cx: &mut Context<Self>) {
+        let project = self.group_menu.as_ref().map(|menu| menu.project.clone());
+        match (self.group_menu_drop.take(), project) {
+            (Some(MenuDrop::Tab { moved, beside, side }), _) => self.move_tab_beside(moved, (beside, side), cx),
+            (Some(MenuDrop::Worktree { moved, beside, side }), Some(project)) => {
+                self.move_worktree_in_group(WorktreeMove { project: &project, moved: &moved, beside: (&beside, side) }, cx);
+            }
+            _ => cx.notify(),
+        }
+    }
+
+    /// Project `id`'s worktree order in its group, as dragged.
+    pub fn worktree_order(&self, id: &ProjectId) -> Vec<PathBuf> {
+        self.open_project(id).map(|open| open.worktree_order().to_vec()).unwrap_or_default()
+    }
+
+    /// A tab's module's favicon, for the group menu (whose head names the project); none outside a module.
+    pub fn tab_module_badge(&self, tab: &Tab) -> Option<PathBuf> {
+        let checkout = tab.checkout(self)?;
+        let owner = self.owner_of(&checkout, tab.owner_path(self).as_deref());
+        owner.module.and(owner.icon)
+    }
+
     /// The favicon a tab's badge shows: its module's, else its project's.
     pub fn tab_badge(&self, tab: &Tab) -> Option<PathBuf> {
         match tab.checkout(self) {
@@ -82,11 +146,8 @@ impl Workspace {
     /// Moves tab `moved` to `beside`'s side of another tab in the row.
     pub fn move_tab_beside(&mut self, moved: TabId, beside: (TabId, Side), cx: &mut Context<Self>) {
         let order: Vec<TabId> = self.tabs.row().map(|(id, _)| id).collect();
-        let placed = tab_groups::placed(&order, &moved, (&beside.0, beside.1));
-        if let Some(gap) = placed.iter().position(|id| *id == moved) {
-            // move_tab counts gaps in the row before the move: past the tab's own place, one more
-            let from = order.iter().position(|id| *id == moved).unwrap_or(gap);
-            self.tabs.move_tab(moved, if gap > from { gap + 1 } else { gap });
+        if let Some(gap) = tab_groups::move_gap(&order, moved, beside) {
+            self.tabs.move_tab(moved, gap);
             cx.notify();
         }
     }

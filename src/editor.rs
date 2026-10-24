@@ -646,6 +646,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .child(strip)
         .child(tools)
         .children(crate::menu_view::render_menu(workspace, theme, window, cx))
+        .children(crate::tab_group_menu::render(workspace, theme, window, cx))
 }
 
 /// A detached tab's window: a row with the tab, Move to main window and the window buttons, then the tab. `None`
@@ -787,7 +788,26 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
     };
     let count = group.folded.then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
     let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);
-    let named = div().id(SharedString::from(format!("tab-group-name-{}", project.as_str()))).flex().items_center().gap(px(5.)).h(px(22.)).pl(px(3.)).pr(px(6.)).rounded(px(6.)).child(icon).child(label).children(count);
+    let opened = project.clone();
+    let row_height = sizes.row_height.px();
+    let open = cx.listener(move |workspace, event: &gpui::ClickEvent, _window, cx| {
+        workspace.open_group_menu(opened.clone(), gpui::point(event.position().x, row_height), cx);
+    });
+    let named = div()
+        .id(SharedString::from(format!("tab-group-name-{}", project.as_str())))
+        .flex()
+        .items_center()
+        .gap(px(5.))
+        .h(px(22.))
+        .pl(px(3.))
+        .pr(px(6.))
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)).text_color(rgb(theme.text)))
+        .child(icon)
+        .child(label)
+        .children(count)
+        .on_click(target(format!("tab-group-menu:{}", project.as_str()), open, cx));
     Some(
         div()
             .id(SharedString::from(format!("tab-group-{}", project.as_str())))
