@@ -56,8 +56,8 @@ python3 - "$work_dir/html.svg" <<'PY'
 from pathlib import Path
 import sys
 svg = Path(sys.argv[1]).read_text()
-if "one" not in svg or "two" not in svg:
-    raise SystemExit("Expat table SVG probe lacks cell text")
+if "Order" not in svg or "42" not in svg:
+    raise SystemExit("Expat table SVG probe lacks Order or 42 cell text")
 PY
 "$prefix/bin/dot" -Tpng:gd:gd -o "$work_dir/chain-gd.png" "$script_dir/fixtures/chain.dot"
 python3 - "$work_dir/chain-gd.png" <<'PY'
