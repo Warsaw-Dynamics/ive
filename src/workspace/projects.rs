@@ -167,9 +167,11 @@ impl Workspace {
     /// (the later-started scan wins), a new one is added at the end.
     fn place_opened(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
         let placed = self.place_scanned(new, folder, cx);
-        // a project opened shows, though the picker left it out
+        // a project opened shows, though the picker left it out; its files are read now, for its favicons and the
+        // hub, not when a later refresh comes
         if let Ok(id) = &placed {
             self.hidden_projects.remove(id);
+            self.index_project(id, cx);
         }
         placed
     }

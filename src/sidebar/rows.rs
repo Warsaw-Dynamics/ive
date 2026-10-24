@@ -818,6 +818,8 @@ mod tests {
             last_checkout: None,
             folders: Vec::new(),
             hidden_worktrees: Vec::new(),
+            tabs_folded: false,
+            worktree_order: Vec::new(),
         };
         let mut project = OpenProject::restored(&saved, ProjectId::new("gone"));
         let gone = std::io::Error::from(std::io::ErrorKind::NotFound);

@@ -87,7 +87,7 @@ Only projects, worktrees, processes and files:
 - Icon by kind (file type, overview, console kind, diff, commit, table, config). Scratches show
   their file-type icon with IntelliJ's scratch badge (clock) overlaid.
 - No branch badge on tabs; the tooltip says `<branch or project> — <title>`.
-- Diff tabs are underlined (2 px) in their worktree's colour.
+- Where a tab belongs: project groups, worktree tints and module badges, below (in the app since 2026-10-24).
 - Tab kinds: file, diff, commit, scratch, git log, process (terminal, Claude Code, run), project overview,
   run values, settings.
 - A new tab opens right of the shown one.
@@ -549,6 +549,35 @@ looks. IVE reads only standard terminal sequences and knows no agent; each agent
 - Mock: the `mock: attention` bar sends a notification, a bell or a progress end to a process that is not shown,
   and sends IVE to the background (the window dims; the dark panels at the top right stand in for the OS's).
 
+## Where a tab belongs (in the app since 2026-10-24)
+
+The mock's dock-icon menu left of Settings shows it as **Chosen** (`ident.js`); its other variants are the ones tried.
+
+- **Favicons.** A project's `.favicon.<ext>` at the root of its main checkout is its icon (`svg`, then `png`, `jpg`,
+  `jpeg`, `ico` when there are several). Any folder with a `.favicon.*` of its own is a module of a monorepo; a path
+  belongs to the deepest module above it. Read with the hub's index of each checkout.
+- **Project groups.** With tabs of more than one project open, the tab row groups them by project, in the order each
+  project's first tab shows; a group's head is a chevron, the project's favicon (or initials) and name. One project
+  open: no groups. A project's own tabs (scratches, Git log, commits, its overview) are in its group; tabs of no
+  project (Settings, the hub) in one group without a head.
+- **Worktree runs.** In a group a worktree's tabs sit together: the main checkout's first, then the worktrees in the
+  order dragged in the group's menu, else as each first shows; the project's own tabs last.
+- **Tint.** A tab of a worktree other than the main checkout has its worktree's colour as background (12 %, 18 %
+  hovered; the shown one 22 % over its fill, outline 45 %), while the row spans more than one worktree. The main
+  checkout never has a colour. Replaces the diff tabs' underline.
+- **Fold.** The chevron folds a group to its head, its tab count and its current tab (the one shown last), which shows
+  its worktree's name after its title (muted for the main checkout; none in a project without worktrees). Saved per
+  project in `state.toml`.
+- **Group menu.** A click on the head's name: the group's tabs under a head per worktree (branch icon, name, a rail in
+  its colour), the project's own under **Whole project**, a tick on the current tab. A click shows a tab; a tab drags
+  within its worktree, a worktree's head among the others (saved per project); Escape or a press outside closes it.
+- **Badge.** A module's favicon, 10 px on the lower right of a tab's icon, ringed in the tab's background, while the
+  row has more than one owner; under a head only a module's (the head names the project), without heads the project's
+  too.
+- **Tree.** A project row shows its favicon in place of its initials (the picker too), a module folder its favicon in
+  place of the folder icon (its run badge goes), a worktree row a 2 px rail in its colour left of its chevron.
+- **Hub.** As before, plus the badge on each row's icon: its module's favicon, else its project's.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon
@@ -563,12 +592,14 @@ run-configuration folder's right end: the run badge on its icon instead · the m
 overview, and as a prompt over the window: a values tab instead · `@processes` under `@run` and run rows apart from
 their configurations (definitions with their command, runs with their status, one step left): one row per
 configuration carrying its run instead · `@hidden` chip variants (the same chip, an outline, text only) · Settings'
-Editor › Color Scheme pages (read-only once colours moved to `init.rn`).
+Editor › Color Scheme pages (read-only once colours moved to `init.rn`) · where a tab belongs, tried in `ident.js`: a
+favicon beside the file icon (two icons in a tab), worktree dots, an underline on every worktree tab, groups per
+worktree, worktree labels on same-named tabs only, project grouping in the hub.
 
 ## Open points
 
-- Worktree colour still appears on worktree cards (left stripe), the overview's section underline and the
-  diff tabs' underline.
+- Worktree colour still appears on worktree cards (left stripe) and the overview's section underline.
+- A dark favicon is hard to see as a badge on the dark theme.
 - "● N running" remains on the project tree row and worktree cards.
 - Databases: IntelliJ's toolbar and "1 of N" database counts are not mocked.
 - Attention: a key to show the process waiting longest; a Settings switch for desktop notifications; whether

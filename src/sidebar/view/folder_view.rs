@@ -111,10 +111,11 @@ pub(super) fn change_folder_row(line: RowLine, row: &ChangeFolderRow, cx: &mut C
         workspace.toggle_change_folder(&checkout, source.clone(), path.clone(), cx);
     }), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("change-folder"), checkout: Some(row.checkout.path.clone()), activate: toggle.clone(), keep: None, toggle: Some(toggle.clone()) };
+    let line_mark = line.mark.clone();
     let line = line
         .div
         .child(chevron(row.expanded, theme, shared(&toggle)))
-        .child(icon(theme, icons::FOLDER))
+        .child(super::folder_mark(icons::FOLDER, &line_mark, theme))
         .child(row.label.clone())
         .children((row.files > 1).then(|| count_badge(row.files, theme)))
         .tooltip(tooltip::text_tooltip(row.path.clone()));

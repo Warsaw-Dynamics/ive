@@ -49,11 +49,15 @@
           <template x-if="section.items.length === 0"><div class="hub__empty muted" x-text="section.empty"></div></template>
           <!-- the key holds the position: Alpine reuses a row by key and would keep its old highlight when rows reorder -->
           <template x-for="item in section.items" :key="item.id + '#' + item.index">
+            <div>
+            <!-- ident.js groups (a proposal): a head over the rows of each project or module -->
+            <template x-if="item.groupHead"><div class="hub__owner-head"><template x-if="item.groupHead.owner"><span class="owner" :title="item.groupHead.owner.module ? item.groupHead.owner.project + ' › ' + item.groupHead.owner.module : item.groupHead.owner.project"><template x-if="item.groupHead.owner.icon"><img class="owner__icon" :src="item.groupHead.owner.icon" alt="" /></template><template x-if="item.groupHead.owner.icon === null"><span class="owner__initials" x-text="item.groupHead.owner.initials"></span></template></span></template><span x-text="item.groupHead.label"></span></div></template>
             <div class="hub__row" :style="item.indent ? { paddingLeft: '24px' } : {}" :class="{ 'hub__row--on': item.index === Math.min(hubSelectedIndex(), v.items.length - 1), 'hub__row--closed': item.state === 'closed', 'hub__row--weak': item.weak }"
                  @click="hubSelect(item.index); hubOpen(item, $event)"
                  x-effect="item.index === hubSelectedIndex() && $el.scrollIntoView({ block: 'nearest' })">
               <span class="hub__num" x-text="item.index < 9 ? item.index + 1 : ''"></span>
-              <span class="icon-stack"><img class="icon" :src="icon(item.icon)" alt="" /><template x-if="item.badge"><img class="icon icon-stack__badge" :src="icon(item.badge)" alt="" /></template></span>
+              <span class="hub__owner" x-show="ident.owner === 'icon' && ident.layout === 'flat'" x-data="{ get owner() { return hubOwnerShown(item, v.items); } }"><template x-if="owner"><span class="owner" :title="owner.module ? owner.project + ' › ' + owner.module : owner.project"><template x-if="owner.icon"><img class="owner__icon" :src="owner.icon" alt="" /></template><template x-if="owner.icon === null"><span class="owner__initials" x-text="owner.initials"></span></template></span></template></span>
+              <span class="icon-stack" x-data="{ get owner() { return hubOwnerBadge(item, v.items); } }"><img class="icon" :src="icon(item.icon)" alt="" /><template x-if="item.badge"><img class="icon icon-stack__badge" :src="icon(item.badge)" alt="" /></template><template x-if="owner"><img class="icon-stack__owner" :src="owner.icon" alt="" /></template></span>
               <template x-if="item.mark"><span class="mark" :class="'mark--' + item.mark" x-text="item.mark"></span></template>
               <span class="hub__title"><template x-for="(s, i) in item.titleSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
               <span class="hub__detail"><template x-for="(s, i) in item.detailSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
@@ -64,13 +68,17 @@
                 <span class="hub__state" :class="{ 'hub__state--live': item.state === 'running' || item.state.startsWith('running'), 'hub__state--attention': item.attention }" x-text="item.state === 'open' ? '● open' : item.state"></span>
               </template>
               <!-- in one worktree: marked with it; in several: how many, and Enter asks -->
-              <template x-if="item.co">
-                <span class="hub__co" :style="{ '--co': checkout(item.co).colour }" x-text="label(item.co)"></span>
+              <template x-if="item.co && hubCoCue(item).mode !== 'none'">
+                <span class="hub__co" :class="'hub__co--' + hubCoCue(item).mode" :style="hubCoCue(item).colour ? { '--co': hubCoCue(item).colour } : {}">
+                  <template x-if="hubCoCue(item).mode === 'dot' && hubCoCue(item).colour"><span class="tabs__dot" :style="{ background: hubCoCue(item).colour }"></span></template>
+                  <span x-text="label(item.co)"></span>
+                </span>
               </template>
               <template x-if="item.co === null && item.choices && item.choices.length > 1">
                 <span class="hub__multi" :title="'In ' + item.choices.length + ' worktrees: Enter asks which'" x-text="item.choices.length + ' worktrees'"></span>
               </template>
               <span class="hub__age" x-text="item.age"></span>
+            </div>
             </div>
           </template>
           <template x-if="section.more">

@@ -45,7 +45,8 @@
       <template x-for="p in openProjects()" :key="p.name">
         <button class="menu__item" type="button" @click="toggleProjectShown(p.name)" :title="p.checkouts[0].path">
           <span class="menu__tick" x-text="isProjectShown(p.name) ? '✓' : ''"></span>
-          <span class="badge" x-text="initials(p.name)"></span>
+          <template x-if="projectFavicon(p.name)"><img class="icon owner__icon owner__icon--tree" :src="projectFavicon(p.name)" alt="" /></template>
+          <template x-if="projectFavicon(p.name) === null"><span class="badge" x-text="initials(p.name)"></span></template>
           <span class="menu__grow" x-text="p.name"></span>
           <template x-if="projectConsoles(p).length"><span class="menu__key" x-text="'● ' + projectConsoles(p).length + ' running'"></span></template>
         </button>
@@ -85,7 +86,7 @@
     </div>
   </div>
 
-  <div class="tree" x-data="{ get rows() { return treeRows(); } }" x-include="components/checkouts/rows.html"></div>
+  <div class="tree" x-data="{ get rows() { return identTreeRows(treeRows()); } }" x-include="components/checkouts/rows.html"></div>
   <!-- a proposal (dnd.js): what a drop does, under the pointer; what the last drop or paste did, under the tree -->
   <template x-if="drag !== null && drag.over !== null">
     <div class="drag-hint" :class="{ 'drag-hint--no': drag.ok === false }" :style="{ left: drag.x + 14 + 'px', top: drag.y + 12 + 'px' }" x-text="drag.hint"></div>

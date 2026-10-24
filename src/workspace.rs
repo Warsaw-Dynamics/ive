@@ -64,9 +64,12 @@ mod scratches;
 mod scripts;
 mod settings_actions;
 mod menu;
+mod owners;
 mod path_actions;
 mod send_paths;
 mod git_actions;
+mod tab_grouping;
+pub use tab_grouping::{Dropped, MenuDrop};
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -169,6 +172,11 @@ pub struct Workspace {
     /// which terminals were used last, for Send to Terminal and the hub's Alt+Enter
     terminal_use: crate::terminal_use::TerminalUse,
     hub_index: HubIndex,
+    /// each project's tab shown last: the one its folded group of tabs keeps out
+    group_current: std::collections::HashMap<ProjectId, TabId>,
+    /// the open project group menu, and where a drag in it would land
+    group_menu: Option<crate::tab_group_menu::GroupMenu>,
+    group_menu_drop: Option<tab_grouping::MenuDrop>,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
     /// the projects `corpus` was built from, in its order
@@ -334,6 +342,9 @@ impl Workspace {
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
             terminal_use: Default::default(),
             hub_index: HubIndex::default(),
+            group_current: std::collections::HashMap::new(),
+            group_menu: None,
+            group_menu_drop: None,
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
             corpus_build: hub_index::CorpusBuild::default(),
@@ -548,9 +559,13 @@ impl Workspace {
 
     /// Scrolls the tab row just enough to show the shown tab; nothing for a detached one.
     fn scroll_to_shown_tab(&self) {
-        let shown = self.tabs.active_id();
-        if let Some(place) = self.tabs.row().position(|(id, _)| Some(id) == shown) {
-            self.tab_scroll.scroll_to_item(place);
+        let Some(shown) = self.tabs.active_id() else {
+            return;
+        };
+        // the row's items are its groups' heads and tabs
+        let items = crate::tab_groups::row_items(&self.tab_groups(&self.tab_group_facts()));
+        if let Some(item) = items.iter().position(|item| matches!(item, crate::tab_groups::RowItem::Tab(_, id) if *id == shown)) {
+            self.tab_scroll.scroll_to_item(item);
         }
     }
 
@@ -559,11 +574,11 @@ impl Workspace {
         self.tab_drop_gap
     }
 
-    /// Moves dragged tab `id` into the marked gap; the new order is saved with the next redraw.
+    /// Moves dragged tab `id` into the marked gap, within its project's group; the new order is saved with the next
+    /// redraw.
     pub fn drop_dragged_tab(&mut self, id: TabId, cx: &mut Context<Self>) {
         if let Some(gap) = self.tab_drop_gap.take() {
-            self.tabs.move_tab(id, gap);
-            cx.notify();
+            self.move_tab_in_group(id, gap, cx);
         }
     }
 
@@ -606,6 +621,8 @@ impl Workspace {
         let checkout = self.tabs.active().and_then(|tab| tab.checkout(self));
         let shown = self.tabs.active().and_then(|tab| self.tree_key_of(tab));
         self.tree.show_active(shown);
+        // a folded group keeps the shown tab out, so it is its current one before the row scrolls to it
+        self.record_group_current();
         self.scroll_to_shown_tab();
         if let Some(checkout) = checkout {
             self.remember_checkout(&checkout, cx);
@@ -756,8 +773,13 @@ impl Workspace {
     }
 
     fn picker_title(&self) -> sidebar_view::PickerTitle {
-        let shown: Vec<&str> = crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.name.as_str()).collect();
-        sidebar_view::picker_title(&shown, self.projects.len())
+        let shown: Vec<&OpenProject> = crate::project_list::shown(&self.projects, &self.hidden_projects).collect();
+        let names: Vec<&str> = shown.iter().map(|open| open.project.name.as_str()).collect();
+        let icon = match shown.as_slice() {
+            [one] => self.project_icon(&one.project.id),
+            _ => None,
+        };
+        sidebar_view::PickerTitle { icon, ..sidebar_view::picker_title(&names, self.projects.len()) }
     }
 
     /// What the picker's menu lists: the open projects in tree order, whether each shows, their live processes.
@@ -765,7 +787,8 @@ impl Workspace {
         let shown = self.shown_projects();
         let projects = self.projects.iter().map(|open| {
             let running = self.processes.in_project(&open.project.id).iter().filter(|process| process.is_live()).count();
-            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running }
+            let icon = self.project_icon(&open.project.id);
+            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running, icon }
         });
         sidebar_view::ProjectsMenu { projects: projects.collect() }
     }
@@ -808,6 +831,7 @@ impl Workspace {
             return;
         }
         if event.keystroke.key == "escape" {
+            self.close_group_menu(cx);
             self.close_menu(window, cx);
         }
     }

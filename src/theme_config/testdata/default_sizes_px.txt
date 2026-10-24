@@ -222,6 +222,42 @@ Sizes {
         drag_chip_opacity: Fraction(
             0.85,
         ),
+        badge_size: Px(
+            10.0,
+        ),
+        badge_offset: Px(
+            3.0,
+        ),
+        badge_ring: Px(
+            1.5,
+        ),
+        rail_width: Px(
+            2.0,
+        ),
+        rail_inset: Px(
+            4.0,
+        ),
+        tint: Fraction(
+            0.12,
+        ),
+        tint_hover: Fraction(
+            0.18,
+        ),
+        tint_shown: Fraction(
+            0.22,
+        ),
+        tint_outline: Fraction(
+            0.45,
+        ),
+        group_gap: Px(
+            4.0,
+        ),
+        group_head_text_size: FontPx(
+            12.0,
+        ),
+        group_count_radius: Px(
+            8.0,
+        ),
         toolbar_button_padding: Px(
             4.0,
         ),

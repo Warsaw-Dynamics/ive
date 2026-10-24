@@ -283,10 +283,6 @@ impl<T> Tabs<T> {
         self.entries.iter().map(|(id, item)| (*id, item))
     }
 
-    pub fn row_len(&self) -> usize {
-        self.entries.len()
-    }
-
     /// Every tab: the row's in order, then the detached ones.
     pub fn iter(&self) -> impl Iterator<Item = (TabId, &T)> {
         self.row().chain(self.detached.iter().map(|(id, item)| (*id, item)))

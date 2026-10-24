@@ -185,6 +185,12 @@ impl Workspace {
                         self.hub_checkout_changed(&checkout.path, cx);
                     }
                 }
+                // a project's or module's icon changed: read at once, not when the hub next opens
+                Change::Favicon(path) => {
+                    if let Some(checkout) = self.checkout_of_path(&path) {
+                        self.index_checkout(&checkout, cx);
+                    }
+                }
                 Change::Rescan => {
                     folders.extend(self.projects.iter().flat_map(OpenProject::shown_folders));
                     documents.extend(self.document_paths());

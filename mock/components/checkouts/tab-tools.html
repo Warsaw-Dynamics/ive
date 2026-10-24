@@ -23,6 +23,39 @@
       </div>
     </div>
   </template>
+  <!-- a proposal (ident.js): how tabs and hub rows show where they belong -->
+  <div class="anchor" @click.outside="menu === 'ident' && (menu = null)">
+    <button class="icon-button" type="button" title="Where tabs and hub rows belong" @click="toggleMenu('ident')">
+      <img class="icon" :src="icon('dock.svg')" alt="Where tabs and hub rows belong" />
+    </button>
+      <!-- ident.js (a proposal): a variant ticked, or its parts picked one by one; the menu stays open -->
+      <div class="menu menu--ident" x-show="menu === 'ident'">
+        <div class="menu__section">Tabs and hub rows show where they belong</div>
+        <template x-for="p in window.IVE_IDENT.PRESETS" :key="p[0]">
+          <button class="menu__item" type="button" @click="identPreset(p[1])" :title="p[2]">
+            <span class="menu__tick" x-text="isIdentPreset(p[1]) ? '✓' : ''"></span>
+            <span class="menu__grow" x-text="p[0]"></span>
+            <span class="menu__key" x-text="p[2]"></span>
+          </button>
+        </template>
+        <template x-for="k in Object.keys(window.IVE_IDENT.OPTIONS)" :key="k">
+          <div>
+            <div class="menu__section" x-text="window.IVE_IDENT.TITLES[k]"></div>
+            <div class="menu__item menu__item--switch">
+              <div class="segmented" role="group" :aria-label="window.IVE_IDENT.TITLES[k]">
+                <template x-for="o in window.IVE_IDENT.OPTIONS[k]" :key="o">
+                  <button type="button" :aria-pressed="ident[k] === o" @click="ident[k] = o" x-text="o"></button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div class="menu__separator"></div>
+        <button class="menu__item" type="button" @click="openIdentDemo(); menu = null" title="Tabs of a busy day: the same names in several worktrees, projects and modules">
+          <span class="menu__tick"></span><span class="menu__grow">Open demo tabs</span>
+        </button>
+      </div>
+  </div>
   <button class="icon-button tabbar__settings" type="button" title="Settings" @click="openSettings()">
     <img class="icon icon--20" :src="icon('settings-20.svg')" alt="Settings" />
   </button>

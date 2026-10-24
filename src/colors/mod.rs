@@ -2,7 +2,7 @@
 
 mod checkout;
 
-pub use checkout::{checkout_colour, fnv1a};
+pub use checkout::{checkout_colour, fnv1a, mixed, tinted};
 pub use codeview::colors::{ColorKey, Overrides, RawEntry, ResolvedScheme, Scheme};
 
 use gpui::App;
