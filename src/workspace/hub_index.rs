@@ -16,6 +16,7 @@ use crate::hub::model::Effect;
 use crate::open_project::OpenProject;
 use crate::run::file::{self as run_file, RUN_FILE, RunFile};
 use crate::editor::Tab;
+use crate::favicon::Favicons;
 use crate::project::{CheckoutRef, ProjectId, ProjectKind};
 use crate::script::excluded::Excluded;
 
@@ -223,8 +224,9 @@ fn read_checkout(dir: &Path, wanted: &Wanted) -> Result<Read, String> {
     };
     let ignored = wanted.ignored.then(|| files::read_ignored(dir, wanted.kind)).transpose()?.map(Arc::new);
     let configs = run_files(dir, &files);
+    let favicons = Favicons::from_paths(files.paths.iter().map(|(path, _)| path.as_str()));
     let branches = wanted.branches.as_deref().map_or_else(Vec::new, |checked_out| branches_without_worktree(dir, checked_out));
-    Ok(Read { files: Arc::new(files), ignored, changes, configs: Arc::new(configs), branches: Arc::new(branches) })
+    Ok(Read { files: Arc::new(files), ignored, changes, configs: Arc::new(configs), favicons: Arc::new(favicons), branches: Arc::new(branches) })
 }
 
 /// The `.run.toml` files among `files` that parse, by checkout-relative folder; a broken one shows in its folder

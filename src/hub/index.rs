@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::files::CheckoutFiles;
+use crate::favicon::Favicons;
 use crate::git::status::Change;
 use crate::run::file::RunFile;
 
@@ -24,6 +25,8 @@ pub struct Read {
     pub changes: Arc<Vec<Change>>,
     /// the `.run.toml` files: folder (checkout-relative, `` at the top) and what it declares
     pub configs: Arc<Vec<(String, Arc<RunFile>)>>,
+    /// the `.favicon.*` files: the project's icon at the root, the modules' in their folders
+    pub favicons: Arc<Favicons>,
     /// read in the main checkout only: branches without a worktree, as git prints them
     pub branches: Arc<Vec<Branch>>,
 }

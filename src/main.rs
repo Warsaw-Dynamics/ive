@@ -13,6 +13,7 @@ mod dragged_files;
 mod editor;
 mod file_tab;
 mod file_write;
+mod favicon;
 mod file_tree;
 mod frame;
 mod glow;
