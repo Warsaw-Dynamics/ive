@@ -7,6 +7,7 @@ mod attention;
 mod attention_dot;
 mod waiting_menu;
 mod build_info;
+mod desktop_notice;
 mod click_targets;
 mod clipboard;
 mod codeview_host;

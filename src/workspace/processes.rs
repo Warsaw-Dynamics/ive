@@ -319,6 +319,7 @@ impl Workspace {
         let title = self.processes.get(id).map(|process| process.title()).unwrap_or_default();
         let was_live_run = self.processes.get(id).is_some_and(|process| process.run.is_some() && process.is_live());
         self.processes.close(id);
+        self.withdraw_notice(id);
         if was_live_run {
             self.run_removed(id, window, cx);
         }

@@ -182,6 +182,9 @@ pub struct Workspace {
     hub_return: Option<hub::HubReturn>,
     _signals: Option<Task<()>>,
     updates: updates::Updates,
+    /// the desktop notifications of waiting processes, sent while IVE is in the background
+    desktop_notices: crate::desktop_notice::DesktopNotices,
+    _notice_clicks: Task<()>,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -271,6 +274,8 @@ impl Workspace {
         ];
         let (mut watches, events) = tracing::info_span!("start_watches").in_scope(changes::Watches::start);
         let scripts = scripts::ScriptWatch::start(startup.scripts, script::default_dir(), &mut watches.paths, window, cx);
+        let (clicked, notice_clicks) = futures::channel::mpsc::unbounded();
+        let desktop_notices = crate::desktop_notice::DesktopNotices::new(clicked);
         let mut workspace = Self {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
@@ -333,6 +338,8 @@ impl Workspace {
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
             updates: updates::start(window, cx),
+            desktop_notices,
+            _notice_clicks: attention::show_clicked(notice_clicks, window, cx),
         };
         // a closing window goes through the quit prompt; IVE quits from there. Unix only: elsewhere terminals end
         // with IVE. On macOS the × hides the window instead and IVE keeps running in the Dock until quit, as Mac apps
