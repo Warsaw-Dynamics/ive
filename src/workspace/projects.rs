@@ -493,6 +493,11 @@ impl Workspace {
         change(&mut self.tree.selection, &listed)
     }
 
+    /// What dragging the tree row of `pressed` drags, see [`Selection::dragged_keys`].
+    pub(crate) fn dragged_keys(&self, pressed: &TreeKey) -> Vec<TreeKey> {
+        self.tree.selection.dragged_keys(pressed, &selection::listed(&self.tree.rows))
+    }
+
     /// What dragging the tree row of `pressed` drags, see [`Selection::dragged_paths`].
     pub(crate) fn dragged_paths(&self, pressed: &Path) -> Vec<PathBuf> {
         self.tree.selection.dragged_paths(pressed, &selection::listed(&self.tree.rows))

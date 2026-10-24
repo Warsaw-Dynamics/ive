@@ -160,10 +160,16 @@ pub enum Builtin {
     /// `ActivateRow`, its tab opened, or kept, to stay
     ActivateRowToKeep,
     ToggleRow,
-    /// Ctrl+click: adds a file or folder row to the selection, or takes it out
+    /// Ctrl+click: adds a row to the selection, or takes it out
     ToggleRowSelection,
-    /// Shift+click: selects the files and folders from the anchor to the row
+    /// Shift+click: selects the rows from the anchor to the row
     ExtendRowSelection,
+    /// Escape in the tree: drops the picks
+    ClearRowSelection,
+    /// the picked files and folders onto the clipboard, as absolute paths, for Paste
+    CopyFiles,
+    /// copies the files and folders on the clipboard into the row's folder, keeping their folders
+    PasteFiles,
     SelectAll,
     Cut,
     Undo,
@@ -254,7 +260,9 @@ impl Builtin {
                 matches!(scope, Scope::Window | Scope::Tab)
             }
             Self::ActivateTab => scope == Scope::Tab,
-            Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection => scope == Scope::Tree,
+            Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection | Self::ClearRowSelection => {
+                scope == Scope::Tree
+            }
             Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout => scope == Scope::Editor,
             Self::Find | Self::FindNext | Self::FindPrevious => scope == Scope::Editor,
             Self::CopyTo(_) | Self::PasteFrom(_) => matches!(scope, Scope::Terminal | Scope::Editor),
@@ -262,6 +270,7 @@ impl Builtin {
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,
             Self::OpenHub => matches!(scope, Scope::Window | Scope::Hub),
             Self::CopyFullPath => matches!(scope, Scope::Hub | Scope::Tree),
+            Self::CopyFiles | Self::PasteFiles => scope == Scope::Tree,
             Self::HubDown
             | Self::HubUp
             | Self::HubPageDown
@@ -337,7 +346,7 @@ impl Builtin {
             Self::OpenHub | Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::OpenFindInFiles | Self::ToggleChangesLayout => BOTH,
             // a tree menu's Stop and Kill end the process of its row
             Self::StopProgram | Self::KillProgram => BOTH,
-            Self::NewTerminal => &[MenuKind::Tree],
+            Self::NewTerminal | Self::CopyFiles | Self::PasteFiles => &[MenuKind::Tree],
             tab if tab.is_tab_command() => &[MenuKind::Tab],
             _ => &[],
         }

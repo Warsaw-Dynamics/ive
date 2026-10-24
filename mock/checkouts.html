@@ -15,13 +15,14 @@
     <script type="module" src="./find.js"></script>
     <script type="module" src="./route.js"></script>
     <script type="module" src="./menus.js"></script>
+    <script type="module" src="./dnd.js"></script>
     <script type="module" src="./checkouts.js"></script>
     <script src="./include.js"></script>
   </head>
   <body>
     <div class="desktop" x-data="checkouts" x-cloak @keydown.window.escape="menu = null"
          @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
-         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event)"
+         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event); clipKey($event)"
          @mousedown.window="findSideClick($event)">
       <div class="window">
         <main class="window__content" :style="{ '--project-glow': projectGlow() }">

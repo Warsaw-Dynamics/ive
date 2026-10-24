@@ -76,7 +76,7 @@
         return p.toString().replace(/%2F/g, '/').replace(/%40/g, '@').replace(/%3A/g, ':').replace(/%7E/g, '~').replace(/%2C/g, ',');
       },
       // Tabs a key brings back: run variable prompts and processes started after load cannot be rebuilt.
-      isRoutable: function (tab) { return tab.kind !== 'vars'; },
+      isRoutable: function (tab) { return tab.kind !== 'vars' && tab.kind !== 'conflicts'; },
 
       isRouteHash: function (p) { return p.has('t') || p.has('at') || p.has('tree'); },
       restoreRoute: function (p) {

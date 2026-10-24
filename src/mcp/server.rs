@@ -29,6 +29,8 @@ const MAX_KEY_BYTES: usize = 64;
 const MAX_PATH_BYTES: usize = 4096;
 /// A target name holds at most a path and a label.
 const MAX_TARGET_BYTES: usize = 2 * MAX_PATH_BYTES;
+/// rows one `drop_rows` may carry
+const MAX_DROPPED_ROWS: usize = 1000;
 const MAX_SCROLL_LINES: i32 = 100;
 const FRAME_WAIT: Duration = Duration::from_millis(500);
 
@@ -189,6 +191,16 @@ struct RunConfigArgs {
 struct ClickArgs {
     #[schemars(description = "a name from list_targets, e.g. \"section:Worktrees\" or \"prompt:Cancel\"")]
     target: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct DropRowsArgs {
+    #[schemars(description = "tree rows by the names list_targets shows after tree-menu:, e.g. \"entry:/r/src/a.rs\" or \"process:3\"; the first is the one pressed")]
+    rows: Vec<String>,
+    #[schemars(description = "the row dropped on, named the same way, e.g. \"toggle:/r/.claude/worktrees/x\" or \"entry:/r/lib\"")]
+    onto: String,
+    #[schemars(description = "\"copy\" or \"move\": as if the drop's copy or move modifier (config.drop_modifiers) were held")]
+    force: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -541,6 +553,19 @@ Scratches row out of view is scrolled to first. Answers once the window has draw
             return Ok(refused);
         }
         Ok(self.ask(Request::WindowInput(WindowInput::Click(args.target))).await)
+    }
+
+    #[tool(description = "Drag tree rows onto another and drop them, as the mouse would: files and folders copy or \
+move into a folder, worktree or project (the layout menu may open; answer it with click), terminals move to a \
+worktree. Returns the drop's hint, or why it was refused.")]
+    async fn drop_rows(&self, Parameters(args): Parameters<DropRowsArgs>) -> Result<CallToolResult, ErrorData> {
+        if args.rows.len() > MAX_DROPPED_ROWS {
+            return Ok(CallToolResult::error(vec![ContentBlock::text(format!("{} rows, at most {MAX_DROPPED_ROWS}", args.rows.len()))]));
+        }
+        if let Some(refused) = args.rows.iter().chain(std::iter::once(&args.onto)).find_map(|row| too_long("row", row, MAX_TARGET_BYTES)) {
+            return Ok(refused);
+        }
+        Ok(self.ask(Request::DropRows { rows: args.rows, onto: args.onto, force: args.force }).await)
     }
 
     #[tool(description = "Press keys in whatever has the keyboard in the IVE window (a prompt, a terminal, the \

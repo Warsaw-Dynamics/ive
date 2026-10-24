@@ -23,6 +23,7 @@ use crate::overview::diff_tab::DiffTab;
 use crate::overview::git_log_tab::{GitLogTab, LogOf};
 use crate::overview::{self, ProjectOverview, ProjectSection};
 use crate::process::{ProcessId, ProcessKind};
+use crate::conflicts_tab::{ConflictsTab, render_conflicts_tab};
 use crate::run::configs_tab::{RunConfigsTab, render_run_configs_tab};
 use crate::run::values_tab::{self as run_values, RunValuesTab};
 use crate::progress_bar::progress_bar;
@@ -63,6 +64,8 @@ pub enum Tab {
     RunValues(RunValuesTab),
     /// every run configuration of a checkout; at most one per checkout, never saved
     RunConfigs(RunConfigsTab),
+    /// a copy or move with files in the way, asking before it writes; never saved
+    Conflicts(Box<ConflictsTab>),
     /// a tab restored at start, loaded when first shown
     Unloaded(SavedTab),
     /// Ctrl+Shift+E: recent tabs, changes, processes and every file; at most one
@@ -150,6 +153,7 @@ impl Tab {
             Self::Scratch(_) => "scratch",
             Self::RunValues(_) => "run-values",
             Self::RunConfigs(_) => "run-configs",
+            Self::Conflicts(_) => "conflicts",
             Self::Unloaded(saved) => saved.kind(),
             Self::Hub(_) => "hub",
         }
@@ -173,6 +177,7 @@ impl Tab {
             Self::Scratch(scratch) => scratch.name().to_owned(),
             Self::RunValues(tab) => tab.title(),
             Self::RunConfigs(_) => "Run configurations".to_owned(),
+            Self::Conflicts(tab) => tab.title(),
             Self::Unloaded(saved) => saved.title(),
             Self::Hub(hub) if hub.state.new_terminal => "New terminal".to_owned(),
             Self::Hub(_) => "Hub".to_owned(),
@@ -207,6 +212,7 @@ impl Tab {
             Self::Failed { title, .. } => icons::file_icon(title),
             Self::Scratch(scratch) => icons::file_icon(scratch.name()),
             Self::RunValues(_) | Self::RunConfigs(_) => icons::RUN_CONFIG,
+            Self::Conflicts(_) => icons::WARNING,
             Self::Unloaded(saved) => saved_icon(saved),
             Self::Hub(_) => icons::LOCATE,
         }
@@ -245,7 +251,7 @@ impl Tab {
             Self::Diff(tab) => SavedTab::Diff { checkout: tab.checkout.path.clone(), request: tab.request.saved(), panel: tab.panel_state(cx) },
             Self::Settings(view) => SavedTab::Settings { page: view.page_name().to_owned() },
             Self::Hub(_) => SavedTab::Hub,
-            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) => return None,
+            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
             Self::Unloaded(saved) => saved.clone(),
         };
         Some(tab)
@@ -265,7 +271,7 @@ impl Tab {
             Self::GitLog(GitLogTab { of: LogOf::Path { .. }, .. }) => return None,
             Self::GitLog(tab) => TabIdentity::GitLog(tab.project.as_str().to_owned()),
             Self::Settings(_) => TabIdentity::Settings,
-            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) => return None,
+            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
             Self::Scratch(scratch) => TabIdentity::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned() },
             Self::RunValues(tab) => TabIdentity::RunValues {
                 checkout: tab.request.checkout.path.clone(),
@@ -293,6 +299,7 @@ impl Tab {
             Self::Settings(_) | Self::Failed { .. } | Self::Hub(_) => None,
             Self::RunValues(tab) => Some(tab.request.checkout.clone()),
             Self::RunConfigs(tab) => Some(tab.checkout.clone()),
+            Self::Conflicts(tab) => Some(tab.plan.operation.target.checkout.clone()),
             Self::Unloaded(saved) => unloaded_checkout(saved, workspace),
         }
     }
@@ -315,6 +322,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => Vec::new(),
         }
@@ -335,6 +343,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => None,
         }
@@ -357,6 +366,7 @@ impl Tab {
             | Self::Failed { .. }
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => None,
         }
@@ -393,6 +403,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => {}
         }
@@ -418,7 +429,7 @@ impl Tab {
         };
         let owner = match self {
             Self::ProjectOverview(_) | Self::Diff(_) | Self::Settings(_) | Self::Failed { .. } | Self::Unloaded(_) | Self::Hub(_) => None,
-            Self::Document(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) => {
+            Self::Document(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => {
                 self.checkout(workspace).map(|checkout| workspace.checkout_label(&checkout))
             }
             Self::Commit(CommitTab { project, .. }) | Self::GitLog(GitLogTab { project, .. }) => {
@@ -450,6 +461,7 @@ impl Tab {
             | Self::Settings(_)
             | Self::Failed { .. }
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_) => None,
         }
     }
@@ -491,6 +503,7 @@ impl Tab {
             Self::Scratch(scratch) => scratch.view().clone().into_any_element(),
             Self::RunValues(tab) => run_values::render_values_tab(id, tab, cx),
             Self::RunConfigs(tab) => render_run_configs_tab(id, tab, workspace, cx),
+            Self::Conflicts(tab) => render_conflicts_tab(id, tab, workspace, cx),
             Self::Unloaded(_) => centered_message("Loading…", theme.muted).into_any_element(),
             Self::Hub(hub) => workspace.render_hub_tab(id, hub, cx),
         }

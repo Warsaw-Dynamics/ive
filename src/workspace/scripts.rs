@@ -107,7 +107,7 @@ impl Workspace {
             return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
@@ -119,6 +119,7 @@ impl Workspace {
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
                 cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
+                cx.set_global(*drop_modifiers);
                 apply_fonts(fonts.clone(), cx)
             }
             _ => false,
@@ -237,6 +238,17 @@ impl Workspace {
                 self.open_terminal_picker(window, cx);
             }
             Builtin::CopyFullPath => self.copy_selected_paths(cx),
+            Builtin::CopyFiles | Builtin::PasteFiles => {
+                let Some(anchor) = self.tree.selection.anchor().cloned() else { return };
+                match builtin {
+                    Builtin::CopyFiles => self.copy_files(&anchor, cx),
+                    _ => self.paste_files(&anchor, window, cx),
+                }
+            }
+            Builtin::ClearRowSelection => {
+                self.change_selection(|selection, _listed| selection.clear());
+                cx.notify();
+            }
             Builtin::OpenFindInFiles => {
                 let scope = self.hub_scope.clone();
                 self.open_hub(Some(crate::hub::model::HubState { content: true, scope, ..Default::default() }), window, cx);

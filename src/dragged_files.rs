@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use gpui::{App, Context, IntoElement, ParentElement, Render, SharedString, Styled, WeakEntity, Window, div, rgb};
 
+use crate::sidebar::rows::TreeKey;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
 
@@ -35,7 +36,28 @@ impl DraggedFiles {
 
     /// The chip under the pointer.
     pub fn chip(&self, cx: &App) -> DragChip {
-        DragChip { label: label(&self.paths(cx)).into() }
+        DragChip { label: label(&self.paths(cx)).into(), workspace: self.workspace.clone() }
+    }
+}
+
+/// A drag of process rows (terminals, Claude Code, runs) from the tree: the pressed row, and the workspace whose
+/// selection says what else goes with it.
+#[derive(Clone)]
+pub struct DraggedProcesses {
+    pub pressed: TreeKey,
+    pub title: String,
+    pub workspace: WeakEntity<Workspace>,
+}
+
+impl DraggedProcesses {
+    /// The chip under the pointer: the pressed row's title, `+N` for the others picked with it.
+    pub fn chip(&self, cx: &App) -> DragChip {
+        let count = self.workspace.upgrade().map_or(1, |workspace| workspace.read(cx).dragged_keys(&self.pressed).len());
+        let label = match count {
+            0 | 1 => self.title.clone(),
+            count => format!("{} +{}", self.title, count - 1),
+        };
+        DragChip { label: label.into(), workspace: self.workspace.clone() }
     }
 }
 
@@ -49,15 +71,18 @@ fn label(paths: &[PathBuf]) -> String {
     }
 }
 
-/// Drawn like a dragged tab.
+/// Drawn like a dragged tab; over a tree row it says what a drop there does.
 pub struct DragChip {
     label: SharedString,
+    workspace: WeakEntity<Workspace>,
 }
 
 impl Render for DragChip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
         let sizes = &theme.sizes.tabs;
+        let hint = self.workspace.upgrade().and_then(|workspace| workspace.read(cx).tree().shown_hint(cx).map(|hint| hint.text.clone()));
+        let text: SharedString = hint.map_or_else(|| self.label.clone(), SharedString::from);
         div()
             .flex()
             .items_center()
@@ -74,7 +99,7 @@ impl Render for DragChip {
             .overflow_hidden()
             .text_ellipsis()
             .whitespace_nowrap()
-            .child(self.label.clone())
+            .child(text)
     }
 }
 

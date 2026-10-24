@@ -89,6 +89,15 @@ impl ProcessKind {
     }
 }
 
+/// Whether a process moved by hand stays where it was put.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Pin {
+    Free,
+    /// moved before its directory was known: the first one reported is the one it had
+    Next,
+    At(PathBuf),
+}
+
 pub struct Process<V = TerminalView> {
     pub id: ProcessId,
     /// `None` for a shell started in the home folder, outside every project
@@ -101,6 +110,8 @@ pub struct Process<V = TerminalView> {
     progress: Progress,
     /// where its foreground program last worked, as the foreground poll saw it
     directory: Option<PathBuf>,
+    /// moved to another checkout by hand: the directory it does not follow, only a later one
+    pin: Pin,
     pub view: V,
 }
 
@@ -116,6 +127,13 @@ impl<V> Process<V> {
 
     pub fn directory(&self) -> Option<&Path> {
         self.directory.as_deref()
+    }
+
+    pub fn pinned(&self) -> Option<&Path> {
+        match &self.pin {
+            Pin::At(directory) => Some(directory),
+            Pin::Free | Pin::Next => None,
+        }
     }
 
     /// Its program still runs: every terminal, and a run until it exits.
@@ -160,7 +178,7 @@ impl<V> Processes<V> {
         let id = ProcessId(self.next_id);
         self.next_id += 1;
         let view = start(id)?;
-        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: "Terminal".to_owned(), progress: Progress::None, directory: None, view });
+        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: "Terminal".to_owned(), progress: Progress::None, directory: None, pin: Pin::Free, view });
         Ok(id)
     }
 
@@ -170,7 +188,7 @@ impl<V> Processes<V> {
         self.next_id += 1;
         let view = start(id)?;
         let title = origin.name.clone();
-        self.entries.push(Process { id, checkout, kind: ProcessKind::Run, run: Some(origin), title, progress: Progress::None, directory: None, view });
+        self.entries.push(Process { id, checkout, kind: ProcessKind::Run, run: Some(origin), title, progress: Progress::None, directory: None, pin: Pin::Free, view });
         Ok(id)
     }
 
@@ -290,9 +308,34 @@ impl<V> Processes<V> {
         }
     }
 
+    /// A directory other than the pinned one ends the pin.
     pub fn set_directory(&mut self, id: ProcessId, directory: PathBuf) {
         if let Some(process) = self.get_mut(id) {
+            process.pin = match std::mem::replace(&mut process.pin, Pin::Free) {
+                Pin::Next => Pin::At(directory.clone()),
+                Pin::At(pinned) if pinned == directory => Pin::At(pinned),
+                Pin::At(_) | Pin::Free => Pin::Free,
+            };
             process.directory = Some(directory);
+        }
+    }
+
+    /// Moves terminal or Claude Code session `id` to `checkout` by hand, pinned to its directory, so following
+    /// directories leaves it there until that changes; returns whether it moved. A run stays under its folder.
+    pub fn move_pinned(&mut self, id: ProcessId, checkout: CheckoutRef) -> bool {
+        if !self.move_to(id, checkout) {
+            return false;
+        }
+        if let Some(process) = self.get_mut(id) {
+            process.pin = process.directory.clone().map_or(Pin::Next, Pin::At);
+        }
+        true
+    }
+
+    /// Restores a pin saved with the process's checkout.
+    pub fn set_pinned(&mut self, id: ProcessId, directory: PathBuf) {
+        if let Some(process) = self.get_mut(id) {
+            process.pin = Pin::At(directory);
         }
     }
 
@@ -601,6 +644,33 @@ mod tests {
 
         // then
         assert_eq!((moved, processes.get(run).unwrap().checkout.clone()), (false, checkout("a", "/a")));
+    }
+
+    #[test]
+    fn should_refuse_to_move_pin_a_run() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let run = processes.start_run(checkout("a", "/a"), origin("app"), |_| Ok::<_, ()>(())).unwrap();
+
+        // when
+        let moved = processes.move_pinned(run, checkout("a", "/a/wt").unwrap());
+
+        // then
+        assert_eq!((moved, processes.get(run).unwrap().checkout.clone(), processes.get(run).unwrap().pinned()), (false, checkout("a", "/a"), None));
+    }
+
+    #[test]
+    fn should_pin_moved_terminal_to_its_directory() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap();
+        processes.set_directory(id, PathBuf::from("/a/src"));
+
+        // when
+        let moved = processes.move_pinned(id, checkout("b", "/b").unwrap());
+
+        // then
+        assert_eq!((moved, processes.get(id).unwrap().pinned()), (true, Some(Path::new("/a/src"))));
     }
 
     #[test]

@@ -463,6 +463,52 @@ Appearance, Scripts, Updates and Third-Party Software; colours are set in themes
 - Dropped from the earlier proposal: the `Task:` line and starter chips, the Files table with Copy path, the Quick
   reference blocks, and `scripting.md`.
 
+## Drag and drop, copy and paste (in the app since 2026-10-23, `dnd.js`)
+
+Mock: `checkouts.html#tab=conflicts` opens the Conflicts tab for a copy with three conflicts. The app's spec is
+`docs/superpowers/specs/2026-10-23-drag-and-drop-design.md`; where they differ the app has: the drop modifiers as
+`config.drop_modifiers = #{ force_copy, force_move }` (macOS Option and Cmd), `.git` and nested worktrees left out of a
+copied folder, at most 20 000 files and 4 GiB per copy, one copy at a time, and the drop row as a background only.
+
+- **Picking rows.** Ctrl+click adds or removes a tree row, Shift+click picks the rows from the last one; a plain click
+  picks the row and does what it always did. Files, folders and processes can be picked; Escape drops the picks.
+- **Files and folders** drag onto a folder, a worktree or project row (its root) or a worktree's Files row, in any
+  project; on a file, its folder. Dragging a picked row carries every picked file and folder (one inside another
+  picked folder goes with it). A hint under the pointer says what the drop does: `Copy 2 items to dev · lib`.
+  - Same worktree: move; another worktree or project: copy. Ctrl copies, Shift moves.
+  - Refused (hint says why): into itself, or a move onto the folder it is already in.
+  - **Layout.** Files from one folder go straight in. From different folders of one worktree, the drop asks with a
+    menu at the pointer: *Keep folders, from `<their common folder>/`* or *Flat, all into `<target>/`*. From several
+    worktrees or projects it is always flat (no common folder makes sense across them); the hint says so.
+- **Copy and paste.** Ctrl+C (or Copy in the row menu) copies the picked files; Ctrl+V (or Paste) on a folder pastes
+  them keeping their folders under their common one; from several worktrees, flat. Pasting a file onto its own place
+  makes `name (2).ext` without asking.
+- **Processes** drag onto a worktree or project (its row, its Processes row, or a single-checkout project's row), in
+  any project. A drop **moves** terminals and Claude Code there: IVE files them under the target (tree row, tab
+  underline, Send to Terminal's relative paths); the shell is not touched (no `cd`, no restart). The moved process
+  stays there until its working directory changes again: into another worktree or project, it follows as today;
+  anywhere else, it stays. A move outlives a restart of IVE. **Runs stay** with their worktree's `.run.toml` (the hint
+  says so). Ctrl+drop starts the same things there instead and the originals keep running: a new terminal, a new
+  Claude Code, the target's own copy of a run (refused for one whose `.run.toml` is not there).
+- **Conflicts tab.** When anything written would land on something already there, nothing is written; a `Copy
+  conflicts` (or `Move conflicts`) tab opens:
+  - Title: `Copy 7 files from GEN-817-ive, IDP-30-… to dev · internal-apps/ive/mock`; under it how many are in the way,
+    the layout, and "nothing is written until you press Copy".
+  - **All** Replace | Skip | Keep both sets every conflict at once.
+  - A table, one row per conflict: File (where it goes, under the target), From (the worktree's colour stripe,
+    worktree · path), Incoming and There now (lines · bytes), Why, Action (Replace | Skip | Keep both).
+    Why: `differs: +1 −0 lines`, `same content` (starts on Skip), `also coming from <worktree> · <path>` (two incoming
+    files with one name, flat), `a folder of that name is there`. The last two offer no Replace. Keep both shows the
+    name it gives (`as mock (2).css`). A click on a row shows both texts side by side.
+  - `N files go in without a conflict`, folded. Copy (Move) stays greyed until every row has an action; the line
+    beside it sums up: `copies 4, replaces 1, skips 1 · 1 to choose`. Cancel writes nothing.
+- After a drop or paste the target unfolds, the written files are picked, and a line under the tree says what
+  happened (`Copied 7 files to dev · internal-apps/ive/mock · skipped 1`). A move removes what it moved; skipped
+  files stay, with their folders.
+- Open: undo (Ctrl+Z after a drop); dropping onto the editor (a terminal already types the paths); dragging files out
+  to the OS file manager and in from it; Cut (Ctrl+X); whether a move across worktrees should be allowed at all, or a
+  Shift+drop should only ever copy.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon

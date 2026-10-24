@@ -71,6 +71,7 @@
       contextMenu: function () {
         if (this.menu === 'tab' && this.menuTab()) return { at: this.tabMenu, items: this.tabMenuItems(this.menuTab()) };
         if (this.menu === 'tree' && this.treeMenu.node) return { at: this.treeMenu, items: this.treeMenuItems(this.treeMenu.node) };
+        if (this.menu === 'drop') return this.dropMenu;
         return null;
       },
       runMenuItem: function (item) {
@@ -88,6 +89,7 @@
         return pruned([
           this.sendToTerminalItem(s), this.openTerminalItem(s), this.runItem(s), null,
           this.findInFilesItem(s), null,
+          this.copyItem(node), this.pasteItem(node), null,
           this.copyPathItem(s), this.openInItem(s), null,
           this.gitItem(s, true)
         ]);

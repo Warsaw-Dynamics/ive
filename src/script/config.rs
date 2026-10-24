@@ -6,10 +6,11 @@ use std::collections::HashMap;
 use rune::{Any, ContextError, Module, Value};
 
 /// Actions without an argument: in WezTerm's Lua these are plain strings, and so they are here.
-const UNIT_ACTIONS: [&str; 64] = [
+const UNIT_ACTIONS: [&str; 67] = [
     "Nop", "DisableDefaultAssignment", "OpenSettings", "OpenTerminal", "ActivateTab", "CloseTab", "KeepTab", "StopProgram", "KillProgram",
     "CloseOtherTabs", "CloseTabsToTheLeft", "CloseTabsToTheRight", "ToggleChangesLayout", "OpenTerminalIn", "ActivateRow", "ActivateRowToKeep",
-    "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "SelectAll", "Cut", "Undo", "Redo", "ToggleDiffLayout", "Find", "FindNext", "FindPrevious",
+    "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "ClearRowSelection", "CopyFiles", "PasteFiles", "SelectAll", "Cut", "Undo", "Redo", "ToggleDiffLayout",
+    "Find", "FindNext", "FindPrevious",
     "OpenHub", "HubDown", "HubUp", "HubPageDown", "HubPageUp", "HubOpen", "HubOpenBehind", "HubTypePath", "HubCopyPath",
     "HubStop", "CopyFullPath", "HubCycleScope", "HubWiden", "HubToggleExcluded", "HubToggleChanged", "HubBack",
     "SendPathsToTerminal", "CopyRelativePath", "CopyFileName", "FindInFiles", "OpenFindInFiles", "OpenTerminalHere", "NewTerminal", "RevealInFileManager", "OpenWithDefaultApp", "OpenInBrowser", "RunFile", "GitShowDiff", "GitCompareWithBase", "GitHistory", "GitIgnore", "CompareFiles", "OpenInNewWindow", "HubToggleContent", "HubToggleRegex", "HubToggleWholeWord", "HubCycleSearchIn",
@@ -17,8 +18,8 @@ const UNIT_ACTIONS: [&str; 64] = [
 
 /// `config` in `pub fn init(config)`: the lists of bindings, as WezTerm's `config.keys` and `config.mouse_bindings`,
 /// the font families: `config.font` for code and terminals, as WezTerm's, and `config.ui_font` for the rest, and
-/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.tree_menus`, `config.quit_countdown` and
-/// `config.open_folders`, which start as the script before left them.
+/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.tree_menus`, `config.quit_countdown`,
+/// `config.open_folders` and `config.drop_modifiers`, which start as the script before left them.
 #[derive(Any)]
 #[rune(item = ::ive)]
 pub struct Config {
@@ -44,6 +45,8 @@ pub struct Config {
     quit_countdown: Value,
     #[rune(get, set)]
     open_folders: Value,
+    #[rune(get, set)]
+    drop_modifiers: Value,
 }
 
 /// What `init` left in `config`; anything it did not set is `()`.
@@ -64,17 +67,19 @@ pub struct Carried {
     pub tree_menus: Value,
     pub quit_countdown: Value,
     pub open_folders: Value,
+    pub drop_modifiers: Value,
 }
 
 impl Config {
     /// A `config` with nothing declared yet but what the script before left in `carried`.
     pub fn new(carried: Carried) -> Self {
-        let Carried { theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders } = carried;
-        Self { keys: Value::from(()), mouse_bindings: Value::from(()), font: Value::from(()), ui_font: Value::from(()), theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders }
+        let Carried { theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers } = carried;
+        let unset = || Value::from(());
+        Self { keys: unset(), mouse_bindings: unset(), font: unset(), ui_font: unset(), theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers }
     }
 
     pub fn into_parts(self) -> Parts {
-        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, tree_menus: self.tree_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders };
+        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, tree_menus: self.tree_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders, drop_modifiers: self.drop_modifiers };
         Parts { keys: self.keys, mouse_bindings: self.mouse_bindings, font: self.font, ui_font: self.ui_font, carried }
     }
 }

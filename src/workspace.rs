@@ -48,6 +48,10 @@ mod hub_index;
 mod locate;
 mod api_requests;
 mod persist;
+mod process_drop;
+mod transfers;
+mod tree_drop;
+pub(crate) use tree_drop::Dragging;
 mod processes;
 mod projects;
 mod quit;
@@ -116,6 +120,9 @@ pub struct Workspace {
     menu_requests: u64,
     /// the row Select Opened File is expanding the tree towards, while folders above it are read
     locating: Option<TreeKey>,
+    /// what to pick once the row `locating` names is found, instead of that row alone
+    locating_picks: Vec<TreeKey>,
+    transfers: transfers::Transfers,
     /// `--restart`: the start script the Restart button runs
     restart_script: Option<PathBuf>,
     /// the terminal the Restart button runs the start script in, reused by later presses
@@ -283,6 +290,8 @@ impl Workspace {
             menu: None,
             menu_requests: 0,
             locating: None,
+            locating_picks: Vec::new(),
+            transfers: Default::default(),
             restart_script: startup.restart_script.clone(),
             restart_terminal: None,
             tab_ownership: tab_state::TabOwnership::Owner,
@@ -349,7 +358,7 @@ impl Workspace {
         #[cfg(unix)]
         let sessions = {
             let adopted_tabs = if tabs.is_some() { processes::AdoptedTabs::AsSaved } else { processes::AdoptedTabs::Each };
-            tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, window, cx))
+            tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, &startup.saved.terminals, window, cx))
         };
         #[cfg(not(unix))]
         let sessions = std::collections::HashMap::new();
@@ -643,7 +652,7 @@ impl Workspace {
             Tab::ProjectOverview(overview) => Some(TreeKey::Project(overview.project.clone())),
             Tab::Commit(tab) => Some(TreeKey::Project(tab.project.clone())),
             Tab::GitLog(tab) => Some(TreeKey::Project(tab.project.clone())),
-            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) => None,
+            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) | Tab::Conflicts(_) => None,
         }
     }
 

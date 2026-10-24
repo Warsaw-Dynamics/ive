@@ -639,6 +639,8 @@
             runconfigs: function (self) { screens.runs(self); self.openRunConfigs(ive); },
             // the platform project's tab: 1000 configurations in ~140 folders
             runconfigs1k: function (self) { self.openRunConfigs(self.project('platform').checkouts[0]); },
+            // a proposal (dnd.js): a flat copy into dev with three conflicts
+            conflicts: function (self) { self.mockConflicts(); },
             newterminal: function (self) { self.openNewTerminalHub(); self.hub.query = p.get('q') || ''; },
             hub: function (self) { self.openHub(); self.hub.query = p.get('q') || ''; self.hub.changedOnly = p.get('changed') === '1'; self.hub.scope = p.get('scope') || 'all'; }
           };
@@ -911,7 +913,7 @@
         // editor.rs Tab::icon_name
         tabIcon: function (tab) {
           if (tab.kind === 'console') return this.consoleIcon(this.consoleOf(tab));
-          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg' };
+          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg', conflicts: 'warning.svg' };
           return icons[tab.kind] || this.fileIcon(tab.title);
         },
         tabTitle: function (tab) {
@@ -1425,6 +1427,8 @@
             pinned: run === null, actions: actions };
         },
         runFile: function (folder) { return RUN_FILES[folder]; },
+        // Mock-only (dnd.js): a copied or moved .run.toml reads as the one it came from.
+        adoptRunFile: function (from, to) { if (RUN_FILES[from] !== undefined) RUN_FILES[to] = RUN_FILES[from]; },
 
         // ---- the run configurations tab (a click on a worktree's Processes row) ----
         openRunConfigs: function (co) {
@@ -1856,7 +1860,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods, window.IVE_DND.state(), window.IVE_DND.methods);
     });
   });
 })();

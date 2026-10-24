@@ -115,16 +115,19 @@ impl Workspace {
         self.open_tab(tab, window, cx)
     }
 
-    /// Reattaches every hosted terminal still running, oldest first, under its checkout when its project is open
-    /// (its main checkout when the checkout's folder is gone), else as a home terminal. Each gets a tab when no tabs were saved (a first start);
+    /// Reattaches every hosted terminal still running, oldest first, under the checkout `records` saved for it, else
+    /// under its labels' checkout when its project is open (its main checkout when the checkout's folder is gone),
+    /// else as a home terminal; a saved pin comes back with it. Each gets a tab when no tabs were saved (a first start);
     /// otherwise the saved tabs say which do. Returns the processes by session id.
     #[cfg(unix)]
-    pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
+    pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, records: &[crate::state::SavedTerminal], window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
         let mut adopted = HashMap::new();
         let mut orphans = Vec::new();
         let Some(terminals) = self.hosted.take() else { return adopted };
         for session in terminals.live() {
-            let checkout = checkout_from_labels(&session.labels, |project| self.project(project).map(|open| open.main_checkout().path.clone()));
+            let record = records.iter().find(|record| record.session == session.id);
+            let recorded = record.and_then(|record| checkout_from_record(record, |project| self.project(project).is_some()));
+            let checkout = recorded.or_else(|| checkout_from_labels(&session.labels, |project| self.project(project).map(|open| open.main_checkout().path.clone())));
             let source = Source::Adopt { terminals: &terminals, session: &session };
             let open = |id| TerminalView::open(id, &session.cwd, source, window, cx);
             let orphaned = orphaned_run(&session.labels, checkout.as_ref());
@@ -138,6 +141,9 @@ impl Workspace {
             match started {
                 Ok(id) if orphaned => orphans.push(id),
                 Ok(id) => {
+                    if let Some(pinned) = record.and_then(|record| record.pinned.clone()) {
+                        self.processes.set_pinned(id, pinned);
+                    }
                     if super::restart::is_restart_terminal(&session.labels) {
                         self.restart_terminal = Some(id);
                     }
@@ -453,6 +459,14 @@ pub(super) fn poll_foreground(_cx: &mut Context<Workspace>) -> Option<Task<()>> 
     None
 }
 
+/// Where `record` lists its session: its checkout, when its project is open and the checkout's folder is still there
+/// (worktrees are not listed yet when sessions are adopted; one that turns out unlisted goes to the main checkout
+/// after the scan, as any process does).
+pub(super) fn checkout_from_record(record: &crate::state::SavedTerminal, is_open: impl Fn(&ProjectId) -> bool) -> Option<CheckoutRef> {
+    let project = ProjectId::parse(&record.project).ok()?;
+    (is_open(&project) && record.checkout.is_dir()).then(|| CheckoutRef { project, path: record.checkout.clone() })
+}
+
 /// Labels recording `checkout` in a hosted session, so the next IVE puts it back there.
 pub(super) fn session_labels(checkout: Option<&CheckoutRef>) -> Vec<(String, String)> {
     checkout.map_or_else(Vec::new, |checkout| {
@@ -559,6 +573,47 @@ mod tests {
         // then
         assert_eq!(restored, Some(origin));
         assert_eq!(run_origin_from_labels(&labels("ive", "/work")), None);
+    }
+
+    fn record(checkout: &Path) -> crate::state::SavedTerminal {
+        crate::state::SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: checkout.to_path_buf(), pinned: None }
+    }
+
+    #[test]
+    fn should_place_session_by_record() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let placed = checkout_from_record(&record(dir.path()), |_| true);
+
+        // then
+        assert_eq!(placed, Some(CheckoutRef { project: ProjectId::new("ive"), path: dir.path().to_path_buf() }));
+    }
+
+    #[test]
+    fn should_ignore_record_of_closed_project() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let placed = checkout_from_record(&record(dir.path()), |_| false);
+
+        // then
+        assert_eq!(placed, None);
+    }
+
+    #[test]
+    fn should_ignore_record_whose_folder_is_gone() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let gone = dir.path().join("gone");
+
+        // when
+        let placed = checkout_from_record(&record(&gone), |_| true);
+
+        // then
+        assert_eq!(placed, None);
     }
 
     #[test]

@@ -86,6 +86,11 @@
   </div>
 
   <div class="tree" x-data="{ get rows() { return treeRows(); } }" x-include="components/checkouts/rows.html"></div>
+  <!-- a proposal (dnd.js): what a drop does, under the pointer; what the last drop or paste did, under the tree -->
+  <template x-if="drag !== null && drag.over !== null">
+    <div class="drag-hint" :class="{ 'drag-hint--no': drag.ok === false }" :style="{ left: drag.x + 14 + 'px', top: drag.y + 12 + 'px' }" x-text="drag.hint"></div>
+  </template>
+  <template x-if="dndNote"><div class="dnd-note" x-text="dndNote"></div></template>
   <div class="sidebar__resize" title="Drag to resize; double-click for the default width"
        @mousedown.prevent="startSidebarResize($event)" @dblclick="sidebarWidth = SIDEBAR_DEFAULT_WIDTH"></div>
 </aside>

@@ -1,6 +1,7 @@
 //! The left column: the "Projects" header and the tree of projects, worktrees, processes and files.
 
 pub mod commit_label;
+pub mod drop_place;
 pub mod folders;
 pub mod rows;
 pub mod selection;

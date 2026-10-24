@@ -145,6 +145,8 @@ pub struct TreeStates {
     pub active: RowStyle,
     pub selected: RowStyle,
     pub secondary: RowStyle,
+    /// the row a drag would drop on
+    pub drop: RowStyle,
 }
 
 /// How glyphs' coverage becomes alpha (Linux): higher values draw text bolder.

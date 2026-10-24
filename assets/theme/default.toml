@@ -527,7 +527,8 @@ renamed = "#70AEFF"
 conflicted = "#DE6A66"
 
 # Tree row styles: `text`, `background` ("#RRGGBBAA"), `weight` ("normal", "medium", "semibold", "bold") and `italic`
-# (true or false), each optional; a later state wins: hover, then excluded or ignored, then active, then selected.
+# (true or false), each optional; a later state wins: hover, then excluded or ignored, then active, then selected,
+# then drop.
 [dark.tree_states]
 hover = { background = "#393B40FF" }
 excluded = { text = "#D69A6B", background = "#291F1CFF" }
@@ -537,6 +538,8 @@ active = {}
 selected = { background = "#2E436EFF" }
 # grey extra text, such as a project's tags
 secondary = { text = "#868A91" }
+# the row a dragged file or process would drop on
+drop = { background = "#35538FFF" }
 
 # The chip behind the name of a tree row that is not on disk, as a row style: `chip` for @run,
 # `hidden` for @hidden, weaker since it holds real files.
@@ -633,6 +636,7 @@ ignored = { text = "#8C4F00" }
 active = {}
 selected = { background = "#D5E1FFFF" }
 secondary = { text = "#818594" }
+drop = { background = "#A8C3F5FF" }
 
 [light.virtual_folders]
 chip = { background = "#DFE1E5FF", italic = true }

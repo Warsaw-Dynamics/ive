@@ -49,7 +49,8 @@ impl Workspace {
 }
 
 /// Which of `ids` move, and where: a terminal or Claude Code session whose directory lies in a checkout other than
-/// its own (`checkout_of` names it). Anywhere else it stays. Also whether `active`, the shown process, is among them.
+/// its own (`checkout_of` names it), unless it was moved there by hand from that very directory. Anywhere else it
+/// stays. Also whether `active`, the shown process, is among them.
 fn moves<V>(
     processes: &Processes<V>,
     ids: &[ProcessId],
@@ -60,6 +61,8 @@ fn moves<V>(
         .iter()
         .filter_map(|id| processes.get(*id))
         .filter(|process| process.kind != ProcessKind::Run)
+        // moved by hand: it stays until its directory changes
+        .filter(|process| process.pinned().is_none() || process.pinned() != process.directory())
         .filter_map(|process| {
             let target = checkout_of(process.directory()?)?;
             (process.checkout.as_ref() != Some(&target)).then_some((process.id, target))
@@ -168,5 +171,67 @@ mod tests {
 
         // then
         assert!(moved.is_empty());
+    }
+
+    #[test]
+    fn should_keep_moved_process_while_directory_unchanged() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = terminal_in(&mut processes, "/a", "/a/src");
+        processes.move_pinned(id, checkout("/a/wt"));
+
+        // when
+        let (moved, _) = moves(&processes, &[id], checkout_of(&["/a/wt"]), None);
+
+        // then
+        assert!(moved.is_empty());
+        assert_eq!(processes.get(id).unwrap().checkout, Some(checkout("/a/wt")));
+    }
+
+    #[test]
+    fn should_follow_moved_process_once_directory_changes() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = terminal_in(&mut processes, "/a", "/a/src");
+        processes.move_pinned(id, checkout("/a/wt"));
+
+        // when
+        processes.set_directory(id, PathBuf::from("/a/src/x"));
+        let (moved, _) = moves(&processes, &[id], checkout_of(&["/a/wt"]), None);
+
+        // then
+        assert_eq!(moved, [(id, checkout("/a"))]);
+    }
+
+    #[test]
+    fn should_keep_moved_process_when_directory_leaves_every_checkout() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = terminal_in(&mut processes, "/a", "/a/src");
+        processes.move_pinned(id, checkout("/a/wt"));
+
+        // when
+        processes.set_directory(id, PathBuf::from("/tmp"));
+        let (moved, _) = moves(&processes, &[id], checkout_of(&["/a/wt"]), None);
+
+        // then
+        assert!(moved.is_empty());
+        assert_eq!(processes.get(id).unwrap().pinned(), None);
+    }
+
+    #[test]
+    fn should_keep_moved_process_whose_directory_was_not_known_yet() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(Some(checkout("/a")), |_| Ok::<_, ()>(())).unwrap();
+        processes.move_pinned(id, checkout("/a/wt"));
+
+        // when
+        processes.set_directory(id, PathBuf::from("/a/src"));
+        let (moved, _) = moves(&processes, &[id], checkout_of(&["/a/wt"]), None);
+
+        // then
+        assert!(moved.is_empty());
+        assert_eq!(processes.get(id).unwrap().pinned(), Some(std::path::Path::new("/a/src")));
     }
 }

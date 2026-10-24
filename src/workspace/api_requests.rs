@@ -194,6 +194,15 @@ impl Workspace {
             Request::ReadOutput { tab, lines } => Ok(json!({ "lines": self.terminal(tab)?.output_text(lines) })),
             Request::ShowProcess { process } => self.show_process_tab(process, window, cx).map(|id| json!({ "tab": id.value() })),
             Request::ListTargets => Ok(self.target_names(cx)),
+            Request::DropRows { rows, onto, force } => {
+                let force = match force.as_deref() {
+                    None => None,
+                    Some("copy") => Some(crate::transfer::Verb::Copy),
+                    Some("move") => Some(crate::transfer::Verb::Move),
+                    Some(other) => return Err(format!("force must be \"copy\" or \"move\", not {other:?}")),
+                };
+                self.drop_rows(super::tree_drop::RowsDrop { rows, onto, force }, window, cx)
+            }
             Request::ListRunConfigs { folder } => self.list_run_configs(&self.resolve(&folder)),
 
             Request::NextFrame | Request::WindowInput(_) | Request::OpenProject { .. } | Request::RunConfig { .. } | Request::Screenshot => {

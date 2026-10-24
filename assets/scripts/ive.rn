@@ -41,10 +41,15 @@ pub fn init(config) {
         main: [act::NewTerminal, act::StopProgram, "Separator",
                   act::SendPathsToTerminal, act::OpenTerminalHere, act::RunFile, "Separator",
                   act::FindInFiles, "Separator",
+                  act::CopyFiles, act::PasteFiles, "Separator",
                   copy_path, open_in, "Separator",
                   #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory, "Separator", act::GitIgnore] },
                   act::CompareFiles],
     };
+
+    // the modifiers that make a drop on a tree row copy or move whatever it would do (the same worktree moves, another
+    // copies), written as a key's mods; force_copy also makes a drop of terminals start copies of them there
+    config.drop_modifiers = if ive::os() == "macos" { #{ force_copy: "ALT", force_move: "SUPER" } } else { #{ force_copy: "CTRL", force_move: "SHIFT" } };
 
     // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
     config.quit_countdown = 10;
@@ -86,6 +91,11 @@ pub fn init(config) {
         #{ key: "5", mods: "CTRL|ALT", action: act::ToggleFolderEverywhere("files") },
         // keys while the sidebar has the keyboard (a click on it gives it)
         #{ key: copy_full_path.key, mods: copy_full_path.mods, action: act::CopyFullPath, scope: "tree" },
+        // drops the rows Ctrl+click and Shift+click picked
+        #{ key: "Escape", action: act::ClearRowSelection, scope: "tree" },
+        // the picked files and folders onto the clipboard as paths; pasted on a row, copied into its folder
+        #{ key: "c", mods: "SECONDARY", action: act::CopyFiles, scope: "tree" },
+        #{ key: "v", mods: "SECONDARY", action: act::PasteFiles, scope: "tree" },
 
         #{ key: "c", mods: terminal_clipboard, action: act::CopyTo("Clipboard"), scope: "terminal" },
         #{ key: "v", mods: terminal_clipboard, action: act::PasteFrom("Clipboard"), scope: "terminal" },
