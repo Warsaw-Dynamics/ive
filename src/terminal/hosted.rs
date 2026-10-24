@@ -18,6 +18,7 @@ use ptyhost::host::{self, HostConfig, Launcher};
 use ptyhost::protocol::{Frame, Size};
 use ptyhost::registry::{Owner, Registry, SessionInfo};
 
+use super::attention::{Call, CallReport, CallScanner, finished};
 use super::directory::{DirectoryReport, DirectoryScanner, host_name};
 use super::foreground::ForegroundProbe;
 use super::launch::{Launch, login_shell};
@@ -137,6 +138,8 @@ struct Shared {
     hanging_up: AtomicBool,
     /// the program's last progress report
     progress: Mutex<Progress>,
+    /// the program's last call for the user's attention, in live output
+    call: Mutex<Option<CallReport>>,
     /// the program's last working-directory report
     directory: Mutex<Option<DirectoryReport>>,
     /// whether the program asked to hear when the theme turns dark or light
@@ -170,6 +173,7 @@ impl Connection {
                 lost: OnceLock::new(),
                 hanging_up: AtomicBool::new(false),
                 progress: Mutex::new(Progress::None),
+                call: Mutex::new(None),
                 directory: Mutex::new(None),
                 theme_reports: AtomicBool::new(false),
             });
@@ -208,6 +212,10 @@ impl Connection {
 
     pub fn progress(&self) -> Progress {
         *self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub fn call(&self) -> Option<CallReport> {
+        self.shared.call.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
     }
 
     pub fn directory(&self) -> Option<DirectoryReport> {
@@ -306,6 +314,7 @@ impl Shared {
 struct Parsers {
     terminal: Processor<StdSyncHandler>,
     progress: ProgressScanner,
+    call: CallScanner,
     directory: DirectoryScanner,
     theme_reports: ThemeReportScanner,
 }
@@ -315,6 +324,7 @@ impl Default for Parsers {
         Self {
             terminal: Processor::default(),
             progress: ProgressScanner::default(),
+            call: CallScanner::default(),
             directory: DirectoryScanner::new(host_name()),
             theme_reports: ThemeReportScanner::default(),
         }
@@ -389,8 +399,11 @@ impl Output {
 
     fn parse(&self, parser: &mut Parsers, bytes: &[u8], origin: Origin) {
         parser.terminal.advance(&mut *self.term.lock(), bytes);
-        if let Some(progress) = parser.progress.scan(bytes) {
-            *self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = progress;
+        let call = parser.call.scan(bytes);
+        let ended = parser.progress.scan(bytes).filter(|progress| self.take_progress(*progress)).map(|_| Call::Finished);
+        // a replay holds calls the user already saw
+        if let (Some(call), Origin::Live) = (call.or(ended), origin) {
+            self.keep_call(call);
         }
         // replayed output counts too: it restores what the program asked for before IVE re-attached
         if let Some(wanted) = parser.theme_reports.scan(bytes) {
@@ -406,6 +419,19 @@ impl Output {
             *directory = Some(DirectoryReport { number, path, leader });
         }
         self.listener.send_event(Event::Wakeup);
+    }
+
+    /// Keeps `progress` as the program's last report; whether it ended busy progress.
+    fn take_progress(&self, progress: Progress) -> bool {
+        let mut last = self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let before = std::mem::replace(&mut *last, progress);
+        finished(before, progress)
+    }
+
+    fn keep_call(&self, call: Call) {
+        let mut last = self.shared.call.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let number = last.as_ref().map_or(1, |report| report.number + 1);
+        *last = Some(CallReport { number, call });
     }
 
     /// Draws a synchronized update whose end never came in time, as alacritty does.
@@ -589,6 +615,37 @@ mod tests {
         // then
         let report = fixture.connection.directory().unwrap();
         assert_eq!((report.number, report.path, report.leader.is_some()), (2, std::path::PathBuf::from("/tmp/two"), true));
+    }
+
+    #[test]
+    fn should_number_live_calls() {
+        // given
+        let mut fixture = fixture();
+
+        // when
+        fixture.send(Frame::Output(b"\x1b]9;4;3\x07\x1b]9;Waiting\x07".to_vec()));
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07done".to_vec()));
+        fixture.wait_for_line("done");
+
+        // then
+        assert_eq!(fixture.connection.call(), Some(CallReport { number: 2, call: Call::Finished }));
+    }
+
+    #[test]
+    fn should_take_no_call_from_the_replay() {
+        // given
+        let mut fixture = fixture();
+
+        // when
+        fixture.send(Frame::Replay(b"\x1b]9;Old\x07\x07\x1b]9;4;1;50\x07\x1b]9;4;0\x07\x1b]9;4;3\x07replayed".to_vec()));
+        fixture.wait_for_line("replayed");
+        let replayed = fixture.connection.call();
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07\r\x1b[2Klive".to_vec()));
+        fixture.wait_for_line("live");
+
+        // then
+        assert_eq!((replayed, fixture.connection.progress()), (None, Progress::None));
+        assert_eq!(fixture.connection.call(), Some(CallReport { number: 1, call: Call::Finished }));
     }
 
     #[test]

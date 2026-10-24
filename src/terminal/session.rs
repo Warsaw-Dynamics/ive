@@ -19,6 +19,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use super::foreground::ForegroundProbe;
 use super::directory::DirectoryReport;
 use super::launch::Launch;
+use super::attention::CallReport;
 use super::progress::Progress;
 use super::theme_reports::theme_report;
 #[cfg(unix)]
@@ -222,6 +223,15 @@ impl Session {
             Transport::InProcess(_) => Progress::None,
             #[cfg(unix)]
             Transport::Hosted(connection) => connection.progress(),
+        }
+    }
+
+    /// The program's last call for the user's attention in live output; only hosted sessions read it.
+    pub fn call(&self) -> Option<CallReport> {
+        match &self.transport {
+            Transport::InProcess(_) => None,
+            #[cfg(unix)]
+            Transport::Hosted(connection) => connection.call(),
         }
     }
 
