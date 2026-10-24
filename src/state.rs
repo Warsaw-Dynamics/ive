@@ -82,6 +82,12 @@ pub struct SavedProject {
     /// worktrees left out of the tree and the hub until shown again, sorted
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hidden_worktrees: Vec<PathBuf>,
+    /// the project's group of tabs was folded
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tabs_folded: bool,
+    /// the order of its worktrees in its group of tabs, as dragged in the group's menu
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub worktree_order: Vec<PathBuf>,
 }
 
 /// Which of a checkout's folders its badges switched on, which are folded, and what is open inside them.
@@ -194,7 +200,7 @@ impl SavedState {
         }
         let checkouts = self.projects.iter().flat_map(|project| {
             let folders = project.folders.iter().flat_map(|folders| std::iter::once(&folders.checkout).chain(&folders.files).chain(&folders.hidden_groups));
-            project.expanded_checkouts.iter().chain(&project.last_checkout).chain(&project.hidden_worktrees).chain(folders)
+            project.expanded_checkouts.iter().chain(&project.last_checkout).chain(&project.hidden_worktrees).chain(&project.worktree_order).chain(folders)
         });
         let paths = self.projects.iter().map(|project| &project.path).chain(self.recent.iter().map(|recent| &recent.path));
         let shown = self.history.iter().flat_map(|shown| shown.tab.paths());
@@ -326,6 +332,8 @@ mod tests {
             last_checkout: None,
             folders: Vec::new(),
             hidden_worktrees: Vec::new(),
+            tabs_folded: false,
+            worktree_order: Vec::new(),
         }
     }
 
@@ -353,6 +361,8 @@ mod tests {
                     change_folders: vec![SavedChangeFolder { list: "since-base".to_owned(), path: "src/ui".to_owned(), open: false }],
                 }],
                 hidden_worktrees: vec![PathBuf::from("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-811")],
+                tabs_folded: false,
+                worktree_order: Vec::new(),
             }],
             recent: vec![RecentProject { path: PathBuf::from("/home/kb/Documents/notes"), id: "notes".to_owned() }],
             tabs: None,
@@ -634,6 +644,35 @@ mod tests {
 
         // then
         assert!(error.contains("path w is not absolute"), "{error}");
+    }
+
+    #[test]
+    fn should_round_trip_folded_tabs_and_worktree_order() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let project = SavedProject { tabs_folded: true, worktree_order: vec![PathBuf::from("/p/b"), PathBuf::from("/p")], ..project("/p") };
+        let state = SavedState { projects: vec![project], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_reject_a_relative_worktree_in_the_order() {
+        // given
+        let project = SavedProject { worktree_order: vec![PathBuf::from("wt")], ..project("/p") };
+        let state = SavedState { projects: vec![project], ..SavedState::default() };
+
+        // when
+        let error = state.validate().unwrap_err();
+
+        // then
+        assert!(error.contains("path wt is not absolute"), "{error}");
     }
 
     #[test]

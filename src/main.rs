@@ -59,6 +59,7 @@ mod sidebar;
 mod state;
 mod tab_preview;
 mod tab_window;
+mod tab_groups;
 mod tabs;
 mod third_party;
 mod trace;

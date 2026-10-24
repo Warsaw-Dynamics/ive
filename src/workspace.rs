@@ -63,6 +63,7 @@ mod owners;
 mod path_actions;
 mod send_paths;
 mod git_actions;
+mod tab_grouping;
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -161,6 +162,8 @@ pub struct Workspace {
     /// which terminals were used last, for Send to Terminal and the hub's Alt+Enter
     terminal_use: crate::terminal_use::TerminalUse,
     hub_index: HubIndex,
+    /// each project's tab shown last: the one its folded group of tabs keeps out
+    group_current: std::collections::HashMap<ProjectId, TabId>,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
     /// the projects `corpus` was built from, in its order
@@ -314,6 +317,7 @@ impl Workspace {
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
             terminal_use: Default::default(),
             hub_index: HubIndex::default(),
+            group_current: std::collections::HashMap::new(),
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
             corpus_build: hub_index::CorpusBuild::default(),
@@ -588,6 +592,7 @@ impl Workspace {
             self.section_shown(tab, window, cx);
         }
         self.record_shown(cx);
+        self.record_group_current();
         if self.hub_return.as_ref().is_some_and(|opened| Some(opened.tab) != self.tabs.active_id()) {
             self.hub_return = None;
         }
