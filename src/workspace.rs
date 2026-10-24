@@ -59,6 +59,7 @@ mod scratches;
 mod scripts;
 mod settings_actions;
 mod menu;
+mod owners;
 mod path_actions;
 mod send_paths;
 mod git_actions;

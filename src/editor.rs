@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -403,6 +403,21 @@ impl Tab {
         match self {
             Self::Scratch(scratch) => Some(scratch.project().clone()),
             _ => self.checkout(workspace).map(|checkout| checkout.project),
+        }
+    }
+
+    /// The path whose module owns this tab: a file's, a diff's (relative to its checkout), a process's working folder
+    /// or its run's folder; `None` for a tab of the whole project or of none.
+    pub fn owner_path(&self, workspace: &Workspace) -> Option<PathBuf> {
+        match self {
+            Self::Document(file) => Some(file.path().to_path_buf()),
+            Self::Diff(tab) => Some(PathBuf::from(tab.request.file.path.display())),
+            Self::Process(id) => {
+                let process = workspace.processes().get(*id)?;
+                process.directory().map(Path::to_path_buf).or_else(|| process.run.as_ref().map(|run| run.folder.clone()))
+            }
+            Self::Unloaded(SavedTab::File { path, .. }) => Some(path.clone()),
+            _ => None,
         }
     }
 
