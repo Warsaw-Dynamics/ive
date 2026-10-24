@@ -271,6 +271,8 @@ impl Workspace {
             cx.on_app_quit(|workspace, cx| {
                 workspace.flush_state(cx);
                 workspace.apply_update_on_quit(cx);
+                // a notification left behind would show a process IVE no longer has
+                workspace.desktop_notices.withdraw_all();
                 async {}
             }),
         ];

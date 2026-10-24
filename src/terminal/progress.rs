@@ -59,19 +59,25 @@ pub struct ProgressScanner {
 
 impl ProgressScanner {
     /// The last report completed in `bytes`, if any.
+    #[cfg(test)]
     pub fn scan(&mut self, bytes: &[u8]) -> Option<Progress> {
+        self.scan_all(bytes).pop()
+    }
+
+    /// Every report completed in `bytes`, in order: an end and a new start in one read are both there.
+    pub fn scan_all(&mut self, bytes: &[u8]) -> Vec<Progress> {
         self.parser.advance(&mut self.reports, bytes);
-        self.reports.0.take()
+        std::mem::take(&mut self.reports.0)
     }
 }
 
 #[derive(Default)]
-struct LastReport(Option<Progress>);
+struct LastReport(Vec<Progress>);
 
 impl Perform for LastReport {
     fn osc_dispatch(&mut self, params: &[&[u8]], _bell_terminated: bool) {
         if let Some(progress) = Progress::parse(params) {
-            self.0 = Some(progress);
+            self.0.push(progress);
         }
     }
 }

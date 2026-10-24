@@ -29,6 +29,25 @@ pub fn counts(sight: Sight, focus: WindowFocus) -> bool {
     (sight, focus) != (Sight::Shown, WindowFocus::Active)
 }
 
+/// Where a process's tab is: in the main window's row, shown or not, in a window of its own, or nowhere.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabAt<H> {
+    Shown,
+    Hidden,
+    Detached(H),
+    Nowhere,
+}
+
+/// Whether a process with its tab at `tab` is shown, and whether its window (`main` unless detached) is active.
+pub fn sight<H: Copy + PartialEq>(tab: TabAt<H>, main: H, active: &ActiveWindow<H>) -> (Sight, WindowFocus) {
+    match tab {
+        // a detached window shows its one tab
+        TabAt::Detached(window) => (Sight::Shown, active.focus_of(window)),
+        TabAt::Shown => (Sight::Shown, active.focus_of(main)),
+        TabAt::Hidden | TabAt::Nowhere => (Sight::Hidden, active.focus_of(main)),
+    }
+}
+
 /// Which of IVE's windows has the keyboard, as their activation observers tell it. gpui's own `active_window` is
 /// not set yet while those observers run on X11.
 #[derive(Debug)]
@@ -76,6 +95,39 @@ pub fn brief(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_see_a_process_shown_in_the_active_window_only() {
+        // given
+        let mut active = ActiveWindow::default();
+        active.observe("detached", WindowFocus::Active);
+        let places = [TabAt::Detached("detached"), TabAt::Detached("other"), TabAt::Shown, TabAt::Hidden, TabAt::Nowhere];
+
+        // when
+        let sights = places.map(|tab| sight(tab, "main", &active));
+
+        // then
+        assert_eq!(sights, [
+            (Sight::Shown, WindowFocus::Active),
+            (Sight::Shown, WindowFocus::Inactive),
+            (Sight::Shown, WindowFocus::Inactive),
+            (Sight::Hidden, WindowFocus::Inactive),
+            (Sight::Hidden, WindowFocus::Inactive),
+        ]);
+    }
+
+    #[test]
+    fn should_see_the_shown_tab_of_the_active_main_window() {
+        // given
+        let mut active = ActiveWindow::default();
+        active.observe("main", WindowFocus::Active);
+
+        // when
+        let sights = [TabAt::Shown, TabAt::Hidden].map(|tab| sight(tab, "main", &active));
+
+        // then
+        assert_eq!(sights, [(Sight::Shown, WindowFocus::Active), (Sight::Hidden, WindowFocus::Active)]);
+    }
 
     #[test]
     fn should_follow_the_window_that_became_active() {

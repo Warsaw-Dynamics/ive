@@ -173,10 +173,13 @@ fn take_keys(sidebar_focus: FocusHandle) -> impl Fn(&MouseDownEvent, &mut Window
 
 fn row_width(row: &TreeRow) -> usize {
     let (slots, text) = match &row.item {
-        TreeItem::Project(project) => (2, project.name.chars().count() + 12),
-        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count()),
-        TreeItem::Folder(folder) => (2, folder.kind.title().chars().count() + 4 + folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count())),
-        TreeItem::Process(process) => (2, process.title.chars().count()),
+        TreeItem::Project(project) => (2, project.name.chars().count() + 12 + said_width(&waiting_text(project.waiting))),
+        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count() + said_width(&waiting_text(checkout.waiting))),
+        TreeItem::Folder(folder) => {
+            let nothing = folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count());
+            (2, folder.kind.title().chars().count() + 4 + nothing + said_width(&waiting_text(folder.waiting)))
+        }
+        TreeItem::Process(process) => (2, process.title.chars().count() + said_width(&process.attention.as_ref().map(|text| format!("● {text}")))),
         TreeItem::LiveRun(run) => (2, run.name.chars().count() + run.label.chars().count() + 1),
         TreeItem::Change(change) => (2, change.change.path.file_name().chars().count() + 2 + change.folder.as_ref().map_or(0, |folder| folder.chars().count() + 1)),
         TreeItem::ChangeFolder(folder) => (2, folder.label.chars().count() + 4),
@@ -575,7 +578,7 @@ fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> 
         Some(_) => with_dot(icon(theme, row.kind.icon()), theme, theme.tree).into_any_element(),
         None => icon(theme, row.kind.icon()).into_any_element(),
     };
-    let said = row.attention.clone().map(|text| attention_text(format!("● {text}"), theme));
+    let said = row.attention.as_ref().map(|text| attention_text(format!("● {text}"), theme));
     let row_div = line.div.child(folder_view::slot(theme)).child(kind_icon).children(progress_bar(row.progress, theme)).child(row.title.clone()).children(said).child(action);
     bind_row(row_div, mouse, cx)
 }
@@ -585,9 +588,18 @@ fn attention_text(text: String, theme: Theme) -> Div {
     div().flex_none().text_size(theme.sizes.tree.tag_text_size.px()).text_color(rgb(theme.attention)).child(text)
 }
 
-/// `● n waiting` on a folded row with processes below it that called for the user.
+/// `● n waiting` on a row with processes below it that called for the user and that its open rows do not show.
 pub(super) fn waiting_tag(waiting: usize, theme: Theme) -> Option<Div> {
-    (waiting > 0).then(|| attention_text(format!("● {waiting} waiting"), theme))
+    waiting_text(waiting).map(|text| attention_text(text, theme))
+}
+
+fn waiting_text(waiting: usize) -> Option<String> {
+    (waiting > 0).then(|| format!("● {waiting} waiting"))
+}
+
+/// The characters a row's attention text adds, with the gap before it, so the tree scrolls far enough to show it.
+fn said_width(text: &Option<String>) -> usize {
+    text.as_ref().map_or(0, |text| text.chars().count() + 1)
 }
 
 /// A file or folder row; dragged onto a terminal, it types its path, or the selection's when it is selected.
@@ -1023,6 +1035,28 @@ fn render_resize_handle(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<D
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_widen_a_row_by_what_its_process_said() {
+        // given
+        let process = |attention: Option<&str>| TreeRow {
+            depth: 0,
+            item: TreeItem::Process(ProcessRow {
+                id: crate::process::ProcessId::for_tests(1),
+                kind: crate::process::ProcessKind::Terminal,
+                title: "zsh".to_owned(),
+                progress: crate::terminal::Progress::None,
+                attention: attention.map(str::to_owned),
+            }),
+            target: String::new(),
+        };
+
+        // when
+        let widths = [row_width(&process(None)), row_width(&process(Some("Claude needs you")))];
+
+        // then
+        assert_eq!(widths[1] - widths[0], "● Claude needs you".chars().count() + 1);
+    }
 
     #[test]
     fn should_keep_tree_selection_when_shown_tab_changes() {

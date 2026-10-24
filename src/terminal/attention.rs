@@ -68,8 +68,9 @@ impl Perform for LastCall {
     }
 
     fn osc_dispatch(&mut self, params: &[&[u8]], _bell_terminated: bool) {
-        if let Some(text) = notification_text(params) {
-            self.0 = Some(Call::Notification(cleaned(&text)));
+        if let Some(text) = notification_text(params).map(|text| one_line(&text)) {
+            let text = if text.is_empty() { "notified".to_owned() } else { text };
+            self.0 = Some(Call::Notification(text));
         }
     }
 }
@@ -101,13 +102,10 @@ fn is_base64(metadata: &[u8]) -> bool {
 }
 
 /// `text` on one line: control characters dropped, whitespace runs one space, trimmed, at most [`MAX_TEXT`]
-/// characters; `notified` when nothing is left.
-fn cleaned(text: &str) -> String {
+/// characters, cut ones ending in `…`. A program's words, safe to show on a row or pass on to the desktop.
+pub fn one_line(text: &str) -> String {
     let printable = text.chars().map(|c| if c.is_whitespace() { ' ' } else { c }).filter(|c| !c.is_control());
     let words = printable.collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ");
-    if words.is_empty() {
-        return "notified".to_owned();
-    }
     if words.chars().count() <= MAX_TEXT {
         return words;
     }
@@ -177,6 +175,15 @@ mod tests {
     }
 
     #[test]
+    fn should_say_notified_for_an_empty_notification() {
+        // when
+        let calls = [scan(b"\x1b]9;\t\x07"), scan(b"\x1b]777;notify; ; \x07")];
+
+        // then
+        assert_eq!(calls, [notification("notified"), notification("notified")]);
+    }
+
+    #[test]
     fn should_read_a_bell() {
         // when
         let call = scan(b"ab\x07c");
@@ -214,12 +221,12 @@ mod tests {
         let long = "x".repeat(10_000);
 
         // when
-        let texts = [cleaned("a\x1b[1m\tb\n"), cleaned(&long), cleaned(" \n "), cleaned("zażółć  gęślą")];
+        let texts = [one_line("a\x1b[1m\tb\n"), one_line(&long), one_line(" \n "), one_line("zażółć  gęślą")];
 
         // then
         assert_eq!(texts[0], "a[1m b");
         assert_eq!(texts[1], format!("{}…", "x".repeat(199)));
-        assert_eq!(texts[2], "notified");
+        assert_eq!(texts[2], "");
         assert_eq!(texts[3], "zażółć gęślą");
     }
 

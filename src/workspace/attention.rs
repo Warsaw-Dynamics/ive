@@ -7,7 +7,7 @@ use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{AnyWindowHandle, Context, Task, Window};
 
 use super::Workspace;
-use crate::attention::{Sight, WindowFocus, counts};
+use crate::attention::{Sight, TabAt, WindowFocus, counts, sight};
 use crate::sidebar::view::HeaderMenu;
 use crate::process::ProcessId;
 
@@ -55,9 +55,10 @@ impl Workspace {
         let Some(process) = self.processes.get(id) else {
             return;
         };
+        // the program sets its title: cleaned and bounded as what it said
         let title = match &process.checkout {
-            Some(checkout) => format!("{} — {}", process.title(), self.checkout_label(checkout)),
-            None => process.title(),
+            Some(checkout) => crate::terminal::one_line(&format!("{} — {}", process.title(), self.checkout_label(checkout))),
+            None => crate::terminal::one_line(&process.title()),
         };
         self.desktop_notices.send(id, &title, text);
     }
@@ -75,12 +76,11 @@ impl Workspace {
         if self.active_window.is_any() {
             self.desktop_notices.withdraw_all();
         }
-        let mut cleared = false;
-        for id in seen {
-            cleared |= self.processes.clear_attention(id);
-            self.desktop_notices.withdraw(id);
+        for id in &seen {
+            self.desktop_notices.withdraw(*id);
         }
-        if cleared {
+        let cleared = seen.into_iter().filter(|id| self.processes.clear_attention(*id)).count();
+        if cleared > 0 {
             self.waiting_changed(cx);
         }
     }
@@ -89,19 +89,19 @@ impl Workspace {
         self.sight_of(id) == (Sight::Shown, WindowFocus::Active)
     }
 
-    /// Whether process `id`'s tab is the one its window shows, and whether that window has the keyboard; a process
-    /// without a tab is hidden in the main window.
+    /// Whether process `id`'s tab is the one its window shows, and whether that window has the keyboard.
     fn sight_of(&self, id: ProcessId) -> (Sight, WindowFocus) {
-        let focus = |handle| self.active_window.focus_of(handle);
-        let tab = self.tabs.find(|tab| tab.shows_process(id));
-        match tab {
-            Some(tab) => match self.tab_windows.handle_of(tab) {
-                // a detached window shows its one tab
-                Some(handle) => (Sight::Shown, focus(handle)),
-                None if self.tabs.active_id() == Some(tab) => (Sight::Shown, focus(self.main_window)),
-                None => (Sight::Hidden, focus(self.main_window)),
-            },
-            None => (Sight::Hidden, focus(self.main_window)),
+        sight(self.tab_place(id), self.main_window, &self.active_window)
+    }
+
+    fn tab_place(&self, id: ProcessId) -> TabAt<AnyWindowHandle> {
+        let Some(tab) = self.tabs.find(|tab| tab.shows_process(id)) else {
+            return TabAt::Nowhere;
+        };
+        match self.tab_windows.handle_of(tab) {
+            Some(window) => TabAt::Detached(window),
+            None if self.tabs.active_id() == Some(tab) => TabAt::Shown,
+            None => TabAt::Hidden,
         }
     }
 

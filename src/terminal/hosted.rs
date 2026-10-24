@@ -400,7 +400,9 @@ impl Output {
     fn parse(&self, parser: &mut Parsers, bytes: &[u8], origin: Origin) {
         parser.terminal.advance(&mut *self.term.lock(), bytes);
         let call = parser.call.scan(bytes);
-        let ended = parser.progress.scan(bytes).filter(|progress| self.take_progress(*progress)).map(|_| Call::Finished);
+        // each report in turn: an end followed by a new start in the same read still ends
+        let ends = parser.progress.scan_all(bytes).into_iter().filter(|progress| self.take_progress(*progress)).count();
+        let ended = (ends > 0).then_some(Call::Finished);
         // a replay holds calls the user already saw
         if let (Some(call), Origin::Live) = (call.or(ended), origin) {
             self.keep_call(call);
@@ -629,6 +631,20 @@ mod tests {
 
         // then
         assert_eq!(fixture.connection.call(), Some(CallReport { number: 2, call: Call::Finished }));
+    }
+
+    #[test]
+    fn should_finish_when_progress_ends_and_starts_again_in_one_read() {
+        // given
+        let mut fixture = fixture();
+        fixture.send(Frame::Output(b"\x1b]9;4;3\x07".to_vec()));
+
+        // when
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07\x1b]9;4;1;5\x07next".to_vec()));
+        fixture.wait_for_line("next");
+
+        // then
+        assert_eq!((fixture.connection.call(), fixture.connection.progress()), (Some(CallReport { number: 1, call: Call::Finished }), Progress::Normal(5)));
     }
 
     #[test]
