@@ -184,7 +184,10 @@ fn press(press: Press, window: &mut Window, cx: &mut App) {
     }
     let extends = event.modifiers.shift && state.selection.holds(id);
     let (anchor, span) = match event.click_count {
-        2 => (index, word_at(text, index)),
+        2 => {
+            let word = word_at(text, index);
+            (word.start, word)
+        }
         count if count >= 3 => (0, Span { start: 0, end: text.len() }),
         _ if extends => (state.anchor, spanned(state.anchor, index)),
         _ => (index, spanned(index, index)),
@@ -341,6 +344,22 @@ mod tests {
 
         // then
         assert_eq!(copied(cx).as_deref(), Some("hello"));
+    }
+
+    #[gpui::test]
+    fn should_extend_from_the_word_start_after_double_click(cx: &mut TestAppContext) {
+        // given
+        let (cx, _) = window(cx);
+        press(point(px(20.), px(5.)), 2, cx);
+        redraw(cx);
+
+        // when
+        let shift = Modifiers { shift: true, ..Modifiers::default() };
+        cx.simulate_event(MouseDownEvent { button: MouseButton::Left, position: point(px(120.), px(5.)), modifiers: shift, click_count: 1, first_mouse: false });
+
+        // then
+        let text = copied(cx).expect("a selection");
+        assert!(text.starts_with("hello ") && text.len() > "hello ".len(), "{text:?}");
     }
 
     #[gpui::test]
