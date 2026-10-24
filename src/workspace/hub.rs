@@ -990,7 +990,7 @@ impl Workspace {
     /// A process's row: its state, or what it said while it waits for the user.
     fn process_item(&self, process: &crate::process::Process) -> Item {
         let state = match (&process.run, process.attention()) {
-            (_, Some(attention)) => format!("● {}", attention.text),
+            (_, Some(attention)) => format!("● {}", crate::attention::brief(&attention.text)),
             (Some(origin), None) if !process.is_live() => format!("ended · {}", origin.name),
             (Some(_), None) => "running".to_owned(),
             (None, None) => "live".to_owned(),

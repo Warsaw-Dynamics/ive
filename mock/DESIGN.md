@@ -521,7 +521,7 @@ not draw it yet.
 - Notices: panels stacked at the bottom right of the main window, 420 px wide, error-coloured border on the sidebar
   colour: a muted time line with Copy and ×, then the text in the error colour. At most five.
 
-## Attention: a process that wants the user (a proposal, *(not in the app yet)*)
+## Attention: a process that wants the user (in the app since 2026-10-25)
 
 Claude Code, Codex or a build in a terminal says when it finished or waits for an answer; IVE shows it until the user
 looks. IVE reads only standard terminal sequences and knows no agent; each agent is set up to send them (README).
@@ -530,10 +530,11 @@ looks. IVE reads only standard terminal sequences and knows no agent; each agent
   (Ghostty, VTE), `OSC 99` (kitty): the text; `BEL`: "rang the bell"; `OSC 9;4` going from busy to `0`: "finished".
   Claude Code: `preferredNotifChannel` `iterm2` (or `ghostty`, `kitty`, `terminal_bell`); Codex: `[tui] notifications`.
 - **Only while the user is not looking**: nothing is raised for the shown tab while IVE's window is in front.
-  Showing the tab with the window in front, or typing into it, clears it. A newer call replaces the text.
+  Showing the tab with the window in front clears it. A newer call replaces the text and keeps the first call's time.
+  Only live output of hosted terminals counts: a replay holds calls the user saw.
 - **Where it shows**, one colour (`--attention`, amber: not the green of running nor the red of failed):
   - the process's tab: a dot at the top right of its icon, the text in the tooltip;
-  - its tree row: the same dot, then `● <text>` after the title (the full text in the tooltip);
+  - its tree row: the same dot, then `● <text>` after the title;
   - a folded project, worktree or Processes row: `● n waiting`;
   - the tab row's right end, left of Settings: IntelliJ's Notifications bell (`notifications-20.svg`) with the dot,
     only while something waits. A click lists them, longest waiting first (icon, title · worktree, the text, age);
@@ -541,10 +542,10 @@ looks. IVE reads only standard terminal sequences and knows no agent; each agent
   - the hub (Ctrl+E): **Waiting** first, above Recent; Running shows the text instead of the state.
 - **IVE in the background**: a desktop notification through the OS (freedesktop notifications on Linux, the
   notification centre on macOS), title `<process title> — <worktree>`, body the text; one per process, a newer call
-  replaces it. A click raises IVE and shows the process. The window also asks for attention (urgency hint, dock
-  bounce). When IVE comes to front it withdraws its desktop notifications: the bell lists what still waits.
-- Terminals outlive IVE in the ptyhost: a call made while IVE was closed is kept by the host and shown when IVE
-  attaches, as the replay restores modes.
+  replaces it. A click raises IVE and shows the process (Linux). When IVE comes to front it withdraws its desktop
+  notifications: the bell lists what still waits.
+- Not done: the window's urgency hint (gpui has no API for it); keeping a call made while IVE was closed (the pty
+  host would have to hold it).
 - Mock: the `mock: attention` bar sends a notification, a bell or a progress end to a process that is not shown,
   and sends IVE to the background (the window dims; the dark panels at the top right stand in for the OS's).
 
