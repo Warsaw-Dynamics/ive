@@ -26,11 +26,12 @@
   };
   var TITLES = { owner: 'Project or module', worktree: 'Worktree', layout: 'Tabs', tree: 'Worktree in the tree', when: 'Show' };
   var TODAY = { owner: 'none', worktree: 'today', layout: 'flat', tree: 'none', when: 'always' };
+  // the direction picked (brainstorm 2026-10-24), in the app since: the mock's default
+  var CHOSEN = { owner: 'badge', worktree: 'tint', layout: 'projects', tree: 'rail', when: 'spread' };
   // name, values, what it shows
   var PRESETS = [
-    ['Today', TODAY, 'as the app'],
-    // the direction picked (brainstorm 2026-10-24)
-    ['Chosen', { owner: 'badge', worktree: 'tint', layout: 'projects', tree: 'rail', when: 'spread' }, 'project groups, tint, rail'],
+    ['Chosen', CHOSEN, 'as the app'],
+    ['Before', TODAY, 'as the app was'],
     ['A Badge, tint', { owner: 'badge', worktree: 'tint', layout: 'flat', when: 'spread' }, 'badge, tinted tab'],
     ['B Groups', { owner: 'badge', worktree: 'tint', layout: 'groups', when: 'spread' }, 'a group per worktree'],
     ['C Clashes', { owner: 'badge', worktree: 'label', layout: 'flat', when: 'clash' }, 'only same names'],
@@ -69,11 +70,11 @@
     // identMenuDrag: a drag in that menu (pressGroupMenu); identWorktreeOrder: per project, its worktrees' order as
     // dragged in the menu
     state: function () {
-      return { ident: Object.assign({}, TODAY), identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {} };
+      return { ident: Object.assign({}, CHOSEN), identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {} };
     },
 
     methods: {
-      // A preset sets the parts it names; the tree's keeps its pick, except Today's.
+      // A preset sets the parts it names; the tree's keeps its pick, except Chosen's and Before's.
       identPreset: function (values) { this.ident = Object.assign({}, this.ident, values); },
       isIdentPreset: function (values) {
         var self = this;
@@ -81,7 +82,7 @@
       },
       // #ident=owner,worktree,layout,when
       identParam: function () {
-        if (this.isIdentPreset(TODAY)) return null;
+        if (this.isIdentPreset(CHOSEN)) return null;
         var self = this;
         return Object.keys(OPTIONS).map(function (k) { return self.ident[k]; }).join(',');
       },
