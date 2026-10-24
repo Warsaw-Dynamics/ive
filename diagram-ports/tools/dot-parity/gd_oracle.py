@@ -63,6 +63,18 @@ def macos_rpaths(target, executable):
     return paths
 
 
+def macos_install_name(target):
+    lines = output(["otool", "-l", str(target)]).splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() != "cmd LC_ID_DYLIB":
+            continue
+        for nearby in lines[index + 1:index + 5]:
+            match = re.search(r"\bname\s+(\S+)\s+\(offset", nearby)
+            if match:
+                return match.group(1)
+    return None
+
+
 def macos_library_paths(target, name, executable):
     if name.startswith("@loader_path/"):
         return [target.parent / name.removeprefix("@loader_path/")]
@@ -89,9 +101,10 @@ def macos_linked_libraries(paths):
         if target in inspected:
             continue
         inspected.add(target)
+        install_name = macos_install_name(target)
         for line in output(["otool", "-L", str(target)]).splitlines()[1:]:
             name = line.strip().split(" (", 1)[0]
-            if not name:
+            if not name or name == install_name:
                 continue
             if name.startswith("/usr/lib/") or name.startswith("/System/Library/"):
                 libraries[f"macOS shared cache:{name}"] = "system image; see macos_build"

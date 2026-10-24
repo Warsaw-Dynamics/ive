@@ -84,6 +84,35 @@ class MacosOracleTests(unittest.TestCase):
             self.assertEqual(inventory[str(library.resolve())], sha256(library))
             self.assertIn("macOS shared cache:/usr/lib/libSystem.B.dylib", inventory)
 
+    def test_should_skip_dylib_install_name_while_hashing_real_dependencies(self):
+        # given
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "bin/inkscape"
+            library = root / "lib/libomp.dylib"
+            binary.parent.mkdir()
+            library.parent.mkdir()
+            binary.write_bytes(b"inkscape")
+            library.write_bytes(b"libomp")
+
+            def otool(command):
+                if command[1] == "-l":
+                    if command[2] == str(library):
+                        return "cmd LC_ID_DYLIB\nname @executable_path/../Resources/ (offset 24)\n"
+                    return ""
+                if command[2] == str(binary):
+                    return f"{binary}:\n\t{library} (compatibility version 1)\n"
+                return (f"{library}:\n"
+                        "\t@executable_path/../Resources/ (compatibility version 1)\n"
+                        "\t/usr/lib/libSystem.B.dylib (compatibility version 1)\n")
+
+            # when
+            with patch("gd_oracle.output", side_effect=otool):
+                inventory = macos_linked_libraries((binary,))
+            # then
+            self.assertEqual(inventory[str(library.resolve())], sha256(library))
+            self.assertIn("macOS shared cache:/usr/lib/libSystem.B.dylib", inventory)
+
     def test_should_write_private_fontconfig_aliases(self):
         # given
         with tempfile.TemporaryDirectory() as directory:
