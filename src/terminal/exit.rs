@@ -38,22 +38,20 @@ pub struct ExitFacts {
     pub start: Start,
     pub lost: Option<Lost>,
     pub started: Started,
-    /// its last output lines, oldest first
-    pub output: Vec<String>,
 }
 
 /// A shell's end: lost, killed by a signal, or failed right after start shows a failure; any other exit closes the tab,
 /// as in IntelliJ. A signal IVE sent itself is told apart by the caller.
-pub fn shell_exit(facts: ExitFacts) -> TerminalState {
+pub fn shell_exit(facts: ExitFacts, output: &dyn Fn() -> Vec<String>) -> TerminalState {
     if let Some(lost) = facts.lost {
         return TerminalState::Failed(lost_failure("Lost the terminal; it still runs", lost));
     }
     if let Some(signal) = facts.status.and_then(signal_of) {
-        return TerminalState::Failed(ended("The shell was killed by a signal", signal_name(signal), facts.started, facts.output));
+        return TerminalState::Failed(ended("The shell was killed by a signal", signal_name(signal), facts.started, output()));
     }
     match facts.status {
         Some(status) if !status.success() && facts.start == Start::New && facts.elapsed < QUICK_EXIT => {
-            TerminalState::Failed(ended("The shell exited right after start", format!("exit code {}", exit_code_of(Some(status))), facts.started, facts.output))
+            TerminalState::Failed(ended("The shell exited right after start", format!("exit code {}", exit_code_of(Some(status))), facts.started, output()))
         }
         _ => TerminalState::Closed,
     }
@@ -136,7 +134,11 @@ mod tests {
 
     fn facts(status: Option<ExitStatus>, elapsed: Duration, start: Start) -> ExitFacts {
         let started = Started { command: "/bin/zsh".to_owned(), folder: "/p".to_owned() };
-        ExitFacts { status, elapsed, start, lost: None, started, output: vec!["zsh: bad option".to_owned()] }
+        ExitFacts { status, elapsed, start, lost: None, started }
+    }
+
+    fn printed() -> Vec<String> {
+        vec!["zsh: bad option".to_owned()]
     }
 
     fn report(state: TerminalState) -> Option<String> {
@@ -144,6 +146,18 @@ mod tests {
             TerminalState::Failed(failure) => Some(failure.report("Terminal")),
             TerminalState::Closed | TerminalState::Running | TerminalState::Exited(_) => None,
         }
+    }
+
+    #[test]
+    fn should_not_read_output_when_shell_closes() {
+        // given
+        let facts = facts(Some(ExitStatus::from_raw(0)), Duration::from_secs(3), Start::New);
+
+        // when
+        let state = shell_exit(facts, &|| panic!("the output was read for a shell that closed"));
+
+        // then
+        assert!(matches!(state, TerminalState::Closed));
     }
 
     #[test]
@@ -164,7 +178,7 @@ mod tests {
         let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_millis(100), Start::New);
 
         // when
-        let report = report(shell_exit(facts)).expect("a failure");
+        let report = report(shell_exit(facts, &printed)).expect("a failure");
 
         // then
         assert!(report.contains("right after start"), "{report}");
@@ -178,7 +192,7 @@ mod tests {
         let facts = facts(Some(ExitStatus::from_raw(libc::SIGSEGV)), Duration::from_secs(600), Start::Adopted);
 
         // when
-        let report = report(shell_exit(facts)).expect("a failure");
+        let report = report(shell_exit(facts, &printed)).expect("a failure");
 
         // then
         assert!(report.contains("SIGSEGV (11)"), "{report}");
@@ -190,7 +204,7 @@ mod tests {
         let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_secs(3), Start::New);
 
         // when
-        let state = shell_exit(facts);
+        let state = shell_exit(facts, &printed);
 
         // then
         assert!(matches!(state, TerminalState::Closed));
@@ -202,7 +216,7 @@ mod tests {
         let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_millis(100), Start::Adopted);
 
         // when
-        let state = shell_exit(facts);
+        let state = shell_exit(facts, &printed);
 
         // then
         assert!(matches!(state, TerminalState::Closed));
@@ -215,7 +229,7 @@ mod tests {
         let facts = ExitFacts { lost: Some(lost), ..facts(None, Duration::from_secs(60), Start::Adopted) };
 
         // when
-        let report = report(shell_exit(facts)).expect("a failure");
+        let report = report(shell_exit(facts, &printed)).expect("a failure");
 
         // then
         assert!(report.contains("Cause: Connection reset by peer (os error 104)\n"), "{report}");

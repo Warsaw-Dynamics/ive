@@ -320,12 +320,12 @@ impl TerminalView {
             start: self.start,
             lost,
             started: self.started_with.clone(),
-            output: self.output_text(Some(FAILURE_OUTPUT_LINES)),
         };
         if self.keeps_after_exit {
             return run_exit(facts);
         }
-        shell_exit(facts)
+        // read only for a failure: it walks the whole scrollback
+        shell_exit(facts, &|| self.output_text(Some(FAILURE_OUTPUT_LINES)))
     }
 
     pub fn render(&self, theme: Theme, window: &mut Window, cx: &App) -> impl IntoElement {
