@@ -7,7 +7,7 @@ use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb};
 
 use super::{badge, closing_outside, header_button_press, menu_item, menu_panel, menu_section};
 use crate::click_targets::target;
-use crate::favicon_badge::favicon;
+use crate::favicon_badge::favicon_or;
 use crate::hub::key_label;
 use crate::icons;
 use crate::overview::file_list::FileLayout;
@@ -118,7 +118,10 @@ pub(super) fn picker_button(title: &PickerTitle, theme: Theme, cx: &mut Context<
         .text_size(sizes.header_title_size.px())
         .font_weight(sizes.header_title_weight.font_weight())
         .children(title.badge.as_ref().map(|initials| match &title.icon {
-            Some(path) => favicon(path, theme.sizes.icon.px()).into_any_element(),
+            Some(path) => {
+                let initials = initials.clone();
+                favicon_or(path, theme.sizes.icon.px(), move || badge(&initials, theme.accent, theme.on_accent, theme).into_any_element()).into_any_element()
+            }
             None => badge(initials, theme.accent, theme.on_accent, theme).into_any_element(),
         }))
         .child(div().overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.text.clone()))
@@ -143,7 +146,10 @@ pub(super) fn projects_menu(menu: &ProjectsMenu, theme: Theme, cx: &mut Context<
         menu_item(("show-project", index), theme)
             .child(tick(project.shown, theme))
             .child(match &project.icon {
-                Some(path) => favicon(path, theme.sizes.icon.px()).into_any_element(),
+                Some(path) => {
+                    let letters = initials(&project.name);
+                    favicon_or(path, theme.sizes.icon.px(), move || badge(&letters, theme.hover, theme.text, theme).into_any_element()).into_any_element()
+                }
                 None => badge(&initials(&project.name), theme.hover, theme.text, theme).into_any_element(),
             })
             .child(div().flex_1().overflow_hidden().text_ellipsis().child(project.name.clone()))

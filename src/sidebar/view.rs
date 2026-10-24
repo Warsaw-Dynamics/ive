@@ -19,7 +19,7 @@ use super::rows::{
 use super::selection::{Listed, Selection, is_multi_selectable};
 use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use crate::dragged_files::DraggedFiles;
-use crate::favicon_badge::favicon;
+use crate::favicon_badge::favicon_or;
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
 use crate::click_targets::{Listener, target};
@@ -466,7 +466,7 @@ fn worktree_rail(colour: u32, indent: f32, theme: Theme) -> Div {
 /// A folder row's icon: its module's favicon, else `embedded`.
 fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::AnyElement {
     match folder_icon(embedded, mark.favicon.clone()) {
-        FolderIcon::Favicon(path) => favicon(&path, theme.sizes.icon.px()).into_any_element(),
+        FolderIcon::Favicon(path) => favicon_or(&path, theme.sizes.icon.px(), move || icon(theme, embedded).into_any_element()).into_any_element(),
         FolderIcon::Embedded(name) => icon(theme, name).into_any_element(),
     }
 }
@@ -672,7 +672,10 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
     let (badge_fill, badge_text) = if present { (theme.accent, theme.on_accent) } else { (theme.hover, theme.muted) };
     // its favicon, else its initials on a badge
     let mark = match line.mark.favicon.clone() {
-        Some(path) => favicon(&path, theme.sizes.icon.px()).into_any_element(),
+        Some(path) => {
+            let initials = project.initials.clone();
+            favicon_or(&path, theme.sizes.icon.px(), move || badge(&initials, badge_fill, badge_text, theme).into_any_element()).into_any_element()
+        }
         None => badge(&project.initials, badge_fill, badge_text, theme).into_any_element(),
     };
     let line = line

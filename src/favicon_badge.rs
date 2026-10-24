@@ -3,13 +3,19 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use gpui::{Div, ImageSource, Img, IntoElement, ParentElement, Pixels, Resource, Styled, div, img, px, rgb};
+use gpui::{AnyElement, Div, ImageSource, Img, IntoElement, ParentElement, Pixels, Resource, Styled, StyledImage, div, img, px, rgb};
 
 use crate::theme::Theme;
 
 /// The favicon file `path` drawn at `size`; a file that does not decode draws nothing.
 pub fn favicon(path: &Path, size: Pixels) -> Img {
     img(ImageSource::Resource(Resource::Path(Arc::from(path)))).flex_none().size(size)
+}
+
+/// The favicon file `path` at `size`, or what `fallback` draws when the file does not decode: what the favicon stands
+/// in for (a project's initials, a folder's icon), so the slot is never empty.
+pub fn favicon_or(path: &Path, size: Pixels, fallback: impl Fn() -> AnyElement + 'static) -> Img {
+    favicon(path, size).with_fallback(fallback)
 }
 
 /// A favicon on an icon, and the colour of the ring that cuts it out: the background the icon is drawn on.

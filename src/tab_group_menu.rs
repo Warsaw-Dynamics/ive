@@ -15,7 +15,7 @@ use crate::project::{CheckoutRef, ProjectId};
 use crate::tab_groups::{self, Side, TabFacts};
 use crate::tabs::TabId;
 use crate::theme::Theme;
-use crate::workspace::{MenuDrop, Workspace};
+use crate::workspace::{Dropped, MenuDrop, Workspace};
 
 /// A worktree's section of the menu, or the project's own tabs (`checkout` none).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,7 +110,7 @@ fn section_head(project: &ProjectId, checkout: Option<&Path>, workspace: &Worksp
         .children(rail)
         .child(img(icons::embedded(theme.appearance, icon)).size(px(14.)))
         .child(label.clone())
-        .children(drop_line(&MenuTarget::Worktree(checkout.map(Path::to_path_buf)), workspace, theme));
+        .children(drop_line(&MenuTarget::Worktree(checkout.map(Path::to_path_buf)), workspace, cx));
     let Some(path) = checkout else {
         return head.into_any_element();
     };
@@ -119,12 +119,16 @@ fn section_head(project: &ProjectId, checkout: Option<&Path>, workspace: &Worksp
     head.cursor_grab()
         .on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|_| dragged.clone()))
         .on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<DraggedWorktree>, _window, cx| {
-            if event.bounds.contains(&event.event.position) && event.drag(cx).checkout != target {
-                let side = if event.event.position.y < event.bounds.center().y { Side::Before } else { Side::After };
-                workspace.hover_group_menu_drop(Some(MenuDrop::Worktree { moved: event.drag(cx).checkout.clone(), beside: target.clone(), side }), cx);
+            if !event.bounds.contains(&event.event.position) {
+                return;
             }
+            // over its own head the worktree lands nowhere: the mark goes
+            let moved = event.drag(cx).checkout.clone();
+            let side = if event.event.position.y < event.bounds.center().y { Side::Before } else { Side::After };
+            let drop = (moved != target).then(|| MenuDrop::Worktree { moved, beside: target.clone(), side });
+            workspace.hover_group_menu_drop(drop, cx);
         }))
-        .on_drop(cx.listener(|workspace, _dragged: &DraggedWorktree, _window, cx| workspace.drop_in_group_menu(cx)))
+        .on_drop(cx.listener(|workspace, dragged: &DraggedWorktree, _window, cx| workspace.drop_in_group_menu(&Dropped::Worktree(dragged.checkout.clone()), cx)))
         .into_any_element()
 }
 
@@ -161,20 +165,23 @@ fn tab_row(id: TabId, shown: Shown<'_>, workspace: &Workspace, cx: &mut Context<
         .child(tick)
         .child(badged(tab.icon(workspace, theme), badge, theme))
         .child(title)
-        .children(drop_line(&MenuTarget::Tab(id), workspace, theme))
+        .children(drop_line(&MenuTarget::Tab(id), workspace, cx))
         .on_click(crate::click_targets::target(format!("group-menu-tab:{}", id.value()), cx.listener(move |workspace, _event, window, cx| {
             workspace.close_group_menu(cx);
             workspace.activate_tab(id, window, cx);
         }), cx))
         .on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|_| dragged.clone()))
         .on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<DraggedMenuTab>, _window, cx| {
-            let moved = event.drag(cx);
-            if event.bounds.contains(&event.event.position) && moved.id != id && moved.checkout == section {
-                let side = if event.event.position.y < event.bounds.center().y { Side::Before } else { Side::After };
-                workspace.hover_group_menu_drop(Some(MenuDrop::Tab { moved: moved.id, beside: id, side }), cx);
+            if !event.bounds.contains(&event.event.position) {
+                return;
             }
+            // over itself, or a row of another worktree, the tab lands nowhere: the mark goes
+            let moved = event.drag(cx);
+            let side = if event.event.position.y < event.bounds.center().y { Side::Before } else { Side::After };
+            let drop = (moved.id != id && moved.checkout == section).then_some(MenuDrop::Tab { moved: moved.id, beside: id, side });
+            workspace.hover_group_menu_drop(drop, cx);
         }))
-        .on_drop(cx.listener(|workspace, _dragged: &DraggedMenuTab, _window, cx| workspace.drop_in_group_menu(cx)));
+        .on_drop(cx.listener(|workspace, dragged: &DraggedMenuTab, _window, cx| workspace.drop_in_group_menu(&Dropped::Tab(dragged.id), cx)));
     Some(row.into_any_element())
 }
 
@@ -184,9 +191,11 @@ enum MenuTarget {
     Worktree(Option<PathBuf>),
 }
 
-/// The accent line above or below the row a drag would land beside.
-fn drop_line(target: &MenuTarget, workspace: &Workspace, theme: Theme) -> Option<Div> {
-    let side = match (workspace.group_menu_drop()?, target) {
+/// The accent line above or below the row a drag would land beside, while a drag goes on.
+fn drop_line(target: &MenuTarget, workspace: &Workspace, cx: &Context<Workspace>) -> Option<Div> {
+    let theme = crate::theme::tabs(cx);
+    let mark = workspace.group_menu_drop().filter(|_| cx.has_active_drag())?;
+    let side = match (mark, target) {
         (MenuDrop::Tab { beside, side, .. }, MenuTarget::Tab(id)) if beside == id => *side,
         (MenuDrop::Worktree { beside, side, .. }, MenuTarget::Worktree(Some(path))) if beside == path => *side,
         _ => return None,

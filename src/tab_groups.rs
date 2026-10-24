@@ -171,6 +171,24 @@ fn distinct<T: Eq + std::hash::Hash>(items: impl Iterator<Item = T>) -> usize {
     items.collect::<HashSet<T>>().len()
 }
 
+/// The tab order `after` a move, with the projects in the order their first tabs had `before` it: a move reorders
+/// tabs within their project's group, never the groups (a tab dropped among another project's goes back to its own).
+pub fn keep_group_order(before: &[TabFacts], after: &[TabId]) -> Vec<TabId> {
+    let mut projects: Vec<Option<&ProjectId>> = Vec::new();
+    for tab in before {
+        if !projects.contains(&tab.project.as_ref()) {
+            projects.push(tab.project.as_ref());
+        }
+    }
+    let rank = |id: &TabId| {
+        let project = before.iter().find(|tab| tab.id == *id).map(|tab| tab.project.as_ref());
+        project.and_then(|project| projects.iter().position(|known| *known == project)).unwrap_or(projects.len())
+    };
+    let mut order = after.to_vec();
+    order.sort_by_key(rank);
+    order
+}
+
 /// The gap of the row `order` (0 before the first tab, as `Tabs::move_tab` counts them before the move) that puts
 /// `moved` on `beside`'s side of `beside`'s tab; `None` when either is not in the row.
 pub fn move_gap(order: &[TabId], moved: TabId, beside: (TabId, Side)) -> Option<usize> {
@@ -512,6 +530,30 @@ mod tests {
 
         // then
         assert_eq!(rows, [["b", "c", "a"], ["c", "a", "b"], ["a", "b", "c"], ["a", "b", "c"]]);
+    }
+
+    #[test]
+    fn should_keep_group_order_when_a_tab_moves_within_its_group() {
+        // given: [A1, B1, A2] drawn as [A] A1 A2 [B] B1; A1 dropped after A2 gives [B1, A2, A1]
+        let before = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("b"), Some("/b"), true), fact(3, Some("a"), Some("/a"), true)];
+
+        // when
+        let order = keep_group_order(&before, &ids(&[2, 3, 1]));
+
+        // then
+        assert_eq!(order, ids(&[3, 1, 2]));
+    }
+
+    #[test]
+    fn should_put_a_tab_dropped_among_another_projects_back_in_its_own() {
+        // given: B1 dropped between A1 and A2
+        let before = [fact(1, Some("a"), Some("/a"), true), fact(3, Some("a"), Some("/a"), true), fact(2, Some("b"), Some("/b"), true)];
+
+        // when
+        let order = keep_group_order(&before, &ids(&[1, 2, 3]));
+
+        // then
+        assert_eq!(order, ids(&[1, 3, 2]));
     }
 
     #[test]

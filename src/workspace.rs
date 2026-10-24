@@ -64,7 +64,7 @@ mod path_actions;
 mod send_paths;
 mod git_actions;
 mod tab_grouping;
-pub use tab_grouping::MenuDrop;
+pub use tab_grouping::{Dropped, MenuDrop};
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -549,11 +549,11 @@ impl Workspace {
         self.tab_drop_gap
     }
 
-    /// Moves dragged tab `id` into the marked gap; the new order is saved with the next redraw.
+    /// Moves dragged tab `id` into the marked gap, within its project's group; the new order is saved with the next
+    /// redraw.
     pub fn drop_dragged_tab(&mut self, id: TabId, cx: &mut Context<Self>) {
         if let Some(gap) = self.tab_drop_gap.take() {
-            self.tabs.move_tab(id, gap);
-            cx.notify();
+            self.move_tab_in_group(id, gap, cx);
         }
     }
 

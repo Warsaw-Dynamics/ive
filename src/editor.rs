@@ -15,7 +15,7 @@ use gpui::{
 use crate::click_targets::target;
 use crate::colors::{mixed, tinted};
 use crate::colors::checkout_colour;
-use crate::favicon_badge::{Badge, badged, favicon};
+use crate::favicon_badge::{Badge, badged, favicon_or};
 pub use crate::file_tab::FileTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
@@ -578,18 +578,25 @@ pub fn render_pane(workspace: &Workspace, window: &mut Window, cx: &mut Context<
 /// then Settings and the window buttons. Its empty space moves the window.
 fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let tabs = workspace.tabs();
-    let last = tabs.row_len().saturating_sub(1);
     let facts = workspace.tab_group_facts();
+    let groups = workspace.tab_groups(&facts);
+    let items = tab_groups::row_items(&groups);
+    let places: HashMap<TabId, usize> = tabs.row().enumerate().map(|(place, (id, _))| (id, place)).collect();
+    // the row's last drawn tab, which the groups need not have last in the tab order
+    let last = items.iter().rev().find_map(|item| match item {
+        RowItem::Tab(_, id) => places.get(id).copied(),
+        RowItem::Head(_) => None,
+    });
+    let last = last.unwrap_or(0);
     let view = GroupView {
         // a gap stays marked after a drag ends outside the window, until the next drag
         drop: DropGap { gap: workspace.tab_drop_gap().filter(|_| cx.has_active_drag()), last },
-        places: tabs.row().enumerate().map(|(place, (id, _))| (id, place)).collect(),
+        places,
         spread: Spread { worktrees: tab_groups::spread_worktrees(&facts), owners: tab_groups::spread_owners(&facts) },
-        groups: workspace.tab_groups(&facts),
+        groups,
         facts: &facts,
         theme,
     };
-    let items = tab_groups::row_items(&view.groups);
     // past the last tab: a dragged tab goes last
     let sizes = &theme.sizes.tabs;
     let end = div().id("tab-strip-end").flex_1().h_full().min_w(sizes.gap.px()).on_drag_move(cx.listener(
@@ -782,9 +789,11 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
         .hover(|style| style.bg(rgb(theme.hover)))
         .child(img(icons::embedded(theme.appearance, chevron)).size(px(12.)))
         .on_click(target(format!("tab-group-fold:{}", project.as_str()), cx.listener(move |workspace, _event, _window, cx| workspace.toggle_tab_group(&toggled, cx)), cx));
+    let letters = crate::sidebar::rows::initials(&name);
+    let initials = move || div().px(px(2.)).rounded(px(3.)).bg(rgb(theme.hover)).text_size(px(8.)).child(letters.clone()).into_any_element();
     let icon = match workspace.project_icon(&project) {
-        Some(path) => favicon(&path, px(14.)).into_any_element(),
-        None => div().px(px(2.)).rounded(px(3.)).bg(rgb(theme.hover)).text_size(px(8.)).child(crate::sidebar::rows::initials(&name)).into_any_element(),
+        Some(path) => favicon_or(&path, px(14.), initials).into_any_element(),
+        None => initials(),
     };
     let count = group.folded.then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
     let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);

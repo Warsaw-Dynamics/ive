@@ -36,6 +36,8 @@ pub enum Change {
     Git(PathBuf),
     /// something changed inside this checkout's folder
     WorkTree(PathBuf),
+    /// a `.favicon.*` file changed inside this checkout's folder: a project's or module's icon
+    Favicon(PathBuf),
     /// events were lost: re-read everything
     Rescan,
 }
@@ -416,6 +418,9 @@ fn classify(path: &Path, registered: &BTreeSet<&Watched>, checkouts: &[PathBuf],
     }
     if let Some(checkout) = checkouts.iter().filter(|checkout| path.starts_with(checkout)).max_by_key(|checkout| checkout.components().count()) {
         changes.push(Change::WorkTree(checkout.clone()));
+        if crate::favicon::is_favicon_file(path) {
+            changes.push(Change::Favicon(checkout.clone()));
+        }
     }
 }
 
@@ -671,6 +676,27 @@ mod tests {
             Change::FileRemoved(gone),
             Change::Git(PathBuf::from("/r/.git")),
             Change::WorkTree(PathBuf::from("/r/.claude/worktrees/x")),
+        ]);
+    }
+
+    #[test]
+    fn should_report_a_favicon_written_in_a_checkout() {
+        // given
+        let (mut paths, _) = registry(FakeBackend::default());
+        let checkouts = [PathBuf::from("/r"), PathBuf::from("/r/.claude/worktrees/x")];
+        let events = [
+            event(EventKind::Create(CreateKind::File), "/r/.claude/worktrees/x/svc/.favicon.svg"),
+            event(EventKind::Create(CreateKind::File), "/r/svc/favicon.svg"),
+        ];
+
+        // when
+        let changes = paths.changes(&events, &checkouts);
+
+        // then
+        assert_eq!(changes, [
+            Change::WorkTree(PathBuf::from("/r/.claude/worktrees/x")),
+            Change::Favicon(PathBuf::from("/r/.claude/worktrees/x")),
+            Change::WorkTree(PathBuf::from("/r")),
         ]);
     }
 

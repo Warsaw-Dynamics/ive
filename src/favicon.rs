@@ -51,6 +51,11 @@ impl Favicons {
     }
 }
 
+/// Whether `path` names a favicon file: a change to it changes a project's or module's icon.
+pub fn is_favicon_file(path: &std::path::Path) -> bool {
+    path.file_name().and_then(|name| name.to_str()).and_then(favicon_rank).is_some()
+}
+
 /// The folder of a favicon file and its extension's rank; `None` for any other path.
 fn favicon_rank(path: &str) -> Option<(&str, usize)> {
     let (folder, name) = path.rsplit_once('/').unwrap_or(("", path));
@@ -85,6 +90,18 @@ mod tests {
 
         // then
         assert_eq!(modules, [Some("a/b"), Some("a"), Some("a/b"), None, None]);
+    }
+
+    #[test]
+    fn should_tell_a_favicon_file_among_changed_paths() {
+        // given
+        let paths = ["/r/svc/.favicon.svg", "/r/.favicon.ico", "/r/svc/favicon.svg", "/r/svc/.favicon.gif", "/r/svc"];
+
+        // when
+        let favicons = paths.map(|path| is_favicon_file(std::path::Path::new(path)));
+
+        // then
+        assert_eq!(favicons, [true, true, false, false, false]);
     }
 
     #[test]

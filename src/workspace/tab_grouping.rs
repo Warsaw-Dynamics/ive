@@ -23,6 +23,22 @@ pub enum MenuDrop {
     Worktree { moved: PathBuf, beside: PathBuf, side: Side },
 }
 
+/// What a drag in a project group's menu dropped: a tab, or a worktree's head (its checkout path).
+pub enum Dropped {
+    Tab(TabId),
+    Worktree(PathBuf),
+}
+
+/// The mark a drop applies: the one made for the very item dropped; none for a mark left by another item.
+pub fn accepted_drop(mark: Option<&MenuDrop>, dropped: &Dropped) -> Option<MenuDrop> {
+    let accepted = match (mark?, dropped) {
+        (MenuDrop::Tab { moved, .. }, Dropped::Tab(id)) => moved == id,
+        (MenuDrop::Worktree { moved, .. }, Dropped::Worktree(path)) => moved == path,
+        _ => false,
+    };
+    mark.filter(|_| accepted).cloned()
+}
+
 /// A worktree dragged in a project group's menu, to `beside`'s side of another (both checkout paths).
 pub struct WorktreeMove<'a> {
     pub project: &'a ProjectId,
@@ -89,10 +105,12 @@ impl Workspace {
         }
     }
 
-    /// A drag in the group menu ended on a row: what it marked moves; the menu stays open.
-    pub fn drop_in_group_menu(&mut self, cx: &mut Context<Self>) {
+    /// A drag in the group menu ended on a row with `dropped`: it moves where its own mark says, nothing else does;
+    /// the menu stays open.
+    pub fn drop_in_group_menu(&mut self, dropped: &Dropped, cx: &mut Context<Self>) {
         let project = self.group_menu.as_ref().map(|menu| menu.project.clone());
-        match (self.group_menu_drop.take(), project) {
+        let mark = self.group_menu_drop.take();
+        match (accepted_drop(mark.as_ref(), dropped), project) {
             (Some(MenuDrop::Tab { moved, beside, side }), _) => self.move_tab_beside(moved, (beside, side), cx),
             (Some(MenuDrop::Worktree { moved, beside, side }), Some(project)) => {
                 self.move_worktree_in_group(WorktreeMove { project: &project, moved: &moved, beside: (&beside, side) }, cx);
@@ -147,9 +165,21 @@ impl Workspace {
     pub fn move_tab_beside(&mut self, moved: TabId, beside: (TabId, Side), cx: &mut Context<Self>) {
         let order: Vec<TabId> = self.tabs.row().map(|(id, _)| id).collect();
         if let Some(gap) = tab_groups::move_gap(&order, moved, beside) {
-            self.tabs.move_tab(moved, gap);
-            cx.notify();
+            self.move_tab_in_group(moved, gap, cx);
         }
+    }
+
+    /// Moves tab `moved` into row gap `gap` (as `Tabs::move_tab` counts them), keeping the groups' order: a drag
+    /// reorders tabs within their project's group.
+    pub fn move_tab_in_group(&mut self, moved: TabId, gap: usize, cx: &mut Context<Self>) {
+        let before = self.tab_group_facts();
+        self.tabs.move_tab(moved, gap);
+        let after: Vec<TabId> = self.tabs.row().map(|(id, _)| id).collect();
+        for (place, id) in tab_groups::keep_group_order(&before, &after).into_iter().enumerate() {
+            // every tab before `place` is in its place already, so gap `place` is right before it
+            self.tabs.move_tab(id, place);
+        }
+        cx.notify();
     }
 
     /// Moves a worktree among its project's in the group's order; the order then lists every worktree the group
@@ -185,5 +215,35 @@ fn owner_key(module: Option<&str>, project: &ProjectId) -> String {
     match module {
         Some(module) => format!("{}/{module}", project.as_str()),
         None => project.as_str().to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_apply_the_mark_made_for_the_tab_dropped() {
+        // given
+        let (moved, beside) = (TabId::for_tests(1), TabId::for_tests(2));
+        let mark = MenuDrop::Tab { moved, beside, side: Side::After };
+
+        // when
+        let accepted = (accepted_drop(Some(&mark), &Dropped::Tab(moved)), accepted_drop(Some(&mark), &Dropped::Tab(beside)));
+
+        // then
+        assert_eq!(accepted, (Some(mark.clone()), None));
+    }
+
+    #[test]
+    fn should_not_apply_a_worktree_mark_to_a_dropped_tab() {
+        // given
+        let mark = MenuDrop::Worktree { moved: PathBuf::from("/x"), beside: PathBuf::from("/a"), side: Side::Before };
+
+        // when
+        let accepted = (accepted_drop(Some(&mark), &Dropped::Tab(TabId::for_tests(1))), accepted_drop(Some(&mark), &Dropped::Worktree(PathBuf::from("/x"))));
+
+        // then
+        assert_eq!(accepted, (None, Some(mark.clone())));
     }
 }
