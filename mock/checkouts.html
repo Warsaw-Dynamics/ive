@@ -31,22 +31,6 @@
           <div class="fill" x-include="components/checkouts/sidebar.html"></div>
           <div class="fill" x-include="components/checkouts/editor.html"></div>
         </main>
-        <!-- mock-only: save states of the shown file, scratch or uncommitted diff tab (codeview "Saving") -->
-        <nav class="mock-bar mock-bar--save" aria-label="Mock controls">
-          <span>mock: save</span>
-          <button type="button" @click="mockSave('disk')" title="The file changed on disk: Reload, Overwrite">conflict</button>
-          <button type="button" @click="mockSave('big')" title="A file over 8 MiB: only Reload">conflict (&gt; 8 MiB)</button>
-          <button type="button" @click="mockSave('error')" title="cannot save: Permission denied; then close the tab">error</button>
-          <button type="button" @click="mockSave(null)">clear</button>
-        </nav>
-        <!-- mock-only: what a program in a terminal sends (DESIGN.md "Attention"); IVE's window in front or behind -->
-        <nav class="mock-bar" aria-label="Mock attention controls">
-          <span>mock: attention</span>
-          <button type="button" @click="mockAttention('notify')" title="OSC 9 / 777 / 99 with a text, as Claude Code or Codex send it (ignored by the shown tab while the window is in front)">notification</button>
-          <button type="button" @click="mockAttention('bell')" title="BEL">bell</button>
-          <button type="button" @click="mockAttention('done')" title="OSC 9;4 busy, then 9;4;0">progress ended</button>
-          <button type="button" @click="windowFocused = windowFocused === false" x-text="windowFocused ? 'send IVE to background' : 'bring IVE to front'"></button>
-        </nav>
         <!-- mock-only: the desktop's notifications (the OS draws them; a click raises IVE on that process) -->
         <div class="os-notices">
           <template x-for="n in desktopNotices" :key="n.c.id">
@@ -57,8 +41,6 @@
             </button>
           </template>
         </div>
-        <!-- mock-only: back to the single-project mock -->
-        <a class="mock-back" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file">← index</a>
       </div>
     </div>
   </body>

@@ -1,7 +1,7 @@
-// IVE mock-only, a proposal (brainstorm 2026-10-23): where a tab or a hub row belongs. A project's `.favicon.*` on its
-// default branch is its icon; a folder with a `.favicon.*` of its own is a module of a monorepo, and the files under it
-// carry that icon. A worktree has no picture of its own, so it keeps a colour; the main checkout has none.
-// The mock bar switches how the owner and the worktree show, to compare variants; nothing here is in the app.
+// IVE mock: where a tab or a hub row belongs, as the app does it (DESIGN.md "Where a tab belongs"). A project's
+// `.favicon.*` on its default branch is its icon; a folder with a `.favicon.*` of its own is a module of a monorepo, and
+// the files under it carry that icon. A worktree has no picture of its own, so it keeps a colour; the main checkout has
+// none. Tabs group by project; a group folds to its head and its current tab.
 (function () {
   'use strict';
 
@@ -13,31 +13,6 @@
   };
   // the projects with a .favicon.* on their default branch; the others show their initials
   var PROJECT_ICONS = ['atlassian', 'forge-installer', 'platform'];
-  var OPTIONS = {
-    // badge: the favicon small on the file-type icon's lower right; one beside it (two icons in a tab) was dropped
-    owner: ['none', 'badge'],
-    worktree: ['today', 'none', 'underline', 'tint', 'dot', 'label'],
-    // groups: a group per worktree; projects: a group per project
-    layout: ['flat', 'groups', 'projects'],
-    // the project tree's worktree rows: tint (the row's background), underline (its name), dot, or rail (a bar at
-    // the row's left)
-    tree: ['none', 'tint', 'underline', 'dot', 'rail'],
-    when: ['always', 'spread', 'clash']
-  };
-  var TITLES = { owner: 'Project or module', worktree: 'Worktree', layout: 'Tabs', tree: 'Worktree in the tree', when: 'Show' };
-  var TODAY = { owner: 'none', worktree: 'today', layout: 'flat', tree: 'none', when: 'always' };
-  // the direction picked (brainstorm 2026-10-24), in the app since: the mock's default
-  var CHOSEN = { owner: 'badge', worktree: 'tint', layout: 'projects', tree: 'rail', when: 'spread' };
-  // name, values, what it shows
-  var PRESETS = [
-    ['Chosen', CHOSEN, 'as the app'],
-    ['Before', TODAY, 'as the app was'],
-    ['A Badge, tint', { owner: 'badge', worktree: 'tint', layout: 'flat', when: 'spread' }, 'badge, tinted tab'],
-    ['B Groups', { owner: 'badge', worktree: 'tint', layout: 'groups', when: 'spread' }, 'a group per worktree'],
-    ['C Clashes', { owner: 'badge', worktree: 'label', layout: 'flat', when: 'clash' }, 'only same names'],
-    ['D Badge, underline', { owner: 'badge', worktree: 'underline', layout: 'flat', when: 'spread' }, 'badge, underline'],
-    ['E Project groups', { owner: 'badge', worktree: 'tint', layout: 'projects', when: 'spread' }, 'a group per project']
-  ];
 
   // pixels the pointer moves with a menu row pressed before it drags, as the tab row's
   var DRAG_THRESHOLD = 4;
@@ -59,40 +34,21 @@
       .reduce(function (best, m) { return best === null || m.length > best.length ? m : best; }, null);
   }
 
-  function distinct(values) { return new Set(values.filter(function (v) { return v !== null; })).size; }
+  // Whether `peers` span more than one `key`: a cue shows only where it tells something apart.
+  function isSpread(peers, key) {
+    return new Set(peers.map(key).filter(function (v) { return v !== null; })).size > 1;
+  }
 
   window.IVE_IDENT = {
-    OPTIONS: OPTIONS,
-    TITLES: TITLES,
-    PRESETS: PRESETS,
     // identFolded: the keys of the tab groups folded to their head
     // identGroupMenu: the group whose menu is open, and where ({ key, x, y }), while menu is 'tabGroup'
     // identMenuDrag: a drag in that menu (pressGroupMenu); identWorktreeOrder: per project, its worktrees' order as
     // dragged in the menu
     state: function () {
-      return { ident: Object.assign({}, CHOSEN), identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {} };
+      return { identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {} };
     },
 
     methods: {
-      // A preset sets the parts it names; the tree's keeps its pick, except Chosen's and Before's.
-      identPreset: function (values) { this.ident = Object.assign({}, this.ident, values); },
-      isIdentPreset: function (values) {
-        var self = this;
-        return Object.keys(values).every(function (k) { return self.ident[k] === values[k]; });
-      },
-      // #ident=owner,worktree,layout,when
-      identParam: function () {
-        if (this.isIdentPreset(CHOSEN)) return null;
-        var self = this;
-        return Object.keys(OPTIONS).map(function (k) { return self.ident[k]; }).join(',');
-      },
-      // An older link's `icon` owner reads as badge.
-      restoreIdent: function (value) {
-        var parts = value.replace(/^icon,/, 'badge,').split(',');
-        var self = this;
-        Object.keys(OPTIONS).forEach(function (k, i) { if (OPTIONS[k].includes(parts[i])) self.ident[k] = parts[i]; });
-      },
-
       // ---- owners: { key, name, project, module, icon, initials } ----
       ownerOf: function (project, path) {
         if (project === null || project === undefined) return null;
@@ -113,20 +69,9 @@
         return checkout === null || checkout.main ? null : checkout.colour;
       },
 
-      // Whether `subject` gets its cue among `peers`: always; when the peers span more than one (spread); or only
-      // when a peer of the same title differs (clash). key: what the cue tells apart.
-      identWanted: function (subject, peers, key, title) {
-        if (this.ident.when === 'always') return key(subject) !== null;
-        if (this.ident.when === 'spread') return distinct(peers.map(key)) > 1;
-        return peers.some(function (p) { return p !== subject && title(p) === title(subject) && key(p) !== key(subject); });
-      },
-
       // ---- the tree: a project row's favicon, a module folder's; null keeps the badge or the folder icon ----
-      projectFavicon: function (project) {
-        return this.ident.owner === 'none' ? null : this.projectOwner(project).icon;
-      },
+      projectFavicon: function (project) { return this.projectOwner(project).icon; },
       treeFavicon: function (node) {
-        if (this.ident.owner === 'none') return null;
         if (node.project) return this.projectOwner(node.project.name).icon;
         var path = this.treeFolderPath(node);
         if (path === null) return null;
@@ -139,11 +84,9 @@
         if (node.entry) return node.entry.folder ? node.entry.path : null;
         return node.key.startsWith('cg:') ? node.hint : null;
       },
-
-      // The tree's rows, each a worktree's own row (head) or under one, with that worktree's colour: { node, depth, wt }.
-      // The main checkout's rows and the rows outside a worktree have none.
+      // The tree's rows; a worktree's own row (head) carries its colour for the rail: { node, depth, wt }. The main
+      // checkout's rows and the rows outside a worktree have none.
       identTreeRows: function (rows) {
-        if (this.ident.tree === 'none') return rows;
         var self = this;
         var at = null;
         return rows.map(function (row) {
@@ -155,50 +98,51 @@
       },
 
       // ---- tabs ----
-      // The owner the tab shows, in either form; a badge needs a favicon, its initials would not read at that size.
-      tabOwnerShown: function (tab) {
-        if (this.ident.owner === 'none') return null;
+      // The badge on a tab's icon: its owner's favicon while the row has more than one owner; under a head only a
+      // module's, as the head names the project.
+      tabOwnerBadge: function (tab) {
         var self = this;
         var owner = this.tabOwner(tab);
-        if (owner === null) return null;
-        // a group's head shows the project, so its tabs show only a module's icon
-        if (this.ident.layout !== 'flat' && owner.module === null && this.tabGroups().length > 1) return null;
-        var key = function (t) { var o = self.tabOwner(t); return o && o.key; };
-        return this.identWanted(tab, this.tabs, key, this.tabTitle.bind(this)) ? owner : null;
+        if (owner === null || owner.icon === null) return null;
+        if (owner.module === null && this.tabGroups().length > 1) return null;
+        return isSpread(this.tabs, function (t) { var o = self.tabOwner(t); return o && o.key; }) ? owner : null;
       },
       // A group's menu: the group's head names the project, so a tab's badge is its module's, whenever it has one.
       tabModuleBadge: function (tab) {
-        var owner = this.ident.owner === 'badge' ? this.tabOwner(tab) : null;
+        var owner = this.tabOwner(tab);
         return owner && owner.module && owner.icon ? owner : null;
       },
-      tabOwnerIcon: function (tab) { return this.ident.owner === 'icon' ? this.tabOwnerShown(tab) : null; },
-      tabOwnerBadge: function (tab) {
-        var owner = this.ident.owner === 'badge' ? this.tabOwnerShown(tab) : null;
-        return owner && owner.icon ? owner : null;
-      },
-      // { mode, colour, label } or null; 'today' is the app's diff underline (tabUnderline).
-      // The tab's worktree cue; a project group's tab out of its folded group names its worktree, as nothing beside
-      // it does.
+      // { mode: 'tint' | 'label', colour, label } or null, while the row spans more than one worktree. A folded
+      // group's tab names its worktree (muted for the main checkout), as nothing beside it does; the others are tinted
+      // off the main checkout.
       tabWorktreeCue: function (tab) {
-        var mode = this.isInFoldedProject(tab) ? 'label' : this.ident.worktree;
-        if (mode === 'today' || mode === 'none' || tab.co === null || tab.co === undefined) return null;
-        // in groups the group carries it
-        if (this.ident.layout === 'groups') return null;
-        var self = this;
-        var key = function (t) { return t.co || null; };
-        if (this.identWanted(tab, this.tabs, key, this.tabTitle.bind(this)) === false) return null;
+        if (tab.co === null || tab.co === undefined) return null;
+        if (isSpread(this.tabs, function (t) { return t.co || null; }) === false) return null;
         var colour = this.worktreeColour(tab.co);
-        if (mode === 'label') return { mode: mode, colour: colour, label: this.label(tab.co) };
-        return colour === null ? null : { mode: mode, colour: colour, label: self.label(tab.co) };
+        if (this.isInFoldedGroup(tab)) return { mode: 'label', colour: colour, label: this.label(tab.co) };
+        return colour === null ? null : { mode: 'tint', colour: colour, label: this.label(tab.co) };
       },
-      // Tabs in their order, or grouped in the order each group first shows: by worktree (a project's own tabs,
-      // scratches, Git log, commits, join its main checkout), or by project (no colour: each tab keeps its
-      // worktree's cue). { key, head: { owner, label, sub } | null, colour, tabs }
+      // Tabs grouped by project in the order each project's first tab shows; a worktree's tabs side by side. A
+      // project's own tabs (scratches, Git log, commits) join it; tabs of no project form a group without a head, and
+      // with one project open there are no heads. { key, project, head: { owner, label } | null, tabs, shown, folded,
+      // current }
       tabGroups: function () {
-        if (this.ident.layout === 'flat') return [{ key: 'all', head: null, colour: null, tabs: this.tabs, shown: this.tabs, folded: false }];
         var self = this;
-        var groups = this.ident.layout === 'projects' ? this.projectTabGroups() : this.worktreeTabGroups();
-        return groups.map(function (g) { return self.foldedGroup(g); });
+        var groups = [];
+        this.tabs.forEach(function (tab) {
+          var project = self.tabProject(tab);
+          var group = groups.find(function (g) { return g.project === project; });
+          if (group === undefined) {
+            group = { key: 'p:' + (project || ''), project: project, tabs: [] };
+            groups.push(group);
+          }
+          group.tabs.push(tab);
+        });
+        var heads = groups.filter(function (g) { return g.project !== null; }).length > 1;
+        return groups.map(function (g) {
+          var head = g.project === null || heads === false ? null : { owner: self.projectOwner(g.project), label: g.project };
+          return self.foldedGroup({ key: g.key, project: g.project, head: head, tabs: self.byWorktree(g.tabs).flat() });
+        });
       },
       // A folded group shows its head, its count and its own current tab: the one of its tabs shown last.
       foldedGroup: function (group) {
@@ -211,8 +155,8 @@
         var last = this.history.filter(function (h) { return keys.includes(h.key); }).pop();
         return last ? tabs[keys.indexOf(last.key)] : tabs[0];
       },
-      isInFoldedProject: function (tab) {
-        return this.ident.layout === 'projects' && this.identFolded.includes('p:' + (this.tabProject(tab) || ''));
+      isInFoldedGroup: function (tab) {
+        return this.identFolded.includes('p:' + (this.tabProject(tab) || ''));
       },
       toggleTabGroup: function (key) {
         this.identFolded = this.identFolded.includes(key) ? this.identFolded.filter(function (k) { return k !== key; }) : this.identFolded.concat(key);
@@ -228,10 +172,8 @@
         var group = at && this.tabGroups().find(function (g) { return g.key === at.key; });
         return group ? Object.assign({ group: group }, at) : null;
       },
-      // A group's menu in sections: a project group's by worktree (the main checkout first, the project's own tabs
-      // last), a worktree group's in one, without a head. { key, label, colour, tabs }
+      // A group's menu by worktree: the main checkout first, the project's own tabs last. { key, label, colour, tabs }
       tabGroupSections: function (group) {
-        if (this.ident.layout !== 'projects') return [{ key: 'all', label: null, colour: null, tabs: group.tabs }];
         var self = this;
         return this.byWorktree(group.tabs).map(function (run) {
           var co = run[0].co || null;
@@ -309,101 +251,37 @@
         var drag = this.identMenuDrag;
         return drag !== null && drag.target === key ? drag.side : null;
       },
-      worktreeTabGroups: function () {
+
+      // ---- the URL hash (route.js): fold and gc (a folded group's current tab), wto (a project's worktree order) ----
+      tabGroupsRoute: function (add) {
         var self = this;
-        var groups = [];
-        this.tabs.forEach(function (tab) {
-          var project = self.tabProject(tab);
-          var co = tab.co || (project ? self.project(project).checkouts[0].id : null);
-          var key = co || '';
-          var group = groups.find(function (g) { return g.key === key; });
-          if (group === undefined) {
-            group = { key: key, co: co, project: project, tabs: [] };
-            groups.push(group);
-          }
-          group.tabs.push(tab);
+        this.tabGroups().filter(function (g) { return g.folded; }).forEach(function (g) {
+          add('fold', g.key);
+          if (g.current.key !== self.focus) add('gc', g.current.key);
         });
-        var heads = groups.filter(function (g) { return g.co !== null; }).length > 1 || this.ident.when === 'always';
-        return groups.map(function (g) {
-          var head = g.co === null || heads === false ? null : {
-            owner: self.projectOwner(g.project),
-            label: self.checkout(g.co).main ? g.project : self.label(g.co),
-            sub: self.checkout(g.co).main ? self.checkout(g.co).branch : null
-          };
-          return { key: g.key, head: head, colour: self.worktreeColour(g.co), tabs: g.tabs };
-        });
+        var order = this.identWorktreeOrder;
+        Object.keys(order).forEach(function (project) { add('wto', project + '~' + order[project].join(',')); });
       },
-      projectTabGroups: function () {
+      // After the tabs are back: a folded group's current tab is the one of its tabs shown last, so each gc tab is
+      // remembered as shown, then the shown tab after them.
+      restoreTabGroups: function (p) {
         var self = this;
-        var groups = [];
-        this.tabs.forEach(function (tab) {
-          var project = self.tabProject(tab);
-          var group = groups.find(function (g) { return g.project === project; });
-          if (group === undefined) {
-            group = { key: 'p:' + (project || ''), project: project, tabs: [] };
-            groups.push(group);
-          }
-          group.tabs.push(tab);
+        this.identFolded = p.getAll('fold');
+        this.identWorktreeOrder = {};
+        p.getAll('wto').forEach(function (v) {
+          var at = v.indexOf('~');
+          if (at !== -1) self.identWorktreeOrder[v.slice(0, at)] = v.slice(at + 1).split(',');
         });
-        var heads = groups.filter(function (g) { return g.project !== null; }).length > 1 || this.ident.when === 'always';
-        return groups.map(function (g) {
-          var head = g.project === null || heads === false ? null : { owner: self.projectOwner(g.project), label: g.project, sub: null };
-          // a worktree's tabs side by side, so their tint reads as one run
-          return { key: g.key, project: g.project, head: head, colour: null, tabs: self.byWorktree(g.tabs).flat() };
-        });
+        var byKey = function (key) { return self.tabs.find(function (t) { return t.key === key; }) || null; };
+        p.getAll('gc').forEach(function (key) { self.remember(byKey(key)); });
+        this.remember(byKey(this.focus));
       },
 
-      // ---- hub rows ----
-      hubOwner: function (item) {
+      // ---- hub rows: the badge on each row's icon, its module's favicon, else its project's ----
+      hubOwnerBadge: function (item) {
         var project = item.project || (item.co ? this.checkout(item.co).project : null);
-        return this.ownerOf(project, item.ownerPath || item.path || '');
-      },
-      hubOwnerShown: function (item, items) {
-        if (this.ident.owner === 'none') return null;
-        var self = this;
-        var owner = this.hubOwner(item);
-        if (owner === null) return null;
-        if (this.ident.layout !== 'flat' && item.inGroup) return null;
-        var key = function (i) { var o = self.hubOwner(i); return o && o.key; };
-        return this.identWanted(item, items, key, function (i) { return i.title; }) ? owner : null;
-      },
-      // With project groups (the direction picked) the hub stays as the app's but for this badge, on every row whose
-      // module or project has a favicon.
-      hubOwnerBadge: function (item, items) {
-        if (this.ident.owner !== 'badge') return null;
-        var owner = this.ident.layout === 'projects' ? this.hubOwner(item) : this.hubOwnerShown(item, items);
+        var owner = this.ownerOf(project, item.ownerPath || item.path || '');
         return owner && owner.icon ? owner : null;
-      },
-      // How the row's worktree tag draws: 'today' (the app's), or the variant's mode with the tag's colour.
-      hubCoCue: function (item) {
-        var mode = this.ident.layout === 'projects' ? 'today' : this.ident.worktree;
-        if (mode === 'today') return { mode: 'today', colour: this.checkout(item.co).colour };
-        return { mode: mode, colour: this.worktreeColour(item.co) };
-      },
-      // groups: a section's rows by owner, the groups in the order of their best row; a head over each when there
-      // are several.
-      identGroupSections: function (sections) {
-        if (this.ident.layout !== 'groups') return sections;
-        var self = this;
-        sections.forEach(function (s) {
-          var groups = [];
-          s.items.forEach(function (item) {
-            var owner = self.hubOwner(item);
-            var key = owner ? owner.key : '';
-            var group = groups.find(function (g) { return g.key === key; });
-            if (group === undefined) { group = { key: key, owner: owner, items: [] }; groups.push(group); }
-            group.items.push(item);
-          });
-          var heads = groups.length > 1 || self.ident.when === 'always';
-          s.items = groups.flatMap(function (g) {
-            g.items.forEach(function (item, i) {
-              item.inGroup = heads && g.owner !== null;
-              item.groupHead = item.inGroup && i === 0 ? { owner: g.owner, label: g.owner.module ? g.owner.project + ' › ' + g.owner.name : g.owner.name } : null;
-            });
-            return g.items;
-          });
-        });
-        return sections;
       },
 
       // Mock-only: a busy day's tabs, the same names in several worktrees, projects and modules.

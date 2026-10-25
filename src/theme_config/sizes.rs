@@ -398,6 +398,14 @@ pub struct TabsSizes {
     pub group_gap: Px,
     pub group_head_text_size: FontPx,
     pub group_count_radius: Px,
+    /// a project's group's frame: its height, border, radius, padding before its head and after its last tab; its
+    /// head's name's height
+    pub group_height: Height,
+    pub group_border: Px,
+    pub group_radius: Px,
+    pub group_padding_left: Px,
+    pub group_padding_right: Px,
+    pub group_head_height: Height,
     /// Restart and Settings
     pub toolbar_button_padding: Px,
     pub toolbar_button_radius: Px,
@@ -784,7 +792,11 @@ mod tests {
         assert_eq!((tabs.badge_size, tabs.badge_offset, tabs.badge_ring), (Px(10.), Px(3.), Px(1.5)));
         assert_eq!((tabs.rail_width, tabs.rail_inset), (Px(2.), Px(4.)));
         assert_eq!((tabs.tint, tabs.tint_hover, tabs.tint_shown, tabs.tint_outline), (Fraction(0.12), Fraction(0.18), Fraction(0.22), Fraction(0.45)));
-        assert_eq!((tabs.group_gap, tabs.group_head_text_size, tabs.group_count_radius), (Px(4.), FontPx(12.), Px(8.)));
+        assert_eq!((tabs.group_gap, tabs.group_head_text_size, tabs.group_count_radius), (Px(6.), FontPx(12.), Px(8.)));
+        assert_eq!(
+            (tabs.group_height, tabs.group_border, tabs.group_radius, tabs.group_padding_left, tabs.group_padding_right, tabs.group_head_height),
+            (Height(31.), Px(1.), Px(8.), Px(4.), Px(2.), Height(21.))
+        );
     }
 
     #[test]
@@ -798,7 +810,7 @@ mod tests {
         assert_eq!((tabs.tools_gap, tabs.tools_padding_left), (Px(4.), Px(8.)));
         assert_eq!(
             (tabs.tab_height, tabs.tab_padding_left, tabs.tab_padding_right, tabs.tab_radius, tabs.tab_border),
-            (Height(28.), Px(10.), Px(6.), Px(6.), Px(1.))
+            (Height(27.), Px(10.), Px(6.), Px(6.), Px(1.))
         );
         assert_eq!((tabs.tab_text_size, tabs.tab_inner_gap, tabs.tab_icon_size, tabs.title_max_width), (FontPx(14.), Px(6.), Px(16.), Px(220.)));
         assert_eq!(tabs.close_radius, Px(4.));

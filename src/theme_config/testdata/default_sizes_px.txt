@@ -172,7 +172,7 @@ Sizes {
             8.0,
         ),
         tab_height: Height(
-            28.0,
+            27.0,
         ),
         tab_padding_left: Px(
             10.0,
@@ -250,13 +250,31 @@ Sizes {
             0.45,
         ),
         group_gap: Px(
-            4.0,
+            6.0,
         ),
         group_head_text_size: FontPx(
             12.0,
         ),
         group_count_radius: Px(
             8.0,
+        ),
+        group_height: Height(
+            31.0,
+        ),
+        group_border: Px(
+            1.0,
+        ),
+        group_radius: Px(
+            8.0,
+        ),
+        group_padding_left: Px(
+            4.0,
+        ),
+        group_padding_right: Px(
+            2.0,
+        ),
+        group_head_height: Height(
+            21.0,
         ),
         toolbar_button_padding: Px(
             4.0,
