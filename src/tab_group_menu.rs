@@ -149,7 +149,7 @@ fn tab_row(id: TabId, shown: Shown<'_>, workspace: &Workspace, cx: &mut Context<
     let sizes = &theme.sizes.menu;
     let tab = workspace.tabs().get(id)?;
     let title: SharedString = tab.title(workspace).into();
-    let badge = workspace.tab_module_badge(tab).map(|path| Badge { path, ring: theme.menu.background.0 });
+    let badge = workspace.tab_module_badge(tab).map(|path| Badge::favicon(path, theme.menu.background.0));
     let tick = div().w(px(12.)).text_size(px(12.)).child(if shown.current == Some(id) { "✓" } else { "" });
     let section = shown.section.map(Path::to_path_buf);
     let dragged = DraggedMenuTab { id, checkout: section.clone(), title: title.clone() };

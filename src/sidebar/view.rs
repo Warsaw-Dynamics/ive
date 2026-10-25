@@ -21,7 +21,7 @@ use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use super::selection::{Listed, PickGroup, Selection, pick_group};
 use crate::attention_dot::with_dot;
 use crate::dragged_files::{DraggedFiles, DraggedProcesses};
-use crate::favicon_badge::favicon_or;
+use crate::favicon_badge::{Badge, BadgeImage, badged, favicon_or};
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
 use crate::click_targets::{Listener, target};
@@ -565,6 +565,12 @@ fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::An
     }
 }
 
+/// A worktree row's branch icon; the main checkout's carries the star.
+fn branch_icon(mark: &RowMark, theme: Theme) -> Div {
+    let star = mark.star.then_some(Badge { image: BadgeImage::Embedded(icons::STAR), ring: theme.tree });
+    badged(icon(theme, icons::BRANCH), star, theme)
+}
+
 fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let theme = line.theme;
     let toggled = row.checkout.clone();
@@ -582,7 +588,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .div
         .children(rail)
         .child(chevron(row.expanded, theme, shared(&toggle)))
-        .child(icon(theme, icons::BRANCH))
+        .child(branch_icon(&line.mark, theme))
         .child(row.label.clone())
         .children(waiting_tag(row.waiting, theme))
         .children(hide);

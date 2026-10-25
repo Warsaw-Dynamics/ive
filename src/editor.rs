@@ -1050,7 +1050,7 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         .text_size(sizes.tab_text_size.px())
         .cursor_pointer()
         // the attention dot on the icon's top right, the owner's badge on its lower right
-        .child(badged(tab.marked_icon(workspace, theme, chip_ring(shown, theme)), look.badge.map(|path| Badge { path, ring: chip_ring(shown, theme) }), theme))
+        .child(badged(tab.marked_icon(workspace, theme, chip_ring(shown, theme)), look.badge.map(|path| Badge::favicon(path, chip_ring(shown, theme))), theme))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(title)
         .children(worktree_label(&look.cue, theme))

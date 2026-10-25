@@ -331,7 +331,7 @@ fn hub_badge(row: &Row, look: RowLook, workspace: &Workspace, theme: Theme) -> O
     };
     let owner = workspace.owner_of(&checkout, row.item.path.as_deref().map(std::path::Path::new));
     let ring = if look.selected { theme.selected } else { theme.background };
-    owner.icon.map(|path| Badge { path, ring })
+    owner.icon.map(|path| Badge::favicon(path, ring))
 }
 
 fn worktree_tag(row_tag: &Tag, workspace: &Workspace, theme: Theme) -> Option<Div> {
