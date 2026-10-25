@@ -66,8 +66,6 @@ tag_padding_x = "0.375rem"
 tag_radius = 4.0
 tag_text_size = "0.75rem"
 chevron_radius = 4.0
-# the field Rename puts in place of a row's name
-rename_input_width = "12.5rem"
 # a virtual folder's @name (@hidden, @run); its colours are in dark/light.virtual_folders
 chip_padding_x = "0.375rem"
 chip_radius = 4.0

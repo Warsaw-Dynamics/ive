@@ -64,12 +64,12 @@ pub struct Tree {
     pub renaming: Option<Renaming>,
 }
 
-/// Rename's field on the row of `key`, for the file or folder at `path`, and why the last name was refused.
+/// Rename's field on the row of `key`, for the file or folder at `path`; why a name was refused is the line under
+/// the tree, as a row has no room for it.
 pub struct Renaming {
     pub key: TreeKey,
     pub path: PathBuf,
     pub input: Entity<TextInput>,
-    pub error: Option<String>,
     pub _subscriptions: Vec<Subscription>,
 }
 
@@ -387,7 +387,7 @@ fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Contex
     let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key), drop: tree.is_drop_row(&key, cx) };
     let dragged = dragged_processes(row, &key, cx);
     let drop_key = key.clone();
-    let rename = tree.renaming.as_ref().filter(|renaming| renaming.key == key).map(|renaming| RenameField { input: renaming.input.clone(), error: renaming.error.clone() });
+    let rename = tree.renaming.as_ref().filter(|renaming| renaming.key == key).map(|renaming| RenameField { input: renaming.input.clone() });
     let select = RowSelect { key, pick: pick_group(row), workspace: cx.entity().downgrade() };
     let line = RowLine { mark: row_mark(row, workspace, theme), rename, ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
     let drawn = match &row.item {
@@ -546,7 +546,6 @@ struct RowLine {
 #[derive(Clone)]
 struct RenameField {
     input: Entity<TextInput>,
-    error: Option<String>,
 }
 
 impl RowLine {
@@ -555,14 +554,10 @@ impl RowLine {
         let Some(field) = &self.rename else {
             return name;
         };
-        let theme = self.theme;
-        let sizes = &theme.sizes.tree;
-        let error = field.error.clone().map(|error| div().flex_none().text_size(sizes.tag_text_size.px()).text_color(rgb(theme.error)).child(error));
         div()
             .id("tree-rename")
-            .flex()
-            .items_center()
-            .gap(sizes.icon_gap.px())
+            .flex_1()
+            .min_w_0()
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
                     workspace.cancel_rename(cx);
@@ -573,8 +568,7 @@ impl RowLine {
             .on_mouse_up(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
             .on_mouse_up(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
-            .child(div().w(sizes.rename_input_width.px()).child(field.input.clone()))
-            .children(error)
+            .child(field.input.clone())
             .into_any_element()
     }
 }

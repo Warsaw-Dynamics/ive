@@ -56,7 +56,12 @@ pub fn rename_applies(subject: &Subject, checkouts: &[PathBuf]) -> Applies {
 
 /// Where `path` is once `from` was renamed to `to`: `path` itself, or inside it.
 pub fn moved_path(path: &Path, (from, to): (&Path, &Path)) -> PathBuf {
-    path.strip_prefix(from).map_or_else(|_| path.to_path_buf(), |inside| to.join(inside))
+    match path.strip_prefix(from) {
+        // `to.join("")` would end in `/`
+        Ok(inside) if inside.as_os_str().is_empty() => to.to_path_buf(),
+        Ok(inside) => to.join(inside),
+        Err(_) => path.to_path_buf(),
+    }
 }
 
 /// The question a permanent delete asks: `Delete main.rs permanently?`, `Delete 3 items permanently?`.
@@ -160,13 +165,13 @@ impl Workspace {
         window.focus(&focus, cx);
         let subscriptions = vec![
             cx.subscribe_in(&input, window, |workspace, _input, event: &TextInputEvent, window, cx| match event {
-                TextInputEvent::Changed(_) => workspace.set_rename_error(None, cx),
+                TextInputEvent::Changed(_) => workspace.dismiss_note(cx),
                 TextInputEvent::Submitted => workspace.submit_rename(window, cx),
             }),
             // a click elsewhere cancels, as Escape does
             cx.on_blur(&focus, window, |workspace, _window, cx| workspace.cancel_rename(cx)),
         ];
-        self.tree.renaming = Some(Renaming { key: pressed.clone(), path: only.path.clone(), input, error: None, _subscriptions: subscriptions });
+        self.tree.renaming = Some(Renaming { key: pressed.clone(), path: only.path.clone(), input, _subscriptions: subscriptions });
         cx.notify();
     }
 
@@ -176,14 +181,7 @@ impl Workspace {
         }
     }
 
-    fn set_rename_error(&mut self, error: Option<String>, cx: &mut Context<Self>) {
-        if let Some(renaming) = &mut self.tree.renaming {
-            renaming.error = error;
-            cx.notify();
-        }
-    }
-
-    /// Enter in the field: a refused name says why under it; otherwise the tabs' edits are saved, then the file or
+    /// Enter in the field: a refused name says why under the tree, the field staying open; otherwise the tabs' edits are saved, then the file or
     /// folder is renamed off the UI thread.
     fn submit_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(renaming) = &self.tree.renaming else {
@@ -192,7 +190,7 @@ impl Workspace {
         let (from, key) = (renaming.path.clone(), renaming.key.clone());
         let to = match file_ops::checked_name(&from, renaming.input.read(cx).text()) {
             Ok(to) => to,
-            Err(refused) => return self.set_rename_error(Some(refused), cx),
+            Err(refused) => return self.note(refused, NoteKind::Staying, cx),
         };
         self.flush_edits(cx);
         cx.spawn_in(window, async move |this, cx| {
@@ -208,15 +206,13 @@ impl Workspace {
     }
 
     /// After a rename: the file tabs of what moved reopen at the new path in their place, its diff tabs close; a
-    /// failure stays in the field (or under the tree once the field is gone).
+    /// failure is said under the tree, the field staying open to try another name.
     fn finish_rename(&mut self, renamed: Renamed, window: &mut Window, cx: &mut Context<Self>) {
         if let Err(failure) = renamed.result {
-            return match &self.tree.renaming {
-                Some(open) if open.key == renamed.key => self.set_rename_error(Some(failure), cx),
-                _ => self.note(failure, NoteKind::Staying, cx),
-            };
+            return self.note(failure, NoteKind::Staying, cx);
         }
         self.tree.renaming = None;
+        self.dismiss_note(cx);
         let moved = affected(self.tab_files(), std::slice::from_ref(&renamed.from));
         let (documents, diffs): (Vec<TabId>, Vec<TabId>) = moved.into_iter().partition(|id| matches!(self.tabs.get(*id), Some(Tab::Document(_))));
         for id in documents {
@@ -358,6 +354,7 @@ mod tests {
         let moved = [moved_path(Path::new("/r/src/a.rs"), (Path::new("/r/src"), Path::new("/r/lib"))), moved_path(Path::new("/r/src"), (Path::new("/r/src"), Path::new("/r/lib")))];
 
         // then
-        assert_eq!(moved, [PathBuf::from("/r/lib/a.rs"), PathBuf::from("/r/lib")]);
+        // as text: `PathBuf` equality ignores a trailing `/`, which a file's path must not have
+        assert_eq!(moved.map(|path| path.display().to_string()), ["/r/lib/a.rs", "/r/lib"]);
     }
 }
