@@ -1,6 +1,6 @@
 //! Files and folders dragged inside IVE (from the project tree); a terminal they are dropped on types their paths.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui::{App, Context, IntoElement, ParentElement, Render, SharedString, Styled, WeakEntity, Window, div, rgb};
 
@@ -38,6 +38,30 @@ impl DraggedFiles {
     pub fn chip(&self, cx: &App) -> DragChip {
         DragChip { label: label(&self.paths(cx)).into(), workspace: self.workspace.clone() }
     }
+}
+
+/// A drag of a project or worktree row: its root folder, which a terminal types absolute. Tree rows take no drop of
+/// it, so a checkout is never moved or copied.
+#[derive(Clone)]
+pub struct DraggedRoot {
+    pub path: PathBuf,
+    pub workspace: WeakEntity<Workspace>,
+}
+
+impl DraggedRoot {
+    pub fn typed(&self) -> String {
+        root_text(&self.path)
+    }
+
+    /// The chip under the pointer: the root folder's name.
+    pub fn chip(&self) -> DragChip {
+        DragChip { label: label(std::slice::from_ref(&self.path)).into(), workspace: self.workspace.clone() }
+    }
+}
+
+/// What a drop of root `path` types: the path absolute, even into a terminal working in it.
+fn root_text(path: &Path) -> String {
+    crate::path_text::typed_paths(&[path.to_path_buf()], crate::path_text::Base::Absolute)
 }
 
 /// A drag of process rows (terminals, Claude Code, runs) from the tree: the pressed row, and the workspace whose
@@ -123,6 +147,15 @@ mod tests {
 
         // then
         assert_eq!(label, "c.rs +2");
+    }
+
+    #[test]
+    fn should_type_a_root_absolute() {
+        // when
+        let typed = root_text(Path::new("/home/u/repo"));
+
+        // then
+        assert_eq!(typed, crate::path_text::typed_paths(&[PathBuf::from("/home/u/repo")], crate::path_text::Base::Absolute));
     }
 
     #[test]

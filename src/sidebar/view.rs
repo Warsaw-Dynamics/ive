@@ -20,7 +20,7 @@ use super::drop_place::DropHint;
 use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use super::selection::{Listed, PickGroup, Selection, pick_group};
 use crate::attention_dot::with_dot;
-use crate::dragged_files::{DraggedFiles, DraggedProcesses};
+use crate::dragged_files::{DraggedFiles, DraggedProcesses, DraggedRoot};
 use crate::favicon_badge::{Badge, BadgeImage, badged, favicon_or};
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
@@ -395,7 +395,24 @@ fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Contex
         Some(dragged) => drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))),
         None => drawn,
     };
-    drop_target(drawn, drop_key, cx)
+    drop_target(with_path_drag(drawn, row, workspace, cx), drop_key, cx)
+}
+
+/// A changed file's row drags its path (with the selection), a project's or worktree's its root folder.
+fn with_path_drag(drawn: Stateful<Div>, row: &TreeRow, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let root = match &row.item {
+        TreeItem::Change(_) if pick_group(row) == Some(PickGroup::Files) => {
+            let dragged = DraggedFiles { pressed: row.key(), workspace: cx.entity().downgrade() };
+            return drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx)));
+        }
+        TreeItem::Checkout(checkout) => Some(checkout.checkout.path.clone()),
+        TreeItem::Project(project) => workspace.project(&project.id).map(|open| open.main_checkout().path.clone()),
+        _ => None,
+    };
+    match root {
+        Some(path) => drawn.on_drag(DraggedRoot { path, workspace: cx.entity().downgrade() }, |dragged, _offset, _window, cx| cx.new(|_| dragged.chip())),
+        None => drawn,
+    }
 }
 
 /// What dragging a process or run row carries; `None` for other rows, and for a run still waiting for its `before`

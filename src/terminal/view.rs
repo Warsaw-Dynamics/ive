@@ -39,7 +39,7 @@ use super::hosted::HostedTerminals;
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
 use crate::clipboard;
-use crate::dragged_files::DraggedFiles;
+use crate::dragged_files::{DraggedFiles, DraggedRoot};
 use crate::pasted;
 use crate::script::keymap::{self, Builtin, ClipboardTarget, PasteKind};
 use crate::script::keymap::{Keymap, MouseKind, MouseTrigger, Scope, SelectionMode};
@@ -360,6 +360,7 @@ impl TerminalView {
             .on_scroll_wheel(on_scroll_wheel(self.session.clone(), self.pointer.clone()))
             .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dropped: &ExternalPaths, _cx| pasted::shell_words(dropped.paths())))
             .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), move |dragged: &DraggedFiles, cx| dragged.typed_into(process, cx)))
+            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dragged: &DraggedRoot, _cx| dragged.typed()))
             .child(grid(self.session.clone(), self.pointer.clone(), metrics, theme.terminal, focused))
     }
 }
