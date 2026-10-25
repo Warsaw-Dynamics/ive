@@ -8,14 +8,14 @@ cd internal-apps/ive && python3 -m http.server 8767
 ```
 
 Open <http://localhost:8767/mock/>. The bar along the bottom is mock-only: welcome screen, a project,
-the 10M-line file, a binary file, and a link to `checkouts.html` (which links back with `← index` at its bottom
-right; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Settings.
+the 10M-line file, a binary file, and a link to `checkouts.html` (which links back from its Mock menu, the dock icon
+by Settings; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Settings.
 
 `include.js` and `vendor/alpine.min.js` are copied from `forge-installer/mock`.
 
 `checkouts.html` shows the code view too (DESIGN.md "Code view: diffs, editing, saving", 2026-10-22): diff and commit
 tabs toggle Inline | Side by side (remembered for the session), code is coloured, files and scratches edit with a
-"saving…" state and no Ctrl+S, the new side of an uncommitted diff edits, and the `mock: save` bar at the bottom
+"saving…" state and no Ctrl+S, the new side of an uncommitted diff edits, and the Mock menu (the dock icon by Settings)
 shows the conflict bar, the error bar and "Close without saving". Files over 8 MiB show without colours.
 
 `checkouts.html` (design notes: [DESIGN.md](DESIGN.md)) mocks the app as it is now (synced with the Rust code on

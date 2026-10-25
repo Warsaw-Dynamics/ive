@@ -546,12 +546,13 @@ looks. IVE reads only standard terminal sequences and knows no agent; each agent
   notifications: the bell lists what still waits.
 - Not done: the window's urgency hint (gpui has no API for it); keeping a call made while IVE was closed (the pty
   host would have to hold it).
-- Mock: the `mock: attention` bar sends a notification, a bell or a progress end to a process that is not shown,
+- Mock: the Mock menu (dock icon by Settings) sends a notification, a bell or a progress end to a process that is not shown,
   and sends IVE to the background (the window dims; the dark panels at the top right stand in for the OS's).
 
 ## Where a tab belongs (in the app since 2026-10-24)
 
-The mock's dock-icon menu left of Settings shows it as **Chosen** (`ident.js`); its other variants are the ones tried.
+The mock shows it as the app does (`ident.js`); the Mock menu's **Open demo tabs** (dock icon by Settings) opens a busy day's tabs across
+projects, worktrees and modules.
 
 - **Favicons.** A project's `.favicon.<ext>` at the root of its main checkout is its icon (`svg`, then `png`, `jpg`,
   `jpeg`, `ico` when there are several). Any folder with a `.favicon.*` of its own is a module of a monorepo; a path
@@ -560,6 +561,11 @@ The mock's dock-icon menu left of Settings shows it as **Chosen** (`ident.js`); 
   project's first tab shows; a group's head is a chevron, the project's favicon (or initials) and name. One project
   open: no groups. A project's own tabs (scratches, Git log, commits, its overview) are in its group; tabs of no
   project (Settings, the hub) in one group without a head.
+- **Frame** (2026-10-25). A group with a head has a 1 px frame round its head and tabs (radius 8, 2 px round the
+  tabs, 6 px between groups), folded or open; the group holding the shown tab has it in the shown tab's outline
+  colour. Folded, the frame holds the head and its one tab, and that tab, shown, keeps its fill but not its own
+  outline. Tried in the mock against a shared background, a darker track, an underline, a Chrome-like pill head and
+  rules between groups. Tabs are 27 px and the frame 31 px: odd heights centre on whole pixels in the row's 35 px.
 - **Worktree runs.** In a group a worktree's tabs sit together: the main checkout's first, then the worktrees in the
   order dragged in the group's menu, else as each first shows; the project's own tabs last.
 - **Tint.** A tab of a worktree other than the main checkout has its worktree's colour as background (12 %, 18 %
@@ -628,7 +634,7 @@ Added 2026-10-22, from `docs/superpowers/specs/2026-10-22-codeview-crate-design.
 - **Error.** "cannot save <file>: Permission denied"; the edits are kept and saving is retried after the next pause.
 - **Close without saving.** Closing a tab whose save failed or conflicts does not close it: its bar adds "Close without
   saving (edits are lost)", which does.
-- Mock-only: the `mock: save` bar at the bottom puts the shown file, scratch or uncommitted diff tab in the conflict,
+- Mock-only: the Mock menu (dock icon by Settings) puts the shown file, scratch or uncommitted diff tab in the conflict,
   large-file conflict or error state, or clears it (hash: `save=disk|big|error`, `closing=1`, read but not written).
 - **Editable uncommitted diff.** In a single-file diff of uncommitted changes the new side (context and added rows, right
   side in Side by side) is editable (a caret, one line per row). Commit tabs, Since base diffs and the hub preview are

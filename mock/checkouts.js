@@ -632,7 +632,6 @@
           if (p.get('layout')) this.gitLayout = p.get('layout');
           if (p.get('hidden')) this.hiddenProjects = p.get('hidden').split(',');
           if (p.get('rlayout')) this.runLayout = p.get('rlayout');
-          if (p.get('ident')) this.restoreIdent(p.get('ident'));
           // route.js: the whole state, as the mock last wrote it
           if (this.isRouteHash(p)) { this.restoreRoute(p); return; }
           var atl = this.project('atlassian');
@@ -1003,12 +1002,6 @@
           if (tab.kind === 'projectPage' || tab.kind === 'settings') return title;
           if (tab.co) return this.label(tab.co) + ' — ' + title;
           return tab.project + ' — ' + title;
-        },
-        // editor.rs Tab::underline: a diff tab's checkout colour; ident.js's underline variant: any worktree tab's.
-        tabUnderline: function (tab) {
-          if (this.ident.worktree === 'underline') { var cue = this.tabWorktreeCue(tab); return cue && cue.colour; }
-          if (this.ident.worktree !== 'today') return null;
-          return tab.kind === 'diff' ? this.checkout(tab.co).colour : null;
         },
         // ---- diff layout, editing and saving (codeview design: "Saving: IntelliJ-style, no Ctrl+S") ----
         layoutOf: function (tab) { return tab.layout || this.diffLayout; },

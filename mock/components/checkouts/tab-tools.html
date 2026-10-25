@@ -23,38 +23,32 @@
       </div>
     </div>
   </template>
-  <!-- a proposal (ident.js): how tabs and hub rows show where they belong -->
-  <div class="anchor" @click.outside="menu === 'ident' && (menu = null)">
-    <button class="icon-button" type="button" title="Where tabs and hub rows belong" @click="toggleMenu('ident')">
-      <img class="icon" :src="icon('dock.svg')" alt="Where tabs and hub rows belong" />
+  <!-- mock-only, not part of IVE: every control of the mock, in one menu by Settings; a pick closes it -->
+  <div class="anchor" @click.outside="menu === 'mock' && (menu = null)">
+    <button class="icon-button" type="button" title="Mock controls (not part of IVE)" @click="toggleMenu('mock')">
+      <img class="icon" :src="icon('dock.svg')" alt="Mock controls" />
     </button>
-      <!-- ident.js (a proposal): a variant ticked, or its parts picked one by one; the menu stays open -->
-      <div class="menu menu--ident" x-show="menu === 'ident'">
-        <div class="menu__section">Tabs and hub rows show where they belong</div>
-        <template x-for="p in window.IVE_IDENT.PRESETS" :key="p[0]">
-          <button class="menu__item" type="button" @click="identPreset(p[1])" :title="p[2]">
-            <span class="menu__tick" x-text="isIdentPreset(p[1]) ? '✓' : ''"></span>
-            <span class="menu__grow" x-text="p[0]"></span>
-            <span class="menu__key" x-text="p[2]"></span>
-          </button>
-        </template>
-        <template x-for="k in Object.keys(window.IVE_IDENT.OPTIONS)" :key="k">
-          <div>
-            <div class="menu__section" x-text="window.IVE_IDENT.TITLES[k]"></div>
-            <div class="menu__item menu__item--switch">
-              <div class="segmented" role="group" :aria-label="window.IVE_IDENT.TITLES[k]">
-                <template x-for="o in window.IVE_IDENT.OPTIONS[k]" :key="o">
-                  <button type="button" :aria-pressed="ident[k] === o" @click="ident[k] = o" x-text="o"></button>
-                </template>
-              </div>
-            </div>
-          </div>
-        </template>
-        <div class="menu__separator"></div>
-        <button class="menu__item" type="button" @click="openIdentDemo(); menu = null" title="Tabs of a busy day: the same names in several worktrees, projects and modules">
-          <span class="menu__tick"></span><span class="menu__grow">Open demo tabs</span>
-        </button>
-      </div>
+    <div class="menu menu--mock" x-show="menu === 'mock'" @click="$event.target.closest('.menu__item') && (menu = null)">
+      <!-- DESIGN.md "Where a tab belongs" -->
+      <div class="menu__section">Tabs</div>
+      <button class="menu__item" type="button" @click="openIdentDemo()" title="The same names in several worktrees, projects and modules">
+        <span class="menu__tick"></span><span class="menu__grow">Open demo tabs</span>
+      </button>
+      <!-- codeview "Saving": the shown file, scratch or uncommitted diff tab -->
+      <div class="menu__section">Save the shown tab</div>
+      <button class="menu__item" type="button" @click="mockSave('disk')" title="The file changed on disk: Reload, Overwrite"><span class="menu__grow">Conflict</span></button>
+      <button class="menu__item" type="button" @click="mockSave('big')" title="A file over 8 MiB: only Reload"><span class="menu__grow">Conflict, over 8 MiB</span></button>
+      <button class="menu__item" type="button" @click="mockSave('error')" title="cannot save: Permission denied; then close the tab"><span class="menu__grow">Error</span></button>
+      <button class="menu__item" type="button" @click="mockSave(null)"><span class="menu__grow">Clear</span></button>
+      <!-- DESIGN.md "Attention": what a program in a terminal sends; IVE's window in front or behind -->
+      <div class="menu__section">A process calls</div>
+      <button class="menu__item" type="button" @click="mockAttention('notify')" title="OSC 9 / 777 / 99 with a text, as Claude Code or Codex send it (ignored by the shown tab while the window is in front)"><span class="menu__grow">Notification</span></button>
+      <button class="menu__item" type="button" @click="mockAttention('bell')" title="BEL"><span class="menu__grow">Bell</span></button>
+      <button class="menu__item" type="button" @click="mockAttention('done')" title="OSC 9;4 busy, then 9;4;0"><span class="menu__grow">Progress ended</span></button>
+      <button class="menu__item" type="button" @click="windowFocused = windowFocused === false"><span class="menu__grow" x-text="windowFocused ? 'Send IVE to background' : 'Bring IVE to front'"></span></button>
+      <div class="menu__separator"></div>
+      <a class="menu__item" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file"><span class="menu__grow">← Single-project mock</span></a>
+    </div>
   </div>
   <button class="icon-button tabbar__settings" type="button" title="Settings" @click="openSettings()">
     <img class="icon icon--20" :src="icon('settings-20.svg')" alt="Settings" />

@@ -453,7 +453,7 @@
         var mode = this.hubMode();
         var split = splitLine(this.hubText());
         var groups = parseQuery(split.query);
-        var sections = this.identGroupSections(this['hub_' + mode](groups, split));
+        var sections = this['hub_' + mode](groups, split);
         var items = [];
         sections.forEach(function (s) { s.items.forEach(function (item) { item.index = items.length; items.push(item); }); });
         var stats = searchMemo.value && mode === 'files' && groups.length ? searchMemo.value : null;
