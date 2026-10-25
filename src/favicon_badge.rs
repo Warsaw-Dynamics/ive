@@ -18,29 +18,10 @@ pub fn favicon_or(path: &Path, size: Pixels, fallback: impl Fn() -> AnyElement +
     favicon(path, size).with_fallback(fallback)
 }
 
-/// What a badge shows: a favicon file, or one of IVE's own icons (the main checkout's star).
-pub enum BadgeImage {
-    Favicon(PathBuf),
-    Embedded(&'static str),
-}
-
-/// A badge on an icon, and the colour of the ring that cuts it out: the background the icon is drawn on.
+/// A favicon on an icon, and the colour of the ring that cuts it out: the background the icon is drawn on.
 pub struct Badge {
-    pub image: BadgeImage,
+    pub path: PathBuf,
     pub ring: u32,
-}
-
-impl Badge {
-    pub fn favicon(path: PathBuf, ring: u32) -> Self {
-        Self { image: BadgeImage::Favicon(path), ring }
-    }
-}
-
-fn badge_image(image: &BadgeImage, theme: Theme) -> Img {
-    match image {
-        BadgeImage::Favicon(path) => favicon(path, theme.sizes.tabs.badge_size.px()),
-        BadgeImage::Embedded(name) => img(crate::icons::embedded(theme.appearance, name)).flex_none(),
-    }
 }
 
 /// `icon` in its 16 px slot, with `badge` on its lower right, overhanging it.
@@ -60,6 +41,6 @@ pub fn badged(icon: impl IntoElement, badge: Option<Badge>, theme: Theme) -> Div
         .p(sizes.badge_ring.px())
         .rounded(px(3.))
         .bg(rgb(badge.ring))
-        .child(badge_image(&badge.image, theme).size(sizes.badge_size.px()).rounded(px(2.)));
+        .child(favicon(&badge.path, sizes.badge_size.px()).rounded(px(2.)));
     slot.child(ring)
 }

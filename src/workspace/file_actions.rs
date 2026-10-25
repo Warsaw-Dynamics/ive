@@ -13,6 +13,7 @@ use crate::document::Document;
 use crate::editor::Tab;
 use crate::file_ops;
 use crate::file_tab::FileTab;
+use crate::git::types::GitPath;
 use crate::menu::Subject;
 use crate::menu::resolve::Applies;
 use crate::saved_tabs::SavedTab;
@@ -23,6 +24,8 @@ use crate::sidebar::view::{RenameStage, Renaming};
 use crate::tabs::TabId;
 use crate::text_input::{TextInput, TextInputEvent};
 
+/// What the line under the tree says before the paths Delete leaves alone.
+const REFUSED: &str = "Delete refused";
 /// The rename field's click target, for MCP.
 const RENAME_TARGET: &str = "tree-rename";
 
@@ -40,9 +43,33 @@ pub fn in_work_tree(subject: &Subject) -> Subject {
 /// What Delete takes of `subject`: its paths but the protected ones (checkout roots, folders holding one, `.git`),
 /// without those inside another; and why each protected one stays.
 pub fn deletable(subject: &Subject, checkouts: &[PathBuf]) -> (Vec<PathBuf>, Vec<String>) {
-    let (refused, kept): (Vec<_>, Vec<_>) = subject.paths.iter().map(|path| (path.path.clone(), file_ops::protected(&path.path, checkouts))).partition(|(_, why)| why.is_some());
+    let checked = subject.paths.iter().map(|path| (path.path.clone(), file_ops::protected(&path.path, checkouts)));
+    let (refused, kept): (Vec<_>, Vec<_>) = checked.partition(|(_, why)| why.is_some());
     let kept = without_nested(kept.into_iter().map(|(path, _)| path).collect());
-    (kept, refused.into_iter().filter_map(|(_, why)| why).collect())
+    // a protected path inside a folder that goes (a nested repository's `.git`) goes with it, so it is not refused
+    let inside_kept = |path: &PathBuf| kept.iter().any(|folder| path.starts_with(folder));
+    let refused = refused.into_iter().filter(|(path, _)| !inside_kept(path)).filter_map(|(_, why)| why).collect();
+    (kept, refused)
+}
+
+/// The line under the tree naming every one of `items` after `what`: `Delete refused: a; b`; `None` without items.
+pub fn listed_note(what: &str, items: &[String]) -> Option<String> {
+    match items.is_empty() {
+        true => None,
+        false => Some(format!("{what}: {}", items.join("; "))),
+    }
+}
+
+/// The row of `key` once its file was renamed to `to`: the same kind of row, at the new path.
+pub fn renamed_key(key: &TreeKey, to: &Path) -> Option<TreeKey> {
+    match key {
+        TreeKey::Entry(_) => Some(TreeKey::Entry(to.to_path_buf())),
+        TreeKey::Change(checkout, source, _) => {
+            let inside = to.strip_prefix(checkout).ok()?;
+            Some(TreeKey::Change(checkout.clone(), source.clone(), GitPath::from_bytes(inside.as_os_str().as_bytes())))
+        }
+        _ => None,
+    }
 }
 
 /// Delete in a menu: shown while anything of `subject` can be deleted.
@@ -112,8 +139,8 @@ impl Workspace {
     /// a permanent delete asks first.
     pub(super) fn delete_files(&mut self, pressed: &TreeKey, window: &mut Window, cx: &mut Context<Self>) {
         let (paths, refused) = deletable(&in_work_tree(&self.tree_subject(pressed)), &self.all_checkouts());
-        if let Some(why) = refused.first() {
-            self.note(format!("Delete refused: {why}"), NoteKind::Staying, cx);
+        if let Some(note) = listed_note(REFUSED, &refused) {
+            self.note(note, NoteKind::Staying, cx);
         }
         if paths.is_empty() {
             return;
@@ -136,9 +163,10 @@ impl Workspace {
         self.flush_edits(cx);
         cx.spawn_in(window, async move |this, cx| {
             super::saves::saves_landed(&this, cx).await;
-            let Ok(Some(paths)) = this.update_in(cx, |workspace, window, cx| (workspace.edits_settled(&paths, "Delete", window, cx) == Settled::Saved).then_some(paths)) else {
+            let settled = this.update_in(cx, |workspace, window, cx| workspace.edits_settled(&paths, "Delete", window, cx)).ok();
+            if settled != Some(Settled::Saved) {
                 return;
-            };
+            }
             let failures = cx.background_executor().spawn(async move { deleted(&paths, mode) }).await;
             this.update_in(cx, |workspace, window, cx| workspace.finish_delete(failures, window, cx)).ok();
         })
@@ -152,7 +180,8 @@ impl Workspace {
         let Some(tab) = unsaved else {
             return Settled::Saved;
         };
-        let name = self.tab_files().into_iter().find(|(id, _)| *id == tab).and_then(|(_, path)| path.file_name().map(|name| name.to_string_lossy().into_owned())).unwrap_or_default();
+        let path = self.tab_files().into_iter().find(|(id, _)| *id == tab).map(|(_, path)| path).unwrap_or_default();
+        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         self.activate_tab(tab, window, cx);
         self.note(format!("{action} stopped: {name} has edits that could not be saved"), NoteKind::Staying, cx);
         Settled::Held
@@ -165,8 +194,12 @@ impl Workspace {
         self.close_tabs(gone, window, cx);
         self.sync_watches();
         let edited_note = (!edited.is_empty()).then(|| format!("{} edited during the delete: kept open with the edits", plan_count(edited.len())));
-        if let Some(note) = outcome.failures.first().cloned().or(edited_note) {
-            self.note(note, NoteKind::Staying, cx);
+        let said: Vec<String> = outcome.failures.into_iter().chain(edited_note).collect();
+        let after = (!said.is_empty()).then(|| said.join("; "));
+        // the refusals said when the delete started stay in front of what went wrong since
+        let refused = self.tree.note.as_ref().map(|note| note.text.clone()).filter(|text| text.starts_with(REFUSED));
+        if let Some(after) = after {
+            self.note(refused.map_or(after.clone(), |refused| format!("{refused} · {after}")), NoteKind::Staying, cx);
         }
         cx.notify();
     }
@@ -210,16 +243,37 @@ impl Workspace {
         }
     }
 
-    /// The field of a rename on the row of `key` goes; a field opened since on another row stays.
-    fn end_rename(&mut self, key: &TreeKey, cx: &mut Context<Self>) {
+    /// Escape in the field: it goes, and the tree has the keyboard again.
+    pub(crate) fn escape_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tree.renaming.as_ref().is_some_and(|renaming| renaming.stage == RenameStage::Typing) {
+            self.give_keys_to_tree(window, cx);
+        }
+        self.cancel_rename(cx);
+    }
+
+    /// The field of a rename on the row of `key` goes; a field opened since on another row stays. The tree gets the
+    /// keyboard back while the field had it.
+    fn end_rename(&mut self, key: &TreeKey, window: &mut Window, cx: &mut Context<Self>) {
         if self.tree.renaming.as_ref().is_some_and(|renaming| renaming.key == *key) {
+            self.give_keys_to_tree(window, cx);
             self.tree.renaming = None;
             cx.notify();
         }
     }
 
-    /// Enter in the field: a refused name says why under the tree, the field staying open; otherwise the tabs' edits are saved, then the file or
-    /// folder is renamed off the UI thread.
+    /// The sidebar takes the keyboard when the rename field has it, so F2 and Delete work again without a click.
+    fn give_keys_to_tree(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(renaming) = &self.tree.renaming else {
+            return;
+        };
+        if renaming.input.focus_handle(cx).is_focused(window) {
+            let sidebar = cx.global::<crate::theme::SidebarFocus>().0.clone();
+            window.focus(&sidebar, cx);
+        }
+    }
+
+    /// Enter in the field: a refused name says why under the tree, the field staying open; otherwise the tabs' edits
+    /// are saved, then the file or folder is renamed off the UI thread.
     fn submit_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(renaming) = self.tree.renaming.as_mut().filter(|renaming| renaming.stage == RenameStage::Typing) else {
             return;
@@ -236,7 +290,7 @@ impl Workspace {
             super::saves::saves_landed(&this, cx).await;
             let settled = this.update_in(cx, |workspace, window, cx| workspace.edits_settled(std::slice::from_ref(&from), "Rename", window, cx)).ok();
             if settled == Some(Settled::Held) {
-                this.update(cx, |workspace, cx| workspace.end_rename(&key, cx)).ok();
+                this.update_in(cx, |workspace, window, cx| workspace.end_rename(&key, window, cx)).ok();
             }
             if settled == Some(Settled::Saved) {
                 let (source, target) = (from.clone(), to.clone());
@@ -256,19 +310,20 @@ impl Workspace {
             }
             return self.note(failure, NoteKind::Staying, cx);
         }
-        self.end_rename(&renamed.key, cx);
+        self.end_rename(&renamed.key, window, cx);
         self.dismiss_note(cx);
         let moved = affected(self.tab_files(), std::slice::from_ref(&renamed.from));
         // a tab edited while the rename ran keeps its edits (its save writes the old path again), never replaced on them
         let moved: Vec<TabId> = moved.into_iter().filter(|id| !self.is_unsettled(*id, cx)).collect();
-        let (documents, diffs): (Vec<TabId>, Vec<TabId>) = moved.into_iter().partition(|id| matches!(self.tabs.get(*id), Some(Tab::Document(_) | Tab::Unloaded(SavedTab::File { .. }))));
+        let is_file_tab = |id: &TabId| matches!(self.tabs.get(*id), Some(Tab::Document(_) | Tab::Unloaded(SavedTab::File { .. })));
+        let (documents, diffs): (Vec<TabId>, Vec<TabId>) = moved.into_iter().partition(is_file_tab);
         for id in documents {
             self.reopen_moved(id, (&renamed.from, &renamed.to), window, cx);
         }
         self.close_tabs(diffs, window, cx);
-        match renamed.key {
-            TreeKey::Entry(_) => self.tree.selection.select_only(TreeKey::Entry(renamed.to)),
-            _ => self.tree.selection.clear(),
+        match renamed_key(&renamed.key, &renamed.to) {
+            Some(key) => self.tree.selection.select_only(key),
+            None => self.tree.selection.clear(),
         }
         self.sync_watches();
         self.tree_changed(cx);
@@ -391,6 +446,49 @@ mod tests {
 
         // then
         assert_eq!((kept, refused), (vec![PathBuf::from("/r/a.rs")], vec!["/r/.worktree/b is a checkout's root".to_owned()]));
+    }
+
+    #[test]
+    fn should_not_refuse_a_git_folder_that_goes_with_its_folder() {
+        // given
+        let subject = subject_of(vec![(PathBuf::from("/r/d"), PathKind::Folder), (PathBuf::from("/r/d/.git"), PathKind::Folder)], &checkouts());
+
+        // when
+        let (kept, refused) = deletable(&subject, &checkouts());
+
+        // then
+        assert_eq!((kept, refused), (vec![PathBuf::from("/r/d")], Vec::<String>::new()));
+    }
+
+    #[test]
+    fn should_name_every_refusal() {
+        // when
+        let text = listed_note("Delete refused", &["/r is a checkout's root".to_owned(), "/r/.git is git's own".to_owned()]);
+
+        // then
+        assert_eq!(text, Some("Delete refused: /r is a checkout's root; /r/.git is git's own".to_owned()));
+    }
+
+    #[test]
+    fn should_say_nothing_without_refusals() {
+        // when
+        let text = listed_note("Delete refused", &[]);
+
+        // then
+        assert_eq!(text, None);
+    }
+
+    #[test]
+    fn should_key_a_renamed_change_by_its_new_path() {
+        // given
+        let key = TreeKey::Change(PathBuf::from("/r"), crate::sidebar::folders::ChangeSource::Uncommitted, crate::git::types::GitPath::from_bytes(b"src/a.rs"));
+
+        // when
+        let renamed = [renamed_key(&key, Path::new("/r/src/b.rs")), renamed_key(&TreeKey::Entry(PathBuf::from("/r/a")), Path::new("/r/b"))];
+
+        // then
+        let expected = TreeKey::Change(PathBuf::from("/r"), crate::sidebar::folders::ChangeSource::Uncommitted, crate::git::types::GitPath::from_bytes(b"src/b.rs"));
+        assert_eq!(renamed, [Some(expected), Some(TreeKey::Entry(PathBuf::from("/r/b")))]);
     }
 
     #[test]

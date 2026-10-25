@@ -35,7 +35,7 @@ pub fn stem_end(name: &str, kind: PathKind) -> usize {
 }
 
 /// Why `path` is not renamed or deleted from the tree: it is one of `checkouts`' roots, holds one of them, or is
-/// git's own `.git`; `None` for any other path.
+/// git's own `.git` or inside it; `None` for any other path.
 pub fn protected(path: &Path, checkouts: &[PathBuf]) -> Option<String> {
     if checkouts.iter().any(|checkout| checkout == path) {
         return Some(format!("{} is a checkout's root", path.display()));
@@ -43,7 +43,7 @@ pub fn protected(path: &Path, checkouts: &[PathBuf]) -> Option<String> {
     if checkouts.iter().any(|checkout| checkout.starts_with(path)) {
         return Some(format!("{} holds an open worktree", path.display()));
     }
-    if path.file_name().is_some_and(|name| name == ".git") {
+    if path.components().any(|part| part.as_os_str() == ".git") {
         return Some(format!("{} is git's own", path.display()));
     }
     None
@@ -188,6 +188,15 @@ mod tests {
 
         // then
         assert_eq!(refused, Some("/r/.git is git's own".to_owned()));
+    }
+
+    #[test]
+    fn should_refuse_what_is_inside_git_folder() {
+        // when
+        let refused = protected(Path::new("/r/.git/worktrees/feature"), &[PathBuf::from("/r")]);
+
+        // then
+        assert_eq!(refused, Some("/r/.git/worktrees/feature is git's own".to_owned()));
     }
 
     #[test]

@@ -20,8 +20,8 @@ Four gaps in the project tree, met while working in it every day:
 - The star is IntelliJ's favourite-branch star (`platform/icons/src/expui/nodes/star.svg` and `star_dark.svg` in
   `/mnt/data/Projects/intellij-community`, Apache 2.0, as `branch.svg` already is): IntelliJ marks `main` / `master`
   as favourite branches with it. Its yellow (`#F2C55C` dark, the light file's colour in light) stays as IntelliJ draws it.
-- Drawn as module favicons are badged on file icons (`favicon_badge.rs`): the same badge size and placement, ringed
-  in the tree's background, as the attention dot on process rows is.
+- As built: a modified icon, `branch-main.svg` (as `folder-run.svg` is one): branch.svg whole, with the star scaled
+  down in its empty lower right corner. No ring or background, which hid the icon on a selected or hovered row.
 - A project with one checkout shows no worktree row, so nothing changes there.
 
 ### 2. Rename

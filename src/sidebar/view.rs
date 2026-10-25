@@ -21,7 +21,7 @@ use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use super::selection::{Listed, PickGroup, Selection, pick_group};
 use crate::attention_dot::with_dot;
 use crate::dragged_files::{DraggedFiles, DraggedProcesses, DraggedRoot};
-use crate::favicon_badge::{Badge, BadgeImage, badged, favicon_or};
+use crate::favicon_badge::favicon_or;
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
 use crate::click_targets::{Listener, target};
@@ -566,9 +566,9 @@ impl RowLine {
             .id("tree-rename")
             .flex_1()
             .min_w_0()
-            .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, _window, cx| {
+            .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
-                    workspace.cancel_rename(cx);
+                    workspace.escape_rename(window, cx);
                     cx.stop_propagation();
                 }
             }))
@@ -637,9 +637,8 @@ fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::An
 }
 
 /// A worktree row's branch icon; the main checkout's carries the star.
-fn branch_icon(mark: &RowMark, theme: Theme) -> Div {
-    let star = mark.star.then_some(Badge { image: BadgeImage::Embedded(icons::STAR), ring: theme.tree });
-    badged(icon(theme, icons::BRANCH), star, theme)
+fn branch_icon(mark: &RowMark, theme: Theme) -> impl IntoElement {
+    icon(theme, if mark.star { icons::BRANCH_MAIN } else { icons::BRANCH })
 }
 
 fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
