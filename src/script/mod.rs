@@ -11,6 +11,7 @@ pub mod open_folders;
 mod fingerprint;
 mod http_module;
 pub mod keymap;
+pub mod delete_mode;
 pub mod quit_countdown;
 pub mod drop_modifiers;
 pub mod log;

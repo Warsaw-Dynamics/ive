@@ -18,6 +18,7 @@ use super::keymap::Keymap;
 use super::menus::{self, MenuKind, Menus};
 use super::excluded::{self, Excluded};
 use super::open_folders::{self, OpenFolders};
+use super::delete_mode::{self, DeleteMode};
 use super::drop_modifiers;
 use super::quit_countdown::{self, QuitCountdown};
 use crate::transfer::DropModifiers;
@@ -46,6 +47,7 @@ pub struct Loaded {
     pub quit_countdown: QuitCountdown,
     pub open_folders: OpenFolders,
     pub drop_modifiers: DropModifiers,
+    pub delete: DeleteMode,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -95,6 +97,7 @@ impl Engine {
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
             drop_modifiers: rune::Value::from(()),
+            delete: rune::Value::from(()),
         };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
@@ -107,6 +110,7 @@ impl Engine {
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
             drop_modifiers: rune::Value::from(()),
+            delete: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -121,6 +125,7 @@ impl Engine {
                 quit_countdown: checked.quit_countdown,
                 open_folders: checked.open_folders,
                 drop_modifiers: checked.drop_modifiers,
+                delete: checked.delete,
                 functions: bound,
                 has_init: false,
             });
@@ -139,6 +144,7 @@ impl Engine {
             quit_countdown: checked.quit_countdown,
             open_folders: checked.open_folders,
             drop_modifiers: checked.drop_modifiers,
+            delete: checked.delete,
             functions: bound,
             has_init: true,
         })
@@ -192,6 +198,7 @@ struct Checked {
     quit_countdown: QuitCountdown,
     open_folders: OpenFolders,
     drop_modifiers: DropModifiers,
+    delete: DeleteMode,
 }
 
 /// The theme, excluded folders, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
@@ -210,7 +217,8 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &m
     let quit_countdown = quit_countdown::parse(&carried.quit_countdown).map_err(named)?;
     let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
     let drop_modifiers = drop_modifiers::parse(&carried.drop_modifiers).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers })
+    let delete = delete_mode::parse(&carried.delete).map_err(named)?;
+    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -508,6 +516,27 @@ mod tests {
         // then
         assert_eq!(modifiers.copy, Modifiers { alt: true, ..Modifiers::default() });
         assert_eq!(modifiers.moving, Modifiers { control: true, shift: true, ..Modifiers::default() });
+    }
+
+    #[test]
+    fn should_delete_to_the_trash_by_default() {
+        // when
+        let mode = defaults().delete;
+
+        // then
+        assert_eq!(mode, DeleteMode::Trash);
+    }
+
+    #[test]
+    fn should_take_permanent_delete_from_init() {
+        // given
+        let init = r#"pub fn init(config) { config.delete = "permanent"; }"#;
+
+        // when
+        let mode = load(init).1.unwrap().delete;
+
+        // then
+        assert_eq!(mode, DeleteMode::Permanent);
     }
 
     #[test]

@@ -51,6 +51,10 @@ pub fn init(config) {
     // copies), written as a key's mods; force_copy also makes a drop of terminals start copies of them there
     config.drop_modifiers = if ive::os() == "macos" { #{ force_copy: "ALT", force_move: "SUPER" } } else { #{ force_copy: "CTRL", force_move: "SHIFT" } };
 
+    // what Delete in the tree does: "trash" moves files and folders to the system trash, "permanent" removes them at
+    // once, after a question
+    config.delete = "trash";
+
     // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
     config.quit_countdown = 10;
 

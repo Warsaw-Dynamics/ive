@@ -21,6 +21,7 @@ mod file_write;
 mod failure;
 mod favicon;
 mod favicon_badge;
+mod file_ops;
 mod file_tree;
 mod frame;
 mod glow;
