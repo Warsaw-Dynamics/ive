@@ -89,7 +89,7 @@
         return pruned([
           this.sendToTerminalItem(s), this.openTerminalItem(s), this.runItem(s), null,
           this.findInFilesItem(s), null,
-          this.copyItem(node), this.pasteItem(node), null,
+          this.copyItem(node), this.pasteItem(node), this.renameItem(node), this.deleteItem(node), null,
           this.copyPathItem(s), this.openInItem(s), null,
           this.gitItem(s, true)
         ]);

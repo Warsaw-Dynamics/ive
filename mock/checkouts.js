@@ -1497,7 +1497,8 @@
         },
         worktreeNode: function (co) {
           var self = this;
-          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', open: true,
+          // the main checkout's branch icon carries IntelliJ's favourite-branch star
+          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', star: co.main, open: true,
             waiting: this.waitingLabel(this.waitingIn([co.id])),
             children: this.checkoutChildren(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };

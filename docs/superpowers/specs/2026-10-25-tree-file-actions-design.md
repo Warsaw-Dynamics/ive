@@ -21,7 +21,7 @@ Four gaps in the project tree, met while working in it every day:
   `/mnt/data/Projects/intellij-community`, Apache 2.0, as `branch.svg` already is): IntelliJ marks `main` / `master`
   as favourite branches with it. Its yellow (`#F2C55C` dark, the light file's colour in light) stays as IntelliJ draws it.
 - Drawn as module favicons are badged on file icons (`favicon_badge.rs`): the same badge size and placement, ringed
-  or cut out from the row's background the same way, so it reads on a selected and a hovered row.
+  in the tree's background, as the attention dot on process rows is.
 - A project with one checkout shows no worktree row, so nothing changes there.
 
 ### 2. Rename
@@ -35,7 +35,8 @@ Four gaps in the project tree, met while working in it every day:
 - **In the row:** the row's name becomes a text field (`text_input`) holding the current name, the part before the
   last `.` selected (all of it for a folder or a name starting with `.`). Enter renames, Escape or a click elsewhere
   cancels. The field takes the keys while it is open; the tree's own keys do not fire.
-- **Refused**, with the reason shown under the row and the field kept open: an empty name, `.` or `..`, a name with
+- **Refused**, with the reason shown in the line under the tree (as built: a tree row has a fixed height and no room
+  beside the field) and the field kept open: an empty name, `.` or `..`, a name with
   `/` (or `\0`), the same name, or a name taken in that folder. The rename never replaces anything
   (`rename::rename_new`). An I/O error shows its message the same way.
 - **After:** open tabs of the file (or of anything inside the folder) follow it to the new path, keeping their place
