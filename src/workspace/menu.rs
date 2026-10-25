@@ -395,6 +395,7 @@ impl Workspace {
             (LineAction::Script(ItemAction::Builtin(Builtin::CopyFiles)), MenuOn::Tree { pressed, .. }) => self.copy_files(pressed, cx),
             (LineAction::Script(ItemAction::Builtin(Builtin::PasteFiles)), MenuOn::Tree { pressed, .. }) => self.paste_files(pressed, window, cx),
             (LineAction::Script(ItemAction::Builtin(Builtin::DeleteFiles)), MenuOn::Tree { pressed, .. }) => self.delete_files(pressed, window, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::RenameFile)), MenuOn::Tree { pressed, .. }) => self.start_rename(pressed, window, cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| true).is_some() => {
                 self.run_row_command(builtin, pressed, window, cx)
             }

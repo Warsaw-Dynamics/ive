@@ -112,6 +112,9 @@ Sizes {
         chevron_radius: Px(
             4.0,
         ),
+        rename_input_width: Px(
+            200.0,
+        ),
         chip_padding_x: Px(
             6.0,
         ),

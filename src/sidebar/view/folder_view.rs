@@ -92,11 +92,13 @@ pub(super) fn change_row(line: RowLine, row: &ChangeRow, cx: &mut Context<Worksp
     let name = row.change.path.file_name();
     let deleted = row.change.mark == crate::git::types::Mark::Deleted;
     let folder = row.folder.clone().map(|folder| div().text_color(rgb(secondary(theme))).child(folder));
+    let file_icon = icon(theme, icons::file_icon(&name));
+    let name = line.name_or_field(div().when(deleted, |name| name.line_through()).child(name).into_any_element(), cx);
     let line = line
         .div
         .child(slot(theme))
-        .child(icon(theme, icons::file_icon(&name)))
-        .child(div().when(deleted, |name| name.line_through()).child(name))
+        .child(file_icon)
+        .child(name)
         .child(mark_label(row.change.mark, theme, cx))
         .children(folder)
         .tooltip(tooltip::text_tooltip(row.change.path.display()));

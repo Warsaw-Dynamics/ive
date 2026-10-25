@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use gpui::{
-    App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, FocusHandle, ListHorizontalSizingBehavior, MouseButton, MouseDownEvent,
-    SharedString, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
+    AnyElement, App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, Entity, FocusHandle, KeyDownEvent, ListHorizontalSizingBehavior,
+    MouseButton, MouseDownEvent, SharedString, Subscription, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
 };
 
 mod folder_view;
@@ -37,6 +37,7 @@ use crate::run::values_tab::ShowRun;
 use crate::state::RecentProject;
 use crate::theme::Theme;
 use crate::theme_config::RowStyle;
+use crate::text_input::TextInput;
 use crate::tooltip;
 use crate::window_controls::TRAFFIC_LIGHTS_WIDTH;
 use crate::window_drag::WindowDrag;
@@ -59,6 +60,17 @@ pub struct Tree {
     pub drop_hint: Option<DropHint>,
     /// the line under the tree saying how a copy or move goes
     pub note: Option<TreeNote>,
+    /// the field Rename shows in place of a row's name
+    pub renaming: Option<Renaming>,
+}
+
+/// Rename's field on the row of `key`, for the file or folder at `path`, and why the last name was refused.
+pub struct Renaming {
+    pub key: TreeKey,
+    pub path: PathBuf,
+    pub input: Entity<TextInput>,
+    pub error: Option<String>,
+    pub _subscriptions: Vec<Subscription>,
 }
 
 /// The line under the tree: what a copy or move did, until `until` (`None`: until clicked).
@@ -72,7 +84,7 @@ impl Tree {
     pub fn new() -> Self {
         let list = ListScroll::new();
         let scroll = ScrollState::for_list(&list);
-        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll, drop_hint: None, note: None }
+        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll, drop_hint: None, note: None, renaming: None }
     }
 
     /// Marks `shown`, the shown tab's row; the selection stays, as in IntelliJ, until the tree's own clicks change it.
@@ -375,8 +387,9 @@ fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Contex
     let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key), drop: tree.is_drop_row(&key, cx) };
     let dragged = dragged_processes(row, &key, cx);
     let drop_key = key.clone();
+    let rename = tree.renaming.as_ref().filter(|renaming| renaming.key == key).map(|renaming| RenameField { input: renaming.input.clone(), error: renaming.error.clone() });
     let select = RowSelect { key, pick: pick_group(row), workspace: cx.entity().downgrade() };
-    let line = RowLine { mark: row_mark(row, workspace, theme), ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
+    let line = RowLine { mark: row_mark(row, workspace, theme), rename, ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
     let drawn = match &row.item {
         TreeItem::Project(project) => project_row(line, project, cx),
         TreeItem::Checkout(checkout) => checkout_row(line, checkout, cx),
@@ -525,6 +538,45 @@ struct RowLine {
     mark: RowMark,
     /// its content's distance from the row's left edge, by its depth
     indent: f32,
+    /// Rename's field, when it is open on this row
+    rename: Option<RenameField>,
+}
+
+/// What a row draws of the open rename field.
+#[derive(Clone)]
+struct RenameField {
+    input: Entity<TextInput>,
+    error: Option<String>,
+}
+
+impl RowLine {
+    /// The row's name, or Rename's field in its place; Escape in the field cancels, and its clicks stay in it.
+    fn name_or_field(&self, name: AnyElement, cx: &mut Context<Workspace>) -> AnyElement {
+        let Some(field) = &self.rename else {
+            return name;
+        };
+        let theme = self.theme;
+        let sizes = &theme.sizes.tree;
+        let error = field.error.clone().map(|error| div().flex_none().text_size(sizes.tag_text_size.px()).text_color(rgb(theme.error)).child(error));
+        div()
+            .id("tree-rename")
+            .flex()
+            .items_center()
+            .gap(sizes.icon_gap.px())
+            .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, _window, cx| {
+                if event.keystroke.key == "escape" {
+                    workspace.cancel_rename(cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_down(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .child(div().w(sizes.rename_input_width.px()).child(field.input.clone()))
+            .children(error)
+            .into_any_element()
+    }
 }
 
 impl RowLine {
@@ -559,7 +611,7 @@ impl RowLine {
                 styled(div.hover(move |style| hovered(style, row_hover)), foreground).child(highlight_box(look, group.clone(), theme))
             }
         };
-        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent }
+        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent, rename: None }
     }
 
     /// Click target `<verb>:<row's target>`, as `TreeRow::target_names` lists it.
@@ -679,6 +731,7 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
         _ => entry.name.clone().into_any_element(),
     };
     let file_icon = if entry.expands() { folder_mark(file_icon, &line.mark, theme) } else { icon(theme, file_icon).into_any_element() };
+    let name = line.name_or_field(name, cx);
     let line = line.div.child(disclosure).child(file_icon).child(name).children(warning);
     if pickable {
         let dragged = DraggedFiles { pressed: TreeKey::Entry(entry.path.clone()), workspace: cx.entity().downgrade() };

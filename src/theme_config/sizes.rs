@@ -487,6 +487,8 @@ pub struct TreeSizes {
     pub tag_radius: Px,
     pub tag_text_size: FontPx,
     pub chevron_radius: Px,
+    /// the field Rename puts in place of a row's name
+    pub rename_input_width: Px,
     /// a virtual folder's `@name`: `@hidden`
     pub chip_padding_x: Px,
     pub chip_radius: Px,
@@ -866,6 +868,7 @@ mod tests {
             (Px(4.), Px(6.), Px(4.), FontPx(12.))
         );
         assert_eq!(tree.chevron_radius, Px(4.));
+        assert_eq!(tree.rename_input_width, Px(200.));
         assert_eq!((tree.count_padding_x, tree.count_radius, tree.count_text_size), (Px(6.), Px(8.), FontPx(12.)));
         assert_eq!((tree.folder_count_padding_x, tree.folder_count_text_size), (Px(2.), FontPx(11.)));
         assert_eq!((tree.action_padding, tree.action_radius), (Px(2.), Px(4.)));
