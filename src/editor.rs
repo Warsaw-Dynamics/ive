@@ -38,7 +38,7 @@ use crate::scratch::{self, ScratchRef, ScratchTab};
 use crate::scratch::icon::scratch_icon;
 use crate::script::temporary_tabs::{TabKind, TabMarker, TemporaryTabs};
 use crate::settings_page::{self, SettingsView};
-use crate::tab_groups::{self, CueKind, RowItem, Spread, TabFacts, TabGroup};
+use crate::tab_groups::{self, CueKind, FramePart, RowItem, Spread, TabFacts, TabGroup};
 use crate::tabs::TabId;
 use crate::theme::Theme;
 use crate::tooltip;
@@ -625,6 +625,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
     let view = GroupView {
         // a gap stays marked after a drag ends outside the window, until the next drag
         drop: DropGap { gap: workspace.tab_drop_gap().filter(|_| cx.has_active_drag()), last },
+        shown: tabs.active_id(),
         places,
         spread: Spread { worktrees: tab_groups::spread_worktrees(&facts), owners: tab_groups::spread_owners(&facts) },
         groups,
@@ -640,6 +641,9 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
             }
         },
     ));
+    // each item pads half the gap between tabs on either side, so a group's frame runs unbroken under its items
+    let parts: Vec<FramePart> = items.iter().map(|item| tab_groups::frame_part(*item, &view.groups)).collect();
+    let previous: Vec<Option<FramePart>> = std::iter::once(None).chain(parts.iter().copied().map(Some)).collect();
     let strip = div()
         .id("tab-strip")
         .flex()
@@ -647,7 +651,6 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .min_w_0()
         .h_full()
         .items_center()
-        .gap(sizes.gap.px())
         .px(sizes.strip_padding_x.px())
         .overflow_x_scroll()
         .track_scroll(workspace.tab_scroll())
@@ -658,7 +661,10 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
             workspace.hover_tab_drop(event.drag(cx).id, None, cx);
         }))
         .on_drop(cx.listener(|workspace, dragged: &DraggedTab, _window, cx| workspace.drop_dragged_tab(dragged.id, cx)))
-        .children(items.into_iter().filter_map(|item| render_row_item(item, &view, workspace, cx)))
+        .children(items.into_iter().zip(parts).zip(previous).filter_map(|((item, part), before)| {
+            let element = render_row_item(item, &view, workspace, cx)?;
+            Some(framed(element, Framing { part, before, active: view.holds_shown(item) }, theme))
+        }))
         .child(end);
     let restart = workspace.restart_script().map(|_| restart_button(theme, cx));
     let update = workspace.update_to_restart_onto().map(|tag| update_button(tag.to_owned(), theme, cx));
@@ -768,6 +774,7 @@ fn attach_button(id: TabId, theme: Theme, cx: &mut Context<Workspace>) -> Statef
 /// row spans, its groups and the tabs' facts.
 struct GroupView<'a> {
     drop: DropGap,
+    shown: Option<TabId>,
     places: HashMap<TabId, usize>,
     spread: Spread,
     groups: Vec<TabGroup>,
@@ -793,6 +800,37 @@ impl DropGap {
     }
 }
 
+/// How an item draws its part of its group's frame: the part, the one before it (a group after a frame keeps the
+/// gap between groups), and whether its group holds the shown tab.
+struct Framing {
+    part: FramePart,
+    before: Option<FramePart>,
+    active: bool,
+}
+
+/// An item of the row in its part of its group's frame: the head opens it (left, top, bottom), a tab carries its top
+/// and bottom, the group's last tab closes it (right, top, bottom); the frame in the shown tab's outline colour round
+/// the group holding it. Borders take their width inside, so the paddings leave it out.
+fn framed(element: AnyElement, framing: Framing, theme: Theme) -> AnyElement {
+    let sizes = &theme.sizes.tabs;
+    let half = px(sizes.gap.0 / 2.);
+    let (border, radius) = (sizes.group_border.px(), sizes.group_radius.px());
+    let colour = if framing.active { theme.tab_active_border } else { theme.border };
+    let part = div().flex().flex_none().items_center().px(half).child(element);
+    let gapped = |part: Div| match framing.before {
+        Some(_) => part.ml(sizes.group_gap.px()),
+        None => part,
+    };
+    let frame = |part: Div| part.h(sizes.group_height.px()).border_t(border).border_b(border).border_color(rgb(colour));
+    match framing.part {
+        FramePart::Unframed if framing.before == Some(FramePart::Close) => gapped(part).into_any_element(),
+        FramePart::Unframed => part.into_any_element(),
+        FramePart::Open => gapped(frame(part)).border_l(border).rounded_l(radius).pl(sizes.group_padding_left.px() - border).into_any_element(),
+        FramePart::Inside => frame(part).into_any_element(),
+        FramePart::Close => frame(part).border_r(border).rounded_r(radius).pr(sizes.group_padding_right.px() - border).into_any_element(),
+    }
+}
+
 /// One item of the tab row, drawn: a group's head or a tab; the row scrolls to a tab by its item's index.
 fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<AnyElement> {
     match item {
@@ -801,7 +839,12 @@ fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, c
             let tabs = workspace.tabs();
             let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, *view.facts.get(&id)?);
             let look = view.look(fact, &view.groups[group], workspace);
-            let chip = Chip { id, place, tab, shown: tabs.active_id() == Some(id), temporary: tabs.is_temporary(id), marker: view.drop.marker(place), look };
+            let fill = match (view.shown == Some(id), tab_groups::outlines_shown_tab(&view.groups[group])) {
+                (true, true) => Fill::Shown,
+                (true, false) => Fill::ShownInFrame,
+                (false, _) => Fill::Rest,
+            };
+            let chip = Chip { id, place, tab, fill, temporary: tabs.is_temporary(id), marker: view.drop.marker(place), look };
             Some(render_tab(chip, workspace, cx).into_any_element())
         }
     }
@@ -842,7 +885,7 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
         .flex()
         .items_center()
         .gap(px(5.))
-        .h(px(22.))
+        .h(sizes.group_head_height.px())
         .pl(px(3.))
         .pr(px(6.))
         .rounded(px(6.))
@@ -861,7 +904,6 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
             .text_size(sizes.group_head_text_size.px())
             .text_color(rgb(theme.muted))
             // a press on the head must not start a window drag
-            .ml(sizes.group_gap.px())
             .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
             .child(fold)
             .child(named),
@@ -869,6 +911,12 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
 }
 
 impl GroupView<'_> {
+    /// Whether the item's group holds the shown tab.
+    fn holds_shown(&self, item: RowItem) -> bool {
+        let (RowItem::Head(group) | RowItem::Tab(group, _)) = item;
+        self.shown.is_some_and(|shown| self.groups[group].tabs.contains(&shown))
+    }
+
     /// How a tab shows where it belongs, from its facts and its group: the main checkout has no colour, its label
     /// is muted.
     fn look(&self, fact: &TabFacts, group: &TabGroup, workspace: &Workspace) -> ChipLook {
@@ -897,16 +945,25 @@ struct ChipLook {
     badge: Option<PathBuf>,
 }
 
-/// A tab of the tab row: its place in the row, whether it is the shown one, the side a dragged tab would land on,
-/// and how it shows where it belongs.
+/// A tab of the tab row: its place in the row, how it is filled, the side a dragged tab would land on, and how it
+/// shows where it belongs.
 struct Chip<'a> {
     id: TabId,
     place: usize,
     tab: &'a Tab,
-    shown: bool,
+    fill: Fill,
     temporary: bool,
     marker: Option<Side>,
     look: ChipLook,
+}
+
+/// How a chip is filled: the shown one filled and outlined, or only filled in a folded group's frame, which outlines
+/// it already; the others not.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fill {
+    Rest,
+    Shown,
+    ShownInFrame,
 }
 
 #[derive(Clone, Copy)]
@@ -955,7 +1012,8 @@ impl Render for DraggedTab {
 /// on hover only.
 fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let theme = crate::theme::tabs(cx);
-    let Chip { id, place, tab, shown, temporary, marker, look } = chip;
+    let Chip { id, place, tab, fill, temporary, marker, look } = chip;
+    let shown = fill != Fill::Rest;
     let group = SharedString::from(format!("tab-{}", id.value()));
     let sizes = &theme.sizes.tabs;
     let close = div()
@@ -1016,20 +1074,24 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         // the workspace is gone only while the window closes
         let _ = handle.update(cx, |workspace, cx| workspace.run_tab_mouse(id, trigger, window, cx));
     });
-    filled(chip, shown, &look.cue, theme)
+    filled(chip, fill, &look.cue, theme)
 }
 
-/// A chip's fill and outline: the shown one filled and outlined, a worktree's tinted with its colour.
-fn filled(chip: Stateful<Div>, shown: bool, cue: &ChipCue, theme: Theme) -> Stateful<Div> {
+/// A chip's fill and outline: the shown one filled and outlined (not in a folded group's frame), a worktree's
+/// tinted with its colour.
+fn filled(chip: Stateful<Div>, fill: Fill, cue: &ChipCue, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tabs;
-    match (shown, cue) {
-        (true, ChipCue::Tint(colour)) => chip.bg(rgb(mixed(theme.tab_active, *colour, sizes.tint_shown.0))).border_color(tinted(*colour, sizes.tint_outline.0)),
-        (true, _) => chip.bg(rgb(theme.tab_active)).border_color(rgb(theme.tab_active_border)),
-        (false, ChipCue::Tint(colour)) => {
+    let outline = |colour: gpui::Hsla| if fill == Fill::Shown { colour } else { transparent_black() };
+    match (fill, cue) {
+        (Fill::Shown | Fill::ShownInFrame, ChipCue::Tint(colour)) => {
+            chip.bg(rgb(mixed(theme.tab_active, *colour, sizes.tint_shown.0))).border_color(outline(tinted(*colour, sizes.tint_outline.0).into()))
+        }
+        (Fill::Shown | Fill::ShownInFrame, _) => chip.bg(rgb(theme.tab_active)).border_color(outline(rgb(theme.tab_active_border).into())),
+        (Fill::Rest, ChipCue::Tint(colour)) => {
             let hover = tinted(*colour, sizes.tint_hover.0);
             chip.bg(tinted(*colour, sizes.tint.0)).border_color(transparent_black()).hover(move |style| style.bg(hover))
         }
-        (false, _) => chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover))),
+        (Fill::Rest, _) => chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover))),
     }
 }
 
