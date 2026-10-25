@@ -18,5 +18,8 @@ from the IntelliJ set: they were drawn for IVE in the same style.
 restart.svg (dark/ and light/) is modified: the arrow of run/widget/restart.svg, cut at the bottom right
 and coloured like the other icons, with the run triangle of run/rerun.svg (Apache 2.0, section 4(b)).
 
+branch-main.svg (dark/ and light/) is modified: branch.svg with nodes/star.svg, scaled down, in its empty lower
+right corner (Apache 2.0, section 4(b)).
+
 folder-run.svg (dark/ and light/) is modified: the folder of nodes/module.svg, its corner badge replaced by a
 small run triangle coloured as run/run.svg (Apache 2.0, section 4(b)).

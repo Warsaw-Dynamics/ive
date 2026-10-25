@@ -172,6 +172,10 @@ pub enum Builtin {
     CopyFiles,
     /// copies the files and folders on the clipboard into the row's folder, keeping their folders
     PasteFiles,
+    /// the picked files and folders to the trash, or away for good (`config.delete`)
+    DeleteFiles,
+    /// the row's name as a field, to rename its file or folder
+    RenameFile,
     SelectAll,
     Cut,
     Undo,
@@ -272,7 +276,7 @@ impl Builtin {
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,
             Self::OpenHub => matches!(scope, Scope::Window | Scope::Hub),
             Self::CopyFullPath => matches!(scope, Scope::Hub | Scope::Tree),
-            Self::CopyFiles | Self::PasteFiles => scope == Scope::Tree,
+            Self::CopyFiles | Self::PasteFiles | Self::DeleteFiles | Self::RenameFile => scope == Scope::Tree,
             Self::HubDown
             | Self::HubUp
             | Self::HubPageDown
@@ -348,7 +352,7 @@ impl Builtin {
             Self::OpenHub | Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::OpenFindInFiles | Self::ToggleChangesLayout => BOTH,
             // a tree menu's Stop and Kill end the process of its row
             Self::StopProgram | Self::KillProgram => BOTH,
-            Self::NewTerminal | Self::CopyFiles | Self::PasteFiles => &[MenuKind::Tree],
+            Self::NewTerminal | Self::CopyFiles | Self::PasteFiles | Self::DeleteFiles | Self::RenameFile => &[MenuKind::Tree],
             tab if tab.is_tab_command() => &[MenuKind::Tab],
             _ => &[],
         }

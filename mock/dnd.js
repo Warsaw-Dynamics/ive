@@ -275,6 +275,16 @@
         var n = this.fileSources(node).length;
         return { title: n > 1 ? 'Copy ' + n + ' Items' : 'Copy', enabled: true, run: function () { self.copyFiles(node); } };
       },
+      // Rename… and Delete as the app offers them (a file, folder or changed file, not a checkout's root); the mock
+      // leaves the files as they are: the app's rename field and trash are in the README
+      renameItem: function (node) {
+        if (node.entry === undefined || node.entry.path === '' || this.fileSources(node).length !== 1) return false;
+        return { title: 'Rename…', enabled: true, run: function () {} };
+      },
+      deleteItem: function (node) {
+        if (node.entry === undefined || node.entry.path === '') return false;
+        return { title: 'Delete', enabled: true, run: function () {} };
+      },
       pasteItem: function (node) {
         var self = this;
         if (this.fileTargetOf(node) === null) return false;

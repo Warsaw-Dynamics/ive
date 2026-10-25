@@ -142,7 +142,7 @@ impl Workspace {
             return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
@@ -155,6 +155,7 @@ impl Workspace {
                 cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
                 cx.set_global(*drop_modifiers);
+                cx.set_global(*delete);
                 apply_fonts(fonts.clone(), cx)
             }
             _ => false,
@@ -206,7 +207,7 @@ impl Workspace {
         }
         let place = match self.tabs.active() {
             _ if cx.global::<TextSelection>().focus.is_focused(window) => Place::Text,
-            _ if super::sidebar_has_keys(window, cx) => Place::Tree,
+            _ if super::sidebar_has_keys(window, cx) => sidebar_place(self.tree.renaming.as_ref().map(|renaming| &renaming.key)),
             Some(Tab::Document(_)) => Place::Editor,
             _ => Place::Elsewhere,
         };
@@ -282,6 +283,14 @@ impl Workspace {
                     _ => self.paste_files(&anchor, window, cx),
                 }
             }
+            Builtin::DeleteFiles | Builtin::RenameFile => {
+                // after Escape the anchor stays, unselected: the keys act only on what shows selected
+                let Some(anchor) = self.tree.selection.anchor().filter(|anchor| self.tree.selection.contains(anchor)).cloned() else { return };
+                match builtin {
+                    Builtin::DeleteFiles => self.delete_files(&anchor, window, cx),
+                    _ => self.start_rename(&anchor, window, cx),
+                }
+            }
             Builtin::ClearRowSelection => {
                 self.change_selection(|selection, _listed| selection.clear());
                 cx.notify();
@@ -311,9 +320,30 @@ impl Workspace {
     }
 }
 
+/// Where keys go while the sidebar has them: the tree's bindings, but none while Rename's field on the row of
+/// `renaming` is open (a key that types no text there, Cmd+Backspace say, would delete the selection).
+fn sidebar_place(renaming: Option<&crate::sidebar::rows::TreeKey>) -> Place {
+    match renaming {
+        Some(_) => Place::Elsewhere,
+        None => Place::Tree,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_keep_tree_keys_from_the_tree_while_a_rename_field_is_open() {
+        // given
+        let renaming = crate::sidebar::rows::TreeKey::Entry(std::path::PathBuf::from("/r/main.rs"));
+
+        // when
+        let places = [sidebar_place(None), sidebar_place(Some(&renaming))];
+
+        // then
+        assert_eq!(places, [Place::Tree, Place::Elsewhere]);
+    }
 
     fn excluded(names: serde_json::Value) -> Excluded {
         crate::script::excluded::parse(&serde_json::from_value(names).unwrap()).unwrap()
@@ -372,6 +402,7 @@ mod tests {
             quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
             open_folders: Default::default(),
             drop_modifiers: Default::default(),
+            delete: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }

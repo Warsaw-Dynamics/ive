@@ -501,7 +501,7 @@ impl Workspace {
     }
 
     /// What dragging the tree row of `pressed` drags, see [`Selection::dragged_paths`].
-    pub(crate) fn dragged_paths(&self, pressed: &Path) -> Vec<PathBuf> {
+    pub(crate) fn dragged_paths(&self, pressed: &TreeKey) -> Vec<PathBuf> {
         self.tree.selection.dragged_paths(pressed, &selection::listed(&self.tree.rows))
     }
 

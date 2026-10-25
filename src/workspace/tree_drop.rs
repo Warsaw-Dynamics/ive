@@ -1,6 +1,5 @@
 //! Drags over tree rows: the hint under the pointer, and what a drop of processes does (files: `transfers`).
 
-use std::path::PathBuf;
 
 use gpui::{Context, Modifiers, Window};
 
@@ -33,7 +32,7 @@ pub fn row_named(rows: &[TreeRow], name: &str) -> Option<TreeKey> {
 /// What is being dragged: the pressed row, whose picks go with it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Dragging {
-    Files(PathBuf),
+    Files(TreeKey),
     Processes(TreeKey),
 }
 
@@ -122,14 +121,14 @@ impl Workspace {
             self.tree.selection.toggle(key.clone(), &listed);
         }
         let hint = match pressed {
-            TreeKey::Entry(path) => self.files_drop_hint(path, &onto, &modifiers, cx),
+            TreeKey::Entry(_) | TreeKey::Change(..) => self.files_drop_hint(pressed, &onto, &modifiers, cx),
             _ => self.process_drop_hint(pressed, &onto, &modifiers, cx),
         };
         if !hint.allowed {
             return Err(hint.text);
         }
         match pressed {
-            TreeKey::Entry(path) => self.drop_files((&path.clone(), onto), &modifiers, window, cx),
+            TreeKey::Entry(_) | TreeKey::Change(..) => self.drop_files((&pressed.clone(), onto), &modifiers, window, cx),
             _ => self.drop_processes((&pressed.clone(), onto), &modifiers, window, cx),
         }
         Ok(serde_json::json!(hint.text))

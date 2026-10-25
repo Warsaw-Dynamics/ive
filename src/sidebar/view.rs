@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use gpui::{
-    App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, FocusHandle, ListHorizontalSizingBehavior, MouseButton, MouseDownEvent,
-    SharedString, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
+    AnyElement, App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, Entity, FocusHandle, KeyDownEvent, ListHorizontalSizingBehavior,
+    MouseButton, MouseDownEvent, SharedString, Subscription, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
 };
 
 mod folder_view;
@@ -20,7 +20,7 @@ use super::drop_place::DropHint;
 use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
 use super::selection::{Listed, PickGroup, Selection, pick_group};
 use crate::attention_dot::with_dot;
-use crate::dragged_files::{DraggedFiles, DraggedProcesses};
+use crate::dragged_files::{DraggedFiles, DraggedProcesses, DraggedRoot};
 use crate::favicon_badge::favicon_or;
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
@@ -37,6 +37,7 @@ use crate::run::values_tab::ShowRun;
 use crate::state::RecentProject;
 use crate::theme::Theme;
 use crate::theme_config::RowStyle;
+use crate::text_input::TextInput;
 use crate::tooltip;
 use crate::window_controls::TRAFFIC_LIGHTS_WIDTH;
 use crate::window_drag::WindowDrag;
@@ -59,6 +60,25 @@ pub struct Tree {
     pub drop_hint: Option<DropHint>,
     /// the line under the tree saying how a copy or move goes
     pub note: Option<TreeNote>,
+    /// the field Rename shows in place of a row's name
+    pub renaming: Option<Renaming>,
+}
+
+/// Rename's field on the row of `key`, for the file or folder at `path`; why a name was refused is the line under
+/// the tree, as a row has no room for it.
+pub struct Renaming {
+    pub key: TreeKey,
+    pub path: PathBuf,
+    pub input: Entity<TextInput>,
+    pub stage: RenameStage,
+    pub _subscriptions: Vec<Subscription>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenameStage {
+    Typing,
+    /// Enter was pressed: the rename is under way
+    Submitted,
 }
 
 /// The line under the tree: what a copy or move did, until `until` (`None`: until clicked).
@@ -72,7 +92,7 @@ impl Tree {
     pub fn new() -> Self {
         let list = ListScroll::new();
         let scroll = ScrollState::for_list(&list);
-        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll, drop_hint: None, note: None }
+        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll, drop_hint: None, note: None, renaming: None }
     }
 
     /// Marks `shown`, the shown tab's row; the selection stays, as in IntelliJ, until the tree's own clicks change it.
@@ -375,8 +395,9 @@ fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Contex
     let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key), drop: tree.is_drop_row(&key, cx) };
     let dragged = dragged_processes(row, &key, cx);
     let drop_key = key.clone();
+    let rename = tree.renaming.as_ref().filter(|renaming| renaming.key == key).map(|renaming| RenameField { input: renaming.input.clone() });
     let select = RowSelect { key, pick: pick_group(row), workspace: cx.entity().downgrade() };
-    let line = RowLine { mark: row_mark(row, workspace, theme), ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
+    let line = RowLine { mark: row_mark(row, workspace, theme), rename, ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
     let drawn = match &row.item {
         TreeItem::Project(project) => project_row(line, project, cx),
         TreeItem::Checkout(checkout) => checkout_row(line, checkout, cx),
@@ -395,7 +416,24 @@ fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Contex
         Some(dragged) => drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))),
         None => drawn,
     };
-    drop_target(drawn, drop_key, cx)
+    drop_target(with_path_drag(drawn, row, workspace, cx), drop_key, cx)
+}
+
+/// A changed file's row drags its path (with the selection), a project's or worktree's its root folder.
+fn with_path_drag(drawn: Stateful<Div>, row: &TreeRow, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let root = match &row.item {
+        TreeItem::Change(_) if pick_group(row) == Some(PickGroup::Files) => {
+            let dragged = DraggedFiles { pressed: row.key(), workspace: cx.entity().downgrade() };
+            return drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx)));
+        }
+        TreeItem::Checkout(checkout) => Some(checkout.checkout.path.clone()),
+        TreeItem::Project(project) => workspace.project(&project.id).map(|open| open.main_checkout().path.clone()),
+        _ => None,
+    };
+    match root {
+        Some(path) => drawn.on_drag(DraggedRoot { path, workspace: cx.entity().downgrade() }, |dragged, _offset, _window, cx| cx.new(|_| dragged.chip())),
+        None => drawn,
+    }
 }
 
 /// What dragging a process or run row carries; `None` for other rows, and for a run still waiting for its `before`
@@ -508,6 +546,39 @@ struct RowLine {
     mark: RowMark,
     /// its content's distance from the row's left edge, by its depth
     indent: f32,
+    /// Rename's field, when it is open on this row
+    rename: Option<RenameField>,
+}
+
+/// What a row draws of the open rename field.
+#[derive(Clone)]
+struct RenameField {
+    input: Entity<TextInput>,
+}
+
+impl RowLine {
+    /// The row's name, or Rename's field in its place; Escape in the field cancels, and its clicks stay in it.
+    fn name_or_field(&self, name: AnyElement, cx: &mut Context<Workspace>) -> AnyElement {
+        let Some(field) = &self.rename else {
+            return name;
+        };
+        div()
+            .id("tree-rename")
+            .flex_1()
+            .min_w_0()
+            .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    workspace.escape_rename(window, cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_down(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .child(field.input.clone())
+            .into_any_element()
+    }
 }
 
 impl RowLine {
@@ -542,7 +613,7 @@ impl RowLine {
                 styled(div.hover(move |style| hovered(style, row_hover)), foreground).child(highlight_box(look, group.clone(), theme))
             }
         };
-        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent }
+        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent, rename: None }
     }
 
     /// Click target `<verb>:<row's target>`, as `TreeRow::target_names` lists it.
@@ -565,6 +636,11 @@ fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::An
     }
 }
 
+/// A worktree row's branch icon; the main checkout's carries the star.
+fn branch_icon(mark: &RowMark, theme: Theme) -> impl IntoElement {
+    icon(theme, if mark.star { icons::BRANCH_MAIN } else { icons::BRANCH })
+}
+
 fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let theme = line.theme;
     let toggled = row.checkout.clone();
@@ -582,7 +658,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .div
         .children(rail)
         .child(chevron(row.expanded, theme, shared(&toggle)))
-        .child(icon(theme, icons::BRANCH))
+        .child(branch_icon(&line.mark, theme))
         .child(row.label.clone())
         .children(waiting_tag(row.waiting, theme))
         .children(hide);
@@ -656,9 +732,10 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
         _ => entry.name.clone().into_any_element(),
     };
     let file_icon = if entry.expands() { folder_mark(file_icon, &line.mark, theme) } else { icon(theme, file_icon).into_any_element() };
+    let name = line.name_or_field(name, cx);
     let line = line.div.child(disclosure).child(file_icon).child(name).children(warning);
     if pickable {
-        let dragged = DraggedFiles { pressed: entry.path.clone(), workspace: cx.entity().downgrade() };
+        let dragged = DraggedFiles { pressed: TreeKey::Entry(entry.path.clone()), workspace: cx.entity().downgrade() };
         return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse, cx);
     }
     bind_row(line, mouse, cx)
