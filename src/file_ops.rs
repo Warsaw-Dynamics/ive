@@ -56,12 +56,22 @@ pub fn rename(from: &Path, to: &Path) -> Result<(), String> {
         io::ErrorKind::AlreadyExists => format!("Rename refused: {} is taken in {}", name_of(to), folder_of(to)),
         _ => format!("Could not rename {} to {}: {error}", from.display(), name_of(to)),
     };
-    if is_same_file(from, to) {
+    if is_case_change(from, to) {
         let between = from.with_file_name(format!(".{}.ive-rename-{}", name_of(from), std::process::id()));
         crate::rename::rename_new(from, &between).map_err(failed)?;
-        return crate::rename::rename_new(&between, to).map_err(failed);
+        return crate::rename::rename_new(&between, to).map_err(|error| {
+            // the file goes back under its name rather than stay hidden under the temporary one
+            let _ = crate::rename::rename_new(&between, from);
+            failed(error)
+        });
     }
     crate::rename::rename_new(from, to).map_err(failed)
+}
+
+/// Whether `to` is `from` with only the case of its name changed, on a file system that sees both as one file.
+fn is_case_change(from: &Path, to: &Path) -> bool {
+    let lower = |path: &Path| name_of(path).to_lowercase();
+    from.parent() == to.parent() && lower(from) == lower(to) && is_same_file(from, to)
 }
 
 /// Deletes `path` as `mode` says: to the system trash, or removed with everything in it. A symbolic link goes
@@ -201,6 +211,22 @@ mod tests {
         // then
         let names: Vec<String> = fs::read_dir(dir.path()).unwrap().map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned()).collect();
         assert_eq!((renamed, names), (Ok(()), vec!["Foo.rs".to_owned()]));
+    }
+
+    #[test]
+    fn should_refuse_a_hard_link_of_itself_and_keep_the_file() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("a.rs"), "a").unwrap();
+        fs::hard_link(dir.path().join("a.rs"), dir.path().join("b.rs")).unwrap();
+
+        // when
+        let refused = rename(&dir.path().join("a.rs"), &dir.path().join("b.rs"));
+
+        // then
+        let mut names: Vec<String> = fs::read_dir(dir.path()).unwrap().map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        assert_eq!((refused.is_err(), names), (true, vec!["a.rs".to_owned(), "b.rs".to_owned()]));
     }
 
     #[test]

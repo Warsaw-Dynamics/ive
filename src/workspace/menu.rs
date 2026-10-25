@@ -452,8 +452,8 @@ impl Workspace {
             }
             (Builtin::CopyFiles | Builtin::PasteFiles, MenuOn::Tree { pressed, .. }) => self.clip_applies(builtin, pressed),
             (Builtin::CopyFiles | Builtin::PasteFiles | Builtin::DeleteFiles | Builtin::RenameFile, MenuOn::Tab(_)) => Applies::Hidden,
-            (Builtin::DeleteFiles, MenuOn::Tree { .. }) => super::file_actions::delete_applies(subject, &self.all_checkouts()),
-            (Builtin::RenameFile, MenuOn::Tree { .. }) => super::file_actions::rename_applies(subject, &self.all_checkouts()),
+            (Builtin::DeleteFiles, MenuOn::Tree { .. }) => super::file_actions::delete_applies(&super::file_actions::in_work_tree(subject), &self.all_checkouts()),
+            (Builtin::RenameFile, MenuOn::Tree { .. }) => super::file_actions::rename_applies(&super::file_actions::in_work_tree(subject), &self.all_checkouts()),
             (_, MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| false).is_some() => {
                 row_applies(builtin, pressed, |run| self.is_live_run(run)).unwrap_or(Applies::Hidden)
             }

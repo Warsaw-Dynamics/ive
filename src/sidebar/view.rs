@@ -70,7 +70,15 @@ pub struct Renaming {
     pub key: TreeKey,
     pub path: PathBuf,
     pub input: Entity<TextInput>,
+    pub stage: RenameStage,
     pub _subscriptions: Vec<Subscription>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenameStage {
+    Typing,
+    /// Enter was pressed: the rename is under way
+    Submitted,
 }
 
 /// The line under the tree: what a copy or move did, until `until` (`None`: until clicked).
