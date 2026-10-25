@@ -139,6 +139,36 @@ pub fn row_items(groups: &[TabGroup]) -> Vec<RowItem> {
     items
 }
 
+/// The part of its group's frame an item of the row draws: a group with a head is framed, the head opening the frame,
+/// its last shown tab closing it; the row stays flat, so each item draws its own part.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FramePart {
+    Unframed,
+    Open,
+    Inside,
+    Close,
+}
+
+pub fn frame_part(item: RowItem, groups: &[TabGroup]) -> FramePart {
+    match item {
+        RowItem::Head(_) => FramePart::Open,
+        RowItem::Tab(group, id) => {
+            let group = &groups[group];
+            let last = if group.is_folded() { Some(group.current) } else { group.tabs.last().copied() };
+            match (group.has_head(), last == Some(id)) {
+                (false, _) => FramePart::Unframed,
+                (true, true) => FramePart::Close,
+                (true, false) => FramePart::Inside,
+            }
+        }
+    }
+}
+
+/// Whether the shown tab draws its own outline in `group`: not in a folded one, whose frame holds only it and the head.
+pub fn outlines_shown_tab(group: &TabGroup) -> bool {
+    group.folded == TabsFolded::Open
+}
+
 /// Whether the row's tabs come from more than one checkout, and have more than one owner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Spread {
@@ -539,6 +569,65 @@ mod tests {
 
         // then
         assert_eq!(items, [RowItem::Head(0), RowItem::Tab(0, TabId::for_tests(2)), RowItem::Head(1), RowItem::Tab(1, TabId::for_tests(3))]);
+    }
+
+    #[test]
+    fn should_open_the_frame_on_a_head_and_close_it_on_the_groups_last_tab() {
+        // given
+        let tabs = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("a"), Some("/a"), true), fact(3, Some("b"), Some("/b"), true)];
+        let groups = groups(&tabs, &Given::new().state());
+
+        // when
+        let parts: Vec<FramePart> = row_items(&groups).into_iter().map(|item| frame_part(item, &groups)).collect();
+
+        // then
+        assert_eq!(parts, [FramePart::Open, FramePart::Inside, FramePart::Close, FramePart::Open, FramePart::Close]);
+    }
+
+    #[test]
+    fn should_close_a_folded_groups_frame_on_its_current_tab() {
+        // given
+        let tabs = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("a"), Some("/a"), true), fact(3, Some("b"), Some("/b"), true)];
+        let mut given = Given::new();
+        given.folded.insert(ProjectId::new("a"));
+        given.current.insert(ProjectId::new("a"), TabId::for_tests(1));
+        let groups = groups(&tabs, &given.state());
+
+        // when
+        let parts: Vec<FramePart> = row_items(&groups).into_iter().map(|item| frame_part(item, &groups)).collect();
+
+        // then
+        assert_eq!(parts, [FramePart::Open, FramePart::Close, FramePart::Open, FramePart::Close]);
+    }
+
+    #[test]
+    fn should_leave_tabs_without_a_head_unframed() {
+        // given
+        let one = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("a"), Some("/a"), true)];
+        let two = [fact(1, Some("a"), Some("/a"), true), fact(2, None, None, false), fact(3, Some("b"), Some("/b"), true)];
+        let (one, two) = (groups(&one, &Given::new().state()), groups(&two, &Given::new().state()));
+
+        // when
+        let parts = |groups: &[TabGroup]| row_items(groups).into_iter().map(|item| frame_part(item, groups)).collect::<Vec<_>>();
+
+        // then
+        assert_eq!(parts(&one), [FramePart::Unframed, FramePart::Unframed]);
+        assert_eq!(parts(&two), [FramePart::Open, FramePart::Close, FramePart::Unframed, FramePart::Open, FramePart::Close]);
+    }
+
+    #[test]
+    fn should_outline_the_shown_tab_only_in_an_open_group() {
+        // given
+        let tabs = [fact(1, Some("a"), Some("/a"), true), fact(2, Some("b"), Some("/b"), true)];
+        let mut given = Given::new();
+        given.folded.insert(ProjectId::new("a"));
+        let groups = groups(&tabs, &given.state());
+
+        // when
+        let outlined: Vec<bool> = groups.iter().map(outlines_shown_tab).collect();
+
+        // then
+        assert_eq!(outlined, [false, true]);
     }
 
     #[test]
