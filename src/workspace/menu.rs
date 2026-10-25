@@ -165,10 +165,11 @@ pub fn subject_of(paths: Vec<(PathBuf, PathKind)>, checkouts: &[PathBuf]) -> Sub
     Subject { paths: placed.collect(), home }
 }
 
-/// The rows a tree menu opened on `pressed` applies to: the whole selection of files and folders when `pressed` is
-/// one of them, else `pressed` alone.
+/// The rows a tree menu opened on `pressed` applies to: the whole selection of files, folders and changed files when
+/// `pressed` is one of them, else `pressed` alone.
 pub fn menu_rows(pressed: &TreeKey, is_selected: impl Fn(&TreeKey) -> bool, listed: &[selection::Listed]) -> Vec<TreeKey> {
-    if matches!(pressed, TreeKey::Entry(_)) && is_selected(pressed) {
+    let picks_files = listed.iter().any(|row| row.key == *pressed && row.pick == Some(PickGroup::Files));
+    if picks_files && is_selected(pressed) {
         return listed.iter().filter(|row| row.pick == Some(PickGroup::Files) && is_selected(&row.key)).map(|row| row.key.clone()).collect();
     }
     vec![pressed.clone()]
@@ -218,7 +219,10 @@ impl Workspace {
     pub(super) fn tree_subject(&self, pressed: &TreeKey) -> Subject {
         let listed = selection::listed(&self.tree.rows);
         let rows = menu_rows(pressed, |key| self.tree.selection.contains(key), &listed);
-        subject_of(rows.iter().filter_map(|key| self.row_path(key)).collect(), &self.all_checkouts())
+        let mut seen = std::collections::HashSet::new();
+        // a file picked twice (its row under Files and its change) counts once
+        let paths = rows.iter().filter_map(|key| self.row_path(key)).filter(|(path, _)| seen.insert(path.clone()));
+        subject_of(paths.collect(), &self.all_checkouts())
     }
 
     /// Send to Terminal from a binding: its list of terminals alone, as a menu at the pointer.
@@ -479,10 +483,7 @@ impl Workspace {
             },
             TreeItem::Checkout(checkout) => Some((checkout.checkout.path.clone(), PathKind::Folder)),
             TreeItem::Project(project) => self.project(&project.id).map(|project| (project.main_checkout().path.clone(), PathKind::Folder)),
-            TreeItem::Change(change) => {
-                let relative = Path::new(std::ffi::OsStr::from_bytes(change.change.path.as_bytes()));
-                Some((change.checkout.path.join(relative), PathKind::File))
-            }
+            TreeItem::Change(change) => Some((crate::sidebar::folders::change_path(change), PathKind::File)),
             _ => None,
         }
     }
@@ -704,7 +705,25 @@ mod tests {
     }
 
     fn listed(keys: &[TreeKey]) -> Vec<Listed> {
-        keys.iter().map(|key| Listed { key: key.clone(), pick: matches!(key, TreeKey::Entry(_)).then_some(PickGroup::Files) }).collect()
+        let path = |key: &TreeKey| match key {
+            TreeKey::Entry(path) => Some(path.clone()),
+            TreeKey::Change(checkout, _, file) => Some(checkout.join(file.display())),
+            _ => None,
+        };
+        keys.iter().map(|key| Listed { key: key.clone(), pick: path(key).map(|_| PickGroup::Files), path: path(key) }).collect()
+    }
+
+    #[test]
+    fn should_widen_a_menu_on_a_selected_change_to_the_selection() {
+        // given
+        let change = TreeKey::Change(PathBuf::from("/w"), crate::sidebar::folders::ChangeSource::Uncommitted, crate::git::types::GitPath::from_bytes(b"b"));
+        let rows = [entry("/w/a"), change.clone()];
+
+        // when
+        let applied = menu_rows(&change, |_| true, &listed(&rows));
+
+        // then
+        assert_eq!(applied, rows);
     }
 
     #[test]

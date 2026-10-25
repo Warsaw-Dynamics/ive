@@ -12,7 +12,7 @@ use crate::workspace::Workspace;
 /// are worked out when the drag starts and when it is dropped, not while the tree is drawn.
 #[derive(Clone)]
 pub struct DraggedFiles {
-    pub pressed: PathBuf,
+    pub pressed: TreeKey,
     pub workspace: WeakEntity<Workspace>,
 }
 
@@ -21,7 +21,7 @@ impl DraggedFiles {
     pub fn paths(&self, cx: &App) -> Vec<PathBuf> {
         match self.workspace.upgrade() {
             Some(workspace) => workspace.read(cx).dragged_paths(&self.pressed),
-            None => vec![self.pressed.clone()],
+            None => Vec::new(),
         }
     }
 

@@ -2,6 +2,8 @@
 //! the three git folders; pure, so it is tested without gpui.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::os::unix::ffi::OsStrExt as _;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -310,6 +312,11 @@ pub struct ChangeRow {
     pub change: Change,
     /// in the flat layout, its folder, shown muted after the name
     pub folder: Option<String>,
+}
+
+/// Where changed file `row` is in its checkout's work tree.
+pub fn change_path(row: &ChangeRow) -> PathBuf {
+    row.checkout.path.join(std::ffi::OsStr::from_bytes(row.change.path.as_bytes()))
 }
 
 /// A folder of changed files in the tree layout.

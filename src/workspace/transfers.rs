@@ -99,7 +99,7 @@ fn distinct_checkouts(sources: &[Source]) -> usize {
 
 impl Workspace {
     /// What dropping the files of a drag of `pressed` on the row of `row` would do, for the drag's chip.
-    pub(crate) fn files_drop_hint(&self, pressed: &Path, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> DropHint {
+    pub(crate) fn files_drop_hint(&self, pressed: &TreeKey, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> DropHint {
         match self.files_drop(pressed, row, modifiers, cx) {
             Some((verb, text, ..)) => DropHint { row: row.clone(), text, allowed: verb.is_some() },
             None => DropHint { row: row.clone(), text: "Drop on a folder, a worktree or a project".to_owned(), allowed: false },
@@ -108,7 +108,7 @@ impl Workspace {
 
     /// The verb (`None`: refused), hint, sources and place of a drop on the row of `row`; `None` when the row takes
     /// no files.
-    fn files_drop(&self, pressed: &Path, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> Option<(Option<Verb>, String, Vec<Source>, DropPlace)> {
+    fn files_drop(&self, pressed: &TreeKey, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> Option<(Option<Verb>, String, Vec<Source>, DropPlace)> {
         let place = self.files_target(row)?;
         let sources = self.sources_of(&self.dragged_paths(pressed), &place.checkout);
         let configured = cx.try_global::<DropModifiers>().copied().unwrap_or_default();
@@ -139,7 +139,7 @@ impl Workspace {
 
     /// Files dropped on the row of `onto`: refused as the hint said, asked about with the layout menu, or copied or
     /// moved.
-    pub(crate) fn drop_files(&mut self, (pressed, onto): (&Path, TreeKey), modifiers: &Modifiers, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn drop_files(&mut self, (pressed, onto): (&TreeKey, TreeKey), modifiers: &Modifiers, window: &mut Window, cx: &mut Context<Self>) {
         self.tree.drop_hint = None;
         let Some((Some(verb), _, sources, target)) = self.files_drop(pressed, &onto, modifiers, cx) else {
             return cx.notify();
@@ -215,7 +215,7 @@ impl Workspace {
     /// Copy and Paste in a tree row's menu.
     pub(super) fn clip_applies(&self, builtin: Builtin, pressed: &TreeKey) -> Applies {
         match builtin {
-            Builtin::CopyFiles if matches!(pressed, TreeKey::Entry(_)) => Applies::Shown { enabled: true },
+            Builtin::CopyFiles if matches!(pressed, TreeKey::Entry(_) | TreeKey::Change(..)) => Applies::Shown { enabled: true },
             Builtin::PasteFiles => paste_applies(self.files_target(pressed).is_some(), self.transfers.clipboard_files),
             _ => Applies::Hidden,
         }

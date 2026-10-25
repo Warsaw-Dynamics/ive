@@ -1,11 +1,13 @@
 //! The tree's selection: the rows a plain click, Ctrl+click and Shift+click picked, and the anchor a Shift+click
-//! ranges from. Files and folders are picked together, processes and runs together; never both.
+//! ranges from. Files, folders and changed files are picked together, processes and runs together; never both.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use super::folders::change_path;
 use super::rows::{TreeItem, TreeKey, TreeRow};
 use crate::file_tree::EntryKind;
+use crate::git::types::Mark;
 
 /// What a row can be picked with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,25 +16,42 @@ pub enum PickGroup {
     Processes,
 }
 
-/// A row as the selection sees it: its key, and what it can be picked with (`None`: alone).
+/// A row as the selection sees it: its key, what it can be picked with (`None`: alone), and the path in the work tree
+/// it stands for (a file or folder, a changed file that is there).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Listed {
     pub key: TreeKey,
     pub pick: Option<PickGroup>,
+    pub path: Option<PathBuf>,
 }
 
 /// `rows` as the selection sees them.
 pub fn listed(rows: &[TreeRow]) -> Vec<Listed> {
-    rows.iter().map(|row| Listed { key: row.key(), pick: pick_group(row) }).collect()
+    rows.iter().map(|row| Listed { key: row.key(), pick: pick_group(row), path: work_path(row) }).collect()
 }
 
-/// Files and folders pick together, terminals, Claude Code and runs together; nothing else picks with others.
+/// Files, folders and changed files still in the work tree pick together, terminals, Claude Code and runs together;
+/// nothing else picks with others.
 pub fn pick_group(row: &TreeRow) -> Option<PickGroup> {
     match &row.item {
-        TreeItem::Entry(entry) if matches!(entry.entry.kind, EntryKind::File | EntryKind::Folder) => Some(PickGroup::Files),
         TreeItem::Process(_) | TreeItem::LiveRun(_) => Some(PickGroup::Processes),
+        _ => work_path(row).map(|_| PickGroup::Files),
+    }
+}
+
+/// The path in the work tree that row `row` stands for: a file or folder's, a changed file's unless it was deleted.
+pub fn work_path(row: &TreeRow) -> Option<PathBuf> {
+    match &row.item {
+        TreeItem::Entry(entry) if matches!(entry.entry.kind, EntryKind::File | EntryKind::Folder) => Some(entry.entry.path.clone()),
+        TreeItem::Change(change) if change.change.mark != Mark::Deleted => Some(change_path(change)),
         _ => None,
     }
+}
+
+/// `paths` without repeats, the first of each kept.
+pub fn distinct(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut seen = HashSet::new();
+    paths.into_iter().filter(|path| seen.insert(path.clone())).collect()
 }
 
 /// `paths` without those inside another one of them, which goes with it.
@@ -111,55 +130,54 @@ impl Selection {
             return vec![pressed.clone()];
         }
         let group = listed.iter().find(|row| row.key == *pressed).and_then(|row| row.pick);
-        let picked: Vec<TreeKey> = listed.iter().filter(|row| row.pick.is_some() && row.pick == group && self.contains(&row.key)).map(|row| row.key.clone()).collect();
-        let folders: Vec<&Path> = picked.iter().filter_map(|key| match key {
-            TreeKey::Entry(path) => Some(path.as_path()),
-            _ => None,
-        }).collect();
+        let picked: Vec<&Listed> = listed.iter().filter(|row| row.pick.is_some() && row.pick == group && self.contains(&row.key)).collect();
+        let paths: Vec<&Path> = picked.iter().filter_map(|row| row.path.as_deref()).collect();
         // a file inside a picked folder goes with its folder
-        let inside = |key: &TreeKey| matches!(key, TreeKey::Entry(path) if folders.iter().any(|folder| path != folder && path.starts_with(folder)));
-        picked.iter().filter(|key| !inside(key)).cloned().collect()
+        let inside = |row: &&Listed| row.path.as_deref().is_some_and(|path| paths.iter().any(|folder| path != *folder && path.starts_with(folder)));
+        picked.into_iter().filter(|row| !inside(row)).map(|row| row.key.clone()).collect()
     }
 
-    /// What dragging the row of `pressed` drags: the whole selection when it is selected, else that row alone.
-    pub fn dragged_paths(&self, pressed: &Path, listed: &[Listed]) -> Vec<PathBuf> {
-        self.dragged_keys(&TreeKey::Entry(pressed.to_path_buf()), listed)
-            .into_iter()
-            .filter_map(|key| match key {
-                TreeKey::Entry(path) => Some(path),
-                _ => None,
-            })
-            .collect()
+    /// The paths dragging the row of `pressed` drags: the whole selection's when it is selected, else that row's; a path
+    /// picked twice (a file and its change) counts once.
+    pub fn dragged_paths(&self, pressed: &TreeKey, listed: &[Listed]) -> Vec<PathBuf> {
+        let path_of = |key: &TreeKey| match key {
+            TreeKey::Entry(path) => Some(path.clone()),
+            _ => listed.iter().find(|row| row.key == *key).and_then(|row| row.path.clone()),
+        };
+        distinct(self.dragged_keys(pressed, listed).iter().filter_map(path_of).collect())
     }
 
-    /// The paths of the selected files and folders that are listed, in the tree's order.
+    /// The paths of the selected files, folders and changed files that are listed, in the tree's order, each once.
     pub fn listed_paths(&self, listed: &[Listed]) -> Vec<PathBuf> {
-        listed
-            .iter()
-            .filter(|row| row.pick == Some(PickGroup::Files) && self.contains(&row.key))
-            .filter_map(|row| match &row.key {
-                TreeKey::Entry(path) => Some(path.clone()),
-                _ => None,
-            })
-            .collect()
+        let picked = listed.iter().filter(|row| row.pick == Some(PickGroup::Files) && self.contains(&row.key));
+        distinct(picked.filter_map(|row| row.path.clone()).collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git::types::GitPath;
     use crate::process::ProcessId;
+    use crate::sidebar::folders::ChangeSource;
 
     fn file(name: &str) -> Listed {
-        Listed { key: TreeKey::Entry(PathBuf::from(format!("/p/{name}"))), pick: Some(PickGroup::Files) }
+        let path = PathBuf::from(format!("/p/{name}"));
+        Listed { key: TreeKey::Entry(path.clone()), pick: Some(PickGroup::Files), path: Some(path) }
+    }
+
+    /// The uncommitted change of `name`, a file of checkout `/p`.
+    fn change(name: &str) -> Listed {
+        let key = TreeKey::Change(PathBuf::from("/p"), ChangeSource::Uncommitted, GitPath::from_bytes(name.as_bytes()));
+        Listed { key, pick: Some(PickGroup::Files), path: Some(PathBuf::from(format!("/p/{name}"))) }
     }
 
     fn other(name: &str) -> Listed {
-        Listed { key: TreeKey::CommitsMore(PathBuf::from(format!("/p/{name}"))), pick: None }
+        Listed { key: TreeKey::CommitsMore(PathBuf::from(format!("/p/{name}"))), pick: None, path: None }
     }
 
     fn process(number: u64) -> Listed {
-        Listed { key: TreeKey::Process(ProcessId::for_tests(number)), pick: Some(PickGroup::Processes) }
+        Listed { key: TreeKey::Process(ProcessId::for_tests(number)), pick: Some(PickGroup::Processes), path: None }
     }
 
     fn keys(selection: &Selection, listed: &[Listed]) -> Vec<TreeKey> {
@@ -275,7 +293,7 @@ mod tests {
         selection.select_only(rows[0].key.clone());
 
         // when
-        let dragged = selection.dragged_paths(&PathBuf::from("/p/b"), &rows);
+        let dragged = selection.dragged_paths(&TreeKey::Entry(PathBuf::from("/p/b")), &rows);
 
         // then
         assert_eq!(dragged, [PathBuf::from("/p/b")]);
@@ -290,7 +308,7 @@ mod tests {
         selection.toggle(rows[0].key.clone(), &rows);
 
         // when
-        let dragged = selection.dragged_paths(&PathBuf::from("/p/c"), &rows);
+        let dragged = selection.dragged_paths(&TreeKey::Entry(PathBuf::from("/p/c")), &rows);
 
         // then
         assert_eq!(dragged, ["/p/a", "/p/c"].map(PathBuf::from));
@@ -423,7 +441,7 @@ mod tests {
         }
 
         // when
-        let dragged = selection.dragged_paths(&PathBuf::from("/p/src/a.rs"), &rows);
+        let dragged = selection.dragged_paths(&TreeKey::Entry(PathBuf::from("/p/src/a.rs")), &rows);
 
         // then
         assert_eq!(dragged, ["/p/src", "/p/b.rs"].map(PathBuf::from));
@@ -441,5 +459,51 @@ mod tests {
 
         // then
         assert_eq!((keys(&selection, &rows), selection.anchor()), (vec![rows[0].key.clone(), rows[1].key.clone()], Some(&rows[0].key)));
+    }
+
+    #[test]
+    fn should_pick_a_change_with_files() {
+        // given
+        let rows = [file("a"), change("b")];
+        let mut selection = Selection::default();
+
+        // when
+        selection.toggle(rows[0].key.clone(), &rows);
+        selection.toggle(rows[1].key.clone(), &rows);
+
+        // then
+        assert_eq!(keys(&selection, &rows), [rows[0].key.clone(), rows[1].key.clone()]);
+    }
+
+    #[test]
+    fn should_count_a_path_picked_twice_once() {
+        // given
+        let rows = [change("a"), file("a")];
+        let mut selection = Selection::default();
+        for row in &rows {
+            selection.toggle(row.key.clone(), &rows);
+        }
+
+        // when
+        let (dragged, listed) = (selection.dragged_paths(&rows[0].key, &rows), selection.listed_paths(&rows));
+
+        // then
+        assert_eq!((dragged, listed), (vec![PathBuf::from("/p/a")], vec![PathBuf::from("/p/a")]));
+    }
+
+    #[test]
+    fn should_drag_a_changed_file_inside_a_picked_folder_with_its_folder() {
+        // given
+        let rows = [change("d/x"), file("d")];
+        let mut selection = Selection::default();
+        for row in &rows {
+            selection.toggle(row.key.clone(), &rows);
+        }
+
+        // when
+        let dragged = selection.dragged_paths(&rows[0].key, &rows);
+
+        // then
+        assert_eq!(dragged, [PathBuf::from("/p/d")]);
     }
 }

@@ -664,7 +664,7 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
     let file_icon = if entry.expands() { folder_mark(file_icon, &line.mark, theme) } else { icon(theme, file_icon).into_any_element() };
     let line = line.div.child(disclosure).child(file_icon).child(name).children(warning);
     if pickable {
-        let dragged = DraggedFiles { pressed: entry.path.clone(), workspace: cx.entity().downgrade() };
+        let dragged = DraggedFiles { pressed: TreeKey::Entry(entry.path.clone()), workspace: cx.entity().downgrade() };
         return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse, cx);
     }
     bind_row(line, mouse, cx)
