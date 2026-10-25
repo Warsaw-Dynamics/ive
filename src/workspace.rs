@@ -40,6 +40,7 @@ use crate::window_drag::WindowDrag;
 use crate::window_state::WindowPlace;
 
 mod changes;
+mod file_actions;
 mod follow;
 mod git_views;
 mod hooks;

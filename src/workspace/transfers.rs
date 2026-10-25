@@ -327,7 +327,7 @@ impl Workspace {
         cx.notify();
     }
 
-    fn note(&mut self, text: String, kind: NoteKind, cx: &mut Context<Self>) {
+    pub(super) fn note(&mut self, text: String, kind: NoteKind, cx: &mut Context<Self>) {
         let until = (kind == NoteKind::Fading).then(|| Instant::now() + NOTE_FOR);
         self.tree.note = Some(TreeNote { text, until });
         cx.notify();
@@ -348,7 +348,7 @@ impl Workspace {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum NoteKind {
+pub(super) enum NoteKind {
     /// goes after [`NOTE_FOR`]
     Fading,
     /// stays until clicked, or until the next one

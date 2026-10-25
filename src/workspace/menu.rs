@@ -394,6 +394,7 @@ impl Workspace {
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tab(tab)) if builtin.is_tab_command() => self.run_tab_command(builtin, *tab, window, cx),
             (LineAction::Script(ItemAction::Builtin(Builtin::CopyFiles)), MenuOn::Tree { pressed, .. }) => self.copy_files(pressed, cx),
             (LineAction::Script(ItemAction::Builtin(Builtin::PasteFiles)), MenuOn::Tree { pressed, .. }) => self.paste_files(pressed, window, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::DeleteFiles)), MenuOn::Tree { pressed, .. }) => self.delete_files(pressed, window, cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| true).is_some() => {
                 self.run_row_command(builtin, pressed, window, cx)
             }
@@ -449,7 +450,9 @@ impl Workspace {
                 tab_applies(tab_action, facts, |which| self.tabs.has_beside(*tab, which))
             }
             (Builtin::CopyFiles | Builtin::PasteFiles, MenuOn::Tree { pressed, .. }) => self.clip_applies(builtin, pressed),
-            (Builtin::CopyFiles | Builtin::PasteFiles, MenuOn::Tab(_)) => Applies::Hidden,
+            (Builtin::CopyFiles | Builtin::PasteFiles | Builtin::DeleteFiles | Builtin::RenameFile, MenuOn::Tab(_)) => Applies::Hidden,
+            (Builtin::DeleteFiles, MenuOn::Tree { .. }) => super::file_actions::delete_applies(subject, &self.all_checkouts()),
+            (Builtin::RenameFile, MenuOn::Tree { .. }) => super::file_actions::rename_applies(subject, &self.all_checkouts()),
             (_, MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| false).is_some() => {
                 row_applies(builtin, pressed, |run| self.is_live_run(run)).unwrap_or(Applies::Hidden)
             }

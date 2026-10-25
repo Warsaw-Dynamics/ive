@@ -283,6 +283,11 @@ impl Workspace {
                     _ => self.paste_files(&anchor, window, cx),
                 }
             }
+            Builtin::DeleteFiles => {
+                // after Escape the anchor stays, unselected: the key deletes only what shows selected
+                let Some(anchor) = self.tree.selection.anchor().filter(|anchor| self.tree.selection.contains(anchor)).cloned() else { return };
+                self.delete_files(&anchor, window, cx);
+            }
             Builtin::ClearRowSelection => {
                 self.change_selection(|selection, _listed| selection.clear());
                 cx.notify();

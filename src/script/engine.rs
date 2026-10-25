@@ -840,6 +840,29 @@ mod tests {
         assert_eq!(keymap.find_key(&pressed("ctrl-v"), Place::Tree).cloned(), builtin(Builtin::PasteFiles));
     }
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn should_bind_delete_and_rename_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("delete"), Place::Tree).cloned(), builtin(Builtin::DeleteFiles));
+        assert_eq!(keymap.find_key(&pressed("f2"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn should_bind_finder_keys_to_delete_and_rename_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("cmd-backspace"), Place::Tree).cloned(), builtin(Builtin::DeleteFiles));
+        assert_eq!(keymap.find_key(&pressed("enter"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+        assert_eq!(keymap.find_key(&pressed("f2"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+    }
+
     #[test]
     fn should_bind_escape_to_clear_row_selection_in_tree() {
         // when

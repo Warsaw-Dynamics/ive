@@ -257,6 +257,8 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "ClearRowSelection" => Builtin::ClearRowSelection,
         "CopyFiles" => Builtin::CopyFiles,
         "PasteFiles" => Builtin::PasteFiles,
+        "DeleteFiles" => Builtin::DeleteFiles,
+        "RenameFile" => Builtin::RenameFile,
         "SelectAll" => Builtin::SelectAll,
         "Cut" => Builtin::Cut,
         "Undo" => Builtin::Undo,

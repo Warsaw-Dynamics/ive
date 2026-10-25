@@ -41,7 +41,7 @@ pub fn init(config) {
         main: [act::NewTerminal, act::StopProgram, "Separator",
                   act::SendPathsToTerminal, act::OpenTerminalHere, act::RunFile, "Separator",
                   act::FindInFiles, "Separator",
-                  act::CopyFiles, act::PasteFiles, "Separator",
+                  act::CopyFiles, act::PasteFiles, act::RenameFile, act::DeleteFiles, "Separator",
                   copy_path, open_in, "Separator",
                   #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory, "Separator", act::GitIgnore] },
                   act::CompareFiles],
@@ -69,6 +69,7 @@ pub fn init(config) {
     let close_tab = if ive::os() == "macos" { #{ key: "w", mods: "CMD" } } else { #{ key: "w", mods: "CTRL|SHIFT" } };
     // a hub row's absolute path; the tree's selected files and folders, one per line
     let copy_full_path = if ive::os() == "macos" { #{ key: "c", mods: "CMD|ALT" } } else { #{ key: "c", mods: "CTRL|SHIFT" } };
+    let delete_key = if ive::os() == "macos" { #{ key: "Backspace", mods: "CMD" } } else { #{ key: "Delete", mods: "NONE" } };
     let stop_tab = if ive::os() == "macos" { #{ key: "w", mods: "CMD|ALT" } } else { #{ key: "q", mods: "CTRL|SHIFT" } };
     // the hub searching the files' contents; in the hub, between names and contents
     let find_in_files = #{ key: "f", mods: "SECONDARY|SHIFT" };
@@ -100,6 +101,10 @@ pub fn init(config) {
         // the picked files and folders onto the clipboard as paths; pasted on a row, copied into its folder
         #{ key: "c", mods: "SECONDARY", action: act::CopyFiles, scope: "tree" },
         #{ key: "v", mods: "SECONDARY", action: act::PasteFiles, scope: "tree" },
+        // the row's name as a field to rename it; the picked files and folders to the trash (config.delete), as
+        // Finder's keys on macOS
+        #{ key: "F2", action: act::RenameFile, scope: "tree" },
+        #{ key: delete_key.key, mods: delete_key.mods, action: act::DeleteFiles, scope: "tree" },
 
         #{ key: "c", mods: terminal_clipboard, action: act::CopyTo("Clipboard"), scope: "terminal" },
         #{ key: "v", mods: terminal_clipboard, action: act::PasteFrom("Clipboard"), scope: "terminal" },
@@ -151,6 +156,10 @@ pub fn init(config) {
         // the worktree question, else the query, else back to the tab shown before
         #{ key: "Escape", action: act::HubBack, scope: "hub" },
     ];
+    // Finder renames with Enter too
+    if ive::os() == "macos" {
+        config.keys.push(#{ key: "Enter", action: act::RenameFile, scope: "tree" });
+    }
     // Alt+1 … Alt+9 open the numbered rows
     for row in 1..10 {
         config.keys.push(#{ key: `${row}`, mods: "ALT", action: act::HubOpenRow(row), scope: "hub" });
