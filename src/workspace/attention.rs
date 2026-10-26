@@ -23,13 +23,11 @@ pub(super) fn show_clicked(mut clicks: UnboundedReceiver<ProcessId>, window: &mu
 }
 
 impl Workspace {
-    /// Window `handle`, the main one or a detached tab's, became active or stopped being so; once active, the
-    /// processes it shows stop waiting.
+    /// Window `handle`, the main one or a detached tab's, became active or stopped being so; programs learn its
+    /// focus state, and processes it shows while active stop waiting.
     pub(crate) fn window_activated(&mut self, handle: AnyWindowHandle, focus: WindowFocus, cx: &mut Context<Self>) {
         self.active_window.observe(handle, focus);
-        if focus == WindowFocus::Active {
-            self.look_at_shown(cx);
-        }
+        self.look_at_shown(cx);
     }
 
     /// Takes process `id`'s newest call, if any it has not taken: the process waits for the user unless they see it.
@@ -70,6 +68,7 @@ impl Workspace {
 
     /// The waiting processes the user now sees, their tab shown in an active window, stop waiting.
     pub(crate) fn look_at_shown(&mut self, cx: &mut Context<Self>) {
+        self.report_terminal_focus();
         let ids: Vec<ProcessId> = self.processes.waiting().iter().map(|process| process.id).collect();
         let seen: Vec<ProcessId> = ids.into_iter().filter(|id| self.is_seen(*id)).collect();
         // in front, the bell lists what still waits: the desktop needs none of IVE's notifications
@@ -87,6 +86,20 @@ impl Workspace {
 
     fn is_seen(&self, id: ProcessId) -> bool {
         self.sight_of(id) == (Sight::Shown, WindowFocus::Active)
+    }
+
+    /// Updates all terminals after a tab or window changes visibility.
+    fn report_terminal_focus(&self) {
+        for process in self.processes.iter() {
+            process.view.report_focus(self.is_seen(process.id));
+        }
+    }
+
+    /// A program may enable focus reporting after its terminal was already hidden.
+    pub(super) fn report_process_focus(&self, id: ProcessId) {
+        if let Some(process) = self.processes.get(id) {
+            process.view.report_focus(self.is_seen(id));
+        }
     }
 
     /// Whether process `id`'s tab is the one its window shows, and whether that window has the keyboard.

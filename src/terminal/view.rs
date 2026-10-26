@@ -186,6 +186,11 @@ impl TerminalView {
         self.session.report_theme(appearance);
     }
 
+    /// Tells programs using terminal focus reporting whether this tab is visible in an active window.
+    pub fn report_focus(&self, visible: bool) {
+        self.session.report_focus(visible);
+    }
+
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus_handle.clone()
     }

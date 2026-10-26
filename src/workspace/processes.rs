@@ -342,6 +342,7 @@ impl Workspace {
         if renamed {
             self.retitle_hub_preview(cx);
         }
+        self.report_process_focus(id);
         self.take_call(id, cx);
         match state {
             TerminalState::Running if renamed || progressed => self.tree_changed(cx),
