@@ -466,3 +466,15 @@ fn should_scroll_by_page_and_to_the_ends_from_the_keyboard(cx: &mut TestAppConte
     assert!(ended > 180, "End goes to the bottom, got to block {ended}");
     assert_eq!(top_block(&view, cx), 0);
 }
+
+#[test]
+fn should_indent_an_item_s_later_blocks_under_its_text() {
+    // given
+    let doc = parse("- one\n\n  more\n\n  - two\n\n    ```\n    x\n    ```\n\nafter\n");
+
+    // when
+    let indents: Vec<f32> = doc.blocks.iter().map(super::view::indent_of).collect();
+
+    // then
+    assert_eq!(indents, vec![32., 52., 56., 76., 32.]);
+}

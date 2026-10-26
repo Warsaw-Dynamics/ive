@@ -528,7 +528,6 @@ impl Frame {
         };
         let body = self.body(block, index, &paint, cx);
         let quoted = (0..block.nesting.quotes).fold(body, |inner, _| div().border_l(px(3.)).border_color(rgb(self.style.border)).pl(px(12.)).child(inner).into_any_element());
-        let lists = f32::from(block.nesting.lists.saturating_sub(1));
         let gap = match (&block.kind, block.part.goes_on()) {
             (_, true) => 0.,
             (BlockKind::ListItem(_), false) => ITEM_GAP,
@@ -536,7 +535,7 @@ impl Frame {
         };
         div()
             .w_full()
-            .pl(px(PAGE_MARGIN + LIST_INDENT * lists))
+            .pl(px(indent_of(block)))
             .pr(px(PAGE_MARGIN))
             .pt(px(space_above(block, index)))
             .pb(px(gap))
@@ -692,6 +691,14 @@ fn pad_unless(continued: bool) -> f32 {
         return 0.;
     }
     CODE_PADDING_Y
+}
+
+/// How far right of the view's left edge a block's content starts: past the page margin and the lists it is in; a
+/// block inside a list item that is not the item's first starts under the item's text, past its marker.
+pub(super) fn indent_of(block: &Block) -> f32 {
+    let lists = f32::from(block.nesting.lists.saturating_sub(1));
+    let under_text = block.nesting.lists > 0 && !matches!(block.kind, BlockKind::ListItem(_));
+    PAGE_MARGIN + LIST_INDENT * lists + if under_text { MARKER_WIDTH } else { 0. }
 }
 
 /// A task item's box, ticked when filled.

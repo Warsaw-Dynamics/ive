@@ -235,3 +235,27 @@ fn should_show_the_target_of_reference_and_bracketed_images() {
     // then
     assert_eq!(texts(&doc), vec!["[image: logo](img/logo.png)", "[image: a](my file.png)"]);
 }
+
+#[test]
+fn should_keep_the_marker_of_an_item_that_starts_with_another_block() {
+    // given
+    let sources = ["- ```\n  x\n  ```\n", "1. # Title\n", "- - nested\n", "- | a |\n  |---|\n"];
+
+    // when
+    let docs: Vec<Doc> = sources.iter().map(|source| parse(source)).collect();
+
+    // then
+    let firsts: Vec<(BlockKind, (u8, u8))> = docs.iter().map(|doc| (doc.blocks[0].kind.clone(), nesting(doc)[0])).collect();
+    assert_eq!(
+        firsts,
+        vec![
+            (BlockKind::ListItem(Marker::Bullet), (0, 1)),
+            (BlockKind::ListItem(Marker::Number(1)), (0, 1)),
+            (BlockKind::ListItem(Marker::Bullet), (0, 1)),
+            (BlockKind::ListItem(Marker::Bullet), (0, 1)),
+        ]
+    );
+    assert_eq!(kinds(&docs[0])[1], BlockKind::Code { language: None });
+    assert_eq!((kinds(&docs[2])[1].clone(), nesting(&docs[2])[1]), (BlockKind::ListItem(Marker::Bullet), (0, 2)));
+    assert_eq!(docs[0].copy_text(0..docs[0].text.len()), "x");
+}

@@ -327,8 +327,18 @@ impl Builder {
 
     fn open_block(&mut self, kind: BlockKind) {
         let start = self.at.start;
-        self.item = None;
+        self.mark_pending_item();
         self.open_block_at(kind, start);
+    }
+
+    /// A list item whose first block is not text (code, a heading, a table, a nested list) still shows its marker:
+    /// on a line of its own, the block under it.
+    fn mark_pending_item(&mut self) {
+        let Some((marker, start)) = self.item.take() else {
+            return;
+        };
+        self.open_block_at(BlockKind::ListItem(marker), start);
+        self.close_block();
     }
 
     fn open_block_at(&mut self, kind: BlockKind, start: usize) {
@@ -439,6 +449,7 @@ impl Builder {
 
     fn enter_list(&mut self, first: Option<u64>) {
         self.close_block();
+        self.mark_pending_item();
         self.lists.push(first);
     }
 
