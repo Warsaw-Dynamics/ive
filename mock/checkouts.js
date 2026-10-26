@@ -411,7 +411,10 @@
     var rows = highlightLines(lines, 'block.' + (lang || 'txt'), true).map(function (tokens) {
       return tokens.map(function (tk) { return tk.k ? '<span class="syn-' + tk.k + '">' + escapeHtml(tk.t) + '</span>' : escapeHtml(tk.t); }).join('');
     });
-    return '<pre class="md__code"><code>' + rows.join('\n') + '</code></pre>';
+    // a Copy button in the block's top right corner copies its lines as written (copyCode, by a click on .md); its label
+    // is drawn from data-label, so Ctrl+F (the rendered text) does not find it
+    return '<div class="md__block"><button class="md__copy" type="button" title="Copy the code" data-label="Copy"></button>' +
+      '<pre class="md__code"><code>' + rows.join('\n') + '</code></pre></div>';
   }
   function tableHtml(rows) {
     var cells = function (line) { return line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return inlineMarkdown(c.trim()); }); };
@@ -1112,6 +1115,14 @@
         viewOf: function (tab) { return this.isMarkdown(tab) ? tab.view || this.markdownView : 'text'; },
         setView: function (tab, view) { tab.view = view; this.markdownView = view; },
         renderedHtml: function (tab) { return renderMarkdown(this.lines(tab).join('\n')); },
+        // A code block's Copy: its code to the clipboard, "Copied" on the button for 1.5 s.
+        copyCode: function (event) {
+          var button = event.target.closest('.md__copy');
+          if (button === null) return;
+          try { navigator.clipboard.writeText(button.nextElementSibling.textContent); } catch (e) { /* mock: clipboard may be blocked */ }
+          button.dataset.label = 'Copied';
+          setTimeout(function () { button.dataset.label = 'Copy'; }, 1500);
+        },
         // Only a single-file diff of uncommitted changes edits (its new side); commit tabs, since-base diffs and the hub preview are read-only.
         isEditable: function (tab) {
           if (tab.kind === 'diff') return tab.source === 'work';

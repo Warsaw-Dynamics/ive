@@ -600,7 +600,7 @@ button.card:hover { border-color: var(--accent); }
 
 /* Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered"). The toggle is a pill floating where
    find.css's bar floats (same box and shadow), held by a zero-height line at the top of the code so it clears any header
-   or save bar; Rendered is read-only prose in the UI font, 760 px wide at most; a double-click goes back to Text. */
+   or save bar; Rendered is read-only prose in the UI font, 760 px wide at most, selectable; a code block has a Copy button. */
 .mdpill { position: relative; height: 0; z-index: 5; }
 .mdpill__box {
   position: absolute; top: 6px; right: 18px; padding: 3px; gap: 2px; border-radius: 8px; background: var(--tree);
@@ -624,6 +624,14 @@ button.card:hover { border-color: var(--accent); }
 .md code { font: 13px var(--mono); padding: 1px 4px; border-radius: 4px; background: var(--hover); }
 .md pre.md__code { padding: 10px 12px; border-radius: 6px; background: color-mix(in srgb, var(--hover) 55%, var(--background)); overflow-x: auto; }
 .md pre.md__code code { padding: 0; background: none; font: 13px/20px var(--mono); }
+.md .md__block { position: relative; margin: 0 0 12px; }
+.md .md__block pre.md__code { margin: 0; }
+.md__copy {
+  position: absolute; top: 6px; right: 6px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--background); color: var(--muted); font-size: 12px;
+}
+.md__copy::after { content: attr(data-label); }
+.md__copy:hover { color: var(--text); background: var(--hover); }
 .md blockquote { padding: 0 12px; border-left: 3px solid var(--border); color: var(--muted); }
 .md hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
 .md table { border-collapse: collapse; }
