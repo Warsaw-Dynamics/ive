@@ -546,11 +546,7 @@ impl Frame {
         let body = self.body(block, index, &paint, cx);
         let quoted = (0..block.nesting.quotes)
             .fold(body, |inner, _| div().border_l(px(3.)).border_color(rgb(self.style.border)).pl(px(12.)).child(inner).into_any_element());
-        let gap = match (&block.kind, block.part.goes_on()) {
-            (_, true) => 0.,
-            (BlockKind::ListItem(_), false) => ITEM_GAP,
-            _ => BLOCK_GAP,
-        };
+        let gap = gap_after(&self.doc, index);
         div()
             .w_full()
             .pl(px(indent_of(block)))
@@ -719,6 +715,20 @@ pub(super) fn indent_of(block: &Block) -> f32 {
     let lists = f32::from(block.nesting.lists.saturating_sub(1));
     let under_text = block.nesting.lists > 0 && !matches!(block.kind, BlockKind::ListItem(_));
     PAGE_MARGIN + LIST_INDENT * lists + if under_text { MARKER_WIDTH } else { 0. }
+}
+
+/// Room below block `index`: none inside a block drawn in parts, a little between items of one list, a block's
+/// worth elsewhere (after a list's last item too).
+pub(super) fn gap_after(doc: &Doc, index: usize) -> f32 {
+    let Some(block) = doc.blocks.get(index) else {
+        return BLOCK_GAP;
+    };
+    let next_in_list = doc.blocks.get(index + 1).is_some_and(|next| next.nesting.lists > 0);
+    match (block.part.goes_on(), &block.kind, next_in_list) {
+        (true, _, _) => 0.,
+        (false, BlockKind::ListItem(_), true) => ITEM_GAP,
+        _ => BLOCK_GAP,
+    }
 }
 
 /// A task item's box, ticked when filled.

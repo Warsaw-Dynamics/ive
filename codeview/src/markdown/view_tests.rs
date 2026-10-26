@@ -478,3 +478,15 @@ fn should_indent_an_item_s_later_blocks_under_its_text() {
     // then
     assert_eq!(indents, vec![32., 52., 56., 76., 32.]);
 }
+
+#[test]
+fn should_leave_a_block_gap_after_a_list() {
+    // given
+    let doc = parse("- one\n- two\n\nafter\n\n- three\n");
+
+    // when
+    let gaps: Vec<f32> = (0..doc.blocks.len()).map(|index| super::view::gap_after(&doc, index)).collect();
+
+    // then
+    assert_eq!(gaps, vec![2., 12., 12., 12.]);
+}
