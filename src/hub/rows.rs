@@ -18,6 +18,8 @@ use crate::scratch::ScratchRef;
 /// Recent rows on an empty query, as the mock shows.
 pub const RECENT_EMPTY: usize = 12;
 pub const RECENT_WHILE_SEARCHING: usize = 5;
+/// Changed rows beside Recent and Running, the last written; the changed-only list shows them all.
+pub const CHANGED_EMPTY: usize = 10;
 pub const LOADING_FILES: &str = "Loading the file lists…";
 pub const LINE_NEEDS_TEXT: &str = "Line numbers go to a file shown before the hub";
 pub const CONTENT_NEEDS_TEXT: &str = "Type 2 characters or more to search the files' contents";
@@ -82,7 +84,7 @@ pub fn list(state: &HubState, sources: &Sources, files: Option<(&Corpus, &Found)
             list.section_of("Waiting", list.matching(&sources.waiting, "", RENDERED));
             let recent = list.matching(&sources.recent, "", RECENT_EMPTY).rows;
             list.section("Recent", recent);
-            list.section_of("Changed", list.matching(&sources.changed, "", RENDERED));
+            list.latest("Changed", list.matching(&sources.changed, "", CHANGED_EMPTY));
             list.section_of("Running", list.matching(&sources.running, "", RENDERED));
         }
         Mode::Files { .. } if state.changed_only => list.section_of("Changed", list.matching(&sources.changed, split_line(&state.query).query, RENDERED)),
@@ -232,6 +234,16 @@ impl<'a> Builder<'a> {
         }
         let note = (total > RENDERED).then(|| format!("{RENDERED} of {} · type to narrow", thousands(total)));
         rows.truncate(RENDERED);
+        self.push(title, rows, note);
+    }
+
+    /// A section of the first rows of `matched`, saying how many there are when they are not all shown.
+    fn latest(&mut self, title: &str, matched: Matched) {
+        let Matched { rows, total } = matched;
+        if total == 0 {
+            return;
+        }
+        let note = (total > rows.len()).then(|| format!("last {} of {}", rows.len(), thousands(total)));
         self.push(title, rows, note);
     }
 

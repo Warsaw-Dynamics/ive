@@ -15,6 +15,8 @@
 .hub__scope--in { font-family: var(--mono); }
 /* a line the hub jumped to (:42, file:line), in the editor */
 .editor__line--at { background: var(--tab-active); }
+.hub__switch { flex: none; display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.hub__switch kbd { padding: 0 4px; border: 1px solid var(--border); border-radius: 4px; font: 11px var(--mono); color: var(--text); }
 .hub__stats { flex: none; min-width: 120px; text-align: right; font: 12px var(--mono); color: var(--muted); }
 
 .hub__body { flex: 1; min-height: 0; display: flex; }

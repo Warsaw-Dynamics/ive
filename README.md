@@ -126,7 +126,7 @@ The `--pty-host` commands use the `default` profile; for another one set `IVE_PT
 
 Ctrl+Shift+E opens the hub as a temporary tab (italic `Hub`): opening anything from it replaces it. With an empty query it
 lists **Recent** (every tab shown, newest first, open or closed: a closed one is greyed and reopens), **Changed**
-(the uncommitted files of every worktree) and **Running** (live processes and runs; exited runs are in Processes only). Typing searches every file of
+(the uncommitted files of every worktree, the last 10 written; Ctrl+Shift+E in the hub lists them all) and **Running** (live processes and runs; exited runs are in Processes only). Typing searches every file of
 every open project, and their scratches (`scratches/<name>`), as fzf does: fuzzy, smart case, `'exact`, `^prefix`,
 `suffix$`, `!not`, space for AND and `a | b` for OR, the matched characters highlighted; the counter at the right of
 the query reads `matched/total · ms`. `file.rs:42` opens the file at line 42, marked. The preview on the right
@@ -155,7 +155,7 @@ Enter is pressed in one of its terminals or a run starts in it), so Enter, Enter
 | Alt+P | what a contents search covers: files and processes' output, files only, output only |
 | Escape | from the worktree question back to the list; else clear the query; else back to the tab shown before |
 
-**Contents.** Ctrl+Shift+F in the hub, or Find in Files from anywhere, searches the files' lines instead of their
+**Contents.** Ctrl+Shift+F in the hub (an empty query shows it at its right), or Find in Files from anywhere, searches the files' lines instead of their
 names: plain text from 2 characters, smart case (any capital makes it exact), Alt+R for a regex and Alt+W for whole
 words. Each row is `path:line` and the line with its matches marked; Enter opens the file at that line with the match
 selected, and the preview shows the file around it, scrolled sideways to the match. It searches the hub's scope (the

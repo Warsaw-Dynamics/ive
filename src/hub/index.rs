@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use super::files::CheckoutFiles;
 use crate::favicon::Favicons;
@@ -22,13 +22,20 @@ pub struct Read {
     pub files: Arc<CheckoutFiles>,
     /// `None` when not asked for
     pub ignored: Option<Arc<CheckoutFiles>>,
-    pub changes: Arc<Vec<Change>>,
+    pub changes: Arc<Vec<DatedChange>>,
     /// the `.run.toml` files: folder (checkout-relative, `` at the top) and what it declares
     pub configs: Arc<Vec<(String, Arc<RunFile>)>>,
     /// the `.favicon.*` files: the project's icon at the root, the modules' in their folders
     pub favicons: Arc<Favicons>,
     /// read in the main checkout only: branches without a worktree, as git prints them
     pub branches: Arc<Vec<Branch>>,
+}
+
+/// An uncommitted change and when its file was last written; `None` for a file that is gone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DatedChange {
+    pub change: Change,
+    pub modified: Option<SystemTime>,
 }
 
 /// A branch without a worktree: its name, the local name a worktree of it would check out, the remote of a branch

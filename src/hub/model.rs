@@ -1145,13 +1145,31 @@ mod tests {
         let mut sources = sources();
         let change = sources.changed[0].clone();
         sources.changed = vec![change; 4871];
+        let mut state = HubState::default();
+        act(&mut state, Builtin::HubToggleChanged, &sources);
+
+        // when
+        let list = shown(&state, &sources);
+
+        // then
+        let changed = list.sections.iter().find(|section| section.title == "Changed").unwrap();
+        assert_eq!((changed.rows.len(), changed.note.as_deref()), (RENDERED, Some("80 of 4,871 · type to narrow")));
+    }
+
+    #[test]
+    fn should_show_the_last_ten_changes_beside_recent() {
+        // given
+        let mut sources = sources();
+        let change = sources.changed[0].clone();
+        sources.changed = (0..37).map(|index| Item { title: format!("{index}.rs"), ..change.clone() }).collect();
 
         // when
         let list = shown(&HubState::default(), &sources);
 
         // then
         let changed = list.sections.iter().find(|section| section.title == "Changed").unwrap();
-        assert_eq!((changed.rows.len(), changed.note.as_deref()), (RENDERED, Some("80 of 4,871 · type to narrow")));
+        let titles: Vec<_> = list.rows[changed.rows.clone()].iter().map(|row| row.item.title.clone()).collect();
+        assert_eq!((titles.len(), titles[0].as_str(), titles[9].as_str(), changed.note.as_deref()), (10, "0.rs", "9.rs", Some("last 10 of 37")));
     }
 
     #[test]

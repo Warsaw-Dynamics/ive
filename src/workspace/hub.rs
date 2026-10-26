@@ -26,6 +26,7 @@ use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
 use crate::git::repo::GitError;
+use crate::git::status::Change;
 use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
@@ -816,7 +817,7 @@ impl Workspace {
     pub(crate) fn render_hub_tab(&self, id: TabId, hub: &HubTab, cx: &mut Context<Self>) -> AnyElement {
         let sources = self.hub_sources(hub.back, cx);
         let list = self.hub_list(hub, &sources);
-        let drawn = Drawn { list, strip: self.key_strip(&hub.state, cx), chips: self.scope_chips(&hub.state, &sources), excluded_note: self.excluded_note(&hub.state) };
+        let drawn = Drawn { list, strip: self.key_strip(&hub.state, cx), chips: self.scope_chips(&hub.state, &sources), excluded_note: self.excluded_note(&hub.state), content_key: self.content_key(&hub.state, cx) };
         render_hub(id, hub, drawn, self, cx)
     }
 
@@ -832,6 +833,12 @@ impl Workspace {
 
     fn excluded_note(&self, state: &HubState) -> Option<String> {
         (!state.excluded && self.corpus.excluded > 0).then(|| format!("{} excluded not searched", thousands(self.corpus.excluded)))
+    }
+
+    /// The key switching an empty file search to the files' contents, as bound; `None` when unbound or typing.
+    fn content_key(&self, state: &HubState, cx: &App) -> Option<String> {
+        let keymap = keymap(cx).filter(|_| mode(state) == Mode::Empty)?;
+        keymap.keys_for(Scope::Hub, &Action::Builtin(Builtin::HubToggleContent)).first().map(|keystroke| key_label::label(keystroke))
     }
 
     /// The keys of the hub's state as bound (a key changed in `init.rn` shows as changed); unbound ones are left out.
@@ -957,29 +964,22 @@ impl Workspace {
         }
     }
 
+    /// The uncommitted files of every listed checkout, the last written first.
     fn changed_items(&self) -> Vec<Item> {
-        let mut items = Vec::new();
+        let mut dated = Vec::new();
         for open in &self.projects {
             for checkout in open.listed_checkouts() {
                 let Some(read) = self.hub_index.files(&checkout.path) else {
                     continue;
                 };
                 let checkout = open.project.checkout_ref(checkout);
-                for change in read.changes.iter().filter(|change| !change.path.is_folder()) {
-                    let path = change.path.display();
-                    let name = change.path.file_name();
-                    items.push(Item {
-                        detail: change.path.folder(),
-                        place: Place::One(checkout.clone()),
-                        project: Some(checkout.project.clone()),
-                        mark: Some(change.mark),
-                        path: Some(path.clone()),
-                        ..Item::new(Target::Change { checkout: checkout.clone(), path }, name.clone(), icons::file_icon(&name))
-                    });
-                }
+                let files = read.changes.iter().filter(|dated| !dated.change.path.is_folder());
+                dated.extend(files.map(|dated| (dated.modified, change_item(&checkout, &dated.change))));
             }
         }
-        items
+        // stable: files written at once keep their path order; gone files (`None`) last
+        dated.sort_by(|(a, _), (b, _)| b.cmp(a));
+        dated.into_iter().map(|(_, item)| item).collect()
     }
 
     fn process_items(&self, live_only: bool) -> Vec<Item> {
@@ -1333,6 +1333,20 @@ pub(super) fn recent_items(history: &History, presence: impl Fn(&Shown) -> Prese
         items.push(Item { detail, state, place, project, age: Some(shown.shown_at), greyed, path: relative, ..Item::new(target, title, icon) });
     }
     items
+}
+
+/// A changed file's row, opening its diff in `checkout`.
+fn change_item(checkout: &CheckoutRef, change: &Change) -> Item {
+    let path = change.path.display();
+    let name = change.path.file_name();
+    Item {
+        detail: change.path.folder(),
+        place: Place::One(checkout.clone()),
+        project: Some(checkout.project.clone()),
+        mark: Some(change.mark),
+        path: Some(path.clone()),
+        ..Item::new(Target::Change { checkout: checkout.clone(), path }, name.clone(), icons::file_icon(&name))
+    }
 }
 
 fn kind_detail(identity: &TabIdentity) -> &'static str {
