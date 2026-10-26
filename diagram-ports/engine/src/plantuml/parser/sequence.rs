@@ -10,7 +10,11 @@ use crate::{
         arrow::{Arrow, End},
         budget::{Budget, bound},
         scene::Dash,
-        sequence::{Builder, Declaration, FrameKind, Lifecycle, Name, ParticipantKind, Sequence},
+        sequence::{
+            BoxHeader, Builder, Declaration, FrameKind, Lifecycle, Name, ParticipantKind, Sequence,
+            Spot, Stereotype,
+        },
+        style::Color,
     },
 };
 use std::ops::Range;
@@ -18,6 +22,9 @@ use std::ops::Range;
 #[derive(Clone, Debug)]
 pub(in crate::plantuml) enum Token {
     Participant(ParticipantKind),
+    Stereotype(Stereotype),
+    BoxOpen(BoxHeader),
+    BoxClose,
     Lifecycle(Lifecycle),
     Frame(FrameKind),
     Note,
@@ -204,6 +211,26 @@ impl Lexer<'_> {
         let start = row.text.len() - row.text.trim_start().len();
         let (head, first_end) = self.first_primitive(row, (base, start))?;
         let cursor = start + first_end;
+        if row.text.trim() == "end box" {
+            self.push(Token::BoxClose, row.span(base, start..row.text.len()))?;
+            self.push(
+                Token::Newline,
+                row.span(base, row.text.len()..row.text.len()),
+            )?;
+            return Ok(RowMode::Command);
+        }
+        if head.text == "box" {
+            let header = self.box_header(row, (base, cursor))?;
+            self.push(
+                Token::BoxOpen(header),
+                row.span(base, start..row.text.len()),
+            )?;
+            self.push(
+                Token::Newline,
+                row.span(base, row.text.len()..row.text.len()),
+            )?;
+            return Ok(RowMode::Command);
+        }
         let command = command_token(&head.text);
         if matches!(command, Some(Token::Frame(_) | Token::Else)) {
             self.validate_caption_header(row, (base, cursor))?;
@@ -300,6 +327,15 @@ impl Lexer<'_> {
                 cursor += bytes;
                 continue;
             }
+            if rest.starts_with("<<") {
+                let (stereotype, bytes) = self.stereotype(row, (base, cursor))?;
+                self.push(
+                    Token::Stereotype(stereotype),
+                    row.span(base, cursor..cursor + bytes),
+                )?;
+                cursor += bytes;
+                continue;
+            }
             if operator_prefix(rest)
                 || (ch == '-' && rest[1..].chars().next().is_none_or(char::is_whitespace))
             {
@@ -354,6 +390,114 @@ impl Lexer<'_> {
             cursor += bytes;
         }
         Ok(Suffix::Header)
+    }
+
+    fn box_header(
+        &mut self,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<BoxHeader, ParseFailure> {
+        let (base, cursor) = location;
+        let start = cursor + row.text[cursor..].len() - row.text[cursor..].trim_start().len();
+        let tail = row.text[start..].trim_end();
+        let (title, color) = if tail.starts_with('"') {
+            let (name, bytes) = self.quoted(row, (base, start))?;
+            (name.text, tail[bytes..].trim())
+        } else if let Some(last) = tail
+            .split_whitespace()
+            .last()
+            .filter(|last| last.starts_with('#'))
+        {
+            (tail[..tail.len() - last.len()].trim_end().to_owned(), last)
+        } else {
+            (tail.to_owned(), "")
+        };
+        let title = self.copy(&title, row.span(base, start..start + title.len()))?;
+        let color = if color.is_empty() {
+            Color(0xf8fafc)
+        } else {
+            self.sequence_color(color, row.span(base, start..row.text.len()))?
+        };
+        Ok(BoxHeader { title, color })
+    }
+
+    fn stereotype(
+        &mut self,
+        row: &Row,
+        location: (usize, usize),
+    ) -> Result<(Stereotype, usize), ParseFailure> {
+        let (base, cursor) = location;
+        let rest = &row.text[cursor..];
+        let close = rest.find(">>").ok_or_else(|| {
+            ParseFailure::syntax(
+                row.span(base, cursor..row.text.len()),
+                "unclosed sequence stereotype",
+            )
+        })?;
+        let value = rest[2..close].trim();
+        let (spot, text) = if let Some(after_open) = value.strip_prefix('(') {
+            let end = after_open.find(')').ok_or_else(|| {
+                ParseFailure::syntax(
+                    row.span(base, cursor..cursor + close + 2),
+                    "unclosed stereotype spot",
+                )
+            })?;
+            let (mark, color) = after_open[..end].split_once(',').ok_or_else(|| {
+                ParseFailure::syntax(
+                    row.span(base, cursor..cursor + close + 2),
+                    "stereotype spot needs a color",
+                )
+            })?;
+            let mut chars = mark.trim().chars();
+            let letter = chars
+                .next()
+                .filter(|ch| ch.is_alphanumeric())
+                .ok_or_else(|| {
+                    ParseFailure::syntax(
+                        row.span(base, cursor..cursor + close + 2),
+                        "invalid stereotype spot letter",
+                    )
+                })?;
+            if chars.next().is_some() {
+                return Err(ParseFailure::syntax(
+                    row.span(base, cursor..cursor + close + 2),
+                    "stereotype spot needs one letter",
+                ));
+            }
+            let color =
+                self.sequence_color(color.trim(), row.span(base, cursor..cursor + close + 2))?;
+            (Spot::Marker(letter, color), after_open[end + 1..].trim())
+        } else {
+            (Spot::None, value)
+        };
+        if text.is_empty() && matches!(spot, Spot::None) {
+            return Err(ParseFailure::syntax(
+                row.span(base, cursor..cursor + close + 2),
+                "empty sequence stereotype",
+            ));
+        }
+        let text = self.copy(text, row.span(base, cursor + 2..cursor + close))?;
+        Ok((Stereotype::Label { text, spot }, close + 2))
+    }
+
+    fn sequence_color(&mut self, value: &str, span: Range<usize>) -> Result<Color, ParseFailure> {
+        self.budget
+            .charge(value.len())
+            .map_err(ParseFailure::terminal)?;
+        let color = match value.to_ascii_lowercase().as_str() {
+            "#lightblue" => Some(0xadd8e6),
+            "#lightgreen" => Some(0x90ee90),
+            "#lightgray" | "#lightgrey" => Some(0xd3d3d3),
+            "#white" => Some(0xffffff),
+            "#yellow" => Some(0xffff00),
+            _ => value
+                .strip_prefix('#')
+                .filter(|hex| hex.len() == 6 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+                .and_then(|hex| u32::from_str_radix(hex, 16).ok()),
+        };
+        color
+            .map(Color)
+            .ok_or_else(|| ParseFailure::unsupported(span, "sequence box or spot color"))
     }
 
     fn frame_kind(
@@ -469,6 +613,7 @@ impl Lexer<'_> {
         for (index, ch) in text.char_indices().skip(1) {
             if ch.is_whitespace()
                 || matches!(ch, '{' | '}' | ':' | '"')
+                || text[index..].starts_with("<<")
                 || operator_prefix(&text[index..])
             {
                 return Ok(index);

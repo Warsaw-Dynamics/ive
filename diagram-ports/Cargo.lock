@@ -1242,9 +1242,20 @@ dependencies = [
  "roxmltree 0.21.1",
  "serde",
  "serde_json",
+ "sha2",
  "svgtypes",
  "tempfile",
  "ttf-parser",
+ "usvg",
+]
+
+[[package]]
+name = "diagram-web"
+version = "0.1.0"
+dependencies = [
+ "diagram-engine",
+ "png 0.18.1",
+ "resvg",
  "usvg",
 ]
 

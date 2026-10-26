@@ -16,7 +16,11 @@ fn run() -> Result<(), String> {
             println!("{}", cli::HELP);
             Ok(())
         }
-        Mode::Export { source, output } => {
+        Mode::Export {
+            source,
+            output,
+            comparison,
+        } => {
             let mut job = worker::Job::headless(worker::read_source(&source)?);
             job.language = cli.language;
             let rendered = worker::run(
@@ -24,8 +28,7 @@ fn run() -> Result<(), String> {
                     .map_err(|error| format!("cannot locate diagram-viewer executable: {error}"))?,
                 job,
             )?;
-            std::fs::write(&output, rendered.svg)
-                .map_err(|error| format!("cannot write SVG {}: {error}", output.display()))
+            diagram_viewer::export::write(&rendered.svg, &output, comparison)
         }
         Mode::View {
             source,

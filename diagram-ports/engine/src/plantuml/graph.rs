@@ -77,6 +77,9 @@ pub(super) fn layout_checked(
     graph: &mut Graph<NodeLabel, EdgeLabel, GraphLabel>,
     budget: &mut Budget,
 ) -> Result<(), RenderError> {
+    if let crate::GraphLayout::Dot(runner) = budget.graph_layout.clone() {
+        return super::dot::layout(graph, runner.as_ref(), budget);
+    }
     let mut work = Work {
         budget,
         failure: Failure::None,

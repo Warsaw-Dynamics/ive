@@ -1,5 +1,5 @@
 [workspace]
-members = ["engine", "viewer"]
+members = ["engine", "viewer", "web"]
 exclude = ["vendor/merman-core-0.9.2", "vendor/merman-render-0.9.2", "tools/plantuml-grammar-gen"]
 resolver = "3"
 

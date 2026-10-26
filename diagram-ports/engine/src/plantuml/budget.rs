@@ -1,8 +1,9 @@
-use crate::{RenderControl, RenderError, RenderLimits, RenderOptions};
+use crate::{GraphLayout, RenderControl, RenderError, RenderLimits, RenderOptions};
 
 pub(super) struct Budget {
     pub limits: RenderLimits,
     pub control: RenderControl,
+    pub graph_layout: GraphLayout,
     pub work: usize,
     items: usize,
     text_bytes: usize,
@@ -12,10 +13,8 @@ impl Budget {
     pub fn new(options: &RenderOptions) -> Self {
         Self {
             limits: options.limits.clone(),
-            control: options
-                .control
-                .child()
-                .with_deadline(options.limits.timeout),
+            control: crate::child_control(options),
+            graph_layout: options.graph_layout.clone(),
             work: 0,
             items: 0,
             text_bytes: 0,

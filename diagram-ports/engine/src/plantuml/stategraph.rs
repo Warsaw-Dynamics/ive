@@ -245,15 +245,19 @@ fn arrange(
             )
             .map_err(|e| invalid(1, format!("state graph edge: {e}")))?;
     }
-    let mut work = Work {
-        budget,
-        failure: vec![],
-    };
-    let result = dugong::layout_controlled(&mut graph, &mut work);
-    if let Some(error) = work.failure.pop() {
-        return Err(error);
+    if let crate::GraphLayout::Dot(runner) = budget.graph_layout.clone() {
+        super::dot::layout(&mut graph, runner.as_ref(), budget)?;
+    } else {
+        let mut work = Work {
+            budget,
+            failure: vec![],
+        };
+        let result = dugong::layout_controlled(&mut graph, &mut work);
+        if let Some(error) = work.failure.pop() {
+            return Err(error);
+        }
+        result.map_err(|e| invalid(1, format!("state graph layout: {e}")))?;
     }
-    result.map_err(|e| invalid(1, format!("state graph layout: {e}")))?;
     let mut width: f64 = 0.;
     let mut height: f64 = 0.;
     for node in &mut nodes {

@@ -12,6 +12,41 @@ fn diagram(body: &str) -> String {
 }
 
 #[test]
+fn should_render_sequence_stereotypes_and_colored_participant_boxes() {
+    // given
+    let source = include_str!("cases/sequence_boxes.puml");
+    // when
+    let rendered = render(source, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&rendered.svg).unwrap();
+    // then
+    assert_eq!(rendered.family, "sequence");
+    assert!(rendered.svg.contains("Application Web"));
+    assert!(rendered.svg.contains("Serveur Play"));
+    assert!(rendered.svg.contains("Contrôleur formulaire"));
+    assert!(rendered.svg.contains("#add1b2"));
+    assert_eq!(
+        xml.descendants()
+            .filter(|node| node.attribute("data-kind") == Some("sequence-box"))
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn should_reject_unclosed_or_nested_sequence_boxes() {
+    // given
+    for body in [
+        "box \"A\" #LightBlue\nparticipant A",
+        "box \"A\" #LightBlue\nbox \"B\" #LightGreen\nparticipant A\nend box\nend box",
+    ] {
+        // when
+        let result = render(&diagram(body), &options());
+        // then
+        assert!(result.is_err(), "accepted {body}");
+    }
+}
+
+#[test]
 fn should_reject_uml_quoted_tokens_beyond_raw_byte_limit() {
     // given
     let raw = "\\\"".repeat(8193);

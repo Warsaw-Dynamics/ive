@@ -92,6 +92,21 @@ impl DisplaySvg {
         size: (u32, u32),
         cancelled: &AtomicBool,
     ) -> Result<Arc<RenderImage>, String> {
+        let mut buffer = self.raster_rgba(size, cancelled)?;
+        for row in buffer.chunks_exact_mut(size.0 as usize * 4) {
+            checkpoint(cancelled)?;
+            for pixel in row.as_chunks_mut::<4>().0 {
+                gpui::swap_rgba_pa_to_bgra(pixel);
+            }
+        }
+        Ok(Arc::new(RenderImage::new(vec![image::Frame::new(buffer)])))
+    }
+
+    pub(crate) fn raster_rgba(
+        &self,
+        size: (u32, u32),
+        cancelled: &AtomicBool,
+    ) -> Result<image::RgbaImage, String> {
         checkpoint(cancelled)?;
         if size.0 == 0
             || size.1 == 0
@@ -113,15 +128,9 @@ impl DisplaySvg {
             .ok_or_else(|| format!("cannot allocate diagram raster {size:?}"))?;
         resvg::render(&self.tree, transform, &mut pixmap.as_mut());
         checkpoint(cancelled)?;
-        let mut buffer = image::RgbaImage::from_raw(size.0, size.1, pixmap.take())
+        let buffer = image::RgbaImage::from_raw(size.0, size.1, pixmap.take())
             .ok_or("invalid diagram raster buffer")?;
-        for row in buffer.chunks_exact_mut(size.0 as usize * 4) {
-            checkpoint(cancelled)?;
-            for pixel in row.as_chunks_mut::<4>().0 {
-                gpui::swap_rgba_pa_to_bgra(pixel);
-            }
-        }
-        Ok(Arc::new(RenderImage::new(vec![image::Frame::new(buffer)])))
+        Ok(buffer)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{fmt, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
 
 mod limits;
 mod mermaid;
@@ -19,6 +19,27 @@ pub enum Language {
     #[default]
     Mermaid,
     PlantUml,
+}
+
+/// Supplies bounded `dot -Tjson0` output for graph families; the host owns process isolation.
+pub trait DotRunner: Send + Sync {
+    fn run(&self, source: &str) -> Result<String, String>;
+}
+
+#[derive(Clone, Default)]
+pub enum GraphLayout {
+    #[default]
+    Dagre,
+    Dot(Arc<dyn DotRunner>),
+}
+
+impl fmt::Debug for GraphLayout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Dagre => f.write_str("Dagre"),
+            Self::Dot(_) => f.write_str("Dot"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +71,7 @@ pub struct RenderOptions {
     pub limits: RenderLimits,
     pub control: RenderControl,
     pub text_measurement: TextMeasurementPolicy,
+    pub graph_layout: GraphLayout,
 }
 
 #[derive(Debug, Clone)]
@@ -116,4 +138,11 @@ pub fn render(source: &str, options: &RenderOptions) -> Result<RenderedDiagram, 
         Language::Mermaid => mermaid::render(source, options),
         Language::PlantUml => plantuml::render(source, options),
     }
+}
+
+fn child_control(options: &RenderOptions) -> RenderControl {
+    let control = options.control.child();
+    #[cfg(not(target_arch = "wasm32"))]
+    let control = control.with_deadline(options.limits.timeout);
+    control
 }

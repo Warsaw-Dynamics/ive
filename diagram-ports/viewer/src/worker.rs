@@ -1,4 +1,4 @@
-use diagram_engine::{Language, RenderLimits, RenderOptions};
+use diagram_engine::{GraphLayout, Language, RenderLimits, RenderOptions};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Write},
@@ -396,6 +396,11 @@ fn options(config: Config) -> Result<RenderOptions, String> {
             text::policy()?
         } else {
             Default::default()
+        },
+        graph_layout: if language == Language::PlantUml {
+            GraphLayout::Dot(Arc::new(crate::dot::Process))
+        } else {
+            GraphLayout::Dagre
         },
         ..Default::default()
     })

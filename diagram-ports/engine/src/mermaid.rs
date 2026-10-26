@@ -14,10 +14,7 @@ pub(crate) fn render(
 ) -> Result<RenderedDiagram, RenderError> {
     limits::validate_source(source, &options.limits)?;
     let policy = limits::resource_policy(&options.limits)?;
-    let control = options
-        .control
-        .child()
-        .with_deadline(options.limits.timeout);
+    let control = crate::child_control(options);
     control
         .checkpoint()
         .map_err(|error| RenderError::Cancelled(error.to_string()))?;
