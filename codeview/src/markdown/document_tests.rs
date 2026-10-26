@@ -223,3 +223,15 @@ fn should_survive_nesting_deeper_than_a_counter_holds() {
     assert!(docs[0].text.ends_with("deep"));
     assert!(docs[1].text.contains('x'));
 }
+
+#[test]
+fn should_show_the_target_of_reference_and_bracketed_images() {
+    // given
+    let source = "![logo][r]\n\n![a](<my file.png>)\n\n[r]: img/logo.png\n";
+
+    // when
+    let doc = parse(source);
+
+    // then
+    assert_eq!(texts(&doc), vec!["[image: logo](img/logo.png)", "[image: a](my file.png)"]);
+}

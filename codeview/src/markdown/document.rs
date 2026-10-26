@@ -159,8 +159,7 @@ struct TableRow {
 }
 
 /// Turns the parser's events into a [`Doc`]; `at` is the source bytes of the event being read.
-struct Builder<'a> {
-    source: &'a str,
+struct Builder {
     line_starts: Vec<usize>,
     at: Range<usize>,
     /// where the last event that was not a start ended
@@ -176,13 +175,14 @@ struct Builder<'a> {
     /// a list item whose first block has not opened yet: its marker and where it starts
     item: Option<(Marker, usize)>,
     row: Option<TableRow>,
+    /// the targets of the images open, innermost last
+    images: Vec<String>,
 }
 
-impl<'a> Builder<'a> {
-    fn new(source: &'a str) -> Self {
+impl Builder {
+    fn new(source: &str) -> Self {
         let line_starts = std::iter::once(0).chain(source.match_indices('\n').map(|(at, _)| at + 1)).collect();
         Self {
-            source,
             line_starts,
             at: 0..0,
             reached: 0,
@@ -195,6 +195,7 @@ impl<'a> Builder<'a> {
             lists: Vec::new(),
             item: None,
             row: None,
+            images: Vec::new(),
         }
     }
 
@@ -244,7 +245,7 @@ impl<'a> Builder<'a> {
             Tag::Strong => self.inline.strong = self.inline.strong.saturating_add(1),
             Tag::Strikethrough => self.inline.strike = self.inline.strike.saturating_add(1),
             Tag::Link { dest_url, .. } => self.inline.links.push(SharedString::from(dest_url.to_string())),
-            Tag::Image { .. } => self.text("[image: "),
+            Tag::Image { dest_url, .. } => self.start_image(dest_url.to_string()),
             Tag::FootnoteDefinition(_)
             | Tag::DefinitionList
             | Tag::DefinitionListTitle
@@ -481,18 +482,16 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// The image's alt text was written after `[image: `; its target follows.
+    /// An image shows as `[image: <alt>](<target>)`: its alt text comes next.
+    fn start_image(&mut self, target: String) {
+        self.images.push(target);
+        self.text("[image: ");
+    }
+
     fn end_image(&mut self) {
-        let target = image_target(&self.source[self.at.clone()]);
+        let target = self.images.pop().unwrap_or_default();
         self.text(&format!("]({target})"));
     }
-}
-
-/// The target of `![alt](target "title")`, as written.
-fn image_target(markdown: &str) -> &str {
-    let after = markdown.rfind("](").map_or("", |at| &markdown[at + 2..]);
-    let inner = after.strip_suffix(')').unwrap_or(after);
-    inner.split_whitespace().next().unwrap_or("")
 }
 
 fn language_of(kind: &CodeBlockKind) -> Option<Language> {
