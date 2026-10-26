@@ -443,3 +443,26 @@ fn should_copy_a_long_code_block_whole_by_its_one_button(cx: &mut TestAppContext
     let names: Vec<String> = seen.borrow().targets.keys().filter(|name| name.starts_with("markdown-copy")).cloned().collect();
     assert_eq!(names, vec!["markdown-copy:1".to_owned()], "one target for the block, not one per part");
 }
+
+#[gpui::test]
+fn should_scroll_by_page_and_to_the_ends_from_the_keyboard(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(&paragraphs(200), cx);
+    let first = bounds_of(&view, 0, cx);
+    press(left_of(first), (1, Modifiers::none()), cx);
+
+    // when
+    cx.simulate_keystrokes("pagedown");
+    draw(cx);
+    let paged = top_block(&view, cx);
+    cx.simulate_keystrokes("end");
+    draw(cx);
+    let ended = top_block(&view, cx);
+    cx.simulate_keystrokes("home");
+    draw(cx);
+
+    // then
+    assert!(paged > 3, "a page down scrolls a view's worth, got to block {paged}");
+    assert!(ended > 180, "End goes to the bottom, got to block {ended}");
+    assert_eq!(top_block(&view, cx), 0);
+}

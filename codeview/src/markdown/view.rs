@@ -40,6 +40,8 @@ const BLOCK_GAP: f32 = 12.;
 const ITEM_GAP: f32 = 2.;
 /// How long a Copy button says "Copied".
 const COPIED_FOR: Duration = Duration::from_millis(1500);
+/// How far an arrow key scrolls.
+const ARROW_SCROLL: f32 = 40.;
 /// How far a drag past the top or bottom scrolls per mouse move.
 const DRAG_SCROLL: f32 = 20.;
 /// Laid out beyond the view, so a scroll shows blocks already measured.
@@ -315,15 +317,32 @@ impl RenderedView {
         self.drag = Drag::Idle;
     }
 
-    /// The host's Copy and Select All; other keys go on to the panel (find) and the window's bindings.
+    /// The host's Copy and Select All, and the reading keys (Page Up and Down, Home, End, the arrows) when nothing is
+    /// bound to them; other keys go on to the panel (find) and the window's bindings.
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         match Host::key_outcome(event, KeyScope::Viewer, cx) {
             KeyOutcome::Command(Command::Copy(target)) => self.copy(target, cx),
             KeyOutcome::Command(Command::SelectAll) => self.select_all(cx),
             KeyOutcome::Handled => {}
+            KeyOutcome::Unbound if self.scroll_by_key(&event.keystroke.key) => cx.notify(),
             KeyOutcome::Command(_) | KeyOutcome::Foreign | KeyOutcome::Unbound => return,
         }
         cx.stop_propagation();
+    }
+
+    /// Scrolls as reading key `key` says; false for any other key.
+    fn scroll_by_key(&mut self, key: &str) -> bool {
+        let page = self.list.viewport_bounds().size.height * 0.9;
+        match key {
+            "pagedown" => self.list.scroll_by(page),
+            "pageup" => self.list.scroll_by(-page),
+            "down" => self.list.scroll_by(px(ARROW_SCROLL)),
+            "up" => self.list.scroll_by(-px(ARROW_SCROLL)),
+            "home" => self.list.scroll_to(ListOffset { item_ix: 0, offset_in_item: px(0.) }),
+            "end" => self.list.scroll_to_end(),
+            _ => return false,
+        }
+        true
     }
 
     fn hit(&self, point: Point<Pixels>) -> Option<usize> {
