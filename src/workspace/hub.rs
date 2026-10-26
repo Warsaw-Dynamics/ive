@@ -26,6 +26,7 @@ use crate::codeview_host::{DiffOrigin, diff_panel, serve, serve_texts};
 use crate::git::diff::{FileDiff, FilePaths, Sides};
 use crate::git::refs::BranchName;
 use crate::git::repo::GitError;
+use crate::git::status::Change;
 use crate::git::types::GitPath;
 use crate::git::worktree_add::{add_worktree, worktree_dir};
 use crate::workspace::projects::AfterOpen;
@@ -957,29 +958,22 @@ impl Workspace {
         }
     }
 
+    /// The uncommitted files of every listed checkout, the last written first.
     fn changed_items(&self) -> Vec<Item> {
-        let mut items = Vec::new();
+        let mut dated = Vec::new();
         for open in &self.projects {
             for checkout in open.listed_checkouts() {
                 let Some(read) = self.hub_index.files(&checkout.path) else {
                     continue;
                 };
                 let checkout = open.project.checkout_ref(checkout);
-                for change in read.changes.iter().filter(|change| !change.path.is_folder()) {
-                    let path = change.path.display();
-                    let name = change.path.file_name();
-                    items.push(Item {
-                        detail: change.path.folder(),
-                        place: Place::One(checkout.clone()),
-                        project: Some(checkout.project.clone()),
-                        mark: Some(change.mark),
-                        path: Some(path.clone()),
-                        ..Item::new(Target::Change { checkout: checkout.clone(), path }, name.clone(), icons::file_icon(&name))
-                    });
-                }
+                let files = read.changes.iter().filter(|dated| !dated.change.path.is_folder());
+                dated.extend(files.map(|dated| (dated.modified, change_item(&checkout, &dated.change))));
             }
         }
-        items
+        // stable: files written at once keep their path order; gone files (`None`) last
+        dated.sort_by(|(a, _), (b, _)| b.cmp(a));
+        dated.into_iter().map(|(_, item)| item).collect()
     }
 
     fn process_items(&self, live_only: bool) -> Vec<Item> {
@@ -1333,6 +1327,20 @@ pub(super) fn recent_items(history: &History, presence: impl Fn(&Shown) -> Prese
         items.push(Item { detail, state, place, project, age: Some(shown.shown_at), greyed, path: relative, ..Item::new(target, title, icon) });
     }
     items
+}
+
+/// A changed file's row, opening its diff in `checkout`.
+fn change_item(checkout: &CheckoutRef, change: &Change) -> Item {
+    let path = change.path.display();
+    let name = change.path.file_name();
+    Item {
+        detail: change.path.folder(),
+        place: Place::One(checkout.clone()),
+        project: Some(checkout.project.clone()),
+        mark: Some(change.mark),
+        path: Some(path.clone()),
+        ..Item::new(Target::Change { checkout: checkout.clone(), path }, name.clone(), icons::file_icon(&name))
+    }
 }
 
 fn kind_detail(identity: &TabIdentity) -> &'static str {

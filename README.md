@@ -126,7 +126,7 @@ The `--pty-host` commands use the `default` profile; for another one set `IVE_PT
 
 Ctrl+Shift+E opens the hub as a temporary tab (italic `Hub`): opening anything from it replaces it. With an empty query it
 lists **Recent** (every tab shown, newest first, open or closed: a closed one is greyed and reopens), **Changed**
-(the uncommitted files of every worktree) and **Running** (live processes and runs; exited runs are in Processes only). Typing searches every file of
+(the uncommitted files of every worktree, the last 10 written; Ctrl+Shift+E in the hub lists them all) and **Running** (live processes and runs; exited runs are in Processes only). Typing searches every file of
 every open project, and their scratches (`scratches/<name>`), as fzf does: fuzzy, smart case, `'exact`, `^prefix`,
 `suffix$`, `!not`, space for AND and `a | b` for OR, the matched characters highlighted; the counter at the right of
 the query reads `matched/total · ms`. `file.rs:42` opens the file at line 42, marked. The preview on the right
