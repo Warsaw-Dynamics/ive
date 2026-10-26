@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use codeview::changes::ChangeDiffJob;
 use codeview::diff::{FileDiff, Headers};
-use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
+use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope, ScrollBy};
 use codeview::panel::{Cast, Content, DiffInput, DiffLayout, Editable, Event, MarkdownView, Panel, ParseJob, TextsRequest};
 use codeview::syntax::ParseError;
 use gpui::{App, AppContext, BorrowAppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
@@ -35,12 +35,20 @@ pub fn install(cx: &mut App) {
 
 /// What a codeview panel does with `event`: its bound action, if any.
 fn key_outcome(event: &KeyDownEvent, scope: KeyScope, cx: &App) -> KeyOutcome {
-    match decide(bound_action(event, Place::Editor, cx), scope) {
+    match decide(bound_action(event, place_of(scope), cx), scope) {
         Decision::Done(outcome) => outcome,
         Decision::Invoke { generation, function } => {
             invoke(generation, function, None, cx);
             KeyOutcome::Handled
         }
+    }
+}
+
+/// Where in the keymap a panel's keys are looked up: a reading view has a scope of its own over the editor's.
+fn place_of(scope: KeyScope) -> Place {
+    match scope {
+        KeyScope::Editor | KeyScope::Viewer => Place::Editor,
+        KeyScope::Reader => Place::Reader,
     }
 }
 
@@ -88,6 +96,12 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Redo => Command::Redo,
         Builtin::ToggleDiffLayout => Command::ToggleLayout,
         Builtin::ToggleMarkdownView => Command::ToggleMarkdownView,
+        Builtin::ScrollLineUp => Command::Scroll(ScrollBy::LineUp),
+        Builtin::ScrollLineDown => Command::Scroll(ScrollBy::LineDown),
+        Builtin::ScrollPageUp => Command::Scroll(ScrollBy::PageUp),
+        Builtin::ScrollPageDown => Command::Scroll(ScrollBy::PageDown),
+        Builtin::ScrollToTop => Command::Scroll(ScrollBy::Top),
+        Builtin::ScrollToBottom => Command::Scroll(ScrollBy::Bottom),
         Builtin::Find => Command::Find,
         Builtin::FindNext => Command::FindNext,
         Builtin::FindPrevious => Command::FindPrevious,
@@ -389,6 +403,20 @@ mod tests {
         assert_eq!(opened_in, Some(MarkdownView::Rendered));
         assert_eq!(second.read_with(cx, |panel, _| panel.markdown_view()), Some(MarkdownView::Text));
         assert_eq!(Settings::load(&path).unwrap().markdown_view, MarkdownView::Text);
+    }
+
+    #[test]
+    fn should_map_the_scroll_builtins_to_commands_in_a_reader() {
+        // given
+        let scrolls = [Builtin::ScrollLineUp, Builtin::ScrollLineDown, Builtin::ScrollPageUp, Builtin::ScrollPageDown, Builtin::ScrollToTop, Builtin::ScrollToBottom];
+
+        // when
+        let decisions = scrolls.map(|scroll| decide(Some(Action::Builtin(scroll)), KeyScope::Reader));
+
+        // then
+        let expected = [ScrollBy::LineUp, ScrollBy::LineDown, ScrollBy::PageUp, ScrollBy::PageDown, ScrollBy::Top, ScrollBy::Bottom];
+        assert_eq!(decisions, expected.map(|by| Decision::Done(KeyOutcome::Command(Command::Scroll(by)))));
+        assert_eq!([KeyScope::Editor, KeyScope::Viewer, KeyScope::Reader].map(place_of), [Place::Editor, Place::Editor, Place::Reader]);
     }
 
     #[test]

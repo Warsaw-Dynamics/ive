@@ -90,6 +90,11 @@ Rendered", commit `0c40698`): open a README.md tab there and press Ctrl+Shift+M.
   primary selection too on Linux as the editor's Copy does, and the label says **Copied** for 1.5 s. Click targets
   for MCP: `markdown-copy:<n>`, the block's number from 1 in document order. Find does not match the label, and a
   selection does not take it. The mock shows it.
+- **Reading keys** *(added after the first build)*: Page Up and Down, Home, End, ↑ and ↓ scroll Rendered. They are
+  `ive.rn` bindings of `act::ScrollPageUp`, `act::ScrollPageDown`, `act::ScrollToTop`, `act::ScrollToBottom`,
+  `act::ScrollLineUp` and `act::ScrollLineDown` in a new `"reader"` scope (keys while Rendered has the keyboard; the
+  `"editor"` scope's keys apply there too), so `init.rn` can rebind or remove them; a key bound to nothing does not
+  scroll.
 - **Links do not open** in v1; the target shows as the link's tooltip.
 - No "read-only" note: the app has no status line for one (the mock's is mock-only), and the picked Rendered segment
   says it. *(Our call, from the builder check.)*

@@ -238,7 +238,7 @@ impl LineField {
                 self.edited(cx);
             }
             Command::Undo | Command::Redo | Command::Indent | Command::Flush | Command::ToggleLayout => {}
-            Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => {}
+            Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView | Command::Scroll(_) => {}
         }
         cx.notify();
     }

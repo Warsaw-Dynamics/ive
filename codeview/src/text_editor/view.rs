@@ -566,8 +566,15 @@ impl TextEditor {
                 },
                 cx,
             ),
-            // saving, finding and the Markdown view are the panel's, and a text has no layout to toggle
-            Command::Flush | Command::ToggleLayout | Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => Ok(()),
+            // saving, finding and the Markdown view are the panel's, a text has no layout to toggle, and only a reading
+            // view scrolls by a command
+            Command::Flush
+            | Command::ToggleLayout
+            | Command::Find
+            | Command::FindNext
+            | Command::FindPrevious
+            | Command::ToggleMarkdownView
+            | Command::Scroll(_) => Ok(()),
         };
     }
 

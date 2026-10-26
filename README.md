@@ -516,7 +516,9 @@ async fn restart(context) {
   click with modifiers that no binding names runs the `mods: "NONE"` binding, so ctrl + click on a tab still
   shows it.
 - `scope`, where a binding applies: `"window"` (keys anywhere; the default), `"terminal"` (keys while a terminal has
-  the keyboard, the mouse over a terminal), `"editor"` (keys in a scratch, and Copy and Select All in an open file or a diff), `"tab"` (the mouse on a tab), `"tree"`
+  the keyboard, the mouse over a terminal), `"editor"` (keys in a scratch, and Copy and Select All in an open file or a diff), `"reader"` (keys while a
+  Markdown file or scratch shows Rendered: its scrolling; the `"editor"` scope's keys apply there too, after the
+  reader's own), `"tab"` (the mouse on a tab), `"tree"`
   (the mouse on a sidebar row, outside its chevron and buttons), `"hub"` (keys while the hub's query has the
   keyboard: the hub's own keys, before the query field's; the field keeps typing, ←/→, Home/End, Backspace on a
   non-empty query and the clipboard). `"tree"` is also a key scope: keys while the sidebar has the keyboard (a
@@ -625,6 +627,7 @@ async fn restart(context) {
 | `act::Find`, `act::FindNext`, `act::FindPrevious` | editor | a code view's find box: open it (or give it the keyboard back), the next and previous match (Ctrl+F, F3, Shift+F3; macOS Cmd+F, also Cmd+G, Cmd+Shift+G) |
 | `act::ToggleDiffLayout` | editor | a focused diff inline or side by side (no key by default); new diff and commit tabs open in the layout last switched to |
 | `act::ToggleMarkdownView` | editor | a Markdown file or scratch between Text and Rendered (Ctrl+Shift+M; macOS Cmd+Shift+M); new Markdown tabs open in the view last switched to |
+| `act::ScrollLineUp`, `act::ScrollLineDown`, `act::ScrollPageUp`, `act::ScrollPageDown`, `act::ScrollToTop`, `act::ScrollToBottom` | reader | Rendered scrolls a line, a page, or to its top or bottom (↑ ↓, Page Up and Down, Home, End) |
 | `act::OpenHub` | window | shows the hub (Ctrl+Shift+E) |
 | `act::OpenTerminalIn` | window | the hub asking where a new terminal goes: a checkout, or a branch that first gets its worktree (Ctrl+Shift+T) |
 | `act::HubDown`, `act::HubUp`, `act::HubPageDown`, `act::HubPageUp` | hub | move the selection |

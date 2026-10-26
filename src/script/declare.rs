@@ -168,7 +168,8 @@ fn key_binding(entry: Value, functions: &mut Functions) -> Result<Binding, Strin
         Some("editor") => Scope::Editor,
         Some("hub") => Scope::Hub,
         Some("tree") => Scope::Tree,
-        Some(other) => return Err(format!("scope {other:?} is not a key scope (window, terminal, editor, hub, tree)")),
+        Some("reader") => Scope::Reader,
+        Some(other) => return Err(format!("scope {other:?} is not a key scope (window, terminal, editor, reader, hub, tree)")),
     };
     let action = action(required(&entry, "action")?.clone(), scope, functions)?;
     if matches!(&action, Action::Builtin(builtin) if builtin.is_mouse_only()) {
@@ -265,6 +266,12 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "Redo" => Builtin::Redo,
         "ToggleDiffLayout" => Builtin::ToggleDiffLayout,
         "ToggleMarkdownView" => Builtin::ToggleMarkdownView,
+        "ScrollLineUp" => Builtin::ScrollLineUp,
+        "ScrollLineDown" => Builtin::ScrollLineDown,
+        "ScrollPageUp" => Builtin::ScrollPageUp,
+        "ScrollPageDown" => Builtin::ScrollPageDown,
+        "ScrollToTop" => Builtin::ScrollToTop,
+        "ScrollToBottom" => Builtin::ScrollToBottom,
         "Find" => Builtin::Find,
         "FindNext" => Builtin::FindNext,
         "FindPrevious" => Builtin::FindPrevious,

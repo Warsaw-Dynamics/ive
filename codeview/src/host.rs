@@ -38,6 +38,19 @@ pub enum Command {
     FindPrevious,
     /// a Markdown text between Text and Rendered
     ToggleMarkdownView,
+    /// a reading view (Rendered) scrolls
+    Scroll(ScrollBy),
+}
+
+/// How far a reading view scrolls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScrollBy {
+    LineUp,
+    LineDown,
+    PageUp,
+    PageDown,
+    Top,
+    Bottom,
 }
 
 impl Command {
@@ -73,6 +86,8 @@ pub enum KeyScope {
     Editor,
     /// a read-only view (diff, file): it only takes Copy and Select All, every other bound key goes on to the host
     Viewer,
+    /// a reading view (Rendered Markdown): as a viewer, and it scrolls by the keys bound in the host's reading place
+    Reader,
 }
 
 pub type KeyFn = Rc<dyn Fn(&KeyDownEvent, KeyScope, &App) -> KeyOutcome>;

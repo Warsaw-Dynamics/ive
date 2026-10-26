@@ -124,6 +124,13 @@ pub fn init(config) {
         #{ key: "F3", mods: "SHIFT", action: act::FindPrevious, scope: "editor" },
         // a Markdown file or scratch between its text and the document formatted; not Ctrl+Shift+V, the terminal's paste
         #{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" },
+        // reading a Markdown file or scratch Rendered: the "reader" scope, which also takes the editor scope's keys
+        #{ key: "PageDown", action: act::ScrollPageDown, scope: "reader" },
+        #{ key: "PageUp", action: act::ScrollPageUp, scope: "reader" },
+        #{ key: "Home", action: act::ScrollToTop, scope: "reader" },
+        #{ key: "End", action: act::ScrollToBottom, scope: "reader" },
+        #{ key: "DownArrow", action: act::ScrollLineDown, scope: "reader" },
+        #{ key: "UpArrow", action: act::ScrollLineUp, scope: "reader" },
 
         // the hub (Ctrl+Shift+E): its query keeps typing, arrows left/right, Home/End and the clipboard
         #{ key: "DownArrow", action: act::HubDown, scope: "hub" },

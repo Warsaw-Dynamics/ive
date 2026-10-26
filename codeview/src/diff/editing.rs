@@ -431,6 +431,8 @@ impl DiffView {
             Command::Copy(_) | Command::SelectAll | Command::ToggleLayout | Command::Flush => {}
             // the panel's
             Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => {}
+            // only a reading view binds it
+            Command::Scroll(_) => {}
         }
     }
 

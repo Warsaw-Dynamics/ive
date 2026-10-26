@@ -1728,6 +1728,35 @@ mod tests {
     }
 
     #[test]
+    fn should_bind_the_reading_keys_in_the_reader_scope_only() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let keys = ["pagedown", "pageup", "home", "end", "down", "up"];
+        let found: Vec<Option<Action>> = keys.iter().map(|key| keymap.find_key(&pressed(key), Place::Reader).cloned()).collect();
+        let scrolls = [Builtin::ScrollPageDown, Builtin::ScrollPageUp, Builtin::ScrollToTop, Builtin::ScrollToBottom, Builtin::ScrollLineDown, Builtin::ScrollLineUp];
+        assert_eq!(found, scrolls.map(builtin).to_vec());
+        let in_editor: Vec<Option<Action>> = keys.iter().map(|key| keymap.find_key(&pressed(key), Place::Editor).cloned()).collect();
+        assert!(in_editor.iter().all(|action| !scrolls.iter().any(|scroll| *action == builtin(*scroll))), "{in_editor:?}");
+        let copy = if cfg!(target_os = "macos") { "cmd-c" } else { "ctrl-c" };
+        assert_eq!(keymap.find_key(&pressed(copy), Place::Reader).cloned(), builtin(Builtin::CopyTo(ClipboardTarget::Clipboard)));
+    }
+
+    #[test]
+    fn should_let_init_bind_a_reading_key() {
+        // given
+        let init = r#"pub fn init(config) { config.keys = [#{ key: "j", action: act::ScrollLineDown, scope: "reader" }, #{ key: "PageDown", action: act::DisableDefaultAssignment, scope: "reader" }]; }"#;
+
+        // when
+        let keymap = load(init).1.unwrap().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("j"), Place::Reader).cloned(), builtin(Builtin::ScrollLineDown));
+        assert_eq!(keymap.find_key(&pressed("pagedown"), Place::Reader), None);
+    }
+
+    #[test]
     fn should_let_init_replace_a_hub_key() {
         // given
         let init = r#"pub fn init(config) { config.keys = [#{ key: "j", mods: "CTRL", action: act::DisableDefaultAssignment, scope: "hub" }]; }"#;

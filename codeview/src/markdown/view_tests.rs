@@ -15,7 +15,7 @@ use super::view::RenderedView;
 use super::{Doc, parse};
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
 use crate::find::{Compiled, FindOptions, FindQuery, FindText};
-use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome};
+use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome, ScrollBy};
 use crate::style::{Appearance, ViewStyle};
 
 /// What the view asked of its host.
@@ -25,12 +25,15 @@ pub(super) struct Seen {
     pub targets: HashMap<String, ClickListener>,
 }
 
-/// Ctrl+C copies and Ctrl+A selects all, as `ive.rn` binds them; no other key is bound.
+/// Ctrl+C copies, Ctrl+A selects all, Page Down, Home and End scroll, as `ive.rn` binds them; no other key is bound.
 fn keys_of(event: &KeyDownEvent) -> KeyOutcome {
     let keystroke = &event.keystroke;
     match (keystroke.modifiers.control, keystroke.key.as_str()) {
         (true, "c") => KeyOutcome::Command(Command::Copy(ClipboardTarget::Clipboard)),
         (true, "a") => KeyOutcome::Command(Command::SelectAll),
+        (false, "pagedown") => KeyOutcome::Command(Command::Scroll(ScrollBy::PageDown)),
+        (false, "end") => KeyOutcome::Command(Command::Scroll(ScrollBy::Bottom)),
+        (false, "home") => KeyOutcome::Command(Command::Scroll(ScrollBy::Top)),
         _ => KeyOutcome::Unbound,
     }
 }
@@ -489,4 +492,25 @@ fn should_leave_a_block_gap_after_a_list() {
 
     // then
     assert_eq!(gaps, vec![2., 12., 12., 12.]);
+}
+
+#[gpui::test]
+fn should_leave_reading_keys_bound_to_nothing_alone(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(&paragraphs(200), cx);
+    let first = bounds_of(&view, 0, cx);
+    press(left_of(first), (1, Modifiers::none()), cx);
+
+    // when
+    cx.simulate_keystrokes("pagedown");
+    draw(cx);
+    let bound = top_block(&view, cx);
+    cx.simulate_keystrokes("home");
+    draw(cx);
+    cx.simulate_keystrokes("down");
+    draw(cx);
+
+    // then
+    assert!(bound > 3, "a bound Page Down scrolls");
+    assert_eq!(top_block(&view, cx), 0, "Down is bound to nothing in this host: it does not scroll");
 }

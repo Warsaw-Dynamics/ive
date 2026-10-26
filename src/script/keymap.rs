@@ -20,6 +20,8 @@ pub enum Scope {
     Tree,
     /// keys while the hub (Ctrl+Shift+E) has the keyboard
     Hub,
+    /// keys while a reading view (a Markdown file or scratch shown Rendered) has the keyboard; the editor's keys too
+    Reader,
 }
 
 impl Scope {
@@ -31,6 +33,7 @@ impl Scope {
             Self::Tab => "tab",
             Self::Tree => "tree",
             Self::Hub => "hub",
+            Self::Reader => "reader",
         }
     }
 }
@@ -42,6 +45,8 @@ pub enum Place {
     Editor,
     /// selected read-only text has the keyboard: editor-scope keys, of which Copy and Select All act
     Text,
+    /// a reading view has the keyboard: reader-scope keys, then editor-scope ones
+    Reader,
     Hub,
     /// the sidebar has the keyboard
     Tree,
@@ -184,6 +189,13 @@ pub enum Builtin {
     ToggleDiffLayout,
     /// a Markdown file or scratch between Text and Rendered
     ToggleMarkdownView,
+    /// a reading view (Rendered) a line, a page, or to an end
+    ScrollLineUp,
+    ScrollLineDown,
+    ScrollPageUp,
+    ScrollPageDown,
+    ScrollToTop,
+    ScrollToBottom,
     /// the code view's find box opens, or takes the keyboard back
     Find,
     /// the next match of the find box's query, the box reopening with the last query
@@ -273,6 +285,9 @@ impl Builtin {
             }
             Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout | Self::ToggleMarkdownView => scope == Scope::Editor,
             Self::Find | Self::FindNext | Self::FindPrevious => scope == Scope::Editor,
+            Self::ScrollLineUp | Self::ScrollLineDown | Self::ScrollPageUp | Self::ScrollPageDown | Self::ScrollToTop | Self::ScrollToBottom => {
+                scope == Scope::Reader
+            }
             Self::CopyTo(_) | Self::PasteFrom(_) => matches!(scope, Scope::Terminal | Scope::Editor),
             Self::Paste(..) => scope == Scope::Terminal,
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,
@@ -458,6 +473,7 @@ impl Keymap {
         let local = match place {
             Place::Terminal => in_scope(Scope::Terminal),
             Place::Editor | Place::Text => in_scope(Scope::Editor),
+            Place::Reader => in_scope(Scope::Reader).or_else(|| in_scope(Scope::Editor)),
             Place::Hub => in_scope(Scope::Hub),
             Place::Tree => in_scope(Scope::Tree),
             Place::Elsewhere => None,
