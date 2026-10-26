@@ -56,6 +56,10 @@ pub struct RenderedView {
     scroll: ScrollState,
     focus_handle: FocusHandle,
     marks: Option<FindMarks>,
+    /// the marks on the scrollbar, made when the marks change rather than at each frame
+    ticks: Rc<[ScrollTick]>,
+    /// the block of each piece, in order
+    piece_blocks: Arc<Vec<usize>>,
     /// the code block whose Copy button says "Copied"
     copied: Option<usize>,
     copied_reset: Task<()>,
@@ -95,12 +99,14 @@ impl RenderedView {
         Self {
             found: found_text(&doc),
             code_blocks: code_blocks(&doc),
+            piece_blocks: piece_blocks(&doc),
             doc,
             revision: 0,
             list,
             scroll,
             focus_handle: cx.focus_handle(),
             marks: None,
+            ticks: Rc::from([]),
             copied: None,
             copied_reset: Task::ready(()),
             shown: Rc::default(),
@@ -123,6 +129,7 @@ impl RenderedView {
         self.list.scroll_to(ListOffset { item_ix: top.item_ix.min(last), offset_in_item: offset });
         self.found = found_text(&doc);
         self.code_blocks = code_blocks(&doc);
+        self.piece_blocks = piece_blocks(&doc);
         self.doc = doc;
         self.selection = None;
         self.revision += 1;
@@ -205,6 +212,7 @@ impl RenderedView {
     }
 
     pub fn set_find_marks(&mut self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
+        self.ticks = self.ticks_of(marks.as_ref());
         self.marks = marks;
         cx.notify();
     }
@@ -340,13 +348,14 @@ impl RenderedView {
     }
 
     /// A scrollbar tick per match, at its block's share of the document.
-    fn find_ticks(&self) -> Rc<[ScrollTick]> {
-        let Some(marks) = &self.marks else {
+    fn ticks_of(&self, marks: Option<&FindMarks>) -> Rc<[ScrollTick]> {
+        let Some(marks) = marks else {
             return Rc::from([]);
         };
         let blocks = self.doc.blocks.len().max(1) as f32;
-        let at = |range: &Range<usize>| self.doc.piece_at(range.start).0 as f32 / blocks;
-        marks.ranges.iter().enumerate().map(|(index, range)| ScrollTick { at: at(range), current: marks.current == Some(index) }).collect()
+        let starts = &self.found.1;
+        let block_of = |offset: usize| self.piece_blocks.get(starts.partition_point(|start| *start <= offset).saturating_sub(1)).copied().unwrap_or(0);
+        marks.ranges.iter().enumerate().map(|(index, range)| ScrollTick { at: block_of(range.start) as f32 / blocks, current: marks.current == Some(index) }).collect()
     }
 
     fn frame(&self, window: &Window, cx: &mut Context<Self>) -> Frame {
@@ -400,6 +409,10 @@ fn copy_target() -> ClipboardTarget {
 
 fn found_text(doc: &Doc) -> (Arc<Vec<u8>>, Arc<Vec<usize>>) {
     (Arc::new(doc.text.as_bytes().to_vec()), Arc::new(doc.piece_starts()))
+}
+
+fn piece_blocks(doc: &Doc) -> Arc<Vec<usize>> {
+    Arc::new(doc.blocks.iter().enumerate().flat_map(|(index, block)| std::iter::repeat_n(index, block.pieces.len())).collect())
 }
 
 fn code_blocks(doc: &Doc) -> Arc<Vec<usize>> {
@@ -669,6 +682,6 @@ impl Render for RenderedView {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_key_down(cx.listener(Self::on_key_down))
             .child(blocks)
-            .child(vertical_scrollbar_with_ticks(&self.scroll, &style, self.find_ticks()))
+            .child(vertical_scrollbar_with_ticks(&self.scroll, &style, self.ticks.clone()))
     }
 }

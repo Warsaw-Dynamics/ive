@@ -392,3 +392,23 @@ fn should_scroll_to_a_match_deep_in_a_tall_block(cx: &mut TestAppContext) {
     let y = view.read_with(cx, |view, _| view.position_of(at)).expect("the match is drawn");
     assert!(y > px(0.) && y < px(400.), "the match is at {y:?}, out of the 400 px view");
 }
+
+#[gpui::test]
+fn should_mark_many_matches_without_slowing_frames(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(&paragraphs(20_000), cx);
+    let length = view.read_with(cx, |view, _| view.doc().text.len());
+    let ranges: Vec<std::ops::Range<usize>> = (0..length).step_by(2).take(100_000).map(|at| at..at + 1).collect();
+    let lines: Vec<usize> = vec![0; ranges.len()];
+    let marks = crate::find::marks::FindMarks { ranges: Arc::from(ranges), lines: Arc::from(lines), current: Some(0) };
+
+    // when
+    let started = std::time::Instant::now();
+    view.update(cx, |view, cx| view.set_find_marks(Some(marks), cx));
+    for _ in 0..3 {
+        draw(cx);
+    }
+
+    // then
+    assert!(started.elapsed() < Duration::from_secs(1), "took {:?}", started.elapsed());
+}
