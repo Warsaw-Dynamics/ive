@@ -110,6 +110,8 @@ pub struct Drawn {
     pub chips: Vec<(String, HubScope)>,
     /// `N excluded not searched` while the switch is off
     pub excluded_note: Option<String>,
+    /// the key to search the files' contents, at the right of an empty query
+    pub content_key: Option<String>,
 }
 
 pub fn render_hub(id: TabId, hub: &HubTab, drawn: Drawn, workspace: &Workspace, cx: &mut Context<Workspace>) -> AnyElement {
@@ -144,6 +146,10 @@ pub fn render_hub(id: TabId, hub: &HubTab, drawn: Drawn, workspace: &Workspace, 
 fn query_row(id: TabId, hub: &HubTab, drawn: &Drawn, theme: Theme, cx: &mut Context<Workspace>) -> Div {
     let pick = hub.state.pick.as_ref().map(|pick| div().flex_none().text_color(rgb(theme.muted)).child(format!("{} ›", pick.title)));
     let counter = drawn.list.counter.clone().map(|counter| div().flex_none().text_xs().text_color(rgb(theme.muted)).child(counter));
+    let content_key = drawn.content_key.clone().map(|keys| {
+        let keys = div().text_color(rgb(theme.text)).child(keys);
+        div().flex().flex_none().gap_1().text_xs().text_color(rgb(theme.muted)).child(keys).child("search in files")
+    });
     // new terminal mode lists every project and searches no files: no scope, no Excluded switch
     let searching = mode(&hub.state) != Mode::NewTerminal;
     let chips: Vec<Stateful<Div>> = match searching {
@@ -163,6 +169,7 @@ fn query_row(id: TabId, hub: &HubTab, drawn: &Drawn, theme: Theme, cx: &mut Cont
         .child(img(icons::embedded(theme.appearance, icons::LOCATE)).flex_none().size(px(16.)))
         .children(pick)
         .child(div().flex_1().min_w_0().child(hub.input.clone()))
+        .children(content_key)
         .children(counter)
         .children(chips)
         .children(switches.into_iter().flatten())

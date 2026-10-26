@@ -13,6 +13,10 @@
            x-init="$nextTick(() => $el.focus())" x-effect="focus === 'hub' && $nextTick(() => $el.focus())"
            :placeholder="hub.pick ? 'Worktree…' : hub.newTerminal ? 'New terminal in… type a project, worktree or branch' : hub.content ? 'Search the files\' contents: plain text, Alt+R regex, Alt+W whole words' : 'Recent, changes and every file of every project. Type to search; > actions, @ processes, # branches, : scope, :42 line'"
            spellcheck="false" autocomplete="off" />
+    <!-- an empty file search tells how to search the files' contents instead; the counter takes its place once typing -->
+    <template x-if="(v.mode === 'files' || v.mode === 'changed') && hub.query === ''">
+      <span class="hub__switch"><kbd>Ctrl+Shift+F</kbd> search in files</span>
+    </template>
     <!-- scope: Tab cycles the chips (all, the back tab's project, its worktree, a scope picked with :); :… lists any -->
     <template x-if="v.mode === 'files' || v.mode === 'changed' || v.mode === 'scope' || (v.mode === 'content' && hub.paths.length === 0)">
       <div class="hub__scopes" title="Tab switches; Backspace on an empty query goes back to All projects">

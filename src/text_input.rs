@@ -6,7 +6,7 @@ pub mod model;
 use std::ops::Range;
 
 use gpui::{
-    App, Bounds, ClickEvent, ClipboardItem, Context, CursorStyle, Element, ElementId, ElementInputHandler, Entity,
+    App, Bounds, ClickEvent, ClipboardItem, ContentMask, Context, CursorStyle, Element, ElementId, ElementInputHandler, Entity,
     EntityInputHandler, EventEmitter, FocusHandle, Focusable, GlobalElementId, KeyBinding, Keystroke, LayoutId, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, ShapedLine, SharedString, Style,
     TextRun, UTF16Selection, UnderlineStyle, Window, actions, div, fill, point, prelude::*, relative, rgb, rgba,
@@ -529,7 +529,9 @@ impl Element for TextElement {
         let Some(line) = prepaint.line.take() else {
             return;
         };
-        if let Err(error) = line.paint(bounds.origin, window.line_height(), gpui::TextAlign::Left, None, window, cx) {
+        // a text or placeholder longer than the field stops at its edge, not over what sits beside it
+        let painted = window.with_content_mask(Some(ContentMask { bounds }), |window| line.paint(bounds.origin, window.line_height(), gpui::TextAlign::Left, None, window, cx));
+        if let Err(error) = painted {
             eprintln!("ive: cannot draw a text field: {error}");
         }
         if focus_handle.is_focused(window) && let Some(caret) = prepaint.caret.take() {

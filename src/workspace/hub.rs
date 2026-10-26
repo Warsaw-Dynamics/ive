@@ -817,7 +817,7 @@ impl Workspace {
     pub(crate) fn render_hub_tab(&self, id: TabId, hub: &HubTab, cx: &mut Context<Self>) -> AnyElement {
         let sources = self.hub_sources(hub.back, cx);
         let list = self.hub_list(hub, &sources);
-        let drawn = Drawn { list, strip: self.key_strip(&hub.state, cx), chips: self.scope_chips(&hub.state, &sources), excluded_note: self.excluded_note(&hub.state) };
+        let drawn = Drawn { list, strip: self.key_strip(&hub.state, cx), chips: self.scope_chips(&hub.state, &sources), excluded_note: self.excluded_note(&hub.state), content_key: self.content_key(&hub.state, cx) };
         render_hub(id, hub, drawn, self, cx)
     }
 
@@ -833,6 +833,12 @@ impl Workspace {
 
     fn excluded_note(&self, state: &HubState) -> Option<String> {
         (!state.excluded && self.corpus.excluded > 0).then(|| format!("{} excluded not searched", thousands(self.corpus.excluded)))
+    }
+
+    /// The key switching an empty file search to the files' contents, as bound; `None` when unbound or typing.
+    fn content_key(&self, state: &HubState, cx: &App) -> Option<String> {
+        let keymap = keymap(cx).filter(|_| mode(state) == Mode::Empty)?;
+        keymap.keys_for(Scope::Hub, &Action::Builtin(Builtin::HubToggleContent)).first().map(|keystroke| key_label::label(keystroke))
     }
 
     /// The keys of the hub's state as bound (a key changed in `init.rn` shows as changed); unbound ones are left out.
