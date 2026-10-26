@@ -8,33 +8,39 @@
     <link rel="stylesheet" href="./mock.css" />
     <link rel="stylesheet" href="./checkouts.css" />
     <link rel="stylesheet" href="./hub.css" />
+    <link rel="stylesheet" href="./find.css" />
+    <link rel="stylesheet" href="./ident.css" />
     <!-- Modules run in order before DOMContentLoaded, so the data exists before include.js starts Alpine. -->
     <script type="module" src="./checkouts-data.js"></script>
     <script type="module" src="./hub.js"></script>
+    <script type="module" src="./find.js"></script>
     <script type="module" src="./route.js"></script>
     <script type="module" src="./menus.js"></script>
+    <script type="module" src="./dnd.js"></script>
+    <script type="module" src="./ident.js"></script>
     <script type="module" src="./checkouts.js"></script>
     <script src="./include.js"></script>
   </head>
   <body>
     <div class="desktop" x-data="checkouts" x-cloak @keydown.window.escape="menu = null"
          @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
-         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event)">
-      <div class="window">
+         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event); clipKey($event); markdownKey($event)"
+         @mousedown.window="findSideClick($event)">
+      <div class="window" :class="{ 'window--behind': windowFocused === false }">
         <main class="window__content" :style="{ '--project-glow': projectGlow() }">
           <div class="fill" x-include="components/checkouts/sidebar.html"></div>
           <div class="fill" x-include="components/checkouts/editor.html"></div>
         </main>
-        <!-- mock-only: save states of the shown file, scratch or uncommitted diff tab (codeview "Saving") -->
-        <nav class="mock-bar mock-bar--save" aria-label="Mock controls">
-          <span>mock: save</span>
-          <button type="button" @click="mockSave('disk')" title="The file changed on disk: Reload, Overwrite">conflict</button>
-          <button type="button" @click="mockSave('big')" title="A file over 8 MiB: only Reload">conflict (&gt; 8 MiB)</button>
-          <button type="button" @click="mockSave('error')" title="cannot save: Permission denied; then close the tab">error</button>
-          <button type="button" @click="mockSave(null)">clear</button>
-        </nav>
-        <!-- mock-only: back to the single-project mock -->
-        <a class="mock-back" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file">← index</a>
+        <!-- mock-only: the desktop's notifications (the OS draws them; a click raises IVE on that process) -->
+        <div class="os-notices">
+          <template x-for="n in desktopNotices" :key="n.c.id">
+            <button class="os-notice" type="button" @click="showWaiting(n.c)">
+              <span class="os-notice__app">IVE · desktop notification (mock)</span>
+              <span class="os-notice__title" x-text="n.c.title + ' — ' + label(n.c.co)"></span>
+              <span class="os-notice__text" x-text="n.text"></span>
+            </button>
+          </template>
+        </div>
       </div>
     </div>
   </body>

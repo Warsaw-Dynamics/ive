@@ -1,0 +1,25 @@
+<!-- find.js (a proposal): Ctrl+F's box floating at the top right of the code below it (the next [data-find-scroll]),
+     and the strip of matches by its scrollbar. Needs tab. -->
+<template x-if="findOf(tab).open">
+  <div class="find">
+    <div class="findbar" :style="{ top: (findOf(tab).top + 6) + 'px' }">
+      <input class="findbar__input" :class="{ 'findbar__input--none': findOf(tab).query !== '' && findOf(tab).count === 0 }"
+             placeholder="Find" spellcheck="false" autocomplete="off" x-model="tab.find.query"
+             @input="refind('jump')" @keydown="findInputKey(tab, $event)" />
+      <span class="findbar__count" :class="{ 'findbar__count--none': findOf(tab).query !== '' && findOf(tab).count === 0 }" x-text="findCount(tab)"></span>
+      <template x-if="findSideText(tab)"><span class="findbar__side muted" x-text="findSideText(tab)" title="Click the other side to search it"></span></template>
+      <button class="findbar__button" type="button" title="Previous match (Shift+Enter, Shift+F3)" :disabled="findOf(tab).count === 0" @click="findStep(tab, -1)">▲</button>
+      <button class="findbar__button" type="button" title="Next match (Enter, F3)" :disabled="findOf(tab).count === 0" @click="findStep(tab, 1)">▼</button>
+      <button class="findbar__button findbar__option" type="button" title="Match case (Alt+C)" :aria-pressed="String(findOf(tab).matchCase)" @click="findToggle(tab, 'matchCase')">Aa</button>
+      <button class="findbar__button findbar__option" type="button" title="Whole words (Alt+W)" :aria-pressed="String(findOf(tab).word)" @click="findToggle(tab, 'word')">W</button>
+      <button class="findbar__button findbar__option" type="button" title="Regex (Alt+R)" :aria-pressed="String(findOf(tab).regex)" @click="findToggle(tab, 'regex')">.*</button>
+      <button class="findbar__button" type="button" title="Close (Esc)" @click="closeFind(tab)"><img class="icon" :src="icon('close.svg')" alt="" /></button>
+    </div>
+    <div class="findruler" :style="{ top: findOf(tab).top + 'px', height: findOf(tab).height + 'px' }">
+      <template x-for="m in findOf(tab).marks" :key="m.at">
+        <span class="findruler__mark" :class="{ 'findruler__mark--current': m.at === findOf(tab).at }" :style="{ top: m.top }"
+              @click="findMarkClick(tab, m.at)"></span>
+      </template>
+    </div>
+  </div>
+</template>

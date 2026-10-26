@@ -87,7 +87,7 @@ Only projects, worktrees, processes and files:
 - Icon by kind (file type, overview, console kind, diff, commit, table, config). Scratches show
   their file-type icon with IntelliJ's scratch badge (clock) overlaid.
 - No branch badge on tabs; the tooltip says `<branch or project> — <title>`.
-- Diff tabs are underlined (2 px) in their worktree's colour.
+- Where a tab belongs: project groups, worktree tints and module badges, below (in the app since 2026-10-24).
 - Tab kinds: file, diff, commit, scratch, git log, process (terminal, Claude Code, run), project overview,
   run values, settings.
 - A new tab opens right of the shown one.
@@ -139,6 +139,8 @@ Right end: project path (`~/Projects/atlassian`, or `… · no git`).
     stripe, branch icon, label (the branch too when it differs), folder, grey tags ("N changes"/"clean", ↑/↓,
     "● n running" in green), last use. A click shows it expanded in the tree; Hide on hover (not on the main checkout).
   - **Hidden** (collapsible, only when there are some): the same rows faded, Show on hover.
+  The filter stays at the top and the keys row at the bottom; the list between them scrolls, and ↑↓ keep the
+  selected row in view (see "Scale rules").
   - **Branches without a worktree**: newest first, 10 + paging; "local" or "only on origin" (faded icon). A click
     adds its worktree where `.ive.toml` says, as New worktree did; "+ Worktree" on hover.
 - **Databases** *(not in the app yet)*: IntelliJ-style data-source tree.
@@ -222,6 +224,9 @@ worktree, else its first open checkout.
 - Built for a monorepo: 102 data sources (not in the app yet), 600 scratches (`checkouts-data.js`, Faker, seeded).
   Run configurations scale by folder: the tab lists a checkout's `.run.toml` files by folder.
 - Every long list shows **10** entries with "Show 10 more", "Show all" and "or refine the search".
+- A list that can grow to thousands (the Worktrees list's branches, Scratches, the Git log's views) fills its page and
+  scrolls itself, drawing only the rows in view: "Show all" over 2,000 branches costs what 10 do. Its lines (group
+  headers, rows, notes, paging) are one row high. The hub draws at most 80 rows per section ("80 of N · type to narrow").
 
 ## Worktree folders
 
@@ -440,24 +445,144 @@ checkout cannot be hidden. Hide is on the worktree's tree row (on hover) and on 
 main checkout are hidden the project drops its worktree level, as with a single checkout. Kept per profile (in the app:
 saved state); the mock starts with GEN-811 hidden and does not keep changes on refresh.
 
-## Settings › Scripts (proposal)
+## Settings › Appearance and Scripts
 
-Settings has Appearance, Scripts and Third-Party Software; the Editor › Color Scheme pages are gone (colours are set
-in `init.rn`, the defaults are in `theme.toml`). Scripts is a reference to hand to a coding agent, which then
-customises IVE by editing `init.rn`:
+Synced with the Rust code on 2026-10-23 (`docs/superpowers/specs/2026-10-23-user-themes-design.md`). Settings has
+Appearance, Scripts, Updates and Third-Party Software; colours are set in themes and `init.rn`, the defaults are in
+`theme.toml`.
 
-- **Prompt for a coding agent**: one block, the profile's real paths filled in: what IVE's script files are and
-  which one to edit, the override rules, and how to check a load (MCP `script_status`, or `scripts.log`). Its last
-  line is `Task: …`; starter chips (Bind a key, Mouse binding, Colours, Bigger UI, Function, Terminal keys) fill it
-  with an example. Copy takes the block as shown.
-- **Files**: `init.rn`, `ive.rn`, `theme.toml`, `scripting.md`, `scripts.log`, `settings.toml`: name (opens it),
-  absolute path, role, Copy path.
-- **Quick reference**: folding blocks (Keys and mouse open, Actions, Functions, Theme, Fonts/excluded/tabs), each
-  Rune or a plain table, each with Copy.
-- All text on the page is selectable (drag, double click a word) and Ctrl+C copies the selection.
-- New: IVE writes `scripting.md` next to `ive.rn` at each start, read-only, as it does `ive.rn` and `theme.toml`:
-  the README's Scripting, Excluded folders and Theme sections, so an agent has the reference of the running version
-  without the repo.
+- **Appearance**: Mode (Same as OS, Dark, Light) picks the look; Theme picks where it comes from: Default (IVE's own),
+  then one button per `themes/<name>.toml` next to `init.rn`, sorted, wrapping. A theme holds both looks and only
+  what it changes. A picked theme whose file is gone stays, muted, after the others; the default applies meanwhile.
+- **Scripts**: the version line, then "Customising IVE" with Copy instructions at its right, and general instructions
+  for a person or an agent, the profile's real paths filled in: where changes go and the two read-only references
+  (`ive.rn`, `theme.toml`), keys/mouse/menus/excluded folders in `init.rn`, themes in `themes/<name>.toml`, adjusting
+  any theme with `config.theme.<path>` in `init.rn`, and checking a load (`scripts.log`, MCP `script_status`). Copy
+  takes the same text, plain, with the README's URL. Then the README link and the links to `ive.rn`, `theme.toml`
+  and `settings.toml`. The page scrolls above "Saved to …".
+- Dropped from the earlier proposal: the `Task:` line and starter chips, the Files table with Copy path, the Quick
+  reference blocks, and `scripting.md`.
+
+## Drag and drop, copy and paste (in the app since 2026-10-23, `dnd.js`)
+
+Mock: `checkouts.html#tab=conflicts` opens the Conflicts tab for a copy with three conflicts. The app's spec is
+`docs/superpowers/specs/2026-10-23-drag-and-drop-design.md`; where they differ the app has: the drop modifiers as
+`config.drop_modifiers = #{ force_copy, force_move }` (macOS Option and Cmd), `.git` and nested worktrees left out of a
+copied folder, at most 20 000 files and 4 GiB per copy, one copy at a time, and the drop row as a background only.
+
+- **Picking rows.** Ctrl+click adds or removes a tree row, Shift+click picks the rows from the last one; a plain click
+  picks the row and does what it always did. Files, folders and processes can be picked; Escape drops the picks.
+- **Files and folders** drag onto a folder, a worktree or project row (its root) or a worktree's Files row, in any
+  project; on a file, its folder. Dragging a picked row carries every picked file and folder (one inside another
+  picked folder goes with it). A hint under the pointer says what the drop does: `Copy 2 items to dev · lib`.
+  - Same worktree: move; another worktree or project: copy. Ctrl copies, Shift moves.
+  - Refused (hint says why): into itself, or a move onto the folder it is already in.
+  - **Layout.** Files from one folder go straight in. From different folders of one worktree, the drop asks with a
+    menu at the pointer: *Keep folders, from `<their common folder>/`* or *Flat, all into `<target>/`*. From several
+    worktrees or projects it is always flat (no common folder makes sense across them); the hint says so.
+- **Copy and paste.** Ctrl+C (or Copy in the row menu) copies the picked files; Ctrl+V (or Paste) on a folder pastes
+  them keeping their folders under their common one; from several worktrees, flat. Pasting a file onto its own place
+  makes `name (2).ext` without asking.
+- **Processes** drag onto a worktree or project (its row, its Processes row, or a single-checkout project's row), in
+  any project. A drop **moves** terminals and Claude Code there: IVE files them under the target (tree row, tab
+  underline, Send to Terminal's relative paths); the shell is not touched (no `cd`, no restart). The moved process
+  stays there until its working directory changes again: into another worktree or project, it follows as today;
+  anywhere else, it stays. A move outlives a restart of IVE. **Runs stay** with their worktree's `.run.toml` (the hint
+  says so). Ctrl+drop starts the same things there instead and the originals keep running: a new terminal, a new
+  Claude Code, the target's own copy of a run (refused for one whose `.run.toml` is not there).
+- **Conflicts tab.** When anything written would land on something already there, nothing is written; a `Copy
+  conflicts` (or `Move conflicts`) tab opens:
+  - Title: `Copy 7 files from GEN-817-ive, IDP-30-… to dev · internal-apps/ive/mock`; under it how many are in the way,
+    the layout, and "nothing is written until you press Copy".
+  - **All** Replace | Skip | Keep both sets every conflict at once.
+  - A table, one row per conflict: File (where it goes, under the target), From (the worktree's colour stripe,
+    worktree · path), Incoming and There now (lines · bytes), Why, Action (Replace | Skip | Keep both).
+    Why: `differs: +1 −0 lines`, `same content` (starts on Skip), `also coming from <worktree> · <path>` (two incoming
+    files with one name, flat), `a folder of that name is there`. The last two offer no Replace. Keep both shows the
+    name it gives (`as mock (2).css`). A click on a row shows both texts side by side.
+  - `N files go in without a conflict`, folded. Copy (Move) stays greyed until every row has an action; the line
+    beside it sums up: `copies 4, replaces 1, skips 1 · 1 to choose`. Cancel writes nothing.
+- After a drop or paste the target unfolds, the written files are picked, and a line under the tree says what
+  happened (`Copied 7 files to dev · internal-apps/ive/mock · skipped 1`). A move removes what it moved; skipped
+  files stay, with their folders.
+- Open: undo (Ctrl+Z after a drop); dropping onto the editor (a terminal already types the paths); dragging files out
+  to the OS file manager and in from it; Cut (Ctrl+X); whether a move across worktrees should be allowed at all, or a
+  Shift+drop should only ever copy.
+
+## Selecting text, failed tabs and notices
+
+Added 2026-10-23 in the app (`docs/superpowers/specs/2026-10-23-selectable-text-and-errors-design.md`); the mock does
+not draw it yet.
+
+- Read-only text worth pasting elsewhere selects like a web page (drag, double click a word, triple click the
+  block); Copy is the editor's Ctrl+C. Buttons, rows, menus and tooltips do not select.
+- A failed tab: the summary in the error colour with **Copy error** at its right, a grid of details (label muted,
+  value monospace), then the program's last lines in a bordered monospace box.
+- Notices: panels stacked at the bottom right of the main window, 420 px wide, error-coloured border on the sidebar
+  colour: a muted time line with Copy and ×, then the text in the error colour. At most five.
+
+## Attention: a process that wants the user (in the app since 2026-10-25)
+
+Claude Code, Codex or a build in a terminal says when it finished or waits for an answer; IVE shows it until the user
+looks. IVE reads only standard terminal sequences and knows no agent; each agent is set up to send them (README).
+
+- **What raises it**, from the program's output: `OSC 9;<text>` (iTerm2; not `9;4`), `OSC 777;notify;<title>;<body>`
+  (Ghostty, VTE), `OSC 99` (kitty): the text; `BEL`: "rang the bell"; `OSC 9;4` going from busy to `0`: "finished".
+  Claude Code: `preferredNotifChannel` `iterm2` (or `ghostty`, `kitty`, `terminal_bell`); Codex: `[tui] notifications`.
+- **Only while the user is not looking**: nothing is raised for the shown tab while IVE's window is in front.
+  Showing the tab with the window in front clears it. A newer call replaces the text and keeps the first call's time.
+  Only live output of hosted terminals counts: a replay holds calls the user saw.
+- **Where it shows**, one colour (`--attention`, amber: not the green of running nor the red of failed):
+  - the process's tab: a dot at the top right of its icon, the text in the tooltip;
+  - its tree row: the same dot, then `● <text>` after the title;
+  - a folded project, worktree or Processes row: `● n waiting`;
+  - the tab row's right end, left of Settings: IntelliJ's Notifications bell (`notifications-20.svg`) with the dot,
+    only while something waits. A click lists them, longest waiting first (icon, title · worktree, the text, age);
+    a row shows that process;
+  - the hub (Ctrl+E): **Waiting** first, above Recent; Running shows the text instead of the state.
+- **IVE in the background**: a desktop notification through the OS (freedesktop notifications on Linux, the
+  notification centre on macOS), title `<process title> — <worktree>`, body the text; one per process, a newer call
+  replaces it. A click raises IVE and shows the process (Linux). When IVE comes to front it withdraws its desktop
+  notifications: the bell lists what still waits.
+- Not done: the window's urgency hint (gpui has no API for it); keeping a call made while IVE was closed (the pty
+  host would have to hold it).
+- Mock: the Mock menu (dock icon by Settings) sends a notification, a bell or a progress end to a process that is not shown,
+  and sends IVE to the background (the window dims; the dark panels at the top right stand in for the OS's).
+
+## Where a tab belongs (in the app since 2026-10-24)
+
+The mock shows it as the app does (`ident.js`); the Mock menu's **Open demo tabs** (dock icon by Settings) opens a busy day's tabs across
+projects, worktrees and modules.
+
+- **Favicons.** A project's `.favicon.<ext>` at the root of its main checkout is its icon (`svg`, then `png`, `jpg`,
+  `jpeg`, `ico` when there are several). Any folder with a `.favicon.*` of its own is a module of a monorepo; a path
+  belongs to the deepest module above it. Read with the hub's index of each checkout.
+- **Project groups.** With tabs of more than one project open, the tab row groups them by project, in the order each
+  project's first tab shows; a group's head is a chevron, the project's favicon (or initials) and name. One project
+  open: no groups. A project's own tabs (scratches, Git log, commits, its overview) are in its group; tabs of no
+  project (Settings, the hub) in one group without a head.
+- **Frame** (2026-10-25). A group with a head has a 1 px frame round its head and tabs (radius 8, 2 px round the
+  tabs, 6 px between groups), folded or open; the group holding the shown tab has it in the shown tab's outline
+  colour. Folded, the frame holds the head and its one tab, and that tab, shown, keeps its fill but not its own
+  outline. Tried in the mock against a shared background, a darker track, an underline, a Chrome-like pill head and
+  rules between groups. Tabs are 27 px and the frame 31 px: odd heights centre on whole pixels in the row's 35 px.
+- **Worktree runs.** In a group a worktree's tabs sit together: the main checkout's first, then the worktrees in the
+  order dragged in the group's menu, else as each first shows; the project's own tabs last.
+- **Tint.** A tab of a worktree other than the main checkout has its worktree's colour as background (12 %, 18 %
+  hovered; the shown one 22 % over its fill, outline 45 %), while the row spans more than one worktree. The main
+  checkout never has a colour. Replaces the diff tabs' underline.
+- **Fold.** The chevron folds a group to its head, its tab count and its current tab (the one shown last), which shows
+  its worktree's name after its title (muted for the main checkout; none in a project without worktrees). Saved per
+  project in `state.toml`.
+- **Group menu.** A click on the head's name: the group's tabs under a head per worktree (branch icon, name, a rail in
+  its colour), the project's own under **Whole project**, a tick on the current tab. A click shows a tab; a tab drags
+  within its worktree, a worktree's head among the others (saved per project); Escape or a press outside closes it.
+- **Badge.** A module's favicon, 10 px on the lower right of a tab's icon, ringed in the tab's background, while the
+  row has more than one owner; under a head only a module's (the head names the project), without heads the project's
+  too.
+- **Tree.** A project row shows its favicon in place of its initials (the picker too), a module folder its favicon in
+  place of the folder icon (its run badge goes), a worktree row a 2 px rail in its colour left of its chevron.
+- **Hub.** As before, plus the badge on each row's icon: its module's favicon, else its project's.
 
 ## Removed during the design (do not implement)
 
@@ -473,14 +598,18 @@ run-configuration folder's right end: the run badge on its icon instead · the m
 overview, and as a prompt over the window: a values tab instead · `@processes` under `@run` and run rows apart from
 their configurations (definitions with their command, runs with their status, one step left): one row per
 configuration carrying its run instead · `@hidden` chip variants (the same chip, an outline, text only) · Settings'
-Editor › Color Scheme pages (read-only once colours moved to `init.rn`).
+Editor › Color Scheme pages (read-only once colours moved to `init.rn`) · where a tab belongs, tried in `ident.js`: a
+favicon beside the file icon (two icons in a tab), worktree dots, an underline on every worktree tab, groups per
+worktree, worktree labels on same-named tabs only, project grouping in the hub.
 
 ## Open points
 
-- Worktree colour still appears on worktree cards (left stripe), the overview's section underline and the
-  diff tabs' underline.
+- Worktree colour still appears on worktree cards (left stripe) and the overview's section underline.
+- A dark favicon is hard to see as a badge on the dark theme.
 - "● N running" remains on the project tree row and worktree cards.
 - Databases: IntelliJ's toolbar and "1 of N" database counts are not mocked.
+- Attention: a key to show the process waiting longest; a Settings switch for desktop notifications; whether
+  silence after output (tmux `monitor-silence`) should count, for programs that send nothing.
 
 ## Code view: diffs, editing, saving
 
@@ -505,8 +634,36 @@ Added 2026-10-22, from `docs/superpowers/specs/2026-10-22-codeview-crate-design.
 - **Error.** "cannot save <file>: Permission denied"; the edits are kept and saving is retried after the next pause.
 - **Close without saving.** Closing a tab whose save failed or conflicts does not close it: its bar adds "Close without
   saving (edits are lost)", which does.
-- Mock-only: the `mock: save` bar at the bottom puts the shown file, scratch or uncommitted diff tab in the conflict,
+- Mock-only: the Mock menu (dock icon by Settings) puts the shown file, scratch or uncommitted diff tab in the conflict,
   large-file conflict or error state, or clears it (hash: `save=disk|big|error`, `closing=1`, read but not written).
 - **Editable uncommitted diff.** In a single-file diff of uncommitted changes the new side (context and added rows, right
   side in Side by side) is editable (a caret, one line per row). Commit tabs, Since base diffs and the hub preview are
   read-only: no caret, "read-only" in the header.
+
+## Markdown: Text | Rendered
+
+A proposal, added 2026-10-26. Code is `renderMarkdown` in `checkouts.js`, `components/checkouts/markdown-view.html` and
+the `.md` styles in `checkouts.css`.
+
+- **Where.** Markdown files (`.md`, `.markdown`) and Markdown scratches get a Text | Rendered pill floating at the top
+  right of the text, where Ctrl+F's bar floats and in the same box. It is always there; while the find bar is open the
+  bar takes its place, and Esc brings the pill back. No header line is added (a scratch keeps its own).
+- **Text** is the editor as now: coloured source, editable, saved as you type.
+- **Rendered** shows the document formatted, read-only: headings, paragraphs, lists (nested, `[ ]`/`[x]` tasks as
+  greyed checkboxes), quotes, rules, pipe tables, fenced code coloured like the editor, inline code, bold, italic,
+  links. UI font, 14 px; the status line adds "read-only". A double-click goes back to Text.
+- **Width.** In Rendered the pill adds Normal | Wide: Normal is a column of at most 760 px centred in the tab, Wide
+  takes the tab's full width. One choice for every Markdown tab, remembered (`markdownWidth`, hash `mdw=wide`).
+  A code block or table wider than that scrolls sideways on its own; the page does not.
+- **Per tab, remembered.** The view is per tab; a Markdown tab opened later starts with the view last picked
+  (`markdownView`, hash `md=rendered`), as diff tabs do with their layout. Ctrl+Shift+M
+  (Cmd+Shift+M; `ive.rn`: `#{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" }`)
+  switches the shown tab. Not Ctrl+Shift+V: that is the terminal's paste on Linux, and a habitual paste in Text would
+  switch the view instead.
+- The save bars (conflict, error) show above either view.
+- **Ctrl+F** (find.js, as in Text) works in Rendered too: it searches the visible text, so `**Rust**` is found as
+  "Rust" and markup is not; matches are marked, stepped with Enter, F3 and ▲ ▼, and shown on the strip by the scrollbar.
+  The bar stays open with its query across Text | Rendered, searching the view shown. Esc in Rendered leaves no caret.
+- Not mocked: images, HTML blocks, footnotes, Mermaid/DOT diagrams in fences, scroll sync between the views, links
+  opening (a relative link could open that file in a tab).
+

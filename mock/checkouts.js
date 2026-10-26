@@ -24,6 +24,8 @@
   var TEMPORARY_KINDS = ['projectPage', 'settings', 'hub', 'runConfigs'];
   // Commits lists this many at first, and this many more on each Load more.
   var COMMITS_MORE = 20;
+  // pixels the pointer moves with a tab pressed before it drags (gpui's drag threshold)
+  var TAB_DRAG_THRESHOLD = 4;
 
   function file(name, text) { return { name: name, text: text }; }
   function dir(name, children) { return { name: name, children: children }; }
@@ -131,14 +133,33 @@
           file('run.sh', '#!/bin/sh\nexec cargo run "$@"')
         ]),
         dir('misc', [file('.run.toml', tomlOf('/internal-apps/misc')), file('pom.xml', '<project>\n  <artifactId>misc</artifactId>\n</project>')]),
-        dir('paas', [file('pom.xml', '<project>\n  <artifactId>paas</artifactId>\n</project>')])
+        dir('paas', [file('pom.xml', '<project>\n  <artifactId>paas</artifactId>\n</project>')]),
+        // ident.js (a proposal): idp, approval-path and external-share-jira hold a .favicon.svg, so they are modules
+        dir('communication', [dir('idp', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>idp</artifactId>\n</project>')])])
       ]),
+      dir('approval-path', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>approval-path</artifactId>\n</project>')]),
+      dir('external-share-jira', [file('.favicon.svg', '<svg/>'), file('pom.xml', '<project>\n  <artifactId>external-share-jira</artifactId>\n</project>')]),
       dir('lib', [file('.run.toml', LIB_RUN_TOML), file('package.json', '{\n  "name": "lib"\n}')]),
       dir('run', [file('.run.toml', tomlOf('/run'))]),
       file('CLAUDE.md', '# Java Guidelines\n- Use Java 26 features (records, var, etc.)\n- Avoid null where possible.'),
-      file('README.md', '# atlassian\n\nWarsaw Dynamics monorepo, branch ' + branch + '.'),
+      file('README.md', README(branch)),
       file('pom.xml', '<project>\n  <artifactId>atlassian</artifactId>\n</project>')
     ];
+  }
+
+  // A README long enough to show the Markdown Rendered view: headings, lists, tasks, a table, code, a quote.
+  function README(branch) {
+    return ['# atlassian', '', 'Warsaw Dynamics monorepo, branch `' + branch + '`. Each app lives under `internal-apps/`;',
+      'shared code is in `lib/`. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.', '',
+      '## Apps', '', '| App | Stack | Runs with |', '| --- | --- | --- |', '| ive | Rust, GPUI | `./run.sh` |',
+      '| misc | Java 26, Spring | `mvn spring-boot:run` |', '| paas | Java 26 | `ohq deploy paas` |',
+      '| platform | Java 26, Forge, Confluence and Jira Cloud apps | `ohq deploy platform --env staging --region eu-central-1 --wait-for-health-checks --notify #platform` |', '',
+      '## Getting started', '', '1. Install the toolchains: **Rust** (stable) and **Java 26**.', '2. Copy `.env.example` to `.env` and fill in the tokens.',
+      '3. Start what you work on from IVE\'s *Processes* folder.', '', '```sh', '# build everything once', 'cargo build --release',
+      'mvn -q -T 1C install', 'docker compose -f deploy/compose.yml -f deploy/compose.local.yml --profile idp --profile paas up --build --detach --wait', '```', '', '## Before a release', '', '- [x] bump versions in `Cargo.toml` and `pom.xml`',
+      '- [ ] run the integration suite', '  - idp against qa', '  - paas against staging', '- [ ] tag and push', '',
+      '> Never deploy on Friday after 15:00. The pager does not care about your weekend.', '', '---', '',
+      'Questions: ask in *#platform*.'].join('\n');
   }
 
   // The platform project: its generated .run.toml folders nested as a tree, each with its stack's build file.
@@ -277,15 +298,16 @@
     { name: 'git2', license: 'MIT OR Apache-2.0' }, { name: 'rune', license: 'MIT OR Apache-2.0' }, { name: 'Inter', license: 'OFL-1.1' },
     { name: 'JetBrains Mono', license: 'OFL-1.1' }
   ];
-  // Settings › Scripts (a proposal): starters fill the prompt's Task line.
-  var SCRIPT_TASKS = [
-    ['Bind a key', 'Bind Ctrl+Alt+R to restart IVE (click the "restart" target).'],
-    ['Mouse binding', 'Make Ctrl + left click on a tab close it, and middle click do nothing.'],
-    ['Colours', 'Make the dark tree background #202124 and strings in Rust orange.'],
-    ['Bigger UI', 'Make the whole UI an eighth bigger and the code font 15 px.'],
-    ['Function', 'Bind Ctrl+Alt+D to a function that runs `git diff --stat` in a new terminal in the shown tab\'s checkout.'],
-    ['Terminal keys', 'Make Shift+Enter in terminals send ESC CR (Claude Code\'s new line).']
+  // Settings › Scripts: settings_page/scripts.rs sections, [heading ('' for none), text], paths of the default profile.
+  var SCRIPT_SECTIONS = [
+    ['', 'All your changes go in /home/me/.config/ive/default. IVE writes two reference files there at every start. They are read-only, and editing them changes nothing:\n- ive.rn: every default key binding, mouse binding and menu\n- theme.toml: every default colour and size, for both the dark and light looks'],
+    ['To change keys, mouse clicks, menus or excluded folders:', 'write init.rn in that folder. IVE runs it after ive.rn. An entry with the same scope and key replaces the default one. Look up the entry to override in ive.rn. IVE reloads it on save.'],
+    ['To make a theme:', 'create themes/<name>.toml in that folder, with the same sections as theme.toml ([sizes], [dark], [light]…) but only the values you change. Everything else stays at the default. Pick it under Settings › Appearance › Theme. IVE reloads it on save.'],
+    ['To adjust any theme from a script:', 'set config.theme.<path> in init.rn. This applies on top of the picked theme, for example config.theme.dark.tree = "#202124"; for [dark] tree.'],
+    ['Checking it worked:', 'load errors, with file, line or key, and the bad value, go to /home/me/.local/state/ive/default/scripts.log. IVE opens the log when a load fails. Agents connected over MCP can read it with script_status. A failed load keeps the previous settings.']
   ];
+  // Settings › Appearance › Theme: the files in themes/ (theme_config/user.rs names, sorted).
+  var USER_THEMES = ['nord', 'violet'];
 
   function withPaths(entry, parent) {
     entry.path = parent + '/' + entry.name;
@@ -371,6 +393,88 @@
     var lang = coloured ? languageOf(path) : null;
     var state = { block: false };
     return lines.map(function (text) { return highlightLine(text, lang, state); });
+  }
+
+  // Markdown's Rendered view (a proposal, DESIGN.md "Markdown: Text | Rendered"): CommonMark's common subset as HTML.
+  // Headings, paragraphs, lists (nested by indent, [ ] and [x] tasks), quotes, rules, pipe tables, fenced code coloured
+  // like the editor; inline code, bold, italic, links. Everything typed is escaped first.
+  function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function inlineMarkdown(text) {
+    var codes = [];
+    var out = escapeHtml(text).replace(/`([^`]+)`/g, function (all, code) { codes.push(code); return '\u0000' + (codes.length - 1) + '\u0000'; });
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" title="$2">$1</a>');
+    return out.replace(/\u0000(\d+)\u0000/g, function (all, i) { return '<code>' + codes[i] + '</code>'; });
+  }
+  function codeBlockHtml(lines, lang) {
+    var rows = highlightLines(lines, 'block.' + (lang || 'txt'), true).map(function (tokens) {
+      return tokens.map(function (tk) { return tk.k ? '<span class="syn-' + tk.k + '">' + escapeHtml(tk.t) + '</span>' : escapeHtml(tk.t); }).join('');
+    });
+    return '<pre class="md__code"><code>' + rows.join('\n') + '</code></pre>';
+  }
+  function tableHtml(rows) {
+    var cells = function (line) { return line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return inlineMarkdown(c.trim()); }); };
+    var head = '<tr>' + cells(rows[0]).map(function (c) { return '<th>' + c + '</th>'; }).join('\n') + '</tr>';
+    var body = rows.slice(2).map(function (r) { return '<tr>' + cells(r).map(function (c) { return '<td>' + c + '</td>'; }).join('\n') + '</tr>'; });
+    // Wrapped, so a table too wide for the column scrolls on its own while a narrower one still wraps its cells.
+    return '<div class="md__table"><table><thead>' + head + '</thead><tbody>' + body.join('\n') + '</tbody></table></div>';
+  }
+  // A run of list lines as nested <ul>/<ol>; deeper indent opens a list inside the item before it.
+  function listHtml(items) {
+    var html = '';
+    var stack = [];
+    items.forEach(function (item) {
+      while (stack.length && stack[stack.length - 1].indent > item.indent) html += '</li></' + stack.pop().tag + '>\n';
+      var top = stack[stack.length - 1];
+      if (top && top.indent === item.indent) html += '</li>\n';
+      else stack.push({ indent: item.indent, tag: item.tag }), html += '<' + item.tag + '>';
+      var task = /^\[([ xX])\]\s+(.*)$/.exec(item.text);
+      html += task
+        ? '<li class="md__task"><input type="checkbox" disabled' + (task[1] === ' ' ? '' : ' checked') + ' /> ' + inlineMarkdown(task[2]) + '\n'
+        : '<li>' + inlineMarkdown(item.text) + '\n';
+    });
+    while (stack.length) html += '</li></' + stack.pop().tag + '>';
+    return html;
+  }
+  function renderMarkdown(text) {
+    var lines = text.split('\n');
+    var html = [];
+    var i = 0;
+    var LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+    var BLOCK_START = /^(#{1,6}\s|```|>|\s*([-*+]|\d+[.)])\s|(\s*[-*_]){3,}\s*$|\|)/;
+    while (i < lines.length) {
+      var line = lines[i];
+      var m;
+      if (line.trim() === '') { i++; continue; }
+      if ((m = /^```\s*(\S*)/.exec(line))) {
+        var code = [];
+        for (i++; i < lines.length && /^```/.test(lines[i]) === false; i++) code.push(lines[i]);
+        html.push(codeBlockHtml(code, m[1])); i++; continue;
+      }
+      if ((m = /^(#{1,6})\s+(.*)$/.exec(line))) { html.push('<h' + m[1].length + '>' + inlineMarkdown(m[2]) + '</h' + m[1].length + '>'); i++; continue; }
+      if (/^(\s*[-*_]){3,}\s*$/.test(line)) { html.push('<hr />'); i++; continue; }
+      if (/^\|/.test(line) && /^\|?\s*:?-+/.test(lines[i + 1] || '')) {
+        var rows = [];
+        for (; i < lines.length && /^\|/.test(lines[i]); i++) rows.push(lines[i]);
+        html.push(tableHtml(rows)); continue;
+      }
+      if (/^>/.test(line)) {
+        var quoted = [];
+        for (; i < lines.length && /^>/.test(lines[i]); i++) quoted.push(lines[i].replace(/^>\s?/, ''));
+        html.push('<blockquote>' + renderMarkdown(quoted.join('\n')) + '</blockquote>'); continue;
+      }
+      if (LIST.test(line)) {
+        var items = [];
+        for (; i < lines.length && (m = LIST.exec(lines[i])); i++) items.push({ indent: m[1].length, tag: /\d/.test(m[2]) ? 'ol' : 'ul', text: m[3] });
+        html.push(listHtml(items)); continue;
+      }
+      var para = [];
+      for (; i < lines.length && lines[i].trim() !== '' && (para.length === 0 || BLOCK_START.test(lines[i]) === false); i++) para.push(lines[i].trim());
+      html.push('<p>' + inlineMarkdown(para.join(' ')) + '</p>');
+    }
+    return html.join('\n');
   }
 
   // diff_view.rs: hunk headers set the old and new line numbers; each line counts on its side(s).
@@ -513,20 +617,32 @@
       return Object.assign({
         projects: prepare(PROJECTS),
         scratches: SCRATCHES,
-        scriptTasks: SCRIPT_TASKS,
+        scriptSections: SCRIPT_SECTIONS,
+        userThemes: USER_THEMES,
         thirdParty: THIRD_PARTY,
         open: ['atlassian', 'forge-installer', 'platform', 'notes'],
         recent: ['paas-ownhq', 'forge-ari'],
         consoles: [],
         consoleCount: 0,
+        // A proposal (DESIGN.md "Attention"): whether IVE's window has the keyboard (the mock bar flips it), and the
+        // desktop notifications IVE sent while it had not, one per process.
+        windowFocused: true,
+        desktopNotices: [],
+        attentionCount: 0,
         tabs: [],
         focus: null,
         // Mock-only: the diff layout last toggled (inline | side); a diff or commit tab opened later starts with it.
         diffLayout: 'inline',
+        // Mock-only: the Markdown view last picked (text | rendered); a Markdown file or scratch opened later starts with it.
+        markdownView: 'text',
+        // Mock-only: the Rendered width (normal | wide), one for every Markdown tab.
+        markdownWidth: 'normal',
         // Mock-only: the pause timers of "saving…"; a tab carries `saving`, `conflict` ('disk' | 'big'), `error`, `closing`.
         savingTimers: {},
         // tabs.rs Tabs::temporary: the key of the tab that goes once another is shown; only ever the shown one.
         temporary: null,
+        // the tab being dragged: { key, title, x, y, gap }; gap is where it would land, null for nowhere
+        tabDrag: null,
         menu: null,
         // The tab context menu's tab and where it opened (menu === 'tab').
         tabMenu: { key: null, x: 0, y: 0 },
@@ -554,8 +670,8 @@
         // Settings: theme preference (settings.rs ThemePreference) and the shown page.
         themePreference: 'system',
         settingsPage: 'Appearance',
-        // Settings › Scripts: the prompt's Task line, and which block's Copy just said Copied.
-        scriptTask: '<what you want changed>',
+        // Settings › Appearance › Theme (settings.rs ThemeChoice), and which Copy just said Copied.
+        userTheme: 'Default',
         copied: null,
         // Last focused checkout per project: where project-level things run when no worktree tab is focused.
         lastCheckout: {},
@@ -581,14 +697,19 @@
             var tab = self.currentTab();
             if (tab && tab.co) self.lastCheckout[tab.project] = tab.co;
             self.remember(tab);
+            self.seeShown();
           });
+          // back in front, IVE withdraws its desktop notifications: the tab row's bell lists what still waits
+          this.$watch('windowFocused', function (focused) { if (focused) self.desktopNotices = []; self.seeShown(); });
           this.toggled.push('p:forge-installer', 'p:platform', 'p:notes', 'w:atlassian@dev', 'w:atlassian@IDP-30-Reserved-subdomain-returns-404', 'w:atlassian@GEN-811-paas-infrastructure-reference');
-          this.addConsole('atlassian@GEN-817-ive', 'agent', AGENT_LINES.slice());
+          var agent = this.addConsole('atlassian@GEN-817-ive', 'agent', AGENT_LINES.slice());
           this.addConsole('atlassian@GEN-817-ive', 'shell', []);
           // restored tabs (saved_tabs.rs) are never temporary
           this.openProjectPage(this.project('atlassian'));
           this.keepTab(this.currentTab());
           this.openFile('atlassian@GEN-817-ive', '/internal-apps/ive/src/theme.rs');
+          this.raiseAttention(agent, 'notify', 'Claude needs your permission to use Bash');
+          agent.attention.at = new Date(window.IVE_SCALE.today.getTime() - 4 * 60000);
           this.hubInit();
           this.seedHistory();
           this.$nextTick(function () { self.showScreen(location.hash); self.routeInit(); });
@@ -637,6 +758,8 @@
             runconfigs: function (self) { screens.runs(self); self.openRunConfigs(ive); },
             // the platform project's tab: 1000 configurations in ~140 folders
             runconfigs1k: function (self) { self.openRunConfigs(self.project('platform').checkouts[0]); },
+            // a proposal (dnd.js): a flat copy into dev with three conflicts
+            conflicts: function (self) { self.mockConflicts(); },
             newterminal: function (self) { self.openNewTerminalHub(); self.hub.query = p.get('q') || ''; },
             hub: function (self) { self.openHub(); self.hub.query = p.get('q') || ''; self.hub.changedOnly = p.get('changed') === '1'; self.hub.scope = p.get('scope') || 'all'; }
           };
@@ -787,6 +910,7 @@
           var open = this.tabs.find(function (t) { return t.key === tab.key; });
           if (open) { this.showTab(open); return; }
           if ((tab.kind === 'diff' || tab.kind === 'commit') && tab.layout === undefined) tab.layout = this.diffLayout;
+          if (this.isMarkdown(tab) && tab.view === undefined) tab.view = this.markdownView;
           this.tabs.splice(this.insertionIndex(), 0, tab);
           this.focus = tab.key;
           if (TEMPORARY_KINDS.includes(tab.kind)) this.temporary = tab.key;
@@ -811,6 +935,63 @@
           this.temporary = null;
           if (at !== -1) this.tabs.splice(at, 1);
           return at;
+        },
+        // ---- editor.rs render_tab_row: dragging a tab to another gap (tabs.rs move_tab) ----
+        // A left press on a chip; the drag starts once the pointer moves, and shows the tab (drag_preview.rs).
+        // Released away from the row the app detaches the tab into a window of its own; the mock leaves it in place.
+        pressTab: function (tab, event) {
+          var self = this;
+          var start = { x: event.clientX, y: event.clientY };
+          var move = function (e) {
+            if (self.tabDrag === null && Math.hypot(e.clientX - start.x, e.clientY - start.y) < TAB_DRAG_THRESHOLD) return;
+            if (self.tabDrag === null) { self.tabDrag = { key: tab.key, title: self.tabTitle(tab), x: 0, y: 0, gap: null }; self.showTab(tab); }
+            self.tabDrag.x = e.clientX;
+            self.tabDrag.y = e.clientY;
+            self.tabDrag.gap = self.tabDropGap(tab, e);
+          };
+          var up = function () {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            if (self.tabDrag !== null && self.tabDrag.gap !== null) self.moveTab(tab, self.tabDrag.gap);
+            self.tabDrag = null;
+          };
+          window.addEventListener('mousemove', move);
+          window.addEventListener('mouseup', up);
+        },
+        // The left half of a chip is the gap before it, the right half the gap after it; the row past the last chip is
+        // the last gap. null away from the row, or where the order would not change (tabs.rs moves).
+        tabDropGap: function (tab, event) {
+          var under = document.elementFromPoint(event.clientX, event.clientY);
+          var row = under && under.closest('.tabs');
+          if (row === null) return null;
+          var chip = under.closest('.tabs__tab');
+          var gap = this.tabs.length;
+          if (chip !== null) {
+            var box = chip.getBoundingClientRect();
+            var place = Number(chip.dataset.place);
+            gap = event.clientX < box.left + box.width / 2 ? place : place + 1;
+          }
+          var from = this.tabs.indexOf(tab);
+          return gap === from || gap === from + 1 ? null : gap;
+        },
+        moveTab: function (tab, gap) {
+          var from = this.tabs.indexOf(tab);
+          var tabs = this.tabs.filter(function (t) { return t !== tab; });
+          tabs.splice(gap > from ? gap - 1 : gap, 0, tab);
+          this.tabs = tabs;
+        },
+        // The side of chip `place` its drop marker shows on: before it, or after the last one.
+        tabDropSide: function (place) {
+          if (this.tabDrag === null || this.tabDrag.gap === null) return null;
+          if (this.tabDrag.gap === place) return 'left';
+          return this.tabDrag.gap === place + 1 && place === this.tabs.length - 1 ? 'right' : null;
+        },
+        // Shift+wheel or a touchpad's sideways swipe scrolls the row; a plain wheel does not, as in the app.
+        scrollTabs: function (event) {
+          var dx = event.shiftKey ? event.deltaY || event.deltaX : event.deltaX;
+          if (dx === 0) return;
+          event.preventDefault();
+          event.currentTarget.scrollLeft += dx;
         },
         isTemporary: function (tab) { return tab.key === this.temporary; },
         // Double click on the tab, middle click on its tree row, or Keep Tab: it stays when another tab is shown.
@@ -909,7 +1090,7 @@
         // editor.rs Tab::icon_name
         tabIcon: function (tab) {
           if (tab.kind === 'console') return this.consoleIcon(this.consoleOf(tab));
-          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg' };
+          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg', conflicts: 'warning.svg' };
           return icons[tab.kind] || this.fileIcon(tab.title);
         },
         tabTitle: function (tab) {
@@ -924,13 +1105,17 @@
           if (tab.co) return this.label(tab.co) + ' — ' + title;
           return tab.project + ' — ' + title;
         },
-        // editor.rs Tab::underline: a diff tab's checkout colour.
-        tabUnderline: function (tab) {
-          return tab.kind === 'diff' ? this.checkout(tab.co).colour : null;
-        },
         // ---- diff layout, editing and saving (codeview design: "Saving: IntelliJ-style, no Ctrl+S") ----
         layoutOf: function (tab) { return tab.layout || this.diffLayout; },
         setLayout: function (tab, layout) { tab.layout = layout; this.diffLayout = layout; },
+        // ---- Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered") ----
+        isMarkdown: function (tab) {
+          if (tab.kind !== 'file' && tab.kind !== 'scratch') return false;
+          return /\.(md|markdown)$/i.test(tab.kind === 'scratch' ? tab.title : tab.path);
+        },
+        viewOf: function (tab) { return this.isMarkdown(tab) ? tab.view || this.markdownView : 'text'; },
+        setView: function (tab, view) { tab.view = view; this.markdownView = view; },
+        renderedHtml: function (tab) { return renderMarkdown(this.lines(tab).join('\n')); },
         // Only a single-file diff of uncommitted changes edits (its new side); commit tabs, since-base diffs and the hub preview are read-only.
         isEditable: function (tab) {
           if (tab.kind === 'diff') return tab.source === 'work';
@@ -990,10 +1175,14 @@
         },
         findFile: function (id, path) { return find(this.checkout(id).tree, path); },
         openSettings: function () { this.openTab({ key: 'settings', kind: 'settings', title: 'Settings', co: null, project: null }); },
-        // Settings › Scripts: a block's text as shown (its <pre>), so what is copied is what is read.
-        copyBlock: function (id, el) {
+        // Settings › Scripts: the instructions as plain text, as scripts.rs instructions() writes them.
+        scriptInstructions: function () {
+          var paragraphs = SCRIPT_SECTIONS.map(function (s) { return s[0] ? s[0] + ' ' + s[1] : s[1]; });
+          return 'Customising IVE\n\n' + paragraphs.join('\n\n') + '\n\nFull reference: "Scripting" and "Theme" in IVE\'s README: https://github.com/Warsaw-Dynamics/ive#scripting\n';
+        },
+        copyText: function (id, text) {
           var self = this;
-          try { navigator.clipboard.writeText(el.textContent); } catch (e) { /* mock: clipboard may be blocked */ }
+          try { navigator.clipboard.writeText(text); } catch (e) { /* mock: clipboard may be blocked */ }
           this.copied = id;
           clearTimeout(this.copiedTimer);
           this.copiedTimer = setTimeout(function () { self.copied = null; }, 1500);
@@ -1040,10 +1229,62 @@
         },
         deleteScratch: function (s) { this.scratches = this.scratches.filter(function (x) { return x !== s; }); },
 
+        // ---- attention (a proposal, DESIGN.md "Attention") ----
+        // What a program in a terminal says when it wants the user, from standard sequences only, nothing agent-specific:
+        // 'notify' (OSC 9;<text>, OSC 777;notify;<title>;<body>, OSC 99), 'bell' (BEL), 'done' (OSC 9;4 busy, then 0).
+        // It counts only while the user is not looking: the process's tab not shown, or IVE's window in the background.
+        raiseAttention: function (c, why, text) {
+          if (this.isLookingAt(c)) return;
+          var words = { bell: 'rang the bell', done: 'finished' };
+          // the mock's clock stands still at IVE_SCALE.today; a millisecond more each time keeps the order
+          c.attention = { why: why, text: text || words[why], at: new Date(window.IVE_SCALE.today.getTime() + (++this.attentionCount)) };
+          if (this.windowFocused) return;
+          // one desktop notification per process: a newer one replaces it
+          this.desktopNotices = this.desktopNotices.filter(function (n) { return n.c !== c; }).concat([{ c: c, text: c.attention.text }]);
+        },
+        isLookingAt: function (c) { return this.windowFocused && this.focus === 'c:' + c.id; },
+        clearAttention: function (c) {
+          c.attention = null;
+          this.desktopNotices = this.desktopNotices.filter(function (n) { return n.c !== c; });
+        },
+        // Showing a process's tab with the window in front clears what it raised.
+        seeShown: function () {
+          var c = this.currentTab() && this.currentTab().kind === 'console' ? this.consoleOf(this.currentTab()) : null;
+          if (c !== null && this.windowFocused) this.clearAttention(c);
+        },
+        // Oldest first: the one waiting longest comes up first.
+        waitingConsoles: function () {
+          return this.consoles.filter(function (c) { return c.attention !== null; }).sort(function (a, b) { return a.attention.at - b.attention.at; });
+        },
+        waitingIn: function (ids) { return this.consoles.filter(function (c) { return ids.includes(c.co) && c.attention !== null; }).length; },
+        waitingLabel: function (n) { return n ? '● ' + n + ' waiting' : null; },
+        // What a process tab's program said, or null.
+        tabAttention: function (tab) {
+          var c = tab.kind === 'console' ? this.consoleOf(tab) : null;
+          return c !== null && c.attention !== null ? c.attention.text : null;
+        },
+        // The tab row's bell and a desktop notification: show the process, its window in front.
+        showWaiting: function (c) {
+          this.menu = null;
+          this.windowFocused = true;
+          this.openConsole(c);
+        },
+        // Mock bar: what a program in a terminal would send; IVE's window in front or behind.
+        mockAttention: function (why) {
+          var kinds = { notify: ['agent'], bell: ['shell', 'agent'], done: ['run', 'shell'] };
+          var self = this;
+          var pick = kinds[why].map(function (kind) {
+            return self.consoles.find(function (c) { return c.kind === kind && self.isLookingAt(c) === false; });
+          }).find(function (c) { return c !== undefined; }) || this.consoles[0];
+          if (pick === undefined) return;
+          var texts = ['Claude is waiting for your input', 'Claude needs your permission to use Edit', 'Agent turn complete', 'Approval requested: cargo test'];
+          this.raiseAttention(pick, why, why === 'notify' ? texts[this.consoles.indexOf(pick) % texts.length] : null);
+        },
+
         // ---- processes ----
         // kind: shell (a terminal) | agent (Claude Code, which a terminal turns into while `claude` runs).
         addConsole: function (co, kind, lines) {
-          var c = { id: ++this.consoleCount, co: co, kind: kind, title: '', lines: lines, input: '' };
+          var c = { id: ++this.consoleCount, co: co, kind: kind, title: '', lines: lines, input: '', attention: null };
           c.title = kind === 'agent' ? 'Claude Code' : this.shellTitle(co);
           this.consoles.push(c);
           return c;
@@ -1103,6 +1344,7 @@
           c.input = '';
           this.useWorktree(c.co);
           this.usedConsole(c);
+          this.clearAttention(c);
           if (c.kind === 'agent' && command === '/exit') { c.lines.push('> /exit', ''); this.becomeShell(c); return; }
           if (c.kind === 'agent') {
             if (command) c.lines.push('> ' + command, '● (mock) Claude Code works on it in ' + this.checkout(c.co).path);
@@ -1229,6 +1471,7 @@
           var self = this;
           // a leaf: the empty chevron slot keeps its icon in the files' column
           return { key: 'c:' + c.id, tab: 'c:' + c.id, label: c.title, icon: this.consoleIcon(c), slot: true, click: function () { self.openConsole(c); },
+            attention: c.attention,
             action: c.kind === 'agent'
               ? { icon: 'stop.svg', title: 'Stop', run: function () { self.stop(c); } }
               : { icon: 'close.svg', title: 'Close', run: function () { self.closeConsole(c); } } };
@@ -1252,6 +1495,7 @@
           var content = {
             // empty: no chevron, the slot keeps its icon in line
             processes: { children: processes.length ? processes.map(function (c) { return self.processNode(c); }) : undefined, slot: processes.length === 0,
+              waiting: this.waitingLabel(this.waitingIn([co.id])),
               count: processes.length || null, action: this.newTerminalAction(co),
               tab: 'rcs:' + co.id, click: function () { self.openRunConfigs(co); } },
             uncommitted: co.changes.length ? { children: this.changedFileNodes(co, co.changes, 'work'), count: co.changes.length } : nothing('Nothing uncommitted'),
@@ -1305,6 +1549,16 @@
           if (event.altKey && event.shiftKey && event.code === 'KeyG' && event.ctrlKey === false && event.metaKey === false) {
             event.preventDefault();
             this.toggleGitLayout();
+          }
+        },
+        // Ctrl+Shift+M (Cmd+Shift+M, ive.rn's SECONDARY|SHIFT): the shown Markdown tab between Text and Rendered. Not
+        // Ctrl+Shift+V, the terminal's paste on Linux.
+        markdownKey: function (event) {
+          var tab = this.currentTab();
+          if (tab === null || this.isMarkdown(tab) === false) return;
+          if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyM' && event.altKey === false) {
+            event.preventDefault();
+            this.setView(tab, this.viewOf(tab) === 'text' ? 'rendered' : 'text');
           }
         },
         toggleGitLayout: function () { this.gitLayout = this.gitLayout === 'flat' ? 'tree' : 'flat'; },
@@ -1363,7 +1617,9 @@
         },
         worktreeNode: function (co) {
           var self = this;
-          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: 'branch.svg', open: true,
+          // the main checkout's branch icon carries IntelliJ's favourite-branch star
+          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: co.main ? 'branch-main.svg' : 'branch.svg', open: true,
+            waiting: this.waitingLabel(this.waitingIn([co.id])),
             children: this.checkoutChildren(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };
         },
@@ -1378,6 +1634,7 @@
             project: project, strong: true, open: true, children: body,
             pill: single && project.git ? project.checkouts[0].label : null,
             meta: project.git ? null : 'no git', running: running ? '● ' + running + ' running' : null,
+            waiting: this.waitingLabel(this.waitingIn(project.checkouts.map(function (co) { return co.id; }))),
             action: { icon: 'close.svg', title: 'Close project', run: function () { self.closeProject(project); } } };
         },
 
@@ -1419,6 +1676,8 @@
             pinned: run === null, actions: actions };
         },
         runFile: function (folder) { return RUN_FILES[folder]; },
+        // Mock-only (dnd.js): a copied or moved .run.toml reads as the one it came from.
+        adoptRunFile: function (from, to) { if (RUN_FILES[from] !== undefined) RUN_FILES[to] = RUN_FILES[from]; },
 
         // ---- the run configurations tab (a click on a worktree's Processes row) ----
         openRunConfigs: function (co) {
@@ -1850,7 +2109,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods, window.IVE_DND.state(), window.IVE_DND.methods, window.IVE_IDENT.state(), window.IVE_IDENT.methods);
     });
   });
 })();

@@ -1,24 +1,71 @@
 <!-- editor.rs render_pane: the tab row (tabs, then Settings and the window buttons), then the shown tab.
-     A temporary tab's title is italic; double click keeps it. A right press opens the tab menu without showing the tab. -->
+     A temporary tab's title is italic; double click keeps it. A right press opens the tab menu without showing the tab.
+     The row scrolls sideways (Shift+wheel or a touchpad); a tab dragged along it moves to the gap the accent bar marks. -->
 <section class="pane">
   <div class="tabbar">
-  <div class="tabs">
-    <template x-for="tab in tabs" :key="tab.key">
-      <div class="tabs__tab" :class="{ 'tabs__tab--current': focus === tab.key }"
+  <div class="tabs" @wheel="scrollTabs($event)">
+    <!-- ident.js: a group per project under its head (none with one project open). The chevron folds the group to
+         its head, its count and its current tab (the one shown last); a click on the name lists the group's tabs in a
+         menu, to show another. -->
+    <template x-for="g in tabGroups()" :key="g.key">
+    <div class="tabs__group" :class="{ 'tabs__group--on': g.head !== null, 'tabs__group--folded': g.folded, 'tabs__group--active': g.tabs.some(t => t.key === focus) }">
+    <template x-if="g.head">
+      <span class="tabs__head">
+      <button class="tabs__head-fold" type="button" @click="toggleTabGroup(g.key)" :title="(g.folded ? 'Unfold ' : 'Fold ') + g.head.label"><img class="icon tabs__head-chevron" :src="icon(g.folded ? 'chevron-right.svg' : 'chevron-down.svg')" alt="" /></button>
+      <button class="tabs__head-name" type="button" @click.stop="openTabGroupMenu(g.key, $event)" :title="g.head.label + ': its tabs'"><template x-if="g.head.owner"><span class="owner" :title="g.head.owner.module ? g.head.owner.project + ' › ' + g.head.owner.module : g.head.owner.project"><template x-if="g.head.owner.icon"><img class="owner__icon" :src="g.head.owner.icon" alt="" /></template><template x-if="g.head.owner.icon === null"><span class="owner__initials" x-text="g.head.owner.initials"></span></template></span></template><span class="tabs__head-label" x-text="g.head.label"></span><template x-if="g.folded"><span class="tabs__head-count" x-text="g.tabs.length"></span></template></button>
+      </span>
+    </template>
+    <template x-for="tab in g.shown" :key="tab.key">
+      <div class="tabs__tab" :class="{ 'tabs__tab--current': focus === tab.key }" :data-place="tabs.indexOf(tab)" x-data="{ get cue() { return tabWorktreeCue(tab); }, get badge() { return tabOwnerBadge(tab); } }"
+           :style="cue && cue.mode === 'tint' ? { '--tint': cue.colour } : {}" :data-tint="cue && cue.mode === 'tint' ? '' : null"
            @click="showTab(tab)" @dblclick="keepTab(tab)" @auxclick.prevent="$event.button === 1 && closeTab(tab)" :title="tabTooltip(tab)"
-           @mousedown="if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent
+           @mousedown="if ($event.button === 0) pressTab(tab, $event); if ($event.button === 2) { $event.stopPropagation(); openTabMenu(tab, $event.clientX, $event.clientY); }" @contextmenu.prevent @dragstart.prevent
            x-effect="focus === tab.key && $nextTick(() => $el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))">
-        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template></span>
+        <span class="icon-stack"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="tab.kind === 'scratch'"><img class="icon icon-stack__badge" :src="icon('scratch.svg')" alt="" /></template><template x-if="tabAttention(tab) !== null"><span class="attention-dot" :title="tabAttention(tab)"></span></template><template x-if="badge"><img class="icon-stack__owner" :src="badge.icon" alt="" :title="badge.module ? badge.project + ' › ' + badge.module : badge.project" /></template></span>
         <span class="tabs__title" :class="{ 'tabs__title--temporary': isTemporary(tab) }" x-text="tabTitle(tab)"></span>
+        <template x-if="cue && cue.mode === 'label'"><span class="tabs__where" :style="cue.colour ? { '--co': cue.colour } : {}" x-text="cue.label"></span></template>
         <button class="tab__close" type="button" title="Close" @click.stop="closeTab(tab)">
           <img class="icon" :src="icon('close.svg')" alt="" />
         </button>
-        <template x-if="tabUnderline(tab)"><span class="tabs__underline" :style="{ background: tabUnderline(tab) }"></span></template>
+        <template x-if="tabDropSide(tabs.indexOf(tab))"><span class="tabs__drop" :class="'tabs__drop--' + tabDropSide(tabs.indexOf(tab))"></span></template>
       </div>
+    </template>
+    </div>
     </template>
   </div>
   <div class="tabbar__tools" x-include="components/checkouts/tab-tools.html"></div>
   </div>
+  <!-- ident.js: a tab group's menu, its tabs under a head per worktree with the worktree's rail as in the tree, the
+       project's own under Whole project; the group's current tab ticked -->
+  <template x-for="m in (tabGroupMenu() ? [tabGroupMenu()] : [])" :key="m.key">
+    <!-- a tab drags within its worktree, a worktree's head among the project's; a line marks where it lands -->
+    <div class="menu menu--at" :style="{ left: m.x + 'px', top: m.y + 'px' }" role="menu" @mousedown.outside="menu = null" @dragstart.prevent>
+      <template x-for="s in tabGroupSections(m.group)" :key="s.key">
+        <div class="menu__wt" :data-menu-section="s.key" :data-drop="identMenuDrag && identMenuDrag.kind === 'section' ? groupMenuDropSide(s.key) : null">
+          <template x-if="s.label">
+            <div class="menu__section menu__section--wt" :class="{ 'menu__section--rail': s.colour, 'menu__section--grab': s.key !== 'project' }" :style="s.colour ? { '--wt': s.colour } : {}"
+                 @mousedown="$event.button === 0 && s.key !== 'project' && pressGroupMenu({ kind: 'section', key: s.key, section: s.key }, $event)">
+              <img class="icon" :src="icon(s.key === 'project' ? 'project-folder.svg' : 'branch.svg')" alt="" /><span x-text="s.label"></span>
+            </div>
+          </template>
+          <template x-for="tab in s.tabs" :key="tab.key">
+            <button class="menu__item" type="button" role="menuitem" :data-menu-tab="tab.key" :data-section="s.key"
+                    :data-drop="identMenuDrag && identMenuDrag.kind === 'tab' ? groupMenuDropSide(tab.key) : null"
+                    @mousedown="$event.button === 0 && pressGroupMenu({ kind: 'tab', key: tab.key, section: s.key }, $event)"
+                    @click="if (identMenuDragged === false) { menu = null; showTab(tab); }">
+              <span class="menu__tick" x-text="tab.key === m.group.current.key ? '✓' : ''"></span>
+              <span class="icon-stack" x-data="{ get badge() { return tabModuleBadge(tab); } }"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="badge"><img class="icon-stack__owner" :src="badge.icon" alt="" :title="badge.project + ' › ' + badge.module" /></template></span>
+              <span class="menu__grow" x-text="tabTitle(tab)"></span>
+            </button>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+  <!-- DraggedTab: the dragged tab's title under the pointer -->
+  <template x-if="tabDrag !== null">
+    <div class="tabs__drag" :style="{ left: tabDrag.x + 'px', top: tabDrag.y + 'px' }" x-text="tabDrag.title"></div>
+  </template>
 
   <!-- workspace/menu.rs: the menu of a tab or a tree row (menus.js). A tab's: Keep Tab (temporary tab), Stop and Kill
        (process tab; greyed with nothing in the foreground), a file's items, then the Close items (greyed with nothing to
@@ -109,6 +156,9 @@
   <template x-for="tab in (currentTab() && currentTab().kind === 'runConfigs' ? [currentTab()] : [])" :key="tab.key">
     <div class="fill" x-include="components/checkouts/run-configs-tab.html"></div>
   </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'conflicts' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/conflicts-tab.html"></div>
+  </template>
   <template x-for="tab in (currentTab() && currentTab().kind === 'hub' ? [currentTab()] : [])" :key="tab.key">
     <div class="fill" x-include="components/checkouts/hub.html"></div>
   </template>
@@ -130,7 +180,8 @@
         <button class="toggle" type="button"><img class="icon" :src="icon('history.svg')" alt="" /><span>Reload</span></button>
       </div>
       <div x-include="components/checkouts/savebar.html"></div>
-      <div class="diff" x-data="{ get rows() { return d ? diffRows(d.diff, tab.path) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
+      <div x-include="components/checkouts/find.html"></div>
+      <div class="diff" data-find-scroll x-data="{ get rows() { return d ? diffRows(d.diff, tab.path) : []; } }" x-include="components/checkouts/diff-lines.html"></div>
     </div>
   </template>
 
@@ -147,7 +198,13 @@
       </template>
       <div x-include="components/checkouts/savebar.html"></div>
       <!-- A textarea over the coloured lines types into the text; it is as tall and wide as the text, so the box scrolls both. -->
-      <div class="editor editor--static" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
+      <div x-include="components/checkouts/find.html"></div>
+      <template x-if="isMarkdown(tab)"><div x-include="components/checkouts/markdown-view.html"></div></template>
+      <!-- Rendered Markdown comes first, so Ctrl+F's [data-find-scroll] is the shown view; Text stays mounted, hidden. -->
+      <template x-if="viewOf(tab) === 'rendered'">
+        <div class="md" :class="{ 'md--wide': markdownWidth === 'wide' }" data-find-scroll @dblclick="setView(tab, 'text')" title="Double-click to edit the text" x-html="renderedHtml(tab)"></div>
+      </template>
+      <div class="editor editor--static" data-find-scroll x-show="viewOf(tab) === 'text'" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
         <div class="editor__sheet" :style="{ height: lines(tab).length * 21 + 'px', width: editorWidth(tab) }">
           <template x-for="(tokens, i) in codeLines(tab)" :key="i">
             <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->
@@ -165,6 +222,7 @@
         <span class="codestatus__save" x-text="tab.conflict || tab.error ? '' : tab.saving ? 'saving…' : ''"></span>
         <span class="muted" :title="isBig(tab) ? 'Files over 8 MiB are shown without colours' : 'Files over 8 MiB are shown without colours'"
               x-text="isBig(tab) ? 'over 8 MiB: no colours' : languageName(tab)"></span>
+        <template x-if="viewOf(tab) === 'rendered'"><span class="muted">read-only</span></template>
         <span class="muted">UTF-8</span>
       </div>
     </div>

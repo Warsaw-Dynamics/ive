@@ -14,7 +14,8 @@
       </div>
     </div>
   </div>
-  <div class="diff">
+  <div x-include="components/checkouts/find.html"></div>
+  <div class="diff" data-find-scroll>
     <template x-for="f in c.files" :key="f.path">
       <div x-data="{ get key() { return tab.key + ':' + f.path; } }">
         <div class="diff__file" @click="toggleFile(key)">

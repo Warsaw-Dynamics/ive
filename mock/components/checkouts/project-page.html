@@ -1,5 +1,6 @@
 <!-- overview/project.rs: the section row (section_row.rs), then Worktrees, Git (project_git.rs) or Scratches (scratches.rs). -->
-<div class="page" x-data="{ get ot() { return overviewTab('pp:' + p.name, 'worktrees'); } }">
+<!-- Worktrees and Scratches fill the page and scroll themselves: the app draws only the rows in view. -->
+<div class="page" :class="{ 'page--fill': ot !== 'git' }" x-data="{ get ot() { return overviewTab('pp:' + p.name, 'worktrees'); } }">
   <nav class="otabs" style="--co: var(--accent)">
     <template x-for="t in projectTabs(p)" :key="t.key">
       <button class="otabs__tab" type="button" :class="{ 'otabs__tab--on': ot === t.key }" @click="setOverviewTab('pp:' + p.name, t.key)" x-text="t.title"></button>
@@ -90,6 +91,7 @@
       <template x-if="scratchBuckets(p, query.scratch).length === 0">
         <div class="muted" x-text="query.scratch ? 'No scratch matches “' + query.scratch + '”' : 'No scratches yet'"></div>
       </template>
+      <div class="scratches__list">
       <template x-for="b in scratchBuckets(p, query.scratch)" :key="b.key">
         <div class="scratches__group">
           <button class="scratches__head" type="button" @click="toggleGroup('sb:' + b.key)">
@@ -115,6 +117,7 @@
           </template>
         </div>
       </template>
+      </div>
     </section>
   </template>
 </div>

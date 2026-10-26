@@ -1,0 +1,18 @@
+<!-- Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered"). Needs tab. A pill floating where
+     Ctrl+F's bar floats, at the top right of the code below it; the open find bar takes its place, Esc brings it back.
+     Per tab; a Markdown tab opened later starts with the view last picked (`markdownView`, hash `md=rendered`).
+     Ctrl+Shift+M (Cmd+Shift+M) switches. Rendered adds Normal | Wide, one width for every tab (hash `mdw=wide`). -->
+<div class="mdpill">
+  <template x-if="findOf(tab).open === false">
+    <div class="mdpill__box segmented" role="group" aria-label="Markdown view">
+      <button type="button" :aria-pressed="String(viewOf(tab) === 'text')" @click="setView(tab, 'text')" title="Edit the Markdown source (Ctrl+Shift+M)">Text</button>
+      <button type="button" :aria-pressed="String(viewOf(tab) === 'rendered')" @click="setView(tab, 'rendered')" title="Read it formatted (Ctrl+Shift+M)">Rendered</button>
+      <template x-if="viewOf(tab) === 'rendered'">
+        <div class="mdpill__width" role="group" aria-label="Rendered width">
+          <button type="button" :aria-pressed="String(markdownWidth === 'normal')" @click="markdownWidth = 'normal'" title="A centred column, 760 px at most">Normal</button>
+          <button type="button" :aria-pressed="String(markdownWidth === 'wide')" @click="markdownWidth = 'wide'" title="The full width of the tab">Wide</button>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
