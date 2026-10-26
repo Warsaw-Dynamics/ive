@@ -1,0 +1,42 @@
+grammar(builder: &mut crate::plantuml::timing::Builder<'_>);
+use crate::plantuml::{timing::TrackKind, parser::{timing::{Token,Atom,Time,TimeChoice,Target,Command,Site,StateForm,code,time,state,declare,check_is,named_at},error::ParseFailure}};
+pub Timing: () = <_items:Items> =>? builder.tick().map_err(|error|lalrpop_util::ParseError::User{error});
+Items: () = { => (), <Items> <Item> => () };
+Item: () = <start:@L> <command:Command> <line:"newline"> <end:@R> =>? builder.apply(command,Site{span:start..end,line}).map_err(|error|lalrpop_util::ParseError::User{error});
+Command: Command = {
+    <start:@L> <kind:Kind> <name:Name> <end:@R> =>? declare(kind,(name.clone(),name),start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <start:@L> <kind:Kind> <display:"quoted"> "as" <name:Name> <end:@R> =>? declare(kind,(name,display),start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <name:Name> <_is:Is> <value:State> => Command::Change(Target::Player(name),value),
+    <value:Time> <_is:Is> <state:State> => Command::Change(Target::Time(value),state),
+    "@" <name:Name> => Command::Player(name),
+    "@" <value:Time> => Command::Mark(value),
+    <name:NamedAt> <start:Time> "<->" "@" <end:Time> <label:Label> => Command::Constraint(name,start,end,label),
+    "@" <start:Time> "<->" "@" <end:Time> <label:Label> => Command::Constraint(String::new(),start,end,label),
+    <left:Endpoint> "->" <right:Endpoint> <label:Label> => Command::Message(left,right,label),
+};
+#[inline]
+Kind: (TrackKind,Atom) = { <value:"robust"> => (TrackKind::Robust,value), <value:"concise"> => (TrackKind::Concise,value) };
+#[inline]
+Name: String = <start:@L> <value:CodeAtom> <end:@R> =>? code(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+#[inline]
+CodeAtom: Atom = { <value:"code"> => value, <value:"robust"> => value, <value:"concise"> => value, <value:"is"> => value, <value:"as"> => value };
+#[inline]
+NamedAt: String = <name:Name> <end:@R> <at:@L> "@" =>? named_at(name,(end,at)).map_err(|error|lalrpop_util::ParseError::User{error});
+Time: Time = <start:@L> <value:"numeric"> <end:@R> =>? time(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+Is: () = <start:@L> <value:"is"> <end:@R> =>? check_is(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+State: String = {
+    <start:@L> <value:"quoted"> <end:@R> =>? state(value,StateForm::Quoted,start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <start:@L> <value:StateAtom> <end:@R> =>? state(value.text,StateForm::Bare,start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+StateAtom: Atom = { <value:CodeAtom> => value, <value:"numeric"> => value, <value:"other"> => value };
+Endpoint: (String,TimeChoice) = { <name:Name> => (name,TimeChoice::Current), <name:NamedAt> <value:Time> => (name,TimeChoice::Explicit(value)) };
+Label: String = { => String::new(), ":" <value:"label"> => value };
+extern {
+ type Location=usize;
+ type Error=ParseFailure;
+ enum Token {
+  "robust"=>Token::Robust(<Atom>), "concise"=>Token::Concise(<Atom>), "as"=>Token::As(<Atom>), "is"=>Token::Is(<Atom>),
+  "code"=>Token::Code(<Atom>), "numeric"=>Token::Numeric(<Atom>), "other"=>Token::Other(<Atom>), "quoted"=>Token::Quoted(<String>),
+  "@"=>Token::At, "->"=>Token::Arrow, "<->"=>Token::Constraint, ":"=>Token::Colon, "label"=>Token::Label(<String>), "newline"=>Token::Newline(<usize>),
+ }
+}

@@ -1,0 +1,13 @@
+[run.viewer]
+name = "Diagram viewer"
+command = "cargo run --locked -p diagram-viewer"
+
+[run.build_web]
+name = "Build PlantUML web renderer"
+command = "./web/build.sh"
+
+[serve.web_example]
+name = "PlantUML web example"
+root = "web"
+port = 8765
+open = "/example.html"

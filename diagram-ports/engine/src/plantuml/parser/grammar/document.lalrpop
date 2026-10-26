@@ -1,0 +1,89 @@
+// Original paired-wrapper and directive-placement grammar; payload syntax is migrated separately.
+grammar(budget: &mut crate::plantuml::budget::Budget);
+use crate::plantuml::{parser::{document::{Token, Bounds, finish}, error::ParseFailure}, source::Wrapper};
+pub Document: Bounds = {
+    "startflow" <start:@R> <contents:Contents> <end:@L> "endflow" =>? finish(Wrapper::Flow,start..end,contents,budget).map_err(|error|lalrpop_util::ParseError::User{error}),
+
+    "startcreole" <start:@R> <contents:Contents> <end:@L> "endcreole" =>? finish(Wrapper::Creole, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startbpm" <start:@R> <contents:Contents> <end:@L> "endbpm" =>? finish(Wrapper::Bpm,start..end,contents,budget).map_err(|error|lalrpop_util::ParseError::User{error}),
+    "startebnf" <start:@R> <contents:Contents> <end:@L> "endebnf" =>? finish(Wrapper::Ebnf, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startregex" <start:@R> <contents:Contents> <end:@L> "endregex" =>? finish(Wrapper::Regex, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startwire" <start:@R> <contents:Contents> <end:@L> "endwire" =>? finish(Wrapper::Wire, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startchart" <start:@R> <contents:Contents> <end:@L> "endchart" =>? finish(Wrapper::Chart, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_before:Comments> "startuml" <start:@R> <contents:Contents> <end:@L> "enduml" <_after:Comments> =>? finish(Wrapper::Uml, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startmindmap" <start:@R> <contents:Contents> <end:@L> "endmindmap" =>? finish(Wrapper::Mindmap, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startwbs" <start:@R> <contents:Contents> <end:@L> "endwbs" =>? finish(Wrapper::Wbs, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startjson" <start:@R> <contents:Contents> <end:@L> "endjson" =>? finish(Wrapper::Json, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startyaml" <start:@R> <contents:Contents> <end:@L> "endyaml" =>? finish(Wrapper::Yaml, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startgantt" <start:@R> <contents:Contents> <end:@L> "endgantt" <_after:Comments> =>? finish(Wrapper::Gantt, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startsalt" <start:@R> <contents:Contents> <end:@L> "endsalt" =>? finish(Wrapper::Salt, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startnwdiag" <start:@R> <contents:Contents> <end:@L> "endnwdiag" <_after:Comments> =>? finish(Wrapper::Nwdiag, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startfiles" <start:@R> <contents:Contents> <end:@L> "endfiles" =>? finish(Wrapper::Files, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startpacketdiag" <start:@R> <contents:Contents> <end:@L> "endpacketdiag" =>? finish(Wrapper::Packet, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startboard" <start:@R> <contents:Contents> <end:@L> "endboard" =>? finish(Wrapper::Board, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "starthcl" <start:@R> <contents:Contents> <end:@L> "endhcl" =>? finish(Wrapper::Hcl, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startchen" <start:@R> <contents:Contents> <end:@L> "endchen" <_after:Comments> =>? finish(Wrapper::Chen, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "startgit" <start:@R> <contents:Contents> <end:@L> "endgit" =>? finish(Wrapper::Git, start..end, contents, budget).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Contents: usize = {
+    => 0,
+    <count:Contents> <item:Item> =>? { budget.charge(1).map(|_| count + item).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) }) },
+};
+Item: usize = { "comment" => 0, "row" => 1, "definition" => 0, "sheet start" <Sheet> "sheet end" => 1 };
+Sheet: () = { => (), <Sheet> "comment" =>? budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) }), <Sheet> "row" =>? budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) }) };
+Comments: () = { => (), <Comments> "comment" =>? budget.charge(1).map_err(|error| lalrpop_util::ParseError::User { error: ParseFailure::terminal(error) }) };
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "startflow" => Token::StartFlow,
+        "endflow" => Token::EndFlow,
+
+        "startcreole" => Token::StartCreole,
+        "endcreole" => Token::EndCreole,
+        "startbpm" => Token::StartBpm,
+        "endbpm" => Token::EndBpm,
+        "startebnf" => Token::StartEbnf,
+        "endebnf" => Token::EndEbnf,
+        "startregex" => Token::StartRegex,
+        "endregex" => Token::EndRegex,
+        "startwire" => Token::StartWire,
+        "endwire" => Token::EndWire,
+        "startchart" => Token::StartChart,
+        "endchart" => Token::EndChart,
+        "startuml" => Token::StartUml,
+        "enduml" => Token::EndUml,
+        "startmindmap" => Token::StartMindmap,
+        "endmindmap" => Token::EndMindmap,
+        "startwbs" => Token::StartWbs,
+        "endwbs" => Token::EndWbs,
+        "startjson" => Token::StartJson,
+        "endjson" => Token::EndJson,
+        "startyaml" => Token::StartYaml,
+        "endyaml" => Token::EndYaml,
+        "startgantt" => Token::StartGantt,
+        "endgantt" => Token::EndGantt,
+        "startsalt" => Token::StartSalt,
+        "endsalt" => Token::EndSalt,
+        "startnwdiag" => Token::StartNwdiag,
+        "endnwdiag" => Token::EndNwdiag,
+        "startfiles" => Token::StartFiles,
+        "endfiles" => Token::EndFiles,
+        "startpacketdiag" => Token::StartPacket,
+        "endpacketdiag" => Token::EndPacket,
+        "startboard" => Token::StartBoard,
+        "endboard" => Token::EndBoard,
+        "starthcl" => Token::StartHcl,
+        "endhcl" => Token::EndHcl,
+        "startchen" => Token::StartChen,
+        "endchen" => Token::EndChen,
+        "startgit" => Token::StartGit,
+        "endgit" => Token::EndGit,
+        "row" => Token::Row,
+        "comment" => Token::Comment,
+        "definition" => Token::Definition,
+        "sheet start" => Token::SheetStart,
+        "sheet end" => Token::SheetEnd,
+    }
+}
+

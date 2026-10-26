@@ -1,0 +1,825 @@
+use diagram_engine::{
+    HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+    Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+    TextMeasurementProfileIdentity, TextMetrics, render,
+};
+use std::sync::{Arc, Mutex};
+
+#[derive(Clone, Debug, PartialEq)]
+struct Query {
+    text: String,
+    family: String,
+    size: f64,
+    weight: String,
+    slant: String,
+}
+struct Recorder(Arc<Mutex<Vec<Query>>>);
+impl HostTextMeasurer for Recorder {
+    fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+        self.0.lock().unwrap().push(Query {
+            text: request.text.into(),
+            family: request.style.font_family.clone().unwrap_or_default(),
+            size: request.style.font_size,
+            weight: request.style.font_weight.clone().unwrap_or_default(),
+            slant: request.style.font_style.clone().unwrap_or_default(),
+        });
+        Ok(Some(HostTextMeasurement::Metrics(TextMetrics {
+            width: request.text.chars().count() as f64 * request.style.font_size,
+            height: request.style.font_size * 1.2,
+            line_count: 1,
+        })))
+    }
+}
+fn options() -> RenderOptions {
+    RenderOptions {
+        language: Language::PlantUml,
+        ..Default::default()
+    }
+}
+fn recorded() -> (RenderOptions, Arc<Mutex<Vec<Query>>>) {
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let mut options = options();
+    options.text_measurement = TextMeasurementPolicy::host_display(
+        TextMeasurementProfileIdentity::new(
+            MeasurementProfileId::new("style-contract").unwrap(),
+            "1",
+        )
+        .unwrap(),
+        Arc::new(Recorder(calls.clone())),
+        [TextMeasurementPhase::Layout],
+    );
+    (options, calls)
+}
+fn source(body: &str) -> String {
+    format!("@startuml\n{body}\n@enduml")
+}
+
+#[test]
+fn should_return_typed_errors_for_whitespace_only_preamble_values() {
+    // given
+    for whitespace in ["", " ", "\t", "\u{2003}", " \t\u{2003}\r"] {
+        for command in [
+            "title",
+            "legend",
+            "header",
+            "footer",
+            "left header",
+            "center footer",
+            "right header",
+            "title:",
+            "left header:",
+            "skinparam defaultFontSize",
+            "skinparam defaultFontName",
+            "skinparam defaultFontColor",
+            "skinparam titleFontStyle",
+            "skinparam BackgroundColor",
+        ] {
+            let input = source(&format!("{command}{whitespace}\nA -> B : x"));
+            // when
+            let result = render(&input, &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(diagram_engine::RenderError::InvalidSource(_)
+                        | diagram_engine::RenderError::UnsupportedFeature(_))
+                ),
+                "{input:?}: {result:?}"
+            );
+        }
+        for property in [
+            "FontSize",
+            "FontName",
+            "FontColor",
+            "FontStyle",
+            "BackgroundColor",
+        ] {
+            let input = source(&format!(
+                "<style>\nroot {{\n  {property}{whitespace}\n}}\n</style>\nA -> B : x"
+            ));
+            // when
+            let result = render(&input, &options());
+            // then
+            assert!(
+                matches!(
+                    result,
+                    Err(diagram_engine::RenderError::InvalidSource(_)
+                        | diagram_engine::RenderError::UnsupportedFeature(_))
+                ),
+                "{input:?}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn should_keep_repeated_stylesheets_linear_with_and_without_unrelated_definitions() {
+    // given
+    let sheet = "<style>\nroot {\nFontSize 20\n}\n</style>\n";
+    for definitions in [0, 200] {
+        let prefix = (0..definitions)
+            .map(|index| format!("!define UNUSED_{index} literal\n"))
+            .collect::<String>();
+        let small = source(&format!("{prefix}{}A -> B : x", sheet.repeat(100)));
+        let large = source(&format!("{prefix}{}A -> B : x", sheet.repeat(500)));
+        // when
+        let small = render(&small, &options()).unwrap();
+        let output = render(&large, &options()).unwrap();
+        // then
+        println!(
+            "repeated-sheet definitions={definitions} small-work={} large-work={} source-bytes={}",
+            small.layout_work_units,
+            output.layout_work_units,
+            large.len()
+        );
+        assert!(output.svg.contains("font-size=\"20\""));
+        assert!(
+            output.layout_work_units <= small.layout_work_units * 6,
+            "definitions {definitions}: work {} vs {}",
+            output.layout_work_units,
+            small.layout_work_units
+        );
+        assert!(
+            output.layout_work_units < large.len() * 100,
+            "definitions {definitions}: work {} for {} source bytes",
+            output.layout_work_units,
+            large.len()
+        );
+    }
+}
+
+#[test]
+fn should_allow_between_sheet_definitions_and_deny_later_expanded_sheet_definitions() {
+    // given
+    let prefix = "!define OPEN <style>\n!define CLOSE </style>\n<style>\nroot {\nFontSize 20\n}\n</style>\n!define BETWEEN literal\nOPEN\n";
+    let sheet = "root {\nFontSize 20\n}\nCLOSE\nA -> B : x";
+    let allowed = source(&format!("{prefix}{sheet}"));
+    let denied = source(&format!("{prefix}!define ILLEGAL value\n{sheet}"));
+    // when
+    let output = render(&allowed, &options()).unwrap();
+    let error = render(&denied, &options()).unwrap_err();
+    // then
+    assert!(output.svg.contains("font-size=\"20\""));
+    assert!(matches!(
+        error,
+        diagram_engine::RenderError::InvalidSource(_)
+    ));
+    assert!(error.to_string().contains("line 11, column 1"), "{error}");
+    assert!(
+        error
+            .to_string()
+            .contains("!define definition inside an expanded stylesheet"),
+        "{error}"
+    );
+}
+
+#[test]
+fn should_use_measured_frame_kind_and_multiline_caption_extents() {
+    // given
+    for size in [18, 96] {
+        let (config, calls) = recorded();
+        let input = source(&format!(
+            "skinparam defaultFontSize {size}\nparticipant A\ngroup **Caption**\\n//Second//\ncritical X\nA -> A : inside\nend\nend"
+        ));
+        // when
+        let output = render(&input, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        // then
+        assert!(
+            calls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|q| q.text == "critical" && q.size == size as f64)
+        );
+        for frame in xml
+            .descendants()
+            .filter(|n| n.attribute("data-kind") == Some("frame"))
+        {
+            let rect = frame.children().find(|n| n.has_tag_name("rect")).unwrap();
+            let number =
+                |n: roxmltree::Node<'_, '_>, key| n.attribute(key).unwrap().parse::<f64>().unwrap();
+            let mut rows = frame
+                .children()
+                .filter(|n| n.has_tag_name("text"))
+                .map(|n| {
+                    let y = number(n, "y");
+                    let height = size as f64 * 1.2 + 4.;
+                    let top = y - height + size as f64 / 4.5;
+                    let x = number(n, "x");
+                    let width = n.text().unwrap().chars().count() as f64 * size as f64;
+                    assert!(
+                        top > number(rect, "y")
+                            && top + height < number(rect, "y") + number(rect, "height")
+                    );
+                    assert!(
+                        x > number(rect, "x")
+                            && x + width < number(rect, "x") + number(rect, "width")
+                    );
+                    (top, top + height)
+                })
+                .collect::<Vec<_>>();
+            rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+            for pair in rows.windows(2) {
+                assert!(
+                    pair[0].1 <= pair[1].0 + 0.001,
+                    "{size}px measured header rows overlap: {pair:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn should_measure_and_paint_identical_nested_runs_with_composable_base_styles() {
+    // given
+    let (options, calls) = recorded();
+    let input = source(
+        "skinparam defaultFontName Liberation Sans\nskinparam defaultFontSize 22\nskinparam defaultFontColor #123456\nobject \"**Same //Both//**\" as A {\n{static} **Same**\n}",
+    );
+    // when
+    let result = render(&input, &options).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    let calls = calls.lock().unwrap();
+    // then
+    for node in xml.descendants().filter(|n| n.has_tag_name("text")) {
+        let query = Query {
+            text: node.text().unwrap_or("").into(),
+            family: node.attribute("font-family").unwrap().into(),
+            size: node.attribute("font-size").unwrap().parse().unwrap(),
+            weight: node.attribute("font-weight").unwrap().into(),
+            slant: node.attribute("font-style").unwrap().into(),
+        };
+        assert!(
+            calls.contains(&query),
+            "paint has no matching measurement: {query:?}"
+        );
+        assert_eq!(node.attribute("fill"), Some("#123456"));
+        assert_eq!(node.attribute("text-decoration"), Some("underline"));
+    }
+    assert!(
+        calls
+            .iter()
+            .any(|q| q.text == "Both" && q.size == 22. && q.weight == "700" && q.slant == "italic")
+    );
+}
+
+#[test]
+fn should_reserve_chrome_and_keep_default_element_size_separate() {
+    // given
+    let (options, _) = recorded();
+    let input = source(
+        "skinparam defaultFontSize 22\nleft header Wide wide wide wide wide wide wide wide\ntitle Top\\nSecond\nlegend Bottom\nright footer Foot\nA -> B : message",
+    );
+    // when
+    let result = render(&input, &options).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    let text = |s| {
+        xml.descendants()
+            .find(|n| n.has_tag_name("text") && n.text() == Some(s))
+            .unwrap()
+    };
+    assert_eq!(text("Top").attribute("font-size"), Some("14"));
+    assert_eq!(text("Bottom").attribute("font-size"), Some("14"));
+    assert_eq!(text("message").attribute("font-size"), Some("22"));
+    let y = |s| text(s).attribute("y").unwrap().parse::<f64>().unwrap();
+    assert!(
+        y("Top") < y("Second")
+            && y("Second") < y("message")
+            && y("message") < y("Bottom")
+            && y("Bottom") < y("Foot")
+    );
+    assert!(
+        xml.root_element()
+            .attribute("width")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            >= 390.
+    );
+}
+
+#[test]
+fn should_follow_last_authored_matching_style_property_and_keep_color_cache_separate() {
+    // given
+    let input = source(
+        "<style>\ndocument {\ntitle {\nFontColor #ff0000\n}\n}\nroot {\nFontColor #0000ff\n}\nelement {\nFontColor #00ff00\n}\n</style>\ntitle Same\nA -> B : Same",
+    );
+    // when
+    let result = render(&input, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    let colors: Vec<_> = xml
+        .descendants()
+        .filter(|n| n.has_tag_name("text") && n.text() == Some("Same"))
+        .map(|n| n.attribute("fill").unwrap())
+        .collect();
+    assert!(colors.contains(&"#0000ff") && colors.contains(&"#00ff00"));
+}
+
+#[test]
+fn should_decode_breaks_once_in_quoted_unquoted_and_chrome_labels() {
+    // given
+    let input = source(
+        r#"title "a\\n b\n c"
+participant "a\\n b\n c" as A
+A -> B : a\\n b\n c"#,
+    );
+    // when
+    let result = render(&input, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    assert!(
+        xml.descendants()
+            .filter(|n| n.has_tag_name("text") && n.text() == Some("a\\n b"))
+            .count()
+            >= 3
+    );
+    assert!(
+        xml.descendants()
+            .filter(|n| n.has_tag_name("text") && n.text() == Some(" c"))
+            .count()
+            >= 3
+    );
+}
+
+#[test]
+fn should_preserve_escaped_markup_urls_angles_pua_and_lone_markers() {
+    // given
+    let input = source(
+        "A -> B : ~**literal~** <angle> https://one/a https://two/b \u{e02a} left -- right ** // __ ~<b> ",
+    );
+    // when
+    let result = render(&input, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    assert!(xml.descendants().any(|n| n.has_tag_name("text") && n.text().is_some_and(|s| s.contains("**literal** <angle> https://one/a https://two/b \u{e02a} left -- right ** // __ <b>"))));
+}
+
+#[test]
+fn should_reject_crossed_unclosed_and_unsupported_markup() {
+    // given
+    for label in [
+        "**a //b** c//",
+        "<b>x",
+        "<B>x</i>",
+        "**<img:x>**",
+        "~~wave~~",
+        "[[link]]",
+        "<color:#ff0000>x</color>",
+    ] {
+        // when
+        let result = render(&source(&format!("A -> B : {label}")), &options());
+        // then
+        assert!(result.is_err(), "accepted {label}");
+    }
+}
+
+#[test]
+fn should_reject_unknown_style_declarations_values_and_unbalanced_rules() {
+    // given
+    for preamble in [
+        "skinparam unknown 20",
+        "skinparam defaultFontSize 97",
+        "skinparam titleFontColor red",
+        "skinparam defaultFontName url(x)",
+        "skinparam defaultFontStyle bold",
+        "skinparam titleFontStyle bold italic",
+        "<style>\nroot {\nBogus 1\n}\n</style>",
+        "<style>\ndocument {\nactor {\nFontSize 20\n}\n}\n</style>",
+        "<style>\nroot {\nFontSize 20\n</style>",
+        "skinparam titleFontSize 20\n<style>\nroot {\nFontSize 22\n}\n</style>",
+        "title\nx\nend title",
+    ] {
+        // when
+        let result = render(&source(&format!("{preamble}\nA -> B : x")), &options());
+        // then
+        assert!(result.is_err(), "accepted {preamble}");
+    }
+}
+
+#[test]
+fn should_keep_region_keyword_boundaries_before_raw_label_ownership() {
+    // given
+    for command in [
+        "title{Caption}",
+        "title;Caption",
+        "legend{Caption}",
+        "header;Caption",
+        "footer{Caption}",
+    ] {
+        // when
+        let result = render(&source(&format!("{command}\nA -> B : x")), &options());
+        // then
+        assert!(result.is_err(), "accepted non-keyword region {command}");
+    }
+}
+
+#[test]
+fn should_preserve_case_colon_alignment_and_reject_physical_multiline_regions() {
+    // given
+    for command in [
+        "TiTlE: Caption",
+        "LEGEND : Caption",
+        "LeFt HeAdEr: Caption",
+        "CENTER footer Caption",
+        "right HEADER : Caption",
+    ] {
+        // when
+        let output = render(&source(&format!("{command}\nA -> B : x")), &options()).unwrap();
+        // then
+        assert!(output.svg.contains(">Caption</text>"), "{command}");
+    }
+    for role in ["title", "legend", "header", "footer"] {
+        // when
+        let result = render(
+            &source(&format!("{role}\nCaption\nend {role}\nA -> B : x")),
+            &options(),
+        );
+        // then
+        assert!(result.is_err(), "accepted multiline {role}");
+    }
+}
+
+#[test]
+fn should_keep_finite_font_axes_and_case_insensitive_multiline_rules() {
+    // given
+    for size in [6, 14, 96] {
+        let (config, calls) = recorded();
+        let input = source(&format!(
+            "<StYlE>\nROOT {{\nFontName \"Liberation Sans\";\nFontColor #12AbEf;\n}}\nElEmEnT {{\nFontSize {size};\nFontStyle ItAlIc;\n}}\ndocument {{\nBackgroundColor #fEdCbA;\ntitle {{\nFontStyle normal;\n}}\n}}\n</STYLE>\ntitle Top\nA -> B : Exact"
+        ));
+        // when
+        let output = render(&input, &config).unwrap();
+        // then
+        assert!(output.svg.contains("#fedcba"));
+        assert!(output.svg.contains("#12abef"));
+        assert!(
+            calls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|query| query.text == "Exact"
+                    && query.size == f64::from(size)
+                    && query.slant == "italic"
+                    && query.family == "Liberation Sans")
+        );
+    }
+    for value in ["5", "97", "06", "6.0", "-6", "100", "6px", "6 7"] {
+        // when
+        let result = render(
+            &source(&format!("skinparam defaultFontSize {value}\nA -> B : x")),
+            &options(),
+        );
+        // then
+        if value == "06" {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err(), "accepted size {value}");
+        }
+    }
+}
+
+#[test]
+fn should_map_style_values_once_through_inline_comment_and_expansion_spans() {
+    // given
+    let input = "\u{feff}@startuml\r\n!define SIZE enormous\r\n  skinparam /' Ω '/ defaultFontSize SIZE\r\nA -> B : x\r\n@enduml";
+    // when
+    let error = render(input, &options()).unwrap_err().to_string();
+    // then
+    assert!(
+        error.contains("used at line 3, column 38, defined at line 2, column 1"),
+        "{error}"
+    );
+    assert_eq!(error.matches("expansion").count(), 1, "{error}");
+    assert!(!error.contains("ambiguous"), "{error}");
+}
+
+#[test]
+fn should_apply_each_region_skinparam_axis_to_its_owned_region() {
+    // given
+    for role in ["title", "legend", "header", "footer"] {
+        for (style, weight, slant) in [
+            ("plain", "400", "normal"),
+            ("normal", "400", "normal"),
+            ("bold", "700", "normal"),
+            ("italic", "400", "italic"),
+        ] {
+            let input = source(&format!(
+                "skinparam {role}FontName \"Liberation Sans\"\nskinparam {role}FontSize 31\nskinparam {role}FontColor #aBcD09\nskinparam {role}FontStyle {style}\n{role} Caption\nA -> B : Body"
+            ));
+            // when
+            let output = render(&input, &options()).unwrap();
+            let xml = roxmltree::Document::parse(&output.svg).unwrap();
+            let region = xml
+                .descendants()
+                .find(|node| node.has_tag_name("text") && node.text() == Some("Caption"))
+                .unwrap();
+            // then
+            assert_eq!(region.attribute("font-family"), Some("Liberation Sans"));
+            assert_eq!(region.attribute("font-size"), Some("31"));
+            assert_eq!(region.attribute("fill"), Some("#abcd09"));
+            assert_eq!(region.attribute("font-weight"), Some(weight));
+            assert_eq!(region.attribute("font-style"), Some(slant));
+        }
+    }
+}
+
+#[test]
+fn should_preserve_late_region_boundaries_and_quoted_command_lookalikes() {
+    // given
+    for command in [
+        "title Late",
+        "legend Late",
+        "header Late",
+        "footer Late",
+        "left header: Late",
+        "center footer: Late",
+        "right footer Late",
+        "skinparam defaultFontSize 20",
+        "<style>\nroot {\nFontSize 20\n}\n</style>",
+    ] {
+        // when
+        let result = render(&source(&format!("A -> B : first\n{command}")), &options());
+        // then
+        assert!(result.is_err(), "accepted late preamble {command}");
+    }
+    // given
+    let input = source(
+        "title \"skinparam defaultFontSize 96\"\nparticipant \"header Normal\" as A\nA -> B : title Late\nnote over B\nheader Raw\nend note",
+    );
+    // when
+    let output = render(&input, &options()).unwrap();
+    // then
+    assert!(output.svg.contains(">skinparam defaultFontSize 96</text>"));
+    assert!(output.svg.contains(">header Raw</text>"));
+    assert!(!output.svg.contains("font-size=\"96\""));
+}
+
+#[test]
+fn should_style_data_preamble_without_interpreting_literal_payload() {
+    // given
+    for (wrapper, payload) in [
+        ("json", r#"{"title":"**literal**\\n"}"#),
+        (
+            "yaml",
+            "title: '**literal**\\n'\nblock: |\n  title body\n  <style>",
+        ),
+    ] {
+        let input = format!(
+            "@start{wrapper}\ntitle Data\n<style>\nelement {{\nFontSize 24\nFontColor #123456\n}}\n</style>\n{payload}\n@end{wrapper}"
+        );
+        // when
+        let result = render(&input, &options()).unwrap();
+        let xml = roxmltree::Document::parse(&result.svg).unwrap();
+        // then
+        assert!(xml.descendants().any(|n| n.has_tag_name("text")
+            && n.text() == Some("**literal**\\n")
+            && n.attribute("font-size") == Some("24")
+            && n.attribute("fill") == Some("#123456")));
+    }
+}
+
+#[test]
+fn should_reject_unimplemented_block_markup_without_rejecting_lone_punctuation() {
+    // given
+    for label in ["* item", "# item", "= heading", "| a | b |", "----"] {
+        // when
+        let result = render(&source(&format!("A -> B : {label}")), &options());
+        // then
+        assert!(result.is_err(), "accepted block markup {label:?}");
+    }
+}
+
+#[test]
+fn should_keep_chrome_contained_and_separate_from_every_family_body() {
+    // given
+    for (wrapper, body) in [
+        (
+            "uml",
+            "participant A\nA -> B : **request**\nnote over B : //note//",
+        ),
+        (
+            "uml",
+            "package \"**Outer**\" as P {\npackage \"Inner\" as Q {\nclass \"__Type__\" as A {\n{abstract} **member**\n}\n}\nclass B\nA --> \"//many//\" B : --relation--\n}",
+        ),
+        (
+            "uml",
+            "state S {\nstate \"**Child**\" as C\n[*] --> C : //start//\n}",
+        ),
+        (
+            "uml",
+            "start\npartition \"**Group**\" {\n:__action__;\n}\nstop",
+        ),
+        ("mindmap", "* **Root**\n** //Child//"),
+        ("wbs", "* **Root**\n** //Child//"),
+    ] {
+        let (options, _) = recorded();
+        let preamble = "skinparam defaultFontSize 24\nleft header A very wide header with many words\ntitle **Top**\\n//Second//\nlegend __Bottom__\nright footer --Foot--";
+        let input = format!("@start{wrapper}\n{preamble}\n{body}\n@end{wrapper}");
+        // when
+        let result = render(&input, &options).unwrap();
+        let xml = roxmltree::Document::parse(&result.svg).unwrap();
+        let bounds: Vec<f64> = xml
+            .root_element()
+            .attribute("viewBox")
+            .unwrap()
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        // then
+        for node in xml.descendants().filter(|n| n.has_tag_name("text")) {
+            let x: f64 = node.attribute("x").unwrap().parse().unwrap();
+            let y: f64 = node.attribute("y").unwrap().parse().unwrap();
+            let size: f64 = node.attribute("font-size").unwrap().parse().unwrap();
+            let width = node.text().unwrap_or("").chars().count() as f64 * size;
+            assert!(
+                x >= bounds[0] && x + width <= bounds[0] + bounds[2] + 0.001,
+                "horizontal containment {wrapper}: {node:?}"
+            );
+            assert!(
+                y - size >= bounds[1] && y + size / 4.5 <= bounds[1] + bounds[3],
+                "vertical containment {wrapper}"
+            );
+        }
+        let title_bottom = xml
+            .descendants()
+            .filter(|n| {
+                n.has_tag_name("text")
+                    && n.parent().unwrap().attribute("id") == Some("document-title")
+            })
+            .map(|n| n.attribute("y").unwrap().parse::<f64>().unwrap() + 14. / 4.5)
+            .fold(0., f64::max);
+        let body_top = xml
+            .descendants()
+            .filter(|n| {
+                n.has_tag_name("text")
+                    && !n
+                        .parent()
+                        .unwrap()
+                        .attribute("id")
+                        .unwrap_or("")
+                        .starts_with("document-")
+            })
+            .map(|n| n.attribute("y").unwrap().parse::<f64>().unwrap() - 24. * 1.2)
+            .fold(f64::INFINITY, f64::min);
+        assert!(title_bottom < body_top, "chrome overlaps {wrapper} body");
+        usvg::Tree::from_str(&result.svg, &usvg::Options::default()).unwrap();
+    }
+}
+
+#[test]
+fn should_preserve_member_and_raw_note_commands_but_reject_interleaved_preambles() {
+    // given
+    for body in [
+        "A -> B : message\ntitle Late",
+        "class A\nskinparam defaultFontSize 20",
+        "start\n<style>\nroot {\nFontSize 20\n}\n</style>\nstop",
+    ] {
+        // when
+        let result = render(&source(body), &options());
+        // then
+        assert!(result.is_err(), "accepted interleaved {body}");
+    }
+    for body in [
+        "class A {\ntitle\nlegend\nheader\n}",
+        "A -> B : hi\nnote over B\ntitle raw\n  header raw\nend note",
+    ] {
+        // when
+        let result = render(&source(body), &options()).unwrap();
+        // then
+        assert!(!result.svg.contains("document-title"));
+        assert!(result.svg.contains("title"));
+    }
+}
+
+#[test]
+fn should_replace_chrome_regions_and_their_alignment() {
+    // given
+    let input =
+        source("left header Old\nright header New\ntitle OldTitle\ntitle Final\nA -> B : message");
+    // when
+    let result = render(&input, &options()).unwrap();
+    let xml = roxmltree::Document::parse(&result.svg).unwrap();
+    // then
+    assert!(!result.svg.contains("Old"));
+    let header = xml
+        .descendants()
+        .find(|n| n.has_tag_name("text") && n.text() == Some("New"))
+        .unwrap();
+    assert!(header.attribute("x").unwrap().parse::<f64>().unwrap() > 24.);
+    assert_eq!(
+        xml.descendants()
+            .filter(|n| n.attribute("id") == Some("document-header"))
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn should_enforce_run_depth_and_all_public_limits_for_styled_input() {
+    // given
+    let input = source("title Top\nA -> B : **a //b __c --d--__//**");
+    for limit in 0..6 {
+        let mut config = options();
+        match limit {
+            0 => config.limits.source_bytes = 8,
+            1 => config.limits.model_items = 5,
+            2 => config.limits.nesting_depth = 3,
+            3 => config.limits.layout_work = 100,
+            4 => config.limits.svg_bytes = 400,
+            _ => config.control.cancel(),
+        }
+        // when
+        let result = render(&input, &config);
+        // then
+        assert!(result.is_err(), "ignored style limit {limit}");
+    }
+}
+
+#[test]
+fn should_keep_keyed_data_style_words_literal_and_reject_unsupported_data_preamble() {
+    // given
+    for key in [
+        "skinparam",
+        "title",
+        "header",
+        "title heading",
+        "skinparam defaultFontName",
+        "left header heading",
+    ] {
+        let input = format!("@startyaml\n{key}: literal\n@endyaml");
+        // when
+        let result = render(&input, &options()).unwrap();
+        // then
+        assert!(result.svg.contains(&format!(">{key}</text>")));
+        assert!(!result.svg.contains("document-title"));
+    }
+    for command in [
+        "skinparam defaultFontSize 20",
+        "legend Extra",
+        "left footer Extra",
+        "center header Extra",
+        "right header Extra",
+    ] {
+        // when
+        let result = render(
+            &format!("@startyaml\n{command}\nx: value\n@endyaml"),
+            &options(),
+        );
+        // then
+        assert!(result.is_err(), "accepted data command {command}");
+    }
+}
+
+#[test]
+fn should_reject_blank_font_families_and_alignment_markup() {
+    // given
+    for body in [
+        "<style>\nroot {\nFontName \"  \"\n}\n</style>\nA -> B : x",
+        "A -> B : <center>center",
+        "A -> B : <left>left",
+    ] {
+        // when
+        let result = render(&source(body), &options());
+        // then
+        assert!(result.is_err(), "accepted {body}");
+    }
+}
+
+#[test]
+fn should_cancel_between_styled_run_host_calls() {
+    struct Canceller(diagram_engine::RenderControl, Arc<Mutex<Vec<String>>>);
+    impl HostTextMeasurer for Canceller {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            self.1.lock().unwrap().push(request.text.into());
+            if request.text == "stop" {
+                self.0.cancel();
+            }
+            Ok(None)
+        }
+    }
+    // given
+    let mut config = options();
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    config.text_measurement = TextMeasurementPolicy::host_display(
+        TextMeasurementProfileIdentity::new(
+            MeasurementProfileId::new("cancel-styled-run").unwrap(),
+            "1",
+        )
+        .unwrap(),
+        Arc::new(Canceller(config.control.clone(), calls.clone())),
+        [TextMeasurementPhase::Layout],
+    );
+    // when
+    let result = render(&source("A -> B : before **stop**//later//"), &config);
+    // then
+    assert!(matches!(
+        result,
+        Err(diagram_engine::RenderError::Cancelled(_))
+    ));
+    let calls = calls.lock().unwrap();
+    assert!(calls.iter().any(|text| text == "stop"));
+    assert!(!calls.iter().any(|text| text == "later"));
+}

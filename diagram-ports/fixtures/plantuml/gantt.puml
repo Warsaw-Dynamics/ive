@@ -1,0 +1,13 @@
+@startgantt
+!define DAYS 3
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize 16
+title Release schedule
+footer Explicit civil dates · seven open days · native subset
+Project starts 2026-11-02
+[**Draft brief**] as [draft] lasts 2 days
+[Build package] as [build] requires DAYS days
+[build] starts at [draft]'s end
+[Review checkpoint] as [review] happens at [build]'s end
+[Publish checkpoint] happens 1 day after [build]'s end
+@endgantt

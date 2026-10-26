@@ -1,0 +1,7 @@
+@starthcl
+service "billing" {
+  name = "ledger"
+  zones = ["north", "south"]
+  tags = { tier = "core" }
+}
+@endhcl

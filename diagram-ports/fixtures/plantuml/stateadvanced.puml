@@ -1,0 +1,17 @@
+@startuml
+title Concurrent state regions
+state Split <<fork>>
+state Machine {
+[*] --> Idle
+Idle --> [H] : pause
+--
+state Choose <<choice>>
+[*] --> Choose
+Choose --> Working : ready
+Working --> [*]
+}
+state Join <<join>>
+Split --> Machine : enter
+Machine --> Join : leave
+Join --> [*]
+@enduml

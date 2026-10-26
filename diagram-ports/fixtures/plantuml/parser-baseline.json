@@ -1,0 +1,273 @@
+{
+  "schema": 1,
+  "configuration": {
+    "language": "PlantUml",
+    "measurement": "default deterministic",
+    "sourceBytes": 262144,
+    "svgBytes": 16777216,
+    "modelItems": 10000,
+    "nestingDepth": 64,
+    "layoutWork": 5000000,
+    "timeoutMilliseconds": 10000
+  },
+  "fixtures": [
+    {
+      "path": "fixtures/plantuml/activity.puml",
+      "sourceSha256": "5f2ccae11dc644b2227663247a92936b17fe6d0b8f280e4a7d9aa813579d2979",
+      "family": "activity",
+      "svgSha256": "860dc7c1151e0527e5f1a90abc140663aa05a8b50e3b9a0cd0d448fe46b6bcde"
+    },
+    {
+      "path": "fixtures/plantuml/archimate.puml",
+      "sourceSha256": "73041e5113179ecb130544fdbc6e23719e227cb14d6e831b2b31b670f8a15d75",
+      "family": "description",
+      "svgSha256": "1a4d41eac6cfbbc4cd4cb9a7262bf804165920d8dec1040689ebfc8e87c552bb"
+    },
+    {
+      "path": "fixtures/plantuml/archimatebase.puml",
+      "sourceSha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
+      "family": "description",
+      "svgSha256": "606bee63b44e4c7660015304bee2deaa6130c244017648a353313be43c383127"
+    },
+    {
+      "path": "fixtures/plantuml/board.puml",
+      "sourceSha256": "24eb78be7c019d19afb7e4b589880f69f64dffb02d4f2bf12fdd512daaeec62c",
+      "family": "board",
+      "svgSha256": "38a346b3cfddeac760189a6893c197f05f2bdff1194c38d4b5fa697541ec5f25"
+    },
+    {
+      "path": "fixtures/plantuml/boardbase.puml",
+      "sourceSha256": "3479cbd3c10b0e2df33f6fa27c3e9fd1629d48acb40370b0a579f5ba3df8080c",
+      "family": "board",
+      "svgSha256": "da801272997f324fb888324ed90fbe97bab2def8f1f60c3214ab3c2606ee453b"
+    },
+    {
+      "path": "fixtures/plantuml/chen.puml",
+      "sourceSha256": "5666cbec5b209f9fa8ce034d3ef5f89a802fc4da0a5e09b295c6bfc56f098986",
+      "family": "chen",
+      "svgSha256": "d04f256c9984b888b3f3e4d70abccc8e8c36d0b178ec5ae274b19457b6a24512"
+    },
+    {
+      "path": "fixtures/plantuml/chenbase.puml",
+      "sourceSha256": "d689aebba3196e628ed7c84bc805b89cfb806985f3f9df1e07d7fb4f3f27f163",
+      "family": "chen",
+      "svgSha256": "0a07c6b7b78a7174f4c43904f74e9d08acb567d541385af3ecba39c3017a7351"
+    },
+    {
+      "path": "fixtures/plantuml/class.puml",
+      "sourceSha256": "529aa5fdcb31e465f26acb150b8b726d19847a3108e5acd54331194ca66e3b70",
+      "family": "class",
+      "svgSha256": "7fdc49406a9dba6e1d01aa0094b265587c84a0f24d620ac87dc16bb2e1fa98a4"
+    },
+    {
+      "path": "fixtures/plantuml/constantgraph.puml",
+      "sourceSha256": "f796db25708f84943ca5d7c01f19acc2d41f67f8a2c4eb94468f1b0c3b4f5215",
+      "family": "class",
+      "svgSha256": "bd529e77fd2b20cba2109c378103371a8745baebf751161a69091586c961224a"
+    },
+    {
+      "path": "fixtures/plantuml/constantsequence.puml",
+      "sourceSha256": "9971b56f9b1073641dfdb5776bdb53e0dbc51f30d985d00ae5b35aaaff9dddff",
+      "family": "sequence",
+      "svgSha256": "e3aa4598b9c2ff272815b443dfc7133283ab80b76539e9a4e96071c4be780122"
+    },
+    {
+      "path": "fixtures/plantuml/deployment.puml",
+      "sourceSha256": "643640442792223f4a39b1bc817dd47411683c602c853d812b57394a0cd58c76",
+      "family": "description",
+      "svgSha256": "801f14834f2c3ae61282337c7552fdd6150a73d01f222f6786cc7abe3e717257"
+    },
+    {
+      "path": "fixtures/plantuml/files.puml",
+      "sourceSha256": "00fc27baa7dcb8bff29f94457eec4b194c635e6dcd7864ee5a996105b1c5c51c",
+      "family": "files",
+      "svgSha256": "44942a44df6afd3273eb81280d6b93f9eea4e1a1b2ee23518233f48ddb67bd9f"
+    },
+    {
+      "path": "fixtures/plantuml/filesbase.puml",
+      "sourceSha256": "49292373d102be17bc4b8cdca87e8145810714c12520b2f49a3dcea21a260a0c",
+      "family": "files",
+      "svgSha256": "71cabca938004ecfc3068b62575bc9ba8d1a3d43031d6d5f5151a03f34d4da30"
+    },
+    {
+      "path": "fixtures/plantuml/gantt.puml",
+      "sourceSha256": "cd5df287b33ecdc5e551156292fa16067f18bdc440a8a023d73739845013332c",
+      "family": "gantt",
+      "svgSha256": "d3908fe3e55ece48c347f894de75a9da61f5e43b6049c86ace8a9fb1ed1cb3a4"
+    },
+    {
+      "path": "fixtures/plantuml/ganttalias.puml",
+      "sourceSha256": "652c8648afbf5814d01c6fde36e24c19924d51c2ab1422ea67800ec42ae6a0fe",
+      "family": "gantt",
+      "svgSha256": "0281b046374a38eb36de42c8251f7aed9f8c0466d780b1590ecf832055421501"
+    },
+    {
+      "path": "fixtures/plantuml/ganttbase.puml",
+      "sourceSha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+      "family": "gantt",
+      "svgSha256": "78373f9b3966c13e0b42155495deecc9b3d5ad8963561085f8b135fe0d0e68e4"
+    },
+    {
+      "path": "fixtures/plantuml/ganttleap.puml",
+      "sourceSha256": "c2438204d02f7a3a3a9653bc973ad749170f0b667ebc0a804fa5b8568d6b0128",
+      "family": "gantt",
+      "svgSha256": "3fc132ef3aa97dd7b54c339e72cd62606d8a6ec18468e87a187c703f4f807421"
+    },
+    {
+      "path": "fixtures/plantuml/hcl.puml",
+      "sourceSha256": "5a3cef66fb7dc6d3e01df54c331985f8f2d26681d97201a5ece1d4745745e4c1",
+      "family": "hcl",
+      "svgSha256": "c6066029637602a111ee448c7f3169f03cd88f73a33517c0a7879190af90d88d"
+    },
+    {
+      "path": "fixtures/plantuml/hclbase.puml",
+      "sourceSha256": "40fb9ae3934394d2712f93624b8957bfd240d7af2098ae6c5223fa8299ecce39",
+      "family": "hcl",
+      "svgSha256": "477c400fc7b506a1ccc151d55d2c43b381db98794b4ea226c432316b9063859b"
+    },
+    {
+      "path": "fixtures/plantuml/json.puml",
+      "sourceSha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626",
+      "family": "json",
+      "svgSha256": "077390a8a563d16fbe3be7b052626ad0c2b500d4e26c5f746d404d695c52d259"
+    },
+    {
+      "path": "fixtures/plantuml/mindmap.puml",
+      "sourceSha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c",
+      "family": "mindmap",
+      "svgSha256": "55e6b5e8970dcc4ccf493813c6fe526b16f09a113eef7ac9bab11b0c8694f68b"
+    },
+    {
+      "path": "fixtures/plantuml/nwdiag.puml",
+      "sourceSha256": "b3245713091fdb2296c7280e0de275694484c65a32e96fb8a3052eb676d8b6cc",
+      "family": "nwdiag",
+      "svgSha256": "1a5a725d255b599b0a9b8276687c172af015e902a902e782f49a251fccc5d0c2"
+    },
+    {
+      "path": "fixtures/plantuml/nwdiagbase.puml",
+      "sourceSha256": "7bff741790360b248374d315934527d8169e7181427efd4af341892a810951f3",
+      "family": "nwdiag",
+      "svgSha256": "283ff7413fb707fc9132390a92c9d963924bceca6997eeb7d3de0930c58668c4"
+    },
+    {
+      "path": "fixtures/plantuml/nwdiagrepeated.puml",
+      "sourceSha256": "fa3d9eef9458fda3701b8f6196922baefbb878e42a7ee35643b0b9aac6359bbe",
+      "family": "nwdiag",
+      "svgSha256": "b77fc3ae7cdda02a35f9752214bbcec1d00c1268f92e976911059a22beb06657"
+    },
+    {
+      "path": "fixtures/plantuml/nwdiagshared.puml",
+      "sourceSha256": "4938d58ff6cb66f0750a492cf46c21c907bcb5d5ac19c8b95c2cf27136749a2e",
+      "family": "nwdiag",
+      "svgSha256": "839781131fccc24de4d6620ce7d50ed6ec992febda86636a4de4303b788259fe"
+    },
+    {
+      "path": "fixtures/plantuml/object.puml",
+      "sourceSha256": "b096f774dfdcaf21f8ae0cdbe278f8912e411bffd9cc511fae68e6eff9b1640b",
+      "family": "object",
+      "svgSha256": "256fce356d9b27b0ed3fbdc619c251e7e4c2bed8bb86c0e592334a6895c97b44"
+    },
+    {
+      "path": "fixtures/plantuml/packetbase.puml",
+      "sourceSha256": "ed4d574921091eaf20c41f79fb22f97ff647e24388a8472d2c50f13b51c45669",
+      "family": "packetdiag",
+      "svgSha256": "286d93d70540bafceb59adad41eec0e99f28dcea8da0d4f5f99eac2c633f77ba"
+    },
+    {
+      "path": "fixtures/plantuml/packetdiag.puml",
+      "sourceSha256": "ecc46aa7cb370c90b48c8fca104315569bf97f1811a820c7d2c22b78b3dd8dd2",
+      "family": "packetdiag",
+      "svgSha256": "70ef60e0c1158709f9f51b39234ca976d90a3556f62d4694291ce20a34dea22f"
+    },
+    {
+      "path": "fixtures/plantuml/salt.puml",
+      "sourceSha256": "6d4ad1eb7f1814f46a447246a3491b5ee4e7d9211758b2af4b78df01b48f52b5",
+      "family": "salt",
+      "svgSha256": "a192cbe67436f64061e1f45fcf30c949e93ab9ae21c37eee0cbf966c7efac674"
+    },
+    {
+      "path": "fixtures/plantuml/saltbase.puml",
+      "sourceSha256": "0fba629e3bf1d9ee00505dc3ed39a9d6cdc6b585b62c5301aabb44dae1a91e41",
+      "family": "salt",
+      "svgSha256": "678c3f5595b8d88fa33f882cbddf130c3210143852307ad3619b3e8e8b2c8dd5"
+    },
+    {
+      "path": "fixtures/plantuml/saltliteral.puml",
+      "sourceSha256": "fa5e09a31c612c743b0986c1e87188195d370ff3781b2341314330fb2b7d4c47",
+      "family": "salt",
+      "svgSha256": "0feddbfe87f556b63a53a37ad98798739665552d2925e3fa9dfaea15dd337d01"
+    },
+    {
+      "path": "fixtures/plantuml/saltwidgets.puml",
+      "sourceSha256": "515f278740900fe267eaae4ea2531c8b625f752972e872c60afc8d5c4f01343b",
+      "family": "salt",
+      "svgSha256": "b403d268e75b0b7f89e51cf8b3ddea27bea708e990ced6bfb50308229535a81c"
+    },
+    {
+      "path": "fixtures/plantuml/sequence.puml",
+      "sourceSha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+      "family": "sequence",
+      "svgSha256": "59918f4882dbe04d5c1755c705ac9c1aff02906051dfce760ab13a6d6e0b07b0"
+    },
+    {
+      "path": "fixtures/plantuml/state.puml",
+      "sourceSha256": "081bdcec241cbc1b3cb035cfe0d7e42dcee2efa45813e0de058c0df8533b24bf",
+      "family": "state",
+      "svgSha256": "3d2c63f392fec88dfdb2bc03b2ea8e5f08f3d43c1cadbf8577b50c6ba11f67c3"
+    },
+    {
+      "path": "fixtures/plantuml/styledgraph.puml",
+      "sourceSha256": "577722087f3e47b9964d8ccb420f9fd2b64e67c3dce55ec193e94eff31819ca7",
+      "family": "class",
+      "svgSha256": "48523ce4709626f460255a2ef1f21d7a544445aba61a7e74da82a47f692ac7f0"
+    },
+    {
+      "path": "fixtures/plantuml/styledsequence.puml",
+      "sourceSha256": "040c0952cc2b8a6fdb8400adc6594e2dee838205efeb3505e444a05943f7fbde",
+      "family": "sequence",
+      "svgSha256": "a46b3adf26d2c3c9bb2e860f38d54411c083e61ab8f8791ba0b4ba568c61b3f1"
+    },
+    {
+      "path": "fixtures/plantuml/timing.puml",
+      "sourceSha256": "c25f1e332dac7555692fb0942f36d63a02cc5316111511915b0c5ffe97e474ec",
+      "family": "timing",
+      "svgSha256": "3df2a233ffd71ee71f7803ec95c5d0c65d70d60d1ffb4986fedb6e56a330914e"
+    },
+    {
+      "path": "fixtures/plantuml/timingbase.puml",
+      "sourceSha256": "b63360b1f508f465a335bece9b632db5353caf2a4614243e7eb94e4c9d326caf",
+      "family": "timing",
+      "svgSha256": "588972fb989ae56dd0d9cb3aee8097e3ec72cb446cee506b6136bea428703ff9"
+    },
+    {
+      "path": "fixtures/plantuml/timingdual.puml",
+      "sourceSha256": "9fe1b95191e7741ab35c4c5cb3246c4acc00a3afc4b65dfc559dceb1442b0f54",
+      "family": "timing",
+      "svgSha256": "51ba86a16c65351682ec1636c4826f41cdff165ec11a93faefd67c3919eb63bc"
+    },
+    {
+      "path": "fixtures/plantuml/timinglane.puml",
+      "sourceSha256": "f8f6daea3aa5830de880da7a96bf82bc3fb080e3077d93545ae5194444bff097",
+      "family": "timing",
+      "svgSha256": "f6c8241b4fbf4c86bc0f4c186473a4379e7e112cf37fe02d7b4e6f011d927a66"
+    },
+    {
+      "path": "fixtures/plantuml/usecase.puml",
+      "sourceSha256": "342ad82873e6d41e18bbc20de8e4e46a506a9135bb5c2fc77c9d3d36fc9c1b8f",
+      "family": "description",
+      "svgSha256": "2139bf796c7cd01476d8b3e48739b5ee1edac21c413c0aa2fbe8a2bc6cbf8c36"
+    },
+    {
+      "path": "fixtures/plantuml/wbs.puml",
+      "sourceSha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae",
+      "family": "wbs",
+      "svgSha256": "67241a25e94737128d6f8f3809cdca13d147254c5fbc74164a4f13fef1044bd6"
+    },
+    {
+      "path": "fixtures/plantuml/yaml.puml",
+      "sourceSha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb",
+      "family": "yaml",
+      "svgSha256": "f258c0fe4667b2db4a6676fa9113db36986b832227a419ca9568b8dcac02e707"
+    }
+  ]
+}

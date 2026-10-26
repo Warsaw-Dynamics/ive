@@ -1,0 +1,7 @@
+@startgantt
+Project starts 2028-02-28
+[Leap span] as [leap] lasts 3 days
+[Ship] lasts 1 day
+[Ship] starts at [leap]'s end
+[Dated marker] happens 2028-03-02
+@endgantt

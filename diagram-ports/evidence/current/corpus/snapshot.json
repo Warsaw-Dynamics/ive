@@ -1,0 +1,575 @@
+{
+  "head": "3478bbdf5d11865414817e5f6a01eb81cd2336da",
+  "sourceSnapshot": [
+    {
+      "path": "diagram-ports/fixtures/mermaid/agentflow.mmd",
+      "file": "agentflow.mmd",
+      "sha256": "ca4b1415bbfb6614defe8dbae3a629614dac08bf9bc1f343db62a261d81d0faa",
+      "bytes": 219
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/architecture.mmd",
+      "file": "architecture.mmd",
+      "sha256": "88eed9d27a77234403166e3529188781ea0683d39b3a6077950f7a15c9a673a0",
+      "bytes": 149
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/block.mmd",
+      "file": "block.mmd",
+      "sha256": "e4138de709182a9962805f4295f9984f6c4a945916123cf2e1c18e936dbd14e5",
+      "bytes": 107
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/c4.mmd",
+      "file": "c4.mmd",
+      "sha256": "30d385cb1d8d78c44d77b02687c17a842a5462d3beb7040670eaef56771fa97e",
+      "bytes": 164
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/class.mmd",
+      "file": "class.mmd",
+      "sha256": "b42efb6fb3f46efb7d53e7e8617fd19a453c8d382bb9477df98ed14ca826d05e",
+      "bytes": 146
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/cynefin.mmd",
+      "file": "cynefin.mmd",
+      "sha256": "d42ffc0de85e3403b38c22ae1dba17074fa41362c152a8d4b59e8f64ddf9515b",
+      "bytes": 233
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/er.mmd",
+      "file": "er.mmd",
+      "sha256": "38e39c1f0f59c01cd668b3fafde78e6b32484a73db1337d4ca9666934543d9fc",
+      "bytes": 142
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/eventmodeling.mmd",
+      "file": "eventmodeling.mmd",
+      "sha256": "825d3c7706ed49fef40a76746b8324eada7e2f078d4a938e6600ce053eed8af4",
+      "bytes": 68
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/flowchart.mmd",
+      "file": "flowchart.mmd",
+      "sha256": "107cb07d10313bfa59c1c6dd368cd435873ccd2bc37a5b5ed3bf6fa5ac0b15b3",
+      "bytes": 111
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/gantt.mmd",
+      "file": "gantt.mmd",
+      "sha256": "e760b913be67fd20e9321c1e87c61159fe35e194b1e880bcc259f403b33f42b9",
+      "bytes": 150
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/git.mmd",
+      "file": "git.mmd",
+      "sha256": "9ac41366906a840423b9b729738a88ed755cf032143c502edd92f49510a80951",
+      "bytes": 101
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/info.mmd",
+      "file": "info.mmd",
+      "sha256": "96bac4de3ce48eccdafa38eb18e0581fe70d26b8d8d5a74ca8af79c77658dcde",
+      "bytes": 5
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/ishikawa.mmd",
+      "file": "ishikawa.mmd",
+      "sha256": "bd8f7430e8740be1bc486026a64448ededa796be3adbdeb3f05e2831fefa4c23",
+      "bytes": 159
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/journey.mmd",
+      "file": "journey.mmd",
+      "sha256": "2824bdfa87e5c08e60b1953970832a4ccab7e1a9fcedd258e2887b529fc9dbab",
+      "bytes": 129
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/kanban.mmd",
+      "file": "kanban.mmd",
+      "sha256": "64d471958b3a3c6b8956c05f7f063ed9faaafec919683c3cbee90cd4a309ee5b",
+      "bytes": 59
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/mindmap.mmd",
+      "file": "mindmap.mmd",
+      "sha256": "ce02871f0994cf1fef8eb05fbbef71c884bdcac8468a124879e444a51d1124c9",
+      "bytes": 123
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/packet.mmd",
+      "file": "packet.mmd",
+      "sha256": "8f1029c9c9d37dda695a9191cc14f929198c5851a36d8024ded9c669a28b65fb",
+      "bytes": 78
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/pie.mmd",
+      "file": "pie.mmd",
+      "sha256": "f41484cd94dd84837056db4c681ce6119f533b643bed745c58116553acdebf27",
+      "bytes": 86
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/quadrant.mmd",
+      "file": "quadrant.mmd",
+      "sha256": "1caab57067af47d93e4cf6572a8458c2dc0e61fe1ad5569b97aa406b6ceac5ab",
+      "bytes": 228
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/radar.mmd",
+      "file": "radar.mmd",
+      "sha256": "4bec271a8ea8d40d8fcf57c131d441402ee620d80519e2a6273aa8f832e61797",
+      "bytes": 134
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/railroad-abnf.mmd",
+      "file": "railroad-abnf.mmd",
+      "sha256": "bcf3d2a40b17d0c806159122ca19e0f4711925ddee858366e6688f48008ebdf0",
+      "bytes": 45
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/railroad-ebnf.mmd",
+      "file": "railroad-ebnf.mmd",
+      "sha256": "5f3597978bffbd2de842427658e1dffed18f5ee6e15f619dceb94811c17909ed",
+      "bytes": 45
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/railroad-peg.mmd",
+      "file": "railroad-peg.mmd",
+      "sha256": "363fd3d056ba49b4c65faaf7ef4024b8fbdded1e553c8cba71c5dd80a7a1be5f",
+      "bytes": 45
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/railroad.mmd",
+      "file": "railroad.mmd",
+      "sha256": "8981fbb4330edc5f65b35e710a43e632e7e35c9f4540eaee802f7c5c0c9161f4",
+      "bytes": 61
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/requirement.mmd",
+      "file": "requirement.mmd",
+      "sha256": "7cd7add7318450201e2550e0cb341d087b32b74dbbb12a1d3568200509c9a7a6",
+      "bytes": 228
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/sankey.mmd",
+      "file": "sankey.mmd",
+      "sha256": "cd2321b6a7da79d361cdfbae13137d60d570f4c9af93361e60155ad854e96aff",
+      "bytes": 59
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/sequence.mmd",
+      "file": "sequence.mmd",
+      "sha256": "18e4fc7a64d16d3736b6e3785a3ff30e3e73d0e7873ffef52884470bcf36342f",
+      "bytes": 160
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/state.mmd",
+      "file": "state.mmd",
+      "sha256": "8a3b571f3913e9f8567197757dabe549b044944f5dd7d33721d390af9280a3b6",
+      "bytes": 115
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/swimlane.mmd",
+      "file": "swimlane.mmd",
+      "sha256": "792b41bef3ab45e50b65c0a27f975bd8f301983435fa8d42ed8f9b2775b4b5ff",
+      "bytes": 202
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/timeline.mmd",
+      "file": "timeline.mmd",
+      "sha256": "f4eec44f3464c17692a9c41a0ac7ba336cdf74c8beb6def49fe2ab1cd09588a9",
+      "bytes": 129
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/tree.mmd",
+      "file": "tree.mmd",
+      "sha256": "a82f399a160c0c3508f7e9b59ad0451ec49b875e32a188a633aec253a0538230",
+      "bytes": 79
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/treemap.mmd",
+      "file": "treemap.mmd",
+      "sha256": "e0bb602db9f35e77b9ea54cc962e047368411b6ee4fa87b79f70cb65b7fe21e0",
+      "bytes": 93
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/usecase.mmd",
+      "file": "usecase.mmd",
+      "sha256": "00339c496aec5a45f8f5caf77b60b01088186cac9d7fdf4773d046e5d289bc46",
+      "bytes": 135
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/venn.mmd",
+      "file": "venn.mmd",
+      "sha256": "304325cdea9efd2a86a432c01e8822a23847b3ff9f8be47eaa82eb429856f49d",
+      "bytes": 93
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/wardley.mmd",
+      "file": "wardley.mmd",
+      "sha256": "3b4e42bb6ec22a23ea1c821996737578b73fdf1766476d39079a562024c28891",
+      "bytes": 196
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/xychart.mmd",
+      "file": "xychart.mmd",
+      "sha256": "b02d92c087575868ad36823a152f9adcc69150943771770436fbd7d2041834af",
+      "bytes": 152
+    },
+    {
+      "path": "diagram-ports/fixtures/mermaid/zenuml.mmd",
+      "file": "zenuml.mmd",
+      "sha256": "522d630c28439ad0f1ec257eb987d8fab8159d2dbebb03ee7ad74551a9ecb036",
+      "bytes": 88
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/activity.puml",
+      "file": "activity.puml",
+      "sha256": "5f2ccae11dc644b2227663247a92936b17fe6d0b8f280e4a7d9aa813579d2979",
+      "bytes": 114
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/archimate.puml",
+      "file": "archimate.puml",
+      "sha256": "73041e5113179ecb130544fdbc6e23719e227cb14d6e831b2b31b670f8a15d75",
+      "bytes": 300
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/archimatebase.puml",
+      "file": "archimatebase.puml",
+      "sha256": "5b3771ce83c85f3542cfa9be8ca5e3e77db3d77da91201a750db2a8a54f0f271",
+      "bytes": 141
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/board.puml",
+      "file": "board.puml",
+      "sha256": "24eb78be7c019d19afb7e4b589880f69f64dffb02d4f2bf12fdd512daaeec62c",
+      "bytes": 143
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/boardbase.puml",
+      "file": "boardbase.puml",
+      "sha256": "3479cbd3c10b0e2df33f6fa27c3e9fd1629d48acb40370b0a579f5ba3df8080c",
+      "bytes": 60
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/bpm.puml",
+      "file": "bpm.puml",
+      "sha256": "d75839e3c0b6f86055f781fb5cf38f8c7dad3b27f40ec3e1ecb9b7ff5ae8c79e",
+      "bytes": 81
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/chart.puml",
+      "file": "chart.puml",
+      "sha256": "5304d4e71659f101b9452b3d25333d2c31c4bad87e7dd4dabd6ae4061bf65630",
+      "bytes": 101
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/chen.puml",
+      "file": "chen.puml",
+      "sha256": "5666cbec5b209f9fa8ce034d3ef5f89a802fc4da0a5e09b295c6bfc56f098986",
+      "bytes": 311
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/chenbase.puml",
+      "file": "chenbase.puml",
+      "sha256": "d689aebba3196e628ed7c84bc805b89cfb806985f3f9df1e07d7fb4f3f27f163",
+      "bytes": 134
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/class.puml",
+      "file": "class.puml",
+      "sha256": "529aa5fdcb31e465f26acb150b8b726d19847a3108e5acd54331194ca66e3b70",
+      "bytes": 181
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/constantgraph.puml",
+      "file": "constantgraph.puml",
+      "sha256": "f796db25708f84943ca5d7c01f19acc2d41f67f8a2c4eb94468f1b0c3b4f5215",
+      "bytes": 643
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/constantsequence.puml",
+      "file": "constantsequence.puml",
+      "sha256": "9971b56f9b1073641dfdb5776bdb53e0dbc51f30d985d00ae5b35aaaff9dddff",
+      "bytes": 617
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/creoledoc.puml",
+      "file": "creoledoc.puml",
+      "sha256": "4aed0a199bb069ca12f1f6f4e6d33a5a1008c43c5fcee19c8f8db61af1e6f92e",
+      "bytes": 83
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/deployment.puml",
+      "file": "deployment.puml",
+      "sha256": "643640442792223f4a39b1bc817dd47411683c602c853d812b57394a0cd58c76",
+      "bytes": 179
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/ebnf.puml",
+      "file": "ebnf.puml",
+      "sha256": "63126d525ce71732630bd0840e94e970eed8c5be946db0c8fbc2c1571f0a197b",
+      "bytes": 65
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/files.puml",
+      "file": "files.puml",
+      "sha256": "00fc27baa7dcb8bff29f94457eec4b194c635e6dcd7864ee5a996105b1c5c51c",
+      "bytes": 269
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/filesbase.puml",
+      "file": "filesbase.puml",
+      "sha256": "49292373d102be17bc4b8cdca87e8145810714c12520b2f49a3dcea21a260a0c",
+      "bytes": 54
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/flow.puml",
+      "file": "flow.puml",
+      "sha256": "a50ecc4dd253fca2a44b862d94ffdb2c1e11c63ca374e92127ff4f236904a8e8",
+      "bytes": 64
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/flowcursor.puml",
+      "file": "flowcursor.puml",
+      "sha256": "5ed35d8bff255d30e93259faf76729c6a69239e58984160269dfdaaf05fa1955",
+      "bytes": 46
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/gantt.puml",
+      "file": "gantt.puml",
+      "sha256": "cd5df287b33ecdc5e551156292fa16067f18bdc440a8a023d73739845013332c",
+      "bytes": 453
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/ganttalias.puml",
+      "file": "ganttalias.puml",
+      "sha256": "652c8648afbf5814d01c6fde36e24c19924d51c2ab1422ea67800ec42ae6a0fe",
+      "bytes": 270
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/ganttbase.puml",
+      "file": "ganttbase.puml",
+      "sha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+      "bytes": 174
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/ganttleap.puml",
+      "file": "ganttleap.puml",
+      "sha256": "c2438204d02f7a3a3a9653bc973ad749170f0b667ebc0a804fa5b8568d6b0128",
+      "bytes": 166
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/git.puml",
+      "file": "git.puml",
+      "sha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+      "bytes": 67
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/gitlinear.puml",
+      "file": "gitlinear.puml",
+      "sha256": "03dbabe21fea378aed7f4e54e765a1ebdc9fb1079cc1b787abfacceaac722e3e",
+      "bytes": 37
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/hcl.puml",
+      "file": "hcl.puml",
+      "sha256": "5a3cef66fb7dc6d3e01df54c331985f8f2d26681d97201a5ece1d4745745e4c1",
+      "bytes": 297
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/hclbase.puml",
+      "file": "hclbase.puml",
+      "sha256": "40fb9ae3934394d2712f93624b8957bfd240d7af2098ae6c5223fa8299ecce39",
+      "bytes": 114
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/json.puml",
+      "file": "json.puml",
+      "sha256": "fefb478ac2559c3d452798502155a3a0ade75f569048d3fa237cfd809703f626",
+      "bytes": 86
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/mindmap.puml",
+      "file": "mindmap.puml",
+      "sha256": "079e4ebf4341974d9c1176f5560a17ef677a31362ac23ee2df7aa2b1bac1a79c",
+      "bytes": 78
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/nwdiag.puml",
+      "file": "nwdiag.puml",
+      "sha256": "b3245713091fdb2296c7280e0de275694484c65a32e96fb8a3052eb676d8b6cc",
+      "bytes": 943
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/nwdiagbase.puml",
+      "file": "nwdiagbase.puml",
+      "sha256": "7bff741790360b248374d315934527d8169e7181427efd4af341892a810951f3",
+      "bytes": 156
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/nwdiagrepeated.puml",
+      "file": "nwdiagrepeated.puml",
+      "sha256": "fa3d9eef9458fda3701b8f6196922baefbb878e42a7ee35643b0b9aac6359bbe",
+      "bytes": 179
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/nwdiagshared.puml",
+      "file": "nwdiagshared.puml",
+      "sha256": "4938d58ff6cb66f0750a492cf46c21c907bcb5d5ac19c8b95c2cf27136749a2e",
+      "bytes": 359
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/object.puml",
+      "file": "object.puml",
+      "sha256": "b096f774dfdcaf21f8ae0cdbe278f8912e411bffd9cc511fae68e6eff9b1640b",
+      "bytes": 141
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/packetbase.puml",
+      "file": "packetbase.puml",
+      "sha256": "ed4d574921091eaf20c41f79fb22f97ff647e24388a8472d2c50f13b51c45669",
+      "bytes": 107
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/packetdiag.puml",
+      "file": "packetdiag.puml",
+      "sha256": "ecc46aa7cb370c90b48c8fca104315569bf97f1811a820c7d2c22b78b3dd8dd2",
+      "bytes": 201
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/regex.puml",
+      "file": "regex.puml",
+      "sha256": "68b258c9db493a896f5f248717cfe1bc21e233cfffffcbbb3d4c52a6e77a9370",
+      "bytes": 38
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/salt.puml",
+      "file": "salt.puml",
+      "sha256": "6d4ad1eb7f1814f46a447246a3491b5ee4e7d9211758b2af4b78df01b48f52b5",
+      "bytes": 426
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/saltbase.puml",
+      "file": "saltbase.puml",
+      "sha256": "0fba629e3bf1d9ee00505dc3ed39a9d6cdc6b585b62c5301aabb44dae1a91e41",
+      "bytes": 65
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/saltliteral.puml",
+      "file": "saltliteral.puml",
+      "sha256": "fa5e09a31c612c743b0986c1e87188195d370ff3781b2341314330fb2b7d4c47",
+      "bytes": 77
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/saltwidgets.puml",
+      "file": "saltwidgets.puml",
+      "sha256": "515f278740900fe267eaae4ea2531c8b625f752972e872c60afc8d5c4f01343b",
+      "bytes": 148
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/sequence.puml",
+      "file": "sequence.puml",
+      "sha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+      "bytes": 215
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/state.puml",
+      "file": "state.puml",
+      "sha256": "081bdcec241cbc1b3cb035cfe0d7e42dcee2efa45813e0de058c0df8533b24bf",
+      "bytes": 192
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/stateadvanced.puml",
+      "file": "stateadvanced.puml",
+      "sha256": "5c1c2029939305cdb360955e2537e9edeaa5cd50f4cc6d2d843a2079cf3e8864",
+      "bytes": 291
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/statehistory.puml",
+      "file": "statehistory.puml",
+      "sha256": "273afa175561eee22ce7ff11434542c89fcde9c50ea7b255faaa4d578288c47c",
+      "bytes": 92
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/statepseudos.puml",
+      "file": "statepseudos.puml",
+      "sha256": "9b68f372b1dbb1f8bc4e9268b0607c046bcdb8fa158b722fb9f7148af8e5c1ff",
+      "bytes": 245
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/stateregions.puml",
+      "file": "stateregions.puml",
+      "sha256": "9b98e7fa6a8e5e6fc9c029e685cc6f13ba6766ba034437cdbfa76f8438ecf927",
+      "bytes": 144
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/styledgraph.puml",
+      "file": "styledgraph.puml",
+      "sha256": "577722087f3e47b9964d8ccb420f9fd2b64e67c3dce55ec193e94eff31819ca7",
+      "bytes": 707
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/styledsequence.puml",
+      "file": "styledsequence.puml",
+      "sha256": "040c0952cc2b8a6fdb8400adc6594e2dee838205efeb3505e444a05943f7fbde",
+      "bytes": 624
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/timing.puml",
+      "file": "timing.puml",
+      "sha256": "c25f1e332dac7555692fb0942f36d63a02cc5316111511915b0c5ffe97e474ec",
+      "bytes": 350
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/timingbase.puml",
+      "file": "timingbase.puml",
+      "sha256": "b63360b1f508f465a335bece9b632db5353caf2a4614243e7eb94e4c9d326caf",
+      "bytes": 81
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/timingdual.puml",
+      "file": "timingdual.puml",
+      "sha256": "9fe1b95191e7741ab35c4c5cb3246c4acc00a3afc4b65dfc559dceb1442b0f54",
+      "bytes": 210
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/timinglane.puml",
+      "file": "timinglane.puml",
+      "sha256": "f8f6daea3aa5830de880da7a96bf82bc3fb080e3077d93545ae5194444bff097",
+      "bytes": 141
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/usecase.puml",
+      "file": "usecase.puml",
+      "sha256": "342ad82873e6d41e18bbc20de8e4e46a506a9135bb5c2fc77c9d3d36fc9c1b8f",
+      "bytes": 159
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/wbs.puml",
+      "file": "wbs.puml",
+      "sha256": "0dc40c5ffe0feeb9ffad194298c9efe06b65558f4f460a58b1a6486fac8504ae",
+      "bytes": 74
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/wire.puml",
+      "file": "wire.puml",
+      "sha256": "8d229fb9d4b737c00568db2fdce9405850f81a6225e5353e8b38a81992fde795",
+      "bytes": 207
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/wirebase.puml",
+      "file": "wirebase.puml",
+      "sha256": "d2da7ba763012f397c23facf849424dfcac3b507c108547ad548f23f67bd0bb2",
+      "bytes": 84
+    },
+    {
+      "path": "diagram-ports/fixtures/plantuml/yaml.puml",
+      "file": "yaml.puml",
+      "sha256": "5685849a4dbd310cb5bce028c2d8986d2a830927851af3972e97ec7f444566cb",
+      "bytes": 92
+    }
+  ]
+}

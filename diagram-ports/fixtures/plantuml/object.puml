@@ -1,0 +1,9 @@
+@startuml
+object "basket : Cart" as basket {
+  total = 42
+}
+object "line : Item" as line {
+  sku = "A7"
+}
+basket o-- line : contains
+@enduml

@@ -1,0 +1,50 @@
+grammar(builder: &mut crate::plantuml::creole::Builder<'_>);
+use crate::plantuml::{creole::{Mark,Scope},parser::{creole::Token,error::ParseFailure}};
+pub Creole: () = <_items:Items> =>? builder.tick().map_err(|error|lalrpop_util::ParseError::User{error});
+Items: () = { =>(), <Items> <Item>=>() };
+Item: () = {
+    <value:"text">=>? builder.text(value).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <value:"literal">=>? builder.literal(value).map_err(|error|lalrpop_util::ParseError::User{error}),
+    "break"=>? builder.line().map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:TagBoldOpen> <_items:Items> "tag bold close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:BoldOpen> <_items:Items> "bold close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:TagItalicOpen> <_items:Items> "tag italic close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:ItalicOpen> <_items:Items> "italic close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:TagUnderlineOpen> <_items:Items> "tag underline close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:UnderlineOpen> <_items:Items> "underline close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:TagStrikeOpen> <_items:Items> "tag strike close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <scope:StrikeOpen> <_items:Items> "strike close" <end:@R> =>? builder.close(scope,end..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+TagBoldOpen: Scope = <start:@L> "tag bold open" <end:@R> =>? builder.open(Mark::Bold,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+BoldOpen: Scope = <start:@L> "bold open" <end:@R> =>? builder.open(Mark::Bold,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+TagItalicOpen: Scope = <start:@L> "tag italic open" <end:@R> =>? builder.open(Mark::Italic,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+ItalicOpen: Scope = <start:@L> "italic open" <end:@R> =>? builder.open(Mark::Italic,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+TagUnderlineOpen: Scope = <start:@L> "tag underline open" <end:@R> =>? builder.open(Mark::Underline,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+UnderlineOpen: Scope = <start:@L> "underline open" <end:@R> =>? builder.open(Mark::Underline,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+TagStrikeOpen: Scope = <start:@L> "tag strike open" <end:@R> =>? builder.open(Mark::Strike,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+StrikeOpen: Scope = <start:@L> "strike open" <end:@R> =>? builder.open(Mark::Strike,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+extern {
+ type Location=usize;
+ type Error=ParseFailure;
+ enum Token {
+ "text"=>Token::Text(<String>),
+ "literal"=>Token::Literal(<&'static str>),
+ "break"=>Token::Break,
+ "tag bold open"=>Token::TagBoldOpen,
+ "tag bold close"=>Token::TagBoldClose,
+ "bold open"=>Token::BoldOpen,
+ "bold close"=>Token::BoldClose,
+ "tag italic open"=>Token::TagItalicOpen,
+ "tag italic close"=>Token::TagItalicClose,
+ "italic open"=>Token::ItalicOpen,
+ "italic close"=>Token::ItalicClose,
+ "tag underline open"=>Token::TagUnderlineOpen,
+ "tag underline close"=>Token::TagUnderlineClose,
+ "underline open"=>Token::UnderlineOpen,
+ "underline close"=>Token::UnderlineClose,
+ "tag strike open"=>Token::TagStrikeOpen,
+ "tag strike close"=>Token::TagStrikeClose,
+ "strike open"=>Token::StrikeOpen,
+ "strike close"=>Token::StrikeClose,
+ }
+}

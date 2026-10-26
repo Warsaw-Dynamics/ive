@@ -1,0 +1,15 @@
+grammar<'s>(builder: &mut crate::plantuml::flow::Builder<'_>);
+use crate::plantuml::{flow::Cardinal,parser::{flow::Token,error::ParseFailure}};
+pub Document: () = <Commands>;
+Commands: () = {<Command>,<Commands> <Command> => ()};
+Command: () = {
+    <l:@L> <id:"word"> "newline" <r:@R> =>? builder.link(l..r,Cardinal::South,id).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> <id:"word"> "gap" <label:Quoted> "newline" <r:@R> =>? builder.tile(l..r,Cardinal::South,(id,label)).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> <dir:"word"> "gap" <id:"word"> "newline" <r:@R> =>? builder.direction(dir,l..r).and_then(|direction|builder.link(l..r,direction,id)).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> <dir:"word"> "gap" <id:"word"> "gap" <label:Quoted> "newline" <r:@R> =>? builder.direction(dir,l..r).and_then(|direction|builder.tile(l..r,direction,(id,label))).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Quoted: &'s str = "quote" <label:Text> "quote" => label;
+Text: &'s str = {=>"",<value:"text">=>value};
+extern {type Location=usize;type Error=ParseFailure;
+ enum Token<'s> {"word"=>Token::Word(<&'s str>),"quote"=>Token::Quote,"text"=>Token::Text(<&'s str>),"gap"=>Token::Gap,"newline"=>Token::Newline}
+}

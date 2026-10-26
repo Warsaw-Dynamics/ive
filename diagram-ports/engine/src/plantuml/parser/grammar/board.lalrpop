@@ -1,0 +1,12 @@
+// Stages fold to a counter; no dense stage grid or recursive tree is retained.
+grammar(builder: &mut crate::plantuml::board::Builder<'_>);
+use crate::plantuml::parser::{board::Token, error::ParseFailure};
+pub Board: () = <Items>;
+Items: () = { => (), <Items> <Item> => () };
+Item: () = <start:@L> <stage:Stage> <name:"label"> "newline" <end:@R> =>? builder.card(stage, name, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Stage: usize = { => 0, <count:Stage> "+" =>? { builder.budget.charge(1).map_err(ParseFailure::terminal).map(|()| count + 1).map_err(|error| lalrpop_util::ParseError::User { error }) } };
+extern {
+ type Location = usize;
+ type Error = ParseFailure;
+ enum Token { "+" => Token::Plus, "label" => Token::Label(<String>), "newline" => Token::Newline }
+}

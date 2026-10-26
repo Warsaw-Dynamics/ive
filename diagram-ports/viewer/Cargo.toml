@@ -1,0 +1,36 @@
+[package]
+name = "diagram-viewer"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[dependencies]
+diagram-engine = { path = "../engine" }
+serde = { version = "1", features = ["derive"] }
+serde_json.workspace = true
+libc = "0.2"
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73" }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["font-kit", "wayland", "x11"] }
+image = { version = "=0.25.10", default-features = false, features = ["png"] }
+roxmltree.workspace = true
+futures = "0.3.34"
+usvg = "=0.46.0"
+resvg = "=0.46.0"
+regex = "=1.13.1"
+ttf-parser = "=0.25.1"
+svgtypes = "=0.16.1"
+tempfile = "3"
+
+[build-dependencies]
+sha2 = "=0.10.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "f5d5fa2f8f07b0be68442e694d22ed6064609e73", features = ["runtime_shaders"] }
+
+[dev-dependencies]
+
+[[test]]
+name = "worker_faults"
+harness = false

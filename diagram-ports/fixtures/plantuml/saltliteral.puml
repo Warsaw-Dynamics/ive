@@ -1,0 +1,6 @@
+@startsalt
+{+
+Label \| pipe | "value"
+Brace \{literal\} | [Apply]
+}
+@endsalt

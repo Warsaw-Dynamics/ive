@@ -1,0 +1,8 @@
+@startgit
+* merge4 
+|\ 
+| * side3 
+* | main2 
+|/ 
+* base1 
+@endgit

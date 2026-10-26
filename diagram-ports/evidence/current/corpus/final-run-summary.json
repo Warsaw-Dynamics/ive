@@ -1,0 +1,69 @@
+{
+  "originalMetadata": {
+    "recordedAt": "2026-10-23T17:21:56.104Z",
+    "node": "v22.14.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "browser": "Chrome/153.0.8010.12",
+    "mermaid": "12.2.0",
+    "puppeteer": "25.16.0",
+    "plantuml": {
+      "version": "1.2026.9",
+      "jarSha256": "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd",
+      "identity": "local observed bytes, not external authentication"
+    },
+    "config": {
+      "startOnLoad": false,
+      "securityLevel": "strict",
+      "theme": "default",
+      "deterministicIds": true,
+      "deterministicIDSeed": "ive-diagram-oracle-v1",
+      "look": "classic",
+      "handDrawnSeed": 42,
+      "fontFamily": "Liberation Sans",
+      "layout": "dagre",
+      "htmlLabels": false,
+      "flowchart": {
+        "defaultRenderer": "dagre-wrapper",
+        "htmlLabels": false,
+        "useMaxWidth": false
+      },
+      "sequence": {
+        "useMaxWidth": false,
+        "actorFontFamily": "Liberation Sans",
+        "noteFontFamily": "Liberation Sans",
+        "messageFontFamily": "Liberation Sans"
+      },
+      "class": {
+        "useMaxWidth": false,
+        "htmlLabels": false
+      },
+      "themeVariables": {
+        "fontFamily": "Liberation Sans"
+      }
+    }
+  },
+  "nativeStart": "2026-10-23T17:21:56.319Z",
+  "nativeFinish": "2026-10-23T17:21:58.398Z",
+  "nativeArtifacts": 476,
+  "repeatRecordedAt": "2026-10-23T17:22:00.596Z",
+  "repeatAnalysis": {
+    "architectureEqualAfterBijectiveIconifyIdNormalization": true,
+    "gitFirstLabels": [
+      "main",
+      "develop",
+      "0-217ffbe",
+      "1-6fd0f48"
+    ],
+    "gitRepeatLabels": [
+      "main",
+      "develop",
+      "0-9476480",
+      "1-7290726"
+    ]
+  },
+  "executedTemplateSha256": "aa09b5e282ec82af092148d1da0f3b916d45b094832e9760b2f94745e4551355",
+  "semanticPreservationSha256": "af6c91bf8c234c437db733400bad79b6843d5069299cda52477f6f1548bd36b4",
+  "fixedTemplatePath": "/tmp/ive-task4b-final-corpus-commands.sh",
+  "failedAttemptPath": "/tmp/ive-diagram-final-poststate.MvrRA7"
+}

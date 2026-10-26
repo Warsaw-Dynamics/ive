@@ -1,0 +1,8 @@
+@startgantt
+Project starts 2026-10-01
+[Plan] lasts 2 days
+[Build] starts at [Plan]'s end
+[Build] lasts 3 days
+[Verify] starts at [Build]'s end
+[Verify] lasts 1 day
+@endgantt

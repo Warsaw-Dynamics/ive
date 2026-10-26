@@ -1,0 +1,3 @@
+@startebnf
+invoice = "INV", digit, { digit }, [ "-X" ];
+@endebnf

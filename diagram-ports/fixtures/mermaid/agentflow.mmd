@@ -1,0 +1,7 @@
+agentflow-beta TB
+  flow reviewer["Review Agent"]
+    changes["Gather changes"]@{ shape: input }
+    analyse["Analyse diff"]@{ shape: task }
+    lint["run_linter"]@{ shape: tool }
+    changes --> analyse --> lint
+  end

@@ -1,0 +1,1568 @@
+use super::*;
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_inventory_labels_inside_owning_shapes() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    struct Bridge {
+        native: Arc<NativeText>,
+        calls: AtomicUsize,
+        fallback: AtomicUsize,
+    }
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(
+                match self.native.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => {
+                        self.fallback.fetch_add(1, Ordering::Relaxed);
+                        None
+                    }
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for family in ["files", "packetdiag", "board", "hcl", "chen", "archimate"] {
+        for size in [6, 14, 96] {
+            if family == "hcl" && size != 14 {
+                continue;
+            }
+            let original = crate::examples::source(&format!("plantuml-{family}")).unwrap();
+            let source = if family == "hcl" {
+                original.to_owned()
+            } else {
+                original.replacen('\n',&format!("\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\n"),1)
+            };
+            let bridge = Arc::new(Bridge {
+                native: resources.start_render(),
+                calls: AtomicUsize::new(0),
+                fallback: AtomicUsize::new(0),
+            });
+            let options = RenderOptions {
+                language: Language::PlantUml,
+                text_measurement: TextMeasurementPolicy::host_display(
+                    TextMeasurementProfileIdentity::new(
+                        MeasurementProfileId::new("native-inventory-paint").unwrap(),
+                        "1",
+                    )
+                    .unwrap(),
+                    bridge.clone(),
+                    [TextMeasurementPhase::Layout],
+                ),
+                ..Default::default()
+            };
+            // when
+            let output = diagram_engine::render(&source, &options).unwrap();
+            let xml = roxmltree::Document::parse(&output.svg).unwrap();
+            let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+            let mut painted = 0;
+            // then
+            for element in xml
+                .descendants()
+                .filter(|n| n.attribute("data-kind").is_some())
+            {
+                let Some(usvg::Node::Group(group)) =
+                    tree.node_by_id(element.attribute("id").unwrap())
+                else {
+                    continue;
+                };
+                let kind = element.attribute("data-kind").unwrap();
+                let enclosure = if matches!(
+                    kind,
+                    "files-note"
+                        | "packet-fragment"
+                        | "board-card"
+                        | "chen-entity"
+                        | "chen-relationship"
+                        | "chen-attribute"
+                        | "archimate"
+                ) {
+                    group.children().iter().find_map(|n| {
+                        if let usvg::Node::Path(p) = n {
+                            Some(p.abs_bounding_box())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
+                for child in group.children() {
+                    if let usvg::Node::Text(text) = child {
+                        painted += 1;
+                        let ink = text.abs_stroke_bounding_box();
+                        assert!(
+                            ink.left() >= -0.5
+                                && ink.top() >= -0.5
+                                && ink.right() <= tree.size().width() + 0.5
+                                && ink.bottom() <= tree.size().height() + 0.5,
+                            "{family} {size}px canvas {ink:?}"
+                        );
+                        let bounds = if kind.starts_with("data-row-") {
+                            let owner = element.attribute("data-owner").unwrap();
+                            let Some(usvg::Node::Group(owner)) = tree.node_by_id(owner) else {
+                                panic!()
+                            };
+                            owner.children().iter().find_map(|n| {
+                                if let usvg::Node::Path(p) = n {
+                                    Some(p.abs_bounding_box())
+                                } else {
+                                    None
+                                }
+                            })
+                        } else {
+                            enclosure
+                        };
+                        if let Some(bounds) = bounds {
+                            assert!(
+                                ink.left() >= bounds.left() - 0.5
+                                    && ink.right() <= bounds.right() + 0.5
+                                    && ink.top() >= bounds.top() - 0.5
+                                    && ink.bottom() <= bounds.bottom() + 0.5,
+                                "{family} {size}px {kind} ink {ink:?} enclosure {bounds:?}"
+                            );
+                            if matches!(kind, "chen-attribute" | "chen-relationship") {
+                                for (x, y) in [
+                                    (ink.left(), ink.top()),
+                                    (ink.right(), ink.top()),
+                                    (ink.left(), ink.bottom()),
+                                    (ink.right(), ink.bottom()),
+                                ] {
+                                    let dx = (x - bounds.x() - bounds.width() / 2.).abs()
+                                        / (bounds.width() / 2.);
+                                    let dy = (y - bounds.y() - bounds.height() / 2.).abs()
+                                        / (bounds.height() / 2.);
+                                    let boundary = if kind == "chen-attribute" {
+                                        dx.hypot(dy)
+                                    } else {
+                                        dx + dy
+                                    };
+                                    assert!(
+                                        boundary <= 1.001,
+                                        "{family} {size}px {kind} ink exceeds actual shape: {boundary}"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            let minimum = if family == "archimate" { 6 } else { 7 };
+            assert!(painted >= minimum, "{family} inspected only {painted} runs");
+            assert!(bridge.calls.load(Ordering::Relaxed) > 0);
+            assert_eq!(bridge.fallback.load(Ordering::Relaxed), 0);
+            eprintln!(
+                "{family} {size}px: {painted} painted runs, {} actual native calls, zero fallback",
+                bridge.calls.load(Ordering::Relaxed)
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_nwdiag_labels_inside_servers_groups_and_canvas() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startnwdiag\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nnwdiag {{\nnetwork n {{\ndescription=\"Edge network\";\naddress=\"198.51.100.0/24\";\nr [description=\"**Router Ω café**\\nsecond row\",address=\"198.51.100.1\"];\ns [description=\"Store\"];\n}}\nnetwork core {{\nr [address=\"10.23.0.1\"];\n}}\ngroup g {{\ndescription=\"Storage zone\\nmeasured header\";\ns;\n}}\n}}\n@endnwdiag"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-nwdiag-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut painted = 0;
+        // then
+        for element in xml
+            .descendants()
+            .filter(|n| n.attribute("data-kind").is_some())
+        {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let enclosure = if matches!(
+                element.attribute("data-kind"),
+                Some("nwdiag-server" | "nwdiag-group")
+            ) {
+                group.children().iter().find_map(|n| match n {
+                    usvg::Node::Path(path) => Some(path.abs_bounding_box()),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    painted += 1;
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= -0.5
+                            && ink.top() >= -0.5
+                            && ink.right() <= tree.size().width() + 0.5
+                            && ink.bottom() <= tree.size().height() + 0.5,
+                        "{size}px canvas ink {ink:?}"
+                    );
+                    if let Some(bounds) = enclosure {
+                        assert!(
+                            ink.left() >= bounds.left() - 0.5
+                                && ink.right() <= bounds.right() + 0.5
+                                && ink.top() >= bounds.top() - 0.5
+                                && ink.bottom() <= bounds.bottom() + 0.5,
+                            "{size}px {} ink {ink:?} enclosure {bounds:?}",
+                            element.attribute("data-kind").unwrap()
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(painted, 10);
+        eprintln!(
+            "nwdiag {size}px actual native report: {:?}; paint runs={painted}",
+            output.measurement
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_salt_labels_inside_buttons_fields_and_canvas() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startsalt\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\n{{#\nName | \"Ada Ω café     \"\n{{+\n[X] **Checked**\n[ ] Other\n(X) Selected\n( ) Empty\n}} | {{\n[Cancel] | [**Continue**]\nWide status label | *\n}}\n}}\n@endsalt"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-salt-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut painted = 0;
+        // then
+        for element in xml
+            .descendants()
+            .filter(|n| n.attribute("data-kind").is_some())
+        {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let button = if element.attribute("data-kind") == Some("salt-button") {
+                group.children().iter().find_map(|n| match n {
+                    usvg::Node::Path(p) => Some(p.abs_bounding_box()),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            let underline = if element.attribute("data-kind") == Some("salt-field") {
+                group.children().iter().find_map(|node| match node {
+                    usvg::Node::Path(path) => Some(path.abs_bounding_box()),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    painted += 1;
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= -0.5
+                            && ink.top() >= -0.5
+                            && ink.right() <= tree.size().width() + 0.5
+                            && ink.bottom() <= tree.size().height() + 0.5,
+                        "{size}px Salt ink outside canvas: {ink:?}"
+                    );
+                    if let Some(border) = button {
+                        assert!(
+                            ink.left() > border.left()
+                                && ink.right() < border.right()
+                                && ink.top() > border.top()
+                                && ink.bottom() < border.bottom(),
+                            "{size}px Salt button ink {ink:?} crosses {border:?}"
+                        );
+                    }
+                    if let Some(line) = underline {
+                        assert!(
+                            ink.left() > line.left()
+                                && ink.right() < line.right()
+                                && ink.bottom() < line.top(),
+                            "{size}px Salt field ink {ink:?} crosses underline {line:?}"
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(painted, 9);
+        eprintln!(
+            "salt {size}px actual native report: {:?}; paint runs={painted}",
+            native.report()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_gantt_labels_and_calendar_ticks() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startgantt\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nProject starts 2028-02-28\n[**Long** draft Ω café\\nsecond row] as [A] lasts 3 days\n[Build package] as [B] lasts 2 days\n[B] starts at [A]'s end\n[Review checkpoint] happens at [B]'s end\n@endgantt"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-gantt-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut painted = 0;
+        // then
+        for element in xml.descendants().filter(|node| node.has_tag_name("g")) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    painted += 1;
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= -0.5
+                            && ink.top() >= -0.5
+                            && ink.right() <= tree.size().width() + 0.5
+                            && ink.bottom() <= tree.size().height() + 0.5,
+                        "{size}px Gantt ink outside canvas: {ink:?}"
+                    );
+                }
+            }
+        }
+        assert!(painted >= 12);
+        eprintln!(
+            "gantt {size}px actual native report: {:?}; paint runs={painted}",
+            native.report()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_timing_ribbon_labels_and_connection_captions() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(metrics) => Some(HostTextMeasurement::Metrics(metrics)),
+                    MeasureReply::Length(width) => Some(HostTextMeasurement::Length(width)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for size in [6, 14, 96] {
+        let source = format!(
+            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nrobust \"Valve title\" as V\nconcise \"Controller title\" as C\n@0\nV is Closed\nC is \"Waiting Ω café\"\n@6\nV is Open\nC is \"Running state\"\n@15\nV is Closed\nC is Done\nV@6 <-> @+9 : measured interval\\nsecond row\nV@6 -> C@8 : confirm\\nmessage row\n@20\n@enduml"
+        );
+        let native = resources.start_render();
+        let options = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-timing-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &options).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        // then
+        let mut painted = 0;
+        for element in xml.descendants().filter(|node| node.has_tag_name("g")) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(element.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let mut ribbon = None;
+            for child in group.children() {
+                match child {
+                    usvg::Node::Path(path)
+                        if element.attribute("data-kind") == Some("timing-concise") =>
+                    {
+                        ribbon = Some(path.abs_bounding_box())
+                    }
+                    usvg::Node::Text(text) => {
+                        painted += 1;
+                        let ink = text.abs_stroke_bounding_box();
+                        assert!(
+                            ink.left() >= -0.5
+                                && ink.top() >= -0.5
+                                && ink.right() <= tree.size().width() + 0.5
+                                && ink.bottom() <= tree.size().height() + 0.5,
+                            "{size}px native timing ink outside canvas: {ink:?}"
+                        );
+                        if let Some(border) = ribbon {
+                            assert!(
+                                ink.left() > border.left() + 1.
+                                    && ink.right() < border.right() - 1.
+                                    && ink.top() > border.top() + 1.
+                                    && ink.bottom() < border.bottom() - 1.,
+                                "{size}px native ribbon ink {ink:?} crosses {border:?}"
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        assert!(painted >= 15);
+        eprintln!(
+            "timing {size}px actual native report: {:?}; paint runs={painted}",
+            native.report()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_shape_styled_runs_and_preserve_spaces_in_actual_native_paint() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            Ok(
+                match self.0.measure(&MeasureQuery {
+                    operation: request.operation.external_code(),
+                    text: request.text.into(),
+                    style: request.style.clone(),
+                }) {
+                    MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                    MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                    MeasureReply::Fallback => None,
+                },
+            )
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let resources =
+        NativeTextResources::new(Arc::new(gpui::TextSystem::new(platform.text_system())));
+    for (size, body) in [
+        (
+            24,
+            "!define SPACED \"  spaced   Ω  \"\n!define FIRST SECOND\n!define SECOND Ready\nparticipant SPACED as A\nparticipant \"**Service**\" as B\ngroup FIRST | SECOND\nA -> B : FIRST | SECOND\nend",
+        ),
+        (
+            24,
+            "!define SPACED \"  spaced   Ω  \"\n!define FIRST SECOND\n!define SECOND Ready\npackage Outer {\nclass SPACED as A {\nFIRST | SECOND\n}\nclass B\nA --> B : FIRST | SECOND\n}",
+        ),
+        (
+            24,
+            "participant \"  spaced   Ω  \" as A\nparticipant \"**Heavy** //slanted//\" as B\nA -> B : **request //nested//**\nactivate B\nnote over B : __underline__ --strike--\nB -> A : reply\ndeactivate B",
+        ),
+        (
+            24,
+            "package \"**Outer**\" as P {\npackage \"//Inner//\" as Q {\nclass \"  spaced   Ω  \" as A {\n{static} **bold //both//**\n{abstract} method()\n}\n}\nclass B\nA --> \"__many__\" B : --relation--\n}",
+        ),
+        (
+            18,
+            "participant \"  spaced   Ω  \" as A\ngroup **Wide caption**\\n//Second row//\ncritical __X__\nA -> A : --inside--\nend\nend",
+        ),
+        (
+            96,
+            "participant \"  spaced   Ω  \" as A\ngroup **Wide caption**\\n//Second row//\ncritical __X__\nA -> A : --inside--\nend\nend",
+        ),
+    ] {
+        let source = format!(
+            "@startuml\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize {size}\nskinparam defaultFontColor #123456\nleft header Native measured header with deliberate width\ntitle **Styled** //document//\nlegend __Legend__ --cut--\nright footer Footer\n{body}\n@enduml"
+        );
+        let native = resources.start_render();
+        let config = RenderOptions {
+            language: Language::PlantUml,
+            text_measurement: TextMeasurementPolicy::host_display(
+                TextMeasurementProfileIdentity::new(
+                    MeasurementProfileId::new("native-style-paint").unwrap(),
+                    "1",
+                )
+                .unwrap(),
+                Arc::new(Bridge(native.clone())),
+                [TextMeasurementPhase::Layout],
+            ),
+            ..Default::default()
+        };
+        // when
+        let output = diagram_engine::render(&source, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let tree = usvg::Tree::from_str(&output.svg, &crate::svg_fonts::options()).unwrap();
+        let mut pending = vec![tree.root()];
+        let mut texts = Vec::new();
+        let mut decorated = [false; 4];
+        // then
+        while let Some(group) = pending.pop() {
+            for node in group.children() {
+                match node {
+                    usvg::Node::Group(group) => pending.push(group),
+                    usvg::Node::Text(text) => {
+                        let painted = text.abs_stroke_bounding_box();
+                        assert!(
+                            painted.left() >= -0.5
+                                && painted.top() >= -0.5
+                                && painted.right() <= tree.size().width() + 0.5
+                                && painted.bottom() <= tree.size().height() + 0.5,
+                            "paint outside canvas: {painted:?}"
+                        );
+                        for chunk in text.chunks() {
+                            texts.push(chunk.text().to_string());
+                            for span in chunk.spans() {
+                                decorated[0] |= span.font().weight() == 700;
+                                decorated[1] |= span.font().style() == usvg::FontStyle::Italic;
+                                decorated[2] |= span.decoration().underline().is_some();
+                                decorated[3] |= span.decoration().line_through().is_some();
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for text in xml
+            .descendants()
+            .filter(|n| n.has_tag_name("text"))
+            .filter_map(|n| n.text())
+            .filter(|text| !text.trim().is_empty())
+        {
+            assert!(
+                texts.iter().any(|paint| paint == text),
+                "measured XML text {text:?} changed in actual shaping: {texts:?}"
+            );
+        }
+        assert!(texts.iter().any(|text| text == "  spaced   Ω  "));
+        if body.contains("!define FIRST") {
+            assert!(texts.iter().any(|text| text == "SECOND | Ready"));
+            assert!(texts.iter().all(|text| !text.contains("FIRST")));
+        }
+        assert_eq!(
+            decorated, [true; 4],
+            "missing actual shaped font/decorations"
+        );
+        if let Some(activation) = xml
+            .descendants()
+            .find(|n| n.attribute("data-kind") == Some("activation"))
+        {
+            let note = xml
+                .descendants()
+                .find(|n| n.attribute("data-kind") == Some("note"))
+                .unwrap();
+            let activation = tree
+                .node_by_id(activation.attribute("id").unwrap())
+                .unwrap()
+                .abs_bounding_box();
+            let note = tree
+                .node_by_id(note.attribute("id").unwrap())
+                .unwrap()
+                .abs_bounding_box();
+            let x = (activation.left() + activation.right()) / 2.;
+            let y = note.top() + 3.;
+            assert!(
+                x > note.left()
+                    && x < note.right()
+                    && y > activation.top()
+                    && y < activation.bottom()
+            );
+            let mut pixels = resvg::tiny_skia::Pixmap::new(
+                tree.size().width().ceil() as u32,
+                tree.size().height().ceil() as u32,
+            )
+            .unwrap();
+            resvg::render(&tree, usvg::Transform::identity(), &mut pixels.as_mut());
+            let pixel = pixels.pixel(x as u32, y as u32).unwrap();
+            assert_eq!(
+                [pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()],
+                [238, 242, 255, 255],
+                "activation overpainted note background"
+            );
+        }
+        let mut frame_paint = Vec::new();
+        for node in xml.descendants().filter(|n| {
+            n.has_tag_name("g")
+                && matches!(
+                    n.attribute("data-kind"),
+                    Some("class" | "package" | "participant" | "note" | "frame")
+                )
+        }) {
+            let Some(usvg::Node::Group(group)) = tree.node_by_id(node.attribute("id").unwrap())
+            else {
+                continue;
+            };
+            let Some(border) = group.children().iter().find_map(|n| {
+                if let usvg::Node::Path(p) = n {
+                    Some(p.abs_bounding_box())
+                } else {
+                    None
+                }
+            }) else {
+                continue;
+            };
+            let mut frame_ink = Vec::new();
+            for child in group.children() {
+                if let usvg::Node::Text(text) = child {
+                    let ink = text.abs_stroke_bounding_box();
+                    assert!(
+                        ink.left() >= border.left() - 1.
+                            && ink.right() <= border.right() + 1.
+                            && ink.top() >= border.top() - 1.
+                            && ink.bottom() <= border.bottom() + 1.,
+                        "styled node text {ink:?} escapes its own border {border:?}"
+                    );
+                    if node.attribute("data-kind") == Some("frame") {
+                        assert!(
+                            ink.top() > border.top() + 1.
+                                && ink.bottom() < border.bottom() - 1.
+                                && ink.left() > border.left() + 1.
+                                && ink.right() < border.right() - 1.,
+                            "{size}px frame ink touches border"
+                        );
+                        frame_ink.push(ink);
+                    }
+                }
+            }
+            frame_ink.sort_by(|a, b| a.top().total_cmp(&b.top()));
+            for pair in frame_ink.windows(2) {
+                assert!(
+                    pair[0].bottom() < pair[1].top(),
+                    "{size}px actual frame kind/caption ink overlaps: {pair:?}"
+                );
+            }
+            if !frame_ink.is_empty() {
+                frame_paint.push((border, frame_ink));
+            }
+        }
+        for (_, ink) in &frame_paint {
+            for text in ink {
+                for (border, _) in &frame_paint {
+                    let crosses_x = text.left() < border.right() && text.right() > border.left();
+                    assert!(
+                        !crosses_x
+                            || [border.top(), border.bottom()]
+                                .iter()
+                                .all(|y| *y < text.top() - 1. || *y > text.bottom() + 1.),
+                        "{size}px nested frame border crosses header ink"
+                    );
+                }
+            }
+        }
+        eprintln!(
+            "styled {} actual native report: {:?}; paint runs={}",
+            output.family,
+            native.report(),
+            texts.len()
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn should_contain_actual_native_tree_and_data_text_within_owning_boxes() {
+    use crate::{
+        native_text::{NativeText, NativeTextResources},
+        worker::{MeasureQuery, MeasureReply, Measurer},
+    };
+    use diagram_engine::{
+        HostMeasurementResult, HostTextMeasurement, HostTextMeasurementRequest, HostTextMeasurer,
+        Language, MeasurementProfileId, RenderOptions, TextMeasurementPhase, TextMeasurementPolicy,
+        TextMeasurementProfileIdentity,
+    };
+    struct Bridge(Arc<NativeText>);
+    impl HostTextMeasurer for Bridge {
+        fn measure(&self, request: HostTextMeasurementRequest<'_>) -> HostMeasurementResult {
+            let query = MeasureQuery {
+                operation: request.operation.external_code(),
+                text: request.text.into(),
+                style: request.style.clone(),
+            };
+            eprintln!("native query text={:?} style={:?}", query.text, query.style);
+            Ok(match self.0.measure(&query) {
+                MeasureReply::Metrics(m) => Some(HostTextMeasurement::Metrics(m)),
+                MeasureReply::Length(w) => Some(HostTextMeasurement::Length(w)),
+                MeasureReply::Fallback => None,
+            })
+        }
+    }
+    // given
+    let platform = gpui_platform::current_platform(true);
+    let fonts = Arc::new(gpui::TextSystem::new(platform.text_system()));
+    let resources = NativeTextResources::new(fonts);
+    for source in [
+        "@startjson\ntitle Styled data\n<style>\nelement {\nFontName Liberation Sans\nFontSize 24\nFontStyle bold\n}\n</style>\n{\"short\":\"**literal**\",\"labels\":[\"wide data value with spaces\",\"Unicode Ω café\"]}\n@endjson",
+        "@startmindmap\nskinparam defaultFontName Liberation Sans\nskinparam defaultFontSize 24\ntitle Styled tree\n* **Root**\n** //A very long tree label//\n*** __Unicode Ω café__\n@endmindmap",
+        "@startjson\n{\"short\":\"x\",\"labels\":[\"it's <literal> & Ω\",\"https://example.test/a:b # text\",\"長い日本語 Ω café 😀\"]}\n@endjson",
+        "@startyaml\nnotes: |\n  &literal *literal !customtag\n  quoted: text\nnext: value\n@endyaml",
+        "@startmindmap\n* Root\n** A very long ordinary tree label\n*** Unicode Ω café\n@endmindmap",
+        "@startwbs\n* Root\n** A very long ordinary tree label\n*** Unicode Ω café\n@endwbs",
+    ] {
+        let native = resources.start_render();
+        let mut config = RenderOptions {
+            language: Language::PlantUml,
+            ..Default::default()
+        };
+        config.text_measurement = TextMeasurementPolicy::host_display(
+            TextMeasurementProfileIdentity::new(
+                MeasurementProfileId::new("native-paint-contract").unwrap(),
+                "1",
+            )
+            .unwrap(),
+            Arc::new(Bridge(native.clone())),
+            [TextMeasurementPhase::Layout],
+        );
+        // when
+        let output = diagram_engine::render(source, &config).unwrap();
+        let xml = roxmltree::Document::parse(&output.svg).unwrap();
+        let options = crate::svg_fonts::options();
+        let family = options
+            .fontdb
+            .query(&usvg::fontdb::Query {
+                families: &[usvg::fontdb::Family::SansSerif],
+                ..Default::default()
+            })
+            .and_then(|id| options.fontdb.face(id))
+            .map(|face| &face.families);
+        eprintln!(
+            "native resolved={:?}; SVG generic resolved={family:?}",
+            native.report()
+        );
+        let tree = usvg::Tree::from_str(&output.svg, &options).unwrap();
+        let mut inspected = 0;
+        // then
+        for row in xml.descendants().filter(|n| {
+            n.attribute("data-kind").is_some_and(|kind| {
+                kind.starts_with("data-row-") || matches!(kind, "mindmap-node" | "wbs-node")
+            })
+        }) {
+            let id = row.attribute("id").unwrap();
+            let owner_id = if row.attribute("data-kind").unwrap().starts_with("data-row-") {
+                row.attribute("data-owner").unwrap()
+            } else {
+                id
+            };
+            let usvg::Node::Group(owner) = tree.node_by_id(owner_id).unwrap() else {
+                panic!("owner must be group")
+            };
+            let bounds = owner
+                .children()
+                .iter()
+                .find_map(|node| {
+                    if let usvg::Node::Path(path) = node {
+                        Some(path.abs_bounding_box())
+                    } else {
+                        None
+                    }
+                })
+                .expect("owning box must paint a path");
+            let usvg::Node::Group(group) = tree.node_by_id(id).unwrap() else {
+                panic!("row must be group")
+            };
+            let mut pending = vec![group.as_ref()];
+            while let Some(group) = pending.pop() {
+                for child in group.children() {
+                    match child {
+                        usvg::Node::Group(group) => pending.push(group),
+                        usvg::Node::Text(text) => {
+                            inspected += 1;
+                            let painted = text.abs_stroke_bounding_box();
+                            let mut db = options.fontdb.clone();
+                            let selected = (options.font_resolver.select_font)(
+                                text.chunks()[0].spans()[0].font(),
+                                &mut db,
+                            )
+                            .and_then(|id| db.face(id))
+                            .map(|face| &face.families);
+                            eprintln!("actual selected paint font={selected:?}");
+                            let actual_fonts: std::collections::BTreeSet<_> = text
+                                .layouted()
+                                .iter()
+                                .flat_map(|span| &span.positioned_glyphs)
+                                .filter_map(|glyph| tree.fontdb().face(glyph.font))
+                                .map(|face| format!("{:?}", face.families))
+                                .collect();
+                            eprintln!("actual glyph fonts={actual_fonts:?}");
+                            eprintln!(
+                                "SVG text {:?} spans {:?} paint={painted:?}",
+                                text.chunks().iter().map(|c| c.text()).collect::<Vec<_>>(),
+                                text.chunks()
+                                    .iter()
+                                    .flat_map(|c| c.spans())
+                                    .map(|s| (
+                                        s.font().families(),
+                                        s.font_size(),
+                                        s.font().weight()
+                                    ))
+                                    .collect::<Vec<_>>()
+                            );
+                            assert!(
+                                painted.left() >= bounds.left() - 1.
+                                    && painted.top() >= bounds.top() - 1.
+                                    && painted.right() <= bounds.right() + 1.
+                                    && painted.bottom() <= bounds.bottom() + 1.,
+                                "text paint {painted:?} escapes {id} compartment {bounds:?}"
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(inspected >= 2, "no actual text inspected");
+    }
+}
+
+#[test]
+fn should_contain_builtin_tree_text_without_changing_its_connector_clip() {
+    // given
+    let source = crate::examples::source("tree").unwrap();
+    let output = diagram_engine::render(source, &Default::default()).unwrap();
+    // when
+    let display = DisplaySvg::parse(&output.svg, &AtomicBool::new(false)).unwrap();
+    // then
+    let mut right = 0_f32;
+    let mut groups = vec![display.tree.root()];
+    while let Some(group) = groups.pop() {
+        for node in group.children() {
+            match node {
+                usvg::Node::Group(group) => groups.push(group),
+                usvg::Node::Text(text) => right = right.max(text.abs_stroke_bounding_box().right()),
+                _ => {}
+            }
+        }
+    }
+    assert!(
+        right > display.tree.size().width(),
+        "builtin must reproduce clipped text"
+    );
+    assert!(
+        display.canvas.right() >= right,
+        "text paint ends at {right}, canvas ends at {}",
+        display.canvas.right()
+    );
+    assert_eq!(
+        display.canvas.left(),
+        0.,
+        "do not reveal the left connector"
+    );
+    let document = roxmltree::Document::parse(&output.svg).unwrap();
+    let viewbox = document.root_element().attribute("viewBox").unwrap();
+    let values: Vec<f32> = viewbox
+        .split_whitespace()
+        .map(|value| value.parse().unwrap())
+        .collect();
+    let (width, height) = display.dimensions();
+    let expanded = output.svg.replace(
+        &format!("viewBox=\"{viewbox}\""),
+        &format!("viewBox=\"{} {} {width} {height}\"", values[0], values[1]),
+    );
+    let raster = (width as u32 * 4, height as u32 * 4);
+    assert_eq!(
+        display
+            .render(raster, &AtomicBool::new(false))
+            .unwrap()
+            .as_bytes(0),
+        pinned(&expanded, raster).as_bytes(0),
+        "same tree and a test-only equivalent root canvas must match every color channel"
+    );
+}
+
+fn svg(body: &str) -> String {
+    format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">{body}</svg>"#)
+}
+
+fn parse(source: &str) -> DisplaySvg {
+    DisplaySvg::parse(source, &AtomicBool::new(false)).unwrap()
+}
+
+fn pinned(source: &str, dimensions: (u32, u32)) -> std::sync::Arc<gpui::RenderImage> {
+    let renderer = gpui::SvgRenderer::new(std::sync::Arc::new(()));
+    let tree = renderer.parse_svg(source.as_bytes()).unwrap();
+    renderer
+        .render_parsed(
+            &tree,
+            gpui::SvgSize::ExactSize(gpui::size(
+                gpui::DevicePixels(dimensions.0 as i32),
+                gpui::DevicePixels(dimensions.1 as i32),
+            )),
+        )
+        .unwrap()
+}
+
+#[test]
+fn should_preserve_root_clipping_when_leftward_text_would_expose_nontext() {
+    // given
+    let source = svg(
+        r#"<path d="M-25 40H-5" stroke="red" stroke-width="8"/><text x="-30" y="20">leftward</text>"#,
+    );
+    // when
+    let display = parse(&source);
+    let image = display.render((60, 60), &AtomicBool::new(false)).unwrap();
+    // then
+    assert_eq!(display.dimensions(), (60., 60.));
+    assert!(display.diagnostic().unwrap().contains("non-text"));
+    assert_eq!(image.as_bytes(0), pinned(&source, (60, 60)).as_bytes(0));
+}
+
+#[test]
+fn should_preserve_explicit_effects_and_clips_without_normalizing() {
+    // given
+    let effects = [
+        (
+            r#"<clipPath id="e"><rect x="0" y="0" width="20" height="60"/></clipPath>"#,
+            "clip-path",
+        ),
+        (
+            r#"<mask id="e"><rect width="20" height="60" fill="white"/></mask>"#,
+            "mask",
+        ),
+        (
+            r#"<filter id="e"><feGaussianBlur stdDeviation="3"/></filter>"#,
+            "filter",
+        ),
+    ];
+    // when
+    for (definition, attribute) in effects {
+        let source = svg(&format!(
+            r#"<defs>{definition}</defs><g {attribute}="url(#e)"><text x="-20" y="20" fill="blue">outside canvas text</text></g>"#
+        ));
+        let display = parse(&source);
+        // then
+        assert_eq!(display.dimensions(), (60., 60.));
+        assert!(display.diagnostic().unwrap().contains("effect"));
+        assert_eq!(
+            display
+                .render((60, 60), &AtomicBool::new(false))
+                .unwrap()
+                .as_bytes(0),
+            pinned(&source, (60, 60)).as_bytes(0)
+        );
+    }
+}
+
+#[test]
+fn should_match_pinned_font_selection_and_full_color_pixels() {
+    // given
+    for family in [
+        "Liberation Sans",
+        "DejaVu Sans",
+        "sans-serif",
+        "serif",
+        "monospace",
+        "Missing Font Family",
+    ] {
+        let source = format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="400" height="80"><defs><linearGradient id="g"><stop stop-color="#8040e0"/><stop offset="1" stop-color="#30d060"/></linearGradient></defs><rect width="400" height="80" fill="url(#g)" opacity="0.4"/><text x="20" y="32" font-family="{family}" font-size="16" fill="#f03090" opacity="0.7">office ffi x́ A 世界 🐈</text><text x="20" y="64" font-family="{family}" font-size="16" font-style="italic" stroke="#30a0e0" stroke-width="0.5" fill="#ff8000">jfy package.json</text></svg>"##
+        );
+        // when
+        let display = parse(&source);
+        let actual = display.render((400, 80), &AtomicBool::new(false)).unwrap();
+        // then
+        assert_eq!(display.dimensions(), (400., 80.));
+        assert_eq!(
+            actual.as_bytes(0),
+            pinned(&source, (400, 80)).as_bytes(0),
+            "font {family}"
+        );
+    }
+}
+
+#[test]
+fn should_unpremultiply_and_swap_all_color_channels() {
+    // given
+    let source = svg(
+        r##"<rect width="20" height="20" fill="#804020"/><rect x="20" width="20" height="20" fill="#804020" opacity="0.5"/>"##,
+    );
+    // when
+    let image = parse(&source)
+        .render((60, 60), &AtomicBool::new(false))
+        .unwrap();
+    let bytes = image.as_bytes(0).unwrap();
+    // then
+    assert_eq!(&bytes[0..4], &[32, 64, 128, 255]);
+    assert_eq!(&bytes[20 * 4..21 * 4], &[31, 63, 127, 128]);
+    assert_eq!(&bytes[40 * 4..41 * 4], &[0, 0, 0, 0]);
+}
+
+#[test]
+fn should_contain_transformed_stroked_and_fallback_text_paint() {
+    // given: fixed large oracle canvas, independent of the bounds algorithm.
+    let bodies = [
+        r#"<g transform="translate(-20 -10) scale(1.5 2)"><text y="15" font-style="italic">jfy</text></g>"#,
+        r#"<g transform="translate(10 10) rotate(-40)"><text y="10" font-family="DejaVu Sans">office ffi</text></g>"#,
+        r#"<g transform="skewX(30)"><g transform="translate(-30 55) scale(1.2 .8)"><text font-size="25" stroke="red" stroke-width="3">x́<tspan dy="20">jfy</tspan></text></g></g>"#,
+        r#"<g transform="translate(45 40) scale(2)"><text font-family="Missing Font Family" font-size="20">A 世界 🐈</text></g>"#,
+    ];
+    // when
+    for body in bodies {
+        let display = parse(&svg(body));
+        let mut oracle = resvg::tiny_skia::Pixmap::new(1000, 1000).unwrap();
+        resvg::render(
+            &display.tree,
+            usvg::Transform::from_translate(200., 200.),
+            &mut oracle.as_mut(),
+        );
+        let (width, height) = display.dimensions();
+        let image = display
+            .render((width as u32, height as u32), &AtomicBool::new(false))
+            .unwrap();
+        let mut painted = 0;
+        // then
+        for (index, pixel) in oracle.data().as_chunks::<4>().0.iter().enumerate() {
+            if pixel[3] == 0 {
+                continue;
+            }
+            painted += 1;
+            let x = (index % 1000) as f32 - 200.;
+            let y = (index / 1000) as f32 - 200.;
+            assert!(
+                x >= display.canvas.left()
+                    && x < display.canvas.right()
+                    && y >= display.canvas.top()
+                    && y < display.canvas.bottom(),
+                "paint {x},{y} outside {:?}: {body}",
+                display.canvas
+            );
+        }
+        assert!(painted > 100);
+        assert!(
+            image
+                .as_bytes(0)
+                .unwrap()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|pixel| pixel[3] > 0)
+                .count()
+                > 100
+        );
+    }
+}
+
+#[test]
+fn should_ignore_invisible_and_transparent_paint_but_include_visible_strokes() {
+    // given
+    for attribute in [
+        "visibility=\"hidden\"",
+        "opacity=\"0\"",
+        "fill=\"none\"",
+        "fill-opacity=\"0\"",
+        "fill=\"none\" stroke=\"red\" stroke-opacity=\"0\"",
+    ] {
+        let source = svg(&format!(
+            r#"<text x="-50" y="20" {attribute}>invisible overflow</text>"#
+        ));
+        // when
+        let display = parse(&source);
+        // then
+        assert_eq!(display.dimensions(), (60., 60.), "{attribute}");
+    }
+    let display = parse(&svg(
+        r#"<text x="-10" y="20" fill="none" stroke="blue" stroke-width="6">stroke extends across both edges</text>"#,
+    ));
+    assert!(display.canvas.left() < 0. && display.canvas.right() > 60.);
+}
+
+#[test]
+fn should_reject_cancelled_low_budget_and_extreme_bounds_before_raster_allocation() {
+    // given
+    let source = svg("<text y=\"20\">text</text>");
+    // when / then
+    assert!(DisplaySvg::parse(&source, &AtomicBool::new(true)).is_err());
+    for controls in [
+        Controls {
+            items: 1,
+            ..Controls::default()
+        },
+        Controls {
+            depth: 1,
+            ..Controls::default()
+        },
+        Controls {
+            points: 1,
+            ..Controls::default()
+        },
+    ] {
+        assert!(DisplaySvg::parse_controlled(&source, &AtomicBool::new(false), controls).is_err());
+    }
+    for transform in [
+        "translate(1e30)",
+        "matrix(NaN 0 0 1 0 0)",
+        "scale(1e30)",
+        "matrix(0 0 0 0 0 0)",
+    ] {
+        assert!(
+            DisplaySvg::parse(
+                &svg(&format!(
+                    r#"<g transform="{transform}"><text y="20">extreme</text></g>"#
+                )),
+                &AtomicBool::new(false)
+            )
+            .is_err(),
+            "{transform}"
+        );
+    }
+    let display = parse(&source);
+    for size in [(0, 1), (4097, 1), (4096, 4096)] {
+        assert!(display.render(size, &AtomicBool::new(false)).is_err());
+    }
+    assert!(display.render((60, 60), &AtomicBool::new(true)).is_err());
+}
+
+#[test]
+fn should_keep_expanded_logical_size_independent_of_raster_cap() {
+    // given
+    let source = r#"<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="10000"><text x="990" y="9000">overflow text</text></svg>"#;
+    let display = parse(source);
+    // when
+    let layout = crate::viewport::layout(
+        display.dimensions(),
+        crate::viewport::Viewport {
+            size: (800., 600.),
+            device_scale: 2.,
+        },
+        crate::viewport::Zoom::Percent(200),
+    )
+    .unwrap();
+    let image = display
+        .render(layout.raster_size, &AtomicBool::new(false))
+        .unwrap();
+    // then
+    assert!(layout.logical_size.0 > 2000.);
+    assert_eq!(layout.logical_size.1, 20000.);
+    assert!(image.as_bytes(0).unwrap().len() <= 4_194_304 * 4);
+}
+
+#[test]
+fn should_preserve_fractional_original_sides_when_only_text_on_other_sides_expands() {
+    // given
+    let source = r#"<svg xmlns="http://www.w3.org/2000/svg" width="60.25" height="60.5"><text x="-20" y="20">left</text></svg>"#;
+    // when
+    let display = parse(source);
+    // then
+    assert!(display.canvas.left() < 0.);
+    assert_eq!(display.canvas.right(), 60.25);
+    assert_eq!(display.canvas.bottom(), 60.5);
+}
+
+#[test]
+fn should_keep_percent_viewbox_alignment_and_negative_scene_origins() {
+    // given
+    let sources = [
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="-20 -30 120 80"><text x="0" y="0" fill="red">view</text></svg>"#,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="180" height="100" viewBox="-20 -30 120 80" preserveAspectRatio="xMaxYMin meet"><text x="0" y="0" fill="red">view</text></svg>"#,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="180" height="100" viewBox="-20 -30 120 80" preserveAspectRatio="none"><text x="0" y="0" fill="red">view</text></svg>"#,
+    ];
+    // when
+    for source in sources {
+        let display = parse(source);
+        let raster = (display.dimensions().0 as u32, display.dimensions().1 as u32);
+        // then
+        assert_eq!(
+            display
+                .render(raster, &AtomicBool::new(false))
+                .unwrap()
+                .as_bytes(0),
+            pinned(source, raster).as_bytes(0)
+        );
+        assert!(display.diagnostic().is_none());
+    }
+}
+
+#[test]
+fn should_reject_excessive_bitmap_glyph_decode_area() {
+    // given: declared embedded bitmap dimensions, without allocating its pixels.
+    let size = usvg::Size::from_wh(65536., 65536.).unwrap();
+    // when / then
+    assert!(validate_bitmap(size).is_err());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn should_bound_aggregate_bitmap_glyph_work_before_rasterization() {
+    // given: each installed Noto bitmap fits, but eight exceed the smaller job budget.
+    assert!(
+        crate::svg_fonts::options()
+            .fontdb
+            .query(&usvg::fontdb::Query {
+                families: &[usvg::fontdb::Family::Name("Noto Color Emoji")],
+                ..Default::default()
+            })
+            .is_some(),
+        "this Linux integration test requires installed Noto Color Emoji; portable bitmap limits are tested separately"
+    );
+    let single = svg(r#"<text y="20" font-family="Noto Color Emoji">🐈</text>"#);
+    let repeated = svg(r#"<text y="20" font-family="Noto Color Emoji">🐈🐈🐈🐈🐈🐈🐈🐈</text>"#);
+    let controls = Controls {
+        bitmap_pixels: 100_000,
+        ..Controls::default()
+    };
+    // when
+    let one = DisplaySvg::parse_controlled(&single, &AtomicBool::new(false), controls);
+    let many = DisplaySvg::parse_controlled(&repeated, &AtomicBool::new(false), controls);
+    // then
+    assert!(one.is_ok());
+    assert!(many.err().unwrap().contains("decoded bitmap pixels"));
+}
+
+#[test]
+fn should_ignore_transparent_nontext_when_admitting_leftward_expansion() {
+    // given
+    for style in [
+        "opacity=\"0\"",
+        "visibility=\"hidden\"",
+        "stroke-opacity=\"0\"",
+    ] {
+        let source = svg(&format!(
+            r#"<path d="M-25 40H-5" fill="none" stroke="red" {style}/><text x="-30" y="20">left</text>"#
+        ));
+        // when
+        let display = parse(&source);
+        // then
+        assert!(display.canvas.left() < 0.);
+        assert!(matches!(display.containment, Containment::Expanded));
+    }
+}
+
+#[test]
+fn should_preserve_pattern_paint_without_normalizing() {
+    // given
+    let source = svg(
+        r#"<defs><pattern id="p" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="5" height="10" fill="red"/></pattern></defs><text x="-20" y="20" fill="url(#p)">pattern text</text>"#,
+    );
+    // when
+    let display = parse(&source);
+    // then
+    assert_eq!(display.dimensions(), (60., 60.));
+    assert!(display.diagnostic().unwrap().contains("pattern"));
+    assert_eq!(
+        display
+            .render((60, 60), &AtomicBool::new(false))
+            .unwrap()
+            .as_bytes(0),
+        pinned(&source, (60, 60)).as_bytes(0)
+    );
+}
+
+#[test]
+fn should_charge_paths_inside_svg_images_in_the_same_traversal() {
+    // given: SVG glyphs use this same nested-image branch in usvg's flattened tree.
+    let inner =
+        svg(r#"<g transform="translate(5 5) rotate(10)"><path d="M0 0H20V20H0Z" fill="red"/></g>"#);
+    let encoded: String = inner.bytes().map(|byte| format!("%{byte:02X}")).collect();
+    let source = svg(&format!(
+        r#"<image href="data:image/svg+xml,{encoded}" width="60" height="60"/>"#
+    ));
+    // when
+    let display = parse(&source);
+    let limited = DisplaySvg::parse_controlled(
+        &source,
+        &AtomicBool::new(false),
+        Controls {
+            points: 1,
+            ..Controls::default()
+        },
+    );
+    // then
+    assert!(limited.err().unwrap().contains("path points"));
+    assert_eq!(
+        display
+            .render((60, 60), &AtomicBool::new(false))
+            .unwrap()
+            .as_bytes(0),
+        pinned(&source, (60, 60)).as_bytes(0)
+    );
+}
+
+fn tiny_png_uri() -> String {
+    let mut data = std::io::Cursor::new(Vec::new());
+    image::RgbaImage::from_pixel(1, 1, image::Rgba([240, 30, 80, 255]))
+        .write_to(&mut data, image::ImageFormat::Png)
+        .unwrap();
+    let encoded: String = data
+        .into_inner()
+        .iter()
+        .map(|byte| format!("%{byte:02X}"))
+        .collect();
+    format!("data:image/png,{encoded}")
+}
+
+#[test]
+fn should_reject_repeated_legal_bitmaps_before_decoding_or_painting() {
+    // given
+    let item = format!(
+        r#"<image href="{}" width="60" height="60"/>"#,
+        tiny_png_uri()
+    );
+    let single = parse(&svg(&item));
+    let many = parse(&svg(&item.repeat(70)));
+    let control = Controls {
+        bitmap_pixels: 2,
+        ..Controls::default()
+    };
+    // when
+    let decode =
+        DisplaySvg::parse_controlled(&svg(&item.repeat(3)), &AtomicBool::new(false), control);
+    let paint = raster_guard::check(
+        &many.tree,
+        Transform::from_scale(1024. / 60., 1024. / 60.),
+        (1024, 1024),
+        &AtomicBool::new(false),
+    );
+    // then
+    assert!(decode.err().unwrap().contains("decoded bitmap pixels"));
+    assert!(
+        raster_guard::check(
+            &single.tree,
+            Transform::from_scale(1024. / 60., 1024. / 60.),
+            (1024, 1024),
+            &AtomicBool::new(false)
+        )
+        .is_ok()
+    );
+    assert!(paint.err().unwrap().contains("paint work"));
+}
+
+#[test]
+fn should_reject_filter_image_with_cancelling_pattern_shear_before_rasterization() {
+    // given
+    let source = r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <defs>
+        <pattern id="p" patternUnits="userSpaceOnUse" width="100" height="100"
+                 patternTransform="matrix(1 0 -50 1 0 0)">
+          <rect width="1" height="1"/>
+        </pattern>
+        <rect id="art" width="1" height="1" fill="url(#p)"/>
+        <filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="1" height="1">
+          <feImage href="#art" x="0" y="0" width="1" height="1"/>
+        </filter>
+      </defs>
+      <g transform="matrix(1 0 50 1 0 0)">
+        <rect width="1" height="1" filter="url(#f)"/>
+      </g>
+    </svg>"##;
+    let display = parse(source);
+    // when
+    // Never render this source: resvg's scale-only feImage context would request
+    // a 250100-by-100 pattern tile, despite the cancelling parent/pattern shears.
+    let result = raster_guard::check(
+        &display.tree,
+        Transform::identity(),
+        (100, 100),
+        &AtomicBool::new(false),
+    );
+    // then
+    let error = result.expect_err("filter image must be rejected before any raster allocation");
+    assert!(error.contains("feImage"), "{error}");
+    assert!(error.contains("unsupported bounded raster work"), "{error}");
+}
+
+#[test]
+fn should_reject_oversize_or_cumulative_effect_surfaces_before_allocation() {
+    // given
+    let cases = [
+        svg(
+            r#"<defs><filter id="f"><feConvolveMatrix order="3" kernelMatrix="0 1 0 1 1 1 0 1 0"/></filter></defs><rect width="60" height="60" filter="url(#f)"/>"#,
+        ),
+        svg(
+            r#"<defs><pattern id="p" patternUnits="userSpaceOnUse" width="100000" height="100000"><rect width="10" height="10"/></pattern></defs><rect width="60" height="60" fill="url(#p)"/>"#,
+        ),
+        svg(
+            r#"<defs><filter id="f" filterUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><feGaussianBlur stdDeviation="2"/></filter></defs><rect width="60" height="60" filter="url(#f)"/>"#,
+        ),
+        svg(&format!(
+            "{}<rect width=\"60\" height=\"60\"/>{}",
+            "<g opacity=\"0.9\">".repeat(70),
+            "</g>".repeat(70)
+        )),
+    ];
+    // when / then
+    for source in cases {
+        let display = parse(&source);
+        assert!(
+            raster_guard::check(
+                &display.tree,
+                Transform::from_scale(1024. / 60., 1024. / 60.),
+                (1024, 1024),
+                &AtomicBool::new(false)
+            )
+            .is_err()
+        );
+    }
+}

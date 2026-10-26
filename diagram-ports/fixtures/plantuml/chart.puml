@@ -1,0 +1,5 @@
+@startchart
+x-axis "Week" ["Mon", "Tue", "Wed"]
+bar "Orders" [3, 5, 4] labels
+legend right
+@endchart

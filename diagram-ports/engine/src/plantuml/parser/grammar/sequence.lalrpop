@@ -1,0 +1,82 @@
+// Original grammar for the MIT sequence subset; semantic traces are in provenance.
+grammar(builder: &mut crate::plantuml::sequence::Builder<'_>);
+use crate::plantuml::{sequence::{Anchor, BoxHeader, Builder, Declaration, FrameKind, Lifecycle, Message, Name, ParticipantKind, Side, Stereotype}, arrow::{Arrow, End}, scene::Dash, parser::{sequence::{Token, declare, make_arrow}, error::ParseFailure}};
+
+pub Sequence: () = <Items>;
+Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+Item: () = {
+    <start:@L> <kind:"participant kind"> <value:Declaration> <stereotype:StereotypeOpt> "newline" <end:@R> =>? builder.declare((kind, value, stereotype), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <header:"box open"> "newline" <end:@R> =>? builder.open_box(header, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "box close" "newline" <end:@R> =>? builder.close_box(start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <kind:"lifecycle"> <name:Name> "newline" <end:@R> =>? builder.lifecycle((kind, name), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:Name> <arrow:Arrow> <right:Name> <label:Label> "newline" <end:@R> =>? builder.message(Message { left, right, arrow: arrow.0, reverse: arrow.1, label }, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <anchor:NoteAnchor> ":" <label:"label"> "newline" =>? builder.note(anchor, label).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <anchor:NoteAnchor> "newline" <_rows:NoteRows> "end note" "newline" =>? builder.finish_note(anchor).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_open:FrameOpen> <_items:Items> "end" "newline" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "else" <label:"caption"> "newline" <end:@R> =>? builder.branch(label, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+FrameOpen: () = <kind:"frame kind"> <label:"caption"> "newline" =>? builder.open((kind, label)).map_err(|error| lalrpop_util::ParseError::User { error });
+NoteRows: () = { => (), <Rows> };
+Rows: () = {
+    <row:"raw row"> =>? builder.append_note(row).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_rows:Rows> <_sep:NoteSeparator> <row:"raw row"> =>? builder.append_note(row).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+NoteSeparator: () = =>? builder.separate_note().map_err(|error| lalrpop_util::ParseError::User { error });
+NoteAnchor: Anchor = {
+    "note" "left" "of" <name:Name> => Anchor { side: Side::Left, name },
+    "note" "right" "of" <name:Name> => Anchor { side: Side::Right, name },
+    "note" "over" <name:Name> => Anchor { side: Side::Over, name },
+};
+Declaration: Declaration = {
+    <one:Name> =>? builder.single(one).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <left:Name> "as" <right:Name> => declare(left, right),
+};
+StereotypeOpt: Stereotype = { => Stereotype::None, <value:"stereotype"> => value };
+Name: Name = {
+    <name:"name"> => name,
+    "as" => Name { text: "as".into(), quoted: false },
+    "left" => Name { text: "left".into(), quoted: false },
+    "right" => Name { text: "right".into(), quoted: false },
+    "of" => Name { text: "of".into(), quoted: false },
+    "over" => Name { text: "over".into(), quoted: false },
+};
+Label: String = { => String::new(), ":" <value:"label"> => value };
+Arrow: (Arrow, bool) = <start:@L> "arrow start" <left:LeftHead> <shaft:Shaft> <right:RightHead> "arrow end" <end:@R> =>? make_arrow((left, shaft, right), start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+LeftHead: End = { => End::None, "<" => End::Filled, "<" "<" => End::Open };
+RightHead: End = { => End::None, ">" => End::Filled, ">" ">" => End::Open };
+Shaft: Dash = { "-" => Dash::Solid, "-" "-" => Dash::Dashed, "-" "-" "-" => Dash::Dashed, "." "." => Dash::Dashed, "." "." "." => Dash::Dashed };
+
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "participant kind" => Token::Participant(<ParticipantKind>),
+        "stereotype" => Token::Stereotype(<Stereotype>),
+        "box open" => Token::BoxOpen(<BoxHeader>),
+        "box close" => Token::BoxClose,
+        "lifecycle" => Token::Lifecycle(<Lifecycle>),
+        "frame kind" => Token::Frame(<FrameKind>),
+        "note" => Token::Note,
+        "end note" => Token::EndNote,
+        "end" => Token::End,
+        "else" => Token::Else,
+        "as" => Token::As,
+        "left" => Token::Left,
+        "right" => Token::Right,
+        "of" => Token::Of,
+        "over" => Token::Over,
+        "name" => Token::Name(<Name>),
+        "label" => Token::Label(<String>),
+        "caption" => Token::Caption(<String>),
+        "raw row" => Token::Raw(<String>),
+        ":" => Token::Colon,
+        "arrow start" => Token::ArrowStart,
+        "arrow end" => Token::ArrowEnd,
+        "<" => Token::Less,
+        ">" => Token::Greater,
+        "-" => Token::Minus,
+        "." => Token::Dot,
+        "unknown" => Token::Unknown,
+        "newline" => Token::Newline,
+    }
+}

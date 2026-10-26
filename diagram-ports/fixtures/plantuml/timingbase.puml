@@ -1,0 +1,9 @@
+@startuml
+robust "Pump" as P
+@0
+P is Idle
+@10
+P is Running
+@25
+P is Idle
+@enduml

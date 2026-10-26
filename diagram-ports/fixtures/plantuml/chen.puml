@@ -1,0 +1,19 @@
+@startchen
+skinparam defaultFontName Liberation Sans
+title Chen: separate attributes and lexical ownership
+entity "Customer" as Customer {
+  name
+  address {
+    city
+    postcode
+  }
+}
+relationship "Places" as Places {
+  since
+}
+entity "Order" as Order {
+  name
+}
+Customer -1- Places
+Places =N= Order
+@endchen

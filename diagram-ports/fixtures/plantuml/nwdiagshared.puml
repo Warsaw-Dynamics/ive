@@ -1,0 +1,19 @@
+@startnwdiag
+nwdiag {
+network edge {
+address = "198.51.100.0/24";
+router [address = "198.51.100.1", description = "Edge router"];
+web [address = "198.51.100.20"];
+}
+network core {
+address = "10.23.0.0/24";
+router [address = "10.23.0.1"];
+store [address = "10.23.0.40"];
+}
+group storage {
+description = "Storage zone";
+color = "#CCEEFF";
+store;
+}
+}
+@endnwdiag

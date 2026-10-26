@@ -1,0 +1,13 @@
+[package]
+name = "plantuml-grammar-gen"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "LicenseRef-WarsawDynamics-Proprietary"
+
+[workspace]
+
+[dependencies]
+lalrpop = { version = "=0.23.2", default-features = false }
+serde_json = "=1.0.150"
+sha2 = "=0.10.9"

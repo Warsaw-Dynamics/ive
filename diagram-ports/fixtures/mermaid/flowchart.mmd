@@ -1,0 +1,6 @@
+flowchart LR
+  subgraph Review
+    A[Read changes] --> B{Tests pass?}
+  end
+  B -->|yes| C[Ship]
+  B -->|no| A

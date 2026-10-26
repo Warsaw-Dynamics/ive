@@ -1,0 +1,27 @@
+grammar(builder: &mut crate::plantuml::chart::Builder<'_>);
+use crate::plantuml::{chart::{Command,Series,SeriesKind,SeriesColor,LabelsMode,LegendPosition},parser::{chart::Token,error::ParseFailure}};
+pub Chart: () = <Commands> =>? builder.budget.charge(1).map_err(|error|lalrpop_util::ParseError::User{error:ParseFailure::terminal(error)});
+Commands: () = { =>(), <_commands:Commands> <l:@L> <command:Command> "end" <r:@R> =>? builder.command(command,l..r).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Command: Command = {
+ "x-axis" <title:Title> "[" <categories:Categories> "]" => Command::Categories(title,categories),
+ "y-axis" <title:Title> => Command::AxisTitle(title),
+ "y-axis" <title:Title> <min:"number"> "arrow" <max:"number"> => Command::AxisRange(title,min,max),
+ <l:@L> <kind:SeriesKind> <name:Title> "[" <samples:Samples> "]" <color:SeriesColor> <labels:Labels> <r:@R> => Command::Series(Series{span:l..r,name,kind,samples,color,labels}),
+ "legend" <position:Position> => Command::Legend(position),
+};
+Title: String = { =>String::new(), <value:"text">=>value };
+SeriesKind: SeriesKind = { "bar"=>SeriesKind::Bar,"line"=>SeriesKind::Line };
+SeriesColor: SeriesColor = { =>SeriesColor::Palette,<value:"color">=>SeriesColor::Rgb(value) };
+Labels: LabelsMode = { =>LabelsMode::Hidden,"labels"=>LabelsMode::Values };
+Position: LegendPosition = {"left"=>LegendPosition::Left,"right"=>LegendPosition::Right,"top"=>LegendPosition::Top,"bottom"=>LegendPosition::Bottom};
+Categories: Vec<String> = {
+ <value:"text">=>? builder.push(Vec::new(),value).map_err(|error|lalrpop_util::ParseError::User{error}),
+ <values:Categories> "," <value:"text">=>? builder.push(values,value).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Samples: Vec<f64> = {
+ <value:"number">=>? builder.push(Vec::new(),value).map_err(|error|lalrpop_util::ParseError::User{error}),
+ <values:Samples> "," <value:"number">=>? builder.push(values,value).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+extern {type Location=usize;type Error=ParseFailure;enum Token {
+ "x-axis"=>Token::XAxis,"y-axis"=>Token::YAxis,"bar"=>Token::Bar,"line"=>Token::Line,"legend"=>Token::Legend,"left"=>Token::Left,"right"=>Token::Right,"top"=>Token::Top,"bottom"=>Token::Bottom,"labels"=>Token::Labels,"["=>Token::Open,"]"=>Token::Close,","=>Token::Comma,"arrow"=>Token::Arrow,"text"=>Token::Text(<String>),"number"=>Token::Number(<f64>),"color"=>Token::Color(<crate::plantuml::style::Color>),"unknown"=>Token::Unknown(<String>),"end"=>Token::End,
+}}

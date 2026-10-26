@@ -69,6 +69,7 @@
         add('every', folders === Object.keys(every).join(',') ? null : folders);
         add('dl', this.diffLayout === 'inline' ? null : this.diffLayout);
         add('md', this.markdownView === 'text' ? null : this.markdownView);
+        add('mdw', this.markdownWidth === 'normal' ? null : this.markdownWidth);
         add('counts', this.countStyle === 'dot' ? null : this.countStyle);
         this.tabGroupsRoute(add);
         if (this.tabs.some(function (t) { return t.key === 'hub'; })) {
@@ -108,6 +109,7 @@
         // the hub tab reopens asking where a new terminal goes, before its query comes back
         this.diffLayout = p.get('dl') === 'side' ? 'side' : 'inline';
         this.markdownView = p.get('md') === 'rendered' ? 'rendered' : 'text';
+        this.markdownWidth = p.get('mdw') === 'wide' ? 'wide' : 'normal';
         var newTerminal = p.get('nt') === '1';
         this.restoreShells(p);
         p.getAll('t').forEach(function (key) {

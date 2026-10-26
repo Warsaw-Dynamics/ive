@@ -1,0 +1,653 @@
+{
+  "viewerSha256": "0c43488e42fca26229b00b9fbce13511726c8786c061cef8ce4827e04943bd2d",
+  "cases": [
+    {
+      "language": "mermaid",
+      "name": "flowchart",
+      "nativeMeasurements": 12,
+      "fallbacks": 9,
+      "pngBytes": 121405,
+      "pngSha256": "ddd855210ab83da9b5d9a87cf42b71eaca79188a138cda96e968ab627040148d",
+      "logSha256": "debd2ecc70d033867a05c5a733d122f5d980560fa3f641749c9458b29693c1c3"
+    },
+    {
+      "language": "mermaid",
+      "name": "sequence",
+      "nativeMeasurements": 0,
+      "fallbacks": 31,
+      "pngBytes": 131666,
+      "pngSha256": "c25661d5a913c1d0a3f6b63b9e965d634fe9437e15bf8abd971ddb5c452fa133",
+      "logSha256": "17406dfa15ee92e04b9137b107b41fab296908cf3a1212a91c24b08aa8398a1d"
+    },
+    {
+      "language": "mermaid",
+      "name": "class",
+      "nativeMeasurements": 28,
+      "fallbacks": 48,
+      "pngBytes": 130134,
+      "pngSha256": "f0ba596cd9a9ac1e9cb61aeb6da3a3fc04cf4a9f0e99dc32f79bc508aac052b9",
+      "logSha256": "6362f4a1358b629c393d067e8a2e0878c47089334b6b211535edf76263a65904"
+    },
+    {
+      "language": "mermaid",
+      "name": "pie",
+      "nativeMeasurements": 0,
+      "fallbacks": 4,
+      "pngBytes": 152773,
+      "pngSha256": "56e06138444ea456c39e22f8705142398913f01a30dc7be036b32f3bebecefce",
+      "logSha256": "d01ad2eebe1bdc4fdd15688bf7e920b75be49b9c332f327f37f00eca50cf6431"
+    },
+    {
+      "language": "mermaid",
+      "name": "architecture",
+      "nativeMeasurements": 7,
+      "fallbacks": 1,
+      "pngBytes": 122095,
+      "pngSha256": "cd0592511e80e0a6fa72927ad17700b086ce8792d8daf3cb4d187488459903b1",
+      "logSha256": "dd2bd20742bbdc98c6c358c2ce32e461ff8d012119f84e8be206af0ab1363b1b"
+    },
+    {
+      "language": "mermaid",
+      "name": "state",
+      "nativeMeasurements": 0,
+      "fallbacks": 12,
+      "pngBytes": 116547,
+      "pngSha256": "8edd15a9eae541101c72456bce040a5552a56c6d55b619738b75ba62a5b21a85",
+      "logSha256": "3025c4925a3a2c2fbb449d106c4964442648755d8e32236c77e11ce1f24448f9"
+    },
+    {
+      "language": "mermaid",
+      "name": "er",
+      "nativeMeasurements": 8,
+      "fallbacks": 16,
+      "pngBytes": 120690,
+      "pngSha256": "a0239ce4e12d46a53251b3d9e0480592dcd53223e70e9a3df8aed9fa8a8769eb",
+      "logSha256": "25e6c9d10b951d4225d833ab4701b618625a4056a25f9f492da760271c4d8154"
+    },
+    {
+      "language": "mermaid",
+      "name": "gantt",
+      "nativeMeasurements": 0,
+      "fallbacks": 2,
+      "pngBytes": 107652,
+      "pngSha256": "da947a8ec270a08a8704386dc1ab4a496e8e889f01618d8401ce1661f60d8ccb",
+      "logSha256": "c150640cf50768a03f71d177f5ebc05e6be6408573716018485abe98ad024adc"
+    },
+    {
+      "language": "mermaid",
+      "name": "journey",
+      "nativeMeasurements": 8,
+      "fallbacks": 12,
+      "pngBytes": 128382,
+      "pngSha256": "53bc09cf67a5eedac37b35afe75347c363025b603dd898f98c709d3f2a628a50",
+      "logSha256": "41d7dc36a8031de18c77aa81a1229183a33e70a48e7f0f5812483a9e239b634a"
+    },
+    {
+      "language": "mermaid",
+      "name": "git",
+      "nativeMeasurements": 2,
+      "fallbacks": 6,
+      "pngBytes": 120622,
+      "pngSha256": "bf7b8b14b929accdc8c0bf422ae944c6e6ce4842cc5647ce7022ecf9224d6d78",
+      "logSha256": "5f3b31eee545dad3512611072a79675cb02ac3c6fda8d6c85f2233ae737c6311"
+    },
+    {
+      "language": "mermaid",
+      "name": "mindmap",
+      "nativeMeasurements": 39,
+      "fallbacks": 21,
+      "pngBytes": 130259,
+      "pngSha256": "dfc34dc20e598c52bbc25fa2b25486f56bb894fec499b60c6efa82f81341dcf7",
+      "logSha256": "63bb09e72bda17705ac003772cf9782b4bc4cc2de088f2f23b21c980030e7d58"
+    },
+    {
+      "language": "mermaid",
+      "name": "timeline",
+      "nativeMeasurements": 24,
+      "fallbacks": 28,
+      "pngBytes": 122090,
+      "pngSha256": "b04f2e3f8eae22c2c89a2f60e8d803232c2288ba466ac2c92d71f604cf6325cf",
+      "logSha256": "d16767fabdf8ee0a778fd26a05ca08ed005f409bd7663865e505eec6a0aecb2f"
+    },
+    {
+      "language": "mermaid",
+      "name": "requirement",
+      "nativeMeasurements": 71,
+      "fallbacks": 57,
+      "pngBytes": 156918,
+      "pngSha256": "8100cebd0246f2a6d40fdf9b34aed5f2a9dcf8bc267b270b69838f0df75c91e8",
+      "logSha256": "61a5a0624af08ff5498e06283b9ec5f0126f3118ed46ce19cce2fca95e8a3c78"
+    },
+    {
+      "language": "mermaid",
+      "name": "c4",
+      "nativeMeasurements": 7,
+      "fallbacks": 24,
+      "pngBytes": 125249,
+      "pngSha256": "033ef73bb2b02f75d5e8f36360899d393a816a9543f30f94dcf7d4867901a477",
+      "logSha256": "3842947a3cc6ea4382299666baf22d3c5cd983307b47cfef2fcf215a3d5b9e08"
+    },
+    {
+      "language": "mermaid",
+      "name": "block",
+      "nativeMeasurements": 10,
+      "fallbacks": 17,
+      "pngBytes": 107673,
+      "pngSha256": "d1850e695ee39cbe52d7cc53dbdc80c227a75446df7b7322eb55b977dc54a442",
+      "logSha256": "432fab6ddeb6cf0f8fb653681a47574c49061919eeb79c7b7d8b6f99ba5e41f3"
+    },
+    {
+      "language": "mermaid",
+      "name": "packet",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 93505,
+      "pngSha256": "f6a863bfa14007033f1e08dad24a30a33813993f87488acd7557d3b1eada29d6",
+      "logSha256": "dca85b621061e4a51f38fcea6c6157833cb40843d3f1cb4fde4c2de3623e562d"
+    },
+    {
+      "language": "mermaid",
+      "name": "quadrant",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 143736,
+      "pngSha256": "6724a418bca0ebc16d9186d738273579a8646358cb9f88cb7ba032c9c6774648",
+      "logSha256": "70272238e64c6950328c55dc4426488f65e21dd84705efcafc5efa27d5f8be1e"
+    },
+    {
+      "language": "mermaid",
+      "name": "xychart",
+      "nativeMeasurements": 19,
+      "fallbacks": 20,
+      "pngBytes": 130155,
+      "pngSha256": "d4982f1b6b3e6e498ad027253b9d3aee833beb5e5a27bc8b3fb77af035c34935",
+      "logSha256": "bfb4d72f33d288e01303fcb4cbd3461d63ecca45c0faa860b25a2b900f925687"
+    },
+    {
+      "language": "mermaid",
+      "name": "sankey",
+      "nativeMeasurements": 0,
+      "fallbacks": 4,
+      "pngBytes": 101815,
+      "pngSha256": "15e7fde6bf9fc7471418b7de3117a18ce0eb7db35b3e552afda058c0f857ca09",
+      "logSha256": "79291822373b14e187d2027d7be1ec35dfa919b2e41ffb6763ecad82938dfe82"
+    },
+    {
+      "language": "mermaid",
+      "name": "kanban",
+      "nativeMeasurements": 4,
+      "fallbacks": 6,
+      "pngBytes": 112571,
+      "pngSha256": "af8e88987952425f7da231f9dff4d1492994d1ef7ed5ba6c5568eeeebd337d8b",
+      "logSha256": "8ca931e7f1dc3dedcb2aececf735257bc95e4d460d2563e819c42949d4f30d1e"
+    },
+    {
+      "language": "mermaid",
+      "name": "treemap",
+      "nativeMeasurements": 11,
+      "fallbacks": 0,
+      "pngBytes": 109330,
+      "pngSha256": "29a79514813c43a0fbbf4e1ff53595f12d546283b3c96e52e059699e4f5e5a92",
+      "logSha256": "2250c116fa47508f3020e8326425ed8df4035766e75c2c0e2020f7d66d629c4c"
+    },
+    {
+      "language": "mermaid",
+      "name": "radar",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 161928,
+      "pngSha256": "a95012068d19b69e50d65dbcf7b4e3db1d56d671ba65f887d1d70cd3b4aa806a",
+      "logSha256": "e6d38b6c446af0491bae161dfb76c2009f052dbe713657f76676352028551344"
+    },
+    {
+      "language": "mermaid",
+      "name": "venn",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 133884,
+      "pngSha256": "823ef129dce759b2817d0383e3a65f554e06bb5abeb3612967b541636304d657",
+      "logSha256": "b1c5bab4d7bcf790486aea8b123c3cfba41f8358a627ea0d8b03c9cddef4797c"
+    },
+    {
+      "language": "mermaid",
+      "name": "usecase",
+      "nativeMeasurements": 0,
+      "fallbacks": 3,
+      "pngBytes": 132802,
+      "pngSha256": "eb9f77f2d223cd4ea067afc467068a447b669e9ec4d7659f8bffaac298ca6c67",
+      "logSha256": "da4cf291a95913b9d2403da45a865de598024e5257585afad800e1715a2cf499"
+    },
+    {
+      "language": "mermaid",
+      "name": "tree",
+      "nativeMeasurements": 0,
+      "fallbacks": 10,
+      "pngBytes": 124302,
+      "pngSha256": "5e9141535f79f774c9a2e6b7cbee7d563fd6473036b34dec26358b979f00a84e",
+      "logSha256": "b0cd14cfbbfd50e4379ab61f46e1fc13f8275f5c8a43488a35a9a183e5624009"
+    },
+    {
+      "language": "mermaid",
+      "name": "swimlane",
+      "nativeMeasurements": 19,
+      "fallbacks": 8,
+      "pngBytes": 123050,
+      "pngSha256": "2dac3b081550a8aca5d00e0ca217594d81c4119d2d3f39c09dd7a245692a7221",
+      "logSha256": "7e31ca56509bfc8f0cbb6e2cf2517b59f467c15d42116f1ece4306855bd10824"
+    },
+    {
+      "language": "mermaid",
+      "name": "ishikawa",
+      "nativeMeasurements": 8,
+      "fallbacks": 18,
+      "pngBytes": 141958,
+      "pngSha256": "dcdffcc1b0ddf3cd6b8b79d3b6b3d036a11ad61bb577168331f308e9f3270e82",
+      "logSha256": "4ce619a5326d239eaf11e466914efe3c54a7180036281bf8ca073b9204e82ea9"
+    },
+    {
+      "language": "mermaid",
+      "name": "wardley",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 133562,
+      "pngSha256": "ccd93ceb596ea44c5f548ab244a9185a8b17af7e13ffdccf991768a69900fe8a",
+      "logSha256": "dd4b2404b1964d3826f807ad913b5fd22d249131f653ffd8d0592c5f58a756a5"
+    },
+    {
+      "language": "mermaid",
+      "name": "cynefin",
+      "nativeMeasurements": 5,
+      "fallbacks": 0,
+      "pngBytes": 166079,
+      "pngSha256": "4d199f4267dcd6fdb4b442fa598c56e74b84e5fedcc5c361d4cf777443d5cad1",
+      "logSha256": "49f2cd7eeade7bb8f7898452fef6748d7003ed8a2a9001d759f6194d4c9d76fe"
+    },
+    {
+      "language": "mermaid",
+      "name": "eventmodeling",
+      "nativeMeasurements": 6,
+      "fallbacks": 24,
+      "pngBytes": 115447,
+      "pngSha256": "98eff21bc269048b1cf34853fdaacc7bfdb4c491cd009fa79fa928f6dae2ca8b",
+      "logSha256": "94b46a603f03cb7da3f6940a13d3c346cfc80251f315cb83d4f6d36b0ca317ef"
+    },
+    {
+      "language": "mermaid",
+      "name": "agentflow",
+      "nativeMeasurements": 6,
+      "fallbacks": 6,
+      "pngBytes": 128523,
+      "pngSha256": "b88c7d449090a3cb521c649fa48db30a31eac93a71fc467d99bff288375e322e",
+      "logSha256": "7c784c4d0d3053dffd77e0169a5616b40f0a7aef9b92e18f2bad515fa152792e"
+    },
+    {
+      "language": "mermaid",
+      "name": "zenuml",
+      "nativeMeasurements": 6,
+      "fallbacks": 0,
+      "pngBytes": 111925,
+      "pngSha256": "1adc0b152dec2c16f28bb214b28b0b62915ae553a41f8ac3adcc3377c69dc028",
+      "logSha256": "a05ceb5718c0c34fca58115061dd9bbc42be70955b249ded360f285236370ab2"
+    },
+    {
+      "language": "mermaid",
+      "name": "railroad",
+      "nativeMeasurements": 0,
+      "fallbacks": 10,
+      "pngBytes": 106360,
+      "pngSha256": "e82e3b19959458a312f0cd5f01d2853ecbdf25c69231c3a9a3e856105d008cff",
+      "logSha256": "2f0162246bdd8856a330292cb175b639ba4ee60bd84970413e8cd368a9125954"
+    },
+    {
+      "language": "mermaid",
+      "name": "railroad-ebnf",
+      "nativeMeasurements": 0,
+      "fallbacks": 14,
+      "pngBytes": 105755,
+      "pngSha256": "f8c2aad380f29f22d58610c5de6915ba84f6dda163be136ecfe101d69da5a42a",
+      "logSha256": "53fd5349168c6c15947c29f7b0ecf9f4f64481ad9db1c71094b6d0746eae8c49"
+    },
+    {
+      "language": "mermaid",
+      "name": "railroad-abnf",
+      "nativeMeasurements": 0,
+      "fallbacks": 14,
+      "pngBytes": 106016,
+      "pngSha256": "a39be04641631b8242cd30c008e71ba746dbdba22ee1ec51871a8fce7312df93",
+      "logSha256": "cb8879ff635c79d10a04a47c1d8333ac0ceb6904321b3d3b8c4f05f5301014f7"
+    },
+    {
+      "language": "mermaid",
+      "name": "railroad-peg",
+      "nativeMeasurements": 0,
+      "fallbacks": 14,
+      "pngBytes": 106710,
+      "pngSha256": "ba093e91e7bd1686573bb52f83ceb1b4526bf19c1ae5a7b7fc90e90f8e661667",
+      "logSha256": "22d0f8b6ee03dc4e61ec03319dd12ea0784794a7b71848200672e1bb9b51889b"
+    },
+    {
+      "language": "mermaid",
+      "name": "info",
+      "nativeMeasurements": 0,
+      "fallbacks": 0,
+      "pngBytes": 81930,
+      "pngSha256": "e6dc171ec7e051395ea10621dc28e448b6399ec5fdba8fe63439f40d9e7a5fa5",
+      "logSha256": "3e139cab01e2614a62e86af17314c27bab5e5ff92583a74fc507e58244de1ef8"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-state-advanced",
+      "nativeMeasurements": 9,
+      "fallbacks": 0,
+      "pngBytes": 137403,
+      "pngSha256": "027a7a6b22010da6853e318114382f446e4ea7cc368c8757461caac2748c8866",
+      "logSha256": "3b81a7f4a3cf78777cfa9199155db21d415f09accd2707d5c54726a289fa855e"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-flow",
+      "nativeMeasurements": 3,
+      "fallbacks": 0,
+      "pngBytes": 117802,
+      "pngSha256": "ca4fedb6b3bdc736a629e88a31f329c676df9ab570040f061f3fe6488074f033",
+      "logSha256": "637609abf493b13b3a6ff2c1e58f9dbc2d783476ef9b9d3c05b31e52bb7d52ba"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-flow-cursor",
+      "nativeMeasurements": 3,
+      "fallbacks": 0,
+      "pngBytes": 111703,
+      "pngSha256": "91b3aae0519caf531662c4b714b92992bd21f45f2b53b5ba21821ae82248fa5a",
+      "logSha256": "637609abf493b13b3a6ff2c1e58f9dbc2d783476ef9b9d3c05b31e52bb7d52ba"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-creole",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 127745,
+      "pngSha256": "a9c527e84c5b455e7af562d9b4a47a791200689f135d8c9e76abbc0eabdb57b2",
+      "logSha256": "72c0eff65eebb54b1839003d14f969424b0cc4b638674e25062b3deae97a2527"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-bpm",
+      "nativeMeasurements": 4,
+      "fallbacks": 0,
+      "pngBytes": 114114,
+      "pngSha256": "c7933f59dffb54896616805b1810023013cebd170d91e5f7fe7eaad0f9f739df",
+      "logSha256": "9d5f28dfbb1543509cd573a7a4d45c9e180b300bdbb543098744b1e00f4146c5"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-ebnf",
+      "nativeMeasurements": 4,
+      "fallbacks": 0,
+      "pngBytes": 112526,
+      "pngSha256": "0e00fe24cc29ec599b2370c52f32b5271e087fffbdf41bdc3fb74271d04142a4",
+      "logSha256": "42db5203518fd985196c1c69971c95dcb8f19217353d1fc1c5208007b55bb1ba"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-regex",
+      "nativeMeasurements": 9,
+      "fallbacks": 0,
+      "pngBytes": 110690,
+      "pngSha256": "b2dc1dfc137bedab2f63cb279220525cce0bdce7fc0faaad7026386b0d210f25",
+      "logSha256": "34b4c0f2af36e42c35f82a40ba161c8fba60e5c5719cd28ac1ea1a6212ee2d6b"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-wire",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 140506,
+      "pngSha256": "fc8b51c03bf850876f494dd4b115653733942f64cbc274ad510234aa3da6941b",
+      "logSha256": "d687379e083cdf070c4b5cefb3bebea5e257a98f70a3917649e2c5fd2f556a6f"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-chart",
+      "nativeMeasurements": 14,
+      "fallbacks": 0,
+      "pngBytes": 114220,
+      "pngSha256": "292677112cbbbc9d60cd1c630f105d67ffea92eb54768d50622c6623c5ad3781",
+      "logSha256": "dee62f79e08dc8240129d1dc724e6b8178d1651d73f3209840769de67dbd55a1"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-git",
+      "nativeMeasurements": 4,
+      "fallbacks": 0,
+      "pngBytes": 132688,
+      "pngSha256": "51064e5f788717096ba9ee06d5a6410c069dc2b4f61bf53c1242739b0ee39862",
+      "logSha256": "1c96926d4186eeece34f5c0f7d3bd79eba8361bfd2b1383bc5c9df82a0f0e754"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-chen",
+      "nativeMeasurements": 11,
+      "fallbacks": 0,
+      "pngBytes": 181947,
+      "pngSha256": "4c877dc1f40714adb7eb40f01dbc32a4de84b5ff7ba7523d462c2434bf34ae6d",
+      "logSha256": "add5bcf4df9e423ae840d8e8430353c3a106e1a87bdf4abc60ca65acaeaf45f7"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-archimate",
+      "nativeMeasurements": 6,
+      "fallbacks": 0,
+      "pngBytes": 167294,
+      "pngSha256": "7b1f142256cdea27be249911b0458089383292023dd50684e53905158d1d6299",
+      "logSha256": "572870f216cbf510bb98c70a1aad46835f69a8c8c8a2d6bdd0eeb39d929f1978"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-files",
+      "nativeMeasurements": 12,
+      "fallbacks": 0,
+      "pngBytes": 177892,
+      "pngSha256": "44cf7ea9f84780f3ddd989df4fad5201e12f376694a492a38e02481691565805",
+      "logSha256": "bdd766d0952586826e7151db4c612589d82fad5f5d3a267b14fe7ac72ca6fa71"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-packetdiag",
+      "nativeMeasurements": 9,
+      "fallbacks": 0,
+      "pngBytes": 144664,
+      "pngSha256": "54adc733b8b9f26ef4e4c6bf065411bd5b442a554581cb89ee2646762de366f7",
+      "logSha256": "14c5cdc4529017fcb7ddaf3a3025d46fdc909a065ea2ae809e7c4c44404affe8"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-board",
+      "nativeMeasurements": 8,
+      "fallbacks": 0,
+      "pngBytes": 143697,
+      "pngSha256": "e99f04956988e03a10940e1b14d8e8ff3311b67e8f5c83a9a9fe8f8c3b95ceea",
+      "logSha256": "c751e479e8ef8ae27f1a8d20e9cd21bf6295a227ad628b24a7bf115abd52fd1d"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-hcl",
+      "nativeMeasurements": 21,
+      "fallbacks": 0,
+      "pngBytes": 154181,
+      "pngSha256": "0ee7565c44eee4790291729dd9798b5f18d581740301f7238c5e97de07a555c9",
+      "logSha256": "40d966dfe1d970832d004eb5e350453353cbb51f8b593ce0289a7407df2aa65a"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-nwdiag",
+      "nativeMeasurements": 21,
+      "fallbacks": 0,
+      "pngBytes": 242100,
+      "pngSha256": "874d8cc8aca4ab51e1134cf02df0b5eb4696c9fe018aac57dd423d5771a52db4",
+      "logSha256": "489a70feed7d63b411d387f75f83902ab9ab2b7392c5e801dfd373910197c007"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-salt",
+      "nativeMeasurements": 12,
+      "fallbacks": 0,
+      "pngBytes": 209295,
+      "pngSha256": "7b342ec69f431f7a563e3d33998b395d5b4aa019f9af696079ffa5fbf0fa0d28",
+      "logSha256": "5e2a290ec80135cfd1df0494b05397119703bea975db2609bfeaf386f0e25d2f"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-gantt",
+      "nativeMeasurements": 18,
+      "fallbacks": 0,
+      "pngBytes": 190558,
+      "pngSha256": "08acb2be63699eb2de11d3aa5e63db2ddd7e924d57e3f5ead5235838c1817508",
+      "logSha256": "4abf0006b0e0023d929211806b5f636131ca4d92d8dc7a33ab17f2dc534b33bf"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-timing",
+      "nativeMeasurements": 16,
+      "fallbacks": 0,
+      "pngBytes": 158192,
+      "pngSha256": "6c8ad04a1b07b48df3d5a6bc789071fb908ec87bc60f6578dd811a15b9c2fc06",
+      "logSha256": "15bd28b60c7e4157d84ae50152f4fd4271064cb5f2e75695a35455e9878e53c3"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-constant-sequence",
+      "nativeMeasurements": 12,
+      "fallbacks": 0,
+      "pngBytes": 215190,
+      "pngSha256": "8477aaaabfc5e93df5b102647413ae2baf705a80550410ee10ecb0ea111c0b35",
+      "logSha256": "15292dc832471630a2bfd900489e152b8f1cc6a79c515d7aaa0b3b9404313be5"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-constant-graph",
+      "nativeMeasurements": 14,
+      "fallbacks": 0,
+      "pngBytes": 205729,
+      "pngSha256": "c29fb1372c58c30ad9d43f8834de99950816ddd6de825a064e99cc663a5e8f31",
+      "logSha256": "dcca76e81f9e68d2b6384ec124da2fd9d4447ea9ded1bfea472f8891581d69ec"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-styled-sequence",
+      "nativeMeasurements": 20,
+      "fallbacks": 0,
+      "pngBytes": 222358,
+      "pngSha256": "a4b8279797e2f57cbf24413455324ea70336e32490fb886a5601ddc125f0a833",
+      "logSha256": "620305cfb8223d9b6b5be8406221479b92b09516ae5dbcf15bdcb697c3acd5d2"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-styled-graph",
+      "nativeMeasurements": 22,
+      "fallbacks": 0,
+      "pngBytes": 193069,
+      "pngSha256": "8047d2b0b80333f5d9b1619d045ac70a99d3738d10b040469e23bee2ef6c1d72",
+      "logSha256": "f4d70bd98c190a222e974b3b66cd6a9b78ab7a28c737e1b26333b3473bc2e570"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-mindmap",
+      "nativeMeasurements": 5,
+      "fallbacks": 0,
+      "pngBytes": 118795,
+      "pngSha256": "05c0a54067737c3a5def1284e0bf24dfb9bf434c65e06d3a137704beb555cd9c",
+      "logSha256": "e62f8c6565830ff0043802b2981a4331502aad14ff49203246548c4a672c1326"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-wbs",
+      "nativeMeasurements": 5,
+      "fallbacks": 0,
+      "pngBytes": 122233,
+      "pngSha256": "fa0e621e7daee9184541d7347f104ed1eaaf06b6c441908f121b5232b6a7ac3a",
+      "logSha256": "fe9f460e9b910cc629e90430f5a941138142a4c65801a6342aee4204cb6d4bdf"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-json",
+      "nativeMeasurements": 10,
+      "fallbacks": 0,
+      "pngBytes": 115070,
+      "pngSha256": "baf285eee02046d3e486fcd8c938b5d2fbb6c9c36942ebd6abefdc23f94238c5",
+      "logSha256": "fc9b0b60596d7bd74e1190ae5bf043611b0aa449a9f50ebc0c35512557d73617"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-yaml",
+      "nativeMeasurements": 10,
+      "fallbacks": 0,
+      "pngBytes": 112955,
+      "pngSha256": "000943c3c1d729efc0082e66e311683c3a8cd25351cd1f2790c130007ae8b27e",
+      "logSha256": "9fe88049726e0e5bd6a9a7b9bd7a081f3fea3347cb127338f4eb6f02c9326c15"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-state",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 122622,
+      "pngSha256": "fd6ae0d5fbc491d850fa57b5c98efe83903e679da60e13860f141352fe31dfe3",
+      "logSha256": "f8e6df073808fb57b7a31cdd09760ca07b06c8b257fdaa53afad7ce56ef6bcab"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-activity",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 128943,
+      "pngSha256": "09d6072ef758f2551f9b754e3e6b7b5b849bdc7b124dff0de712c98aa02b5cfc",
+      "logSha256": "867f1e838a947432fb935efb9c5a154db2d51bf40d78204447049696020db49b"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-sequence",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 142912,
+      "pngSha256": "0fd0725d680813d0f1c093f2dd77e559cc5cb409e2ed8c1180c75e5fa38d995d",
+      "logSha256": "935e33627d36d1a70a628d081b3ad4c4d6095980be986da8b0e99cc510963588"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-class",
+      "nativeMeasurements": 9,
+      "fallbacks": 0,
+      "pngBytes": 140810,
+      "pngSha256": "5eeeb13b0f26c789f97e2422d1a78236e07263f17687cfea844cc4004d26b075",
+      "logSha256": "d0c28651237e87c0d796fd9a303547c3a5e147a23b5383bc89c099a75aec1c3f"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-object",
+      "nativeMeasurements": 5,
+      "fallbacks": 0,
+      "pngBytes": 122173,
+      "pngSha256": "22b946d679950af7df1a28ef1da004d9fa55bf636b52fe8e7d46d9f1d090ccf7",
+      "logSha256": "e9c6c063be7a29af3475f6ebbb830a504b54f3170c83753dbc71b93d12052fca"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-deployment",
+      "nativeMeasurements": 7,
+      "fallbacks": 0,
+      "pngBytes": 126949,
+      "pngSha256": "989d20a6e814f74131c905b292f312c3392da2aeb08b7f6f6e217b018a2a058c",
+      "logSha256": "1094f3be49d10c1cad557f29fded5b62166a46cb0fcd75a7ce24bb68a3789888"
+    },
+    {
+      "language": "plantuml",
+      "name": "plantuml-usecase",
+      "nativeMeasurements": 5,
+      "fallbacks": 0,
+      "pngBytes": 124810,
+      "pngSha256": "c3f5e23d18afeac1ce08d31040b810130ed6bcef9123466cec3c3eb3e5fac978",
+      "logSha256": "bb813e00ee2efff57abdd4a5f198232f69b8b4d952be2cc20af1ef2bcd706124"
+    }
+  ]
+}

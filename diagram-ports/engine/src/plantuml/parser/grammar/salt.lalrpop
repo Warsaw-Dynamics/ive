@@ -1,0 +1,44 @@
+// Original generated grammar for the authorized MIT Salt subset.
+grammar(builder: &mut crate::plantuml::salt::Builder<'_>);
+use crate::plantuml::{salt::{Border, End, LeafKind, Salt}, parser::{salt::Token, error::ParseFailure}};
+
+pub Salt: Salt = <table:Table> =>? builder.finish(table.0).map_err(|error| lalrpop_util::ParseError::User { error });
+Table: (usize, End) = <_open:Open> <_cells:Cells> <start:@L> "}" <end:End> <finish:@R> =>? builder.close(end, start..finish).map_err(|error| lalrpop_util::ParseError::User { error });
+Open: () = <start:@L> <border:Border> <_end:End> <finish:@R> =>? builder.open(border, start..finish).map_err(|error| lalrpop_util::ParseError::User { error });
+Border: Border = { "{" => Border::None, "{+" => Border::Outer, "{#" => Border::Grid };
+Cells: () = { => (), <Cells> <Cell> => () };
+Cell: () = {
+    <start:@L> "*" <end:End> <finish:@R> =>? builder.span(end, start..finish).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <id:CellOpen> <widget:Widget> =>? builder.cell(id, widget).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+CellOpen: usize = =>? builder.start_cell().map_err(|error| lalrpop_util::ParseError::User { error });
+Widget: (usize, End) = {
+    <Table>,
+    <widget:Leaf> <end:End> => (widget, end),
+};
+Leaf: usize = {
+    <start:@L> <value:"text"> <end:@R> =>? builder.leaf((LeafKind::Text, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <value:"tree marker"> <end:@R> =>? builder.tree(value, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "quote" <value:"text"> "quote" <end:@R> =>? builder.leaf((LeafKind::Field, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "[" <value:"text"> "]" <end:@R> =>? builder.leaf((LeafKind::Button, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "[" "X" "]" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::CheckboxOn, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "[" "]" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::CheckboxOff, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "[" "space" "]" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::CheckboxOff, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "(" "X" ")" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::RadioOn, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "(" ")" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::RadioOff, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> "(" "space" ")" <value:"caption"> <end:@R> =>? builder.leaf((LeafKind::RadioOff, value), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+End: End = { <Column>, <Row> };
+Column: End = "column" => End::Column;
+Row: End = "row" => End::Row;
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "{" => Token::Open, "{+" => Token::Outer, "{#" => Token::Grid, "}" => Token::Close,
+        "text" => Token::Text(<String>), "caption" => Token::Caption(<String>), "tree marker" => Token::Tree(<String>),
+        "quote" => Token::Quote, "[" => Token::BracketOpen, "]" => Token::BracketClose,
+        "(" => Token::ParenOpen, ")" => Token::ParenClose, "X" => Token::X, "space" => Token::Space,
+        "*" => Token::Star, "column" => Token::Column, "row" => Token::Row,
+    }
+}

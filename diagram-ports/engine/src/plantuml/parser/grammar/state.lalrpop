@@ -1,0 +1,84 @@
+// Original grammar for the supported MIT state subset; semantic traces are in provenance.
+grammar(builder: &mut crate::plantuml::state::Builder<'_>);
+use crate::plantuml::{state::{Axis, Caption, Declaration, Endpoint, Kind, Name, NamePath}, parser::{state::{Token, join_shaft, require_adjacent}, error::ParseFailure}};
+use std::ops::Range;
+
+pub State: () = <Items>;
+Items: () = { => (), <Items> <Item> =>? builder.tick().map_err(|error| lalrpop_util::ParseError::User { error }) };
+Item: () = {
+    <start:@L> "state" "gap" <value:Declaration> <kind:Stereotype> <label:DescriptionLabel> "newline" <end:@R> =>? builder.declare((value, kind, label), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <_open:CompositeOpen> <_items:Items> <_closer:Closer> "newline" =>? builder.close().map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <name:LeftName> <_colon:DescriptionColon> <label:"label"> "newline" <end:@R> =>? builder.describe((name, label), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:LeftEndpoint> <reverse:Arrow> <right:Endpoint> <label:Label> "newline" <end:@R> =>? builder.transition((left, right, reverse, label), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <shaft:Hyphens> "newline" <end:@R> =>? builder.separate((Axis::Stacked,shaft.len()), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <bars:Bars> "newline" <end:@R> =>? builder.separate((Axis::SideBySide,bars.len()), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+CompositeOpen: () = <start:@L> "state" "gap" <value:Declaration> <_opener:Opener> "newline" <end:@R> =>? builder.open(value, start..end).map_err(|error| lalrpop_util::ParseError::User { error });
+Opener: () = { "{", "begin" };
+Closer: () = { "}", "endstate", "end" "state" <Gap> };
+Gap: () = { => (), "gap" };
+Declaration: Declaration = {
+    <one:Name> =>? builder.single(one).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <left:Name> "as" <right:Name> <end:@R> =>? builder.alias((left, right), start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Name: Name = {
+    <PlainName>,
+    "state" <Gap> => Name { text: "state".into(), quoted: false },
+};
+LeftName: Name = {
+    <PlainName>,
+    "state" => Name { text: "state".into(), quoted: false },
+};
+PlainName: Name = {
+    <value:"name"> => value,
+    "as" => Name { text: "as".into(), quoted: false },
+    "begin" => Name { text: "begin".into(), quoted: false },
+    "end" => Name { text: "end".into(), quoted: false },
+    "endstate" => Name { text: "endstate".into(), quoted: false },
+};
+LeftEndpoint: Endpoint = { <path:Path<LeftName>> => Endpoint::Named(path), "[*]" => Endpoint::Role, <kind:"history"> => Endpoint::History(kind), <path:Path<LeftName>> <h:@L> <kind:"history"> <r:@R> =>? require_adjacent((path.end,h),h..r).map(|()|Endpoint::ScopedHistory(path,kind)).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Endpoint: Endpoint = { <path:Path<Name>> => Endpoint::Named(path), "[*]" => Endpoint::Role, <kind:"history"> => Endpoint::History(kind), <path:Path<Name>> <h:@L> <kind:"history"> <r:@R> =>? require_adjacent((path.end,h),h..r).map(|()|Endpoint::ScopedHistory(path,kind)).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Path<N>: NamePath = { <start:@L> <name:N> =>? builder.path(name,start).map_err(|error|lalrpop_util::ParseError::User{error}), <path:Path<N>> <dot:@L> "." <start:@L> <name:Name> =>? builder.extend_path((path,name),(dot,start)).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Stereotype: Kind = { => Kind::State, <start:@L> "<<" <name:Name> ">>" <end:@R> =>? builder.stereotype(name,start..end).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Bars: Range<usize> = { <at:"|"> => at..at+1, <shaft:Bars> <start:@L> <at:"|"> <end:@R> =>? join_shaft(shaft,at,start..end).map_err(|error|lalrpop_util::ParseError::User{error}) };
+Label: Caption = { => Caption::Absent, ":" <label:"label"> => Caption::Present(label) };
+DescriptionLabel: Caption = { => Caption::Absent, <_colon:DescriptionColon> <label:"label"> => Caption::Present(label) };
+DescriptionColon: () = { ":", "attached colon" };
+Arrow: bool = {
+    <shaft:Hyphens> <start:@L> <head:">"> <end:@R> =>? require_adjacent((shaft.end, head), start..end).map(|()| false).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <start:@L> <head:"<"> <end:@R> <shaft:Hyphens> =>? require_adjacent((head + 1, shaft.start), start..end).map(|()| true).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Hyphens: Range<usize> = {
+    <at:"-"> => at..at + 1,
+    <shaft:Hyphens> <start:@L> <at:"-"> <end:@R> =>? join_shaft(shaft, at, start..end).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "state" => Token::State,
+        "gap" => Token::Gap,
+        "as" => Token::As,
+        "begin" => Token::Begin,
+        "end" => Token::End,
+        "endstate" => Token::EndState,
+        "name" => Token::Name(<Name>),
+        "label" => Token::Label(<String>),
+        "[*]" => Token::Pseudo,
+        "history" => Token::History(<Kind>),
+        "<<" => Token::StereoOpen,
+        ">>" => Token::StereoClose,
+        "|" => Token::Bar(<usize>),
+        "." => Token::Dot,
+        "{" => Token::Open,
+        "}" => Token::Close,
+        ":" => Token::Colon,
+        "attached colon" => Token::AttachedColon,
+        "<" => Token::Less(<usize>),
+        ">" => Token::Greater(<usize>),
+        "-" => Token::Minus(<usize>),
+        "unknown" => Token::Unknown,
+        "newline" => Token::Newline,
+    }
+}

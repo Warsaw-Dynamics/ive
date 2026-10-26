@@ -1,0 +1,26 @@
+@startuml
+!define STATUS Ready
+!define TITLE **STATUS** domain model
+!define ACCOUNT "**Account**"
+!define MEMBER __balance__ : Number
+!define RELATION confirmed STATUS
+!define SIZE 19
+skinparam defaultFontName Liberation Sans
+skinparam defaultFontSize SIZE
+skinparam titleFontSize 26
+skinparam BackgroundColor #f6f8fc
+title TITLE
+left header Immutable values across document and class labels
+legend STATUS values use measured layout
+right footer Native subset; no external resources
+package "Commerce" as P {
+class ACCOUNT as A {
+MEMBER
+{static} count : Number
+}
+class Ledger {
+entries : Number
+}
+A "1" --> "many" Ledger : RELATION
+}
+@enduml

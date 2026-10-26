@@ -1,0 +1,3 @@
+@startjson
+{"service":{"name":"Billing","ports":[8080,8443]},"enabled":true}
+@endjson

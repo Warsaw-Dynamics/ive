@@ -1,0 +1,20 @@
+// Literal paths and raw physical notes build the ordered files trie.
+grammar(builder: &mut crate::plantuml::files::Builder<'_>);
+use crate::plantuml::parser::{files::Token, error::ParseFailure};
+pub Files: () = <Items>;
+Items: () = { => (), <Items> <Item> => () };
+Item: () = {
+ <_open:PathOpen> <name:"component"> "newline" =>? builder.file(name).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <_open:PathOpen> <_folders:NonemptyFolders> <name:"component"> "newline" =>? builder.file(name).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <_open:PathOpen> <_folders:NonemptyFolders> "newline" =>? builder.folder_only().map_err(|error| lalrpop_util::ParseError::User { error }),
+ <_open:NoteOpen> <_rows:Rows> "</note>" "newline" =>? builder.finish_note().map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+PathOpen: () = "/" =>? builder.begin_path().map_err(|error| lalrpop_util::ParseError::User { error });
+NonemptyFolders: () = { <name:"component"> "/" =>? builder.folder(name).map_err(|error| lalrpop_util::ParseError::User { error }), <_folders:NonemptyFolders> <name:"component"> "/" =>? builder.folder(name).map_err(|error| lalrpop_util::ParseError::User { error }) };
+NoteOpen: () = "<note>" "newline" =>? builder.begin_note().map_err(|error| lalrpop_util::ParseError::User { error });
+Rows: () = { => (), <_rows:Rows> <row:"raw"> =>? builder.note_row(row).map_err(|error| lalrpop_util::ParseError::User { error }) };
+extern {
+ type Location = usize;
+ type Error = ParseFailure;
+ enum Token { "/" => Token::Slash, "component" => Token::Component(<String>), "<note>" => Token::Note, "</note>" => Token::EndNote, "raw" => Token::Raw(<String>), "newline" => Token::Newline }
+}

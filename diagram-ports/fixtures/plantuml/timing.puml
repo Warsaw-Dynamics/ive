@@ -1,0 +1,19 @@
+@startuml
+skinparam defaultFontName Liberation Sans
+title Native timing: valve and controller
+footer Integer times; native waveform and ribbon layout
+robust "Valve track" as V
+concise "Controller track" as C
+@0
+V is Closed
+C is Waiting
+@+6
+V is Open
+C is Running
+@+9
+V is Closed
+C is Done
+V@6 <-> @+9 : open interval
+V@6 -> C@8 : confirm
+@20
+@enduml

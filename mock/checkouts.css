@@ -600,21 +600,27 @@ button.card:hover { border-color: var(--accent); }
 
 /* Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered"). The toggle is a pill floating where
    find.css's bar floats (same box and shadow), held by a zero-height line at the top of the code so it clears any header
-   or save bar; Rendered is read-only prose in the UI font, 760 px wide at most, selectable; a code block has a Copy button. */
+   or save bar; Rendered is read-only prose in the UI font, Normal (centred, 760 px at most) or Wide, selectable; a code
+   block has a Copy button. */
 .mdpill { position: relative; height: 0; z-index: 5; }
 .mdpill__box {
   position: absolute; top: 6px; right: 18px; padding: 3px; gap: 2px; border-radius: 8px; background: var(--tree);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 .mdpill__box button { height: 24px; padding: 0 10px; border-radius: 6px; font-size: 12px; color: var(--text); }
-.md { flex: 1; min-height: 0; overflow: auto; padding: 16px 32px 48px; font-size: 14px; line-height: 1.6; color: var(--text); }
-.md > * { max-width: 760px; }
+.mdpill__width { display: flex; gap: 2px; margin-left: 4px; padding-left: 4px; border-left: 1px solid var(--border); }
+/* Normal centres a 760 px column (the side padding takes what is left over); Wide uses the tab's full width. */
+.md {
+  flex: 1; min-height: 0; overflow: auto; padding: 16px max(32px, calc((100% - 760px) / 2)) 48px;
+  font-size: 14px; line-height: 1.6; color: var(--text);
+}
+.md--wide { padding-inline: 32px; }
 .md h1, .md h2, .md h3, .md h4 { margin: 1.2em 0 0.4em; line-height: 1.25; font-weight: 600; }
 .md h1 { font-size: 24px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .md h2 { font-size: 19px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
 .md h3 { font-size: 16px; }
 .md > :first-child { margin-top: 0; }
-.md p, .md ul, .md ol, .md pre, .md table, .md blockquote { margin: 0 0 12px; }
+.md p, .md ul, .md ol, .md pre, .md blockquote { margin: 0 0 12px; }
 .md ul, .md ol { padding-left: 24px; }
 .md ul ul, .md ol ol, .md ul ol, .md ol ul { margin: 2px 0 0; }
 .md .md__task { list-style: none; }
@@ -637,6 +643,9 @@ button.card:hover { border-color: var(--accent); }
 .md__copy:hover { color: var(--text); background: var(--hover); }
 .md blockquote { padding: 0 12px; border-left: 3px solid var(--border); color: var(--muted); }
 .md hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+/* A table wider than the column scrolls sideways on its own, as a fenced code block does, instead of the page. */
+.md .md__table { margin: 0 0 12px; overflow-x: auto; }
 .md table { border-collapse: collapse; }
+.md td code { white-space: nowrap; }
 .md th, .md td { padding: 4px 12px; border: 1px solid var(--border); text-align: left; }
 .md th { font-weight: 600; background: color-mix(in srgb, var(--hover) 45%, transparent); }

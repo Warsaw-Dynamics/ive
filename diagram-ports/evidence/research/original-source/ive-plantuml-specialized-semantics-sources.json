@@ -1,0 +1,1371 @@
+{
+  "sourceJar": "/mnt/data/Projects/plantuml-mit/plantuml-mit-1.2026.9-sources.jar",
+  "sourceJarSha256": "88e30e43639555a6963c270bc6245906b81e8cc65140645f416795d0e0bc71c3",
+  "records": [
+    {
+      "path": "timingdiagram/TimingDiagramFactory.java",
+      "line": 158,
+      "behavior": "timing command registration",
+      "sha256": "1a9efcf876bdf078d379441a6d52fdf1713ed64a90b18c0050913022c7ad7080",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandRobustConcise.java",
+      "line": 144,
+      "behavior": "track declaration",
+      "sha256": "25754c050ef3e26f728e43617cbc4747205ead51b26482703c5d1f031adaefd1",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandAtTime.java",
+      "line": 136,
+      "behavior": "current numeric/named time",
+      "sha256": "1baa053c1f68402d3d1b3d941d7bd47d2f63ffa43630b4091752d17d8e6f5936",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandAtPlayer.java",
+      "line": 135,
+      "behavior": "current track",
+      "sha256": "e6de13b67906f3ba957c4be3a0998d86e150ba1910ad8940be7f7b7ceb0bccdf",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandChangeState.java",
+      "line": 133,
+      "behavior": "state atoms/special states",
+      "sha256": "fa75d71baec0d58790cba4c42c677a15841082880e3f2a73982952142c08504b",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandChangeStateByTime.java",
+      "line": 140,
+      "behavior": "track-local state grammar",
+      "sha256": "c1160acb33b3249c89775f5b5d251a117369bdcbf536e3011cef5d46771139d0",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandChangeStateByPlayerCode.java",
+      "line": 140,
+      "behavior": "global-time state grammar",
+      "sha256": "c6f74212805d168fb70c28d53c8f9bff3753539d99cb39cdfb5694da012e43da",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandConstraint.java",
+      "line": 143,
+      "behavior": "same-track constraint/relative endpoint",
+      "sha256": "89ef407497ad9a995561578b6503a143fd534ea78ad3fa86afec4d95e3e761e1",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/CommandTimeMessage.java",
+      "line": 133,
+      "behavior": "cross-track time message",
+      "sha256": "e1ec14f2e56567fd239f178ec85e40709e4331b6fb9c3d307020a322d2bd1f50",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/command/TimeTickBuilder.java",
+      "line": 126,
+      "behavior": "time expression resolution",
+      "sha256": "1caf2c63235c56220952134dbde9b86add059580487c6d46d906bbb3769df2fa",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/TimingDiagram.java",
+      "line": 365,
+      "behavior": "lane identity/current time/messages",
+      "sha256": "cb9b3d32aae75a4ecd5247017284fee7c0f03137826a909e3268cc136babb673",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/TimingRuler.java",
+      "line": 167,
+      "behavior": "axis scale/projection",
+      "sha256": "c8a467348602a4e54313417fba085d733d7607427bf125576365410a9c4ffb05",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/AbstractStatePlayer.java",
+      "line": 127,
+      "behavior": "state collection and initial state",
+      "sha256": "2c50932245b8a8872be3284e56a9e1d5fd5c5ec220a57b2fbabf8bf998ec2e8e",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/ChangeState.java",
+      "line": 131,
+      "behavior": "equal timestamp comparison",
+      "sha256": "f089858eb8d443ca0b14afa675b88897c41bf31de50068f1962b5084b1912ffd",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/graphic/PanelsRobust.java",
+      "line": 145,
+      "behavior": "state-level step waveform",
+      "sha256": "1c9da5af85de5ec206a2a8ed591bd9de54493ff39e6c6df82251becab26f1c81",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/graphic/PanelsConcise.java",
+      "line": 121,
+      "behavior": "concise ribbon shape dispatch",
+      "sha256": "cc583fcd708ed9d5986acdc8bddc72070b36ab5d517d0866833f7653880bb77e",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/command/NaturalGanttCommand.java",
+      "line": 149,
+      "behavior": "ordered natural command evaluation",
+      "sha256": "f6cff4856f430fd225d8192ff62ca5a47990ff22108250ab9a62d33f6dd56aae",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/SubjectTask.java",
+      "line": 163,
+      "behavior": "task verbs/alias/milestone",
+      "sha256": "7ed685c0628134c4a66648eae5254f3efc299bd0a4be3c3224f370d0026e2f02",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/SubjectGantt.java",
+      "line": 136,
+      "behavior": "explicit project start",
+      "sha256": "00c7f9d18f4a880e3b2da3b29c712ac80dd4eaf189da70d0adbcee71e0b5b3d4",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/ComplementDuration.java",
+      "line": 129,
+      "behavior": "duration grammar/units",
+      "sha256": "2d739f92a72afbceed27e182de33d61dbeaff1db8bc0be6ecdf67ce5d878dce2",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/ComplementBeforeOrAfterOrAtTaskStartOrEnd.java",
+      "line": 126,
+      "behavior": "precedence complement",
+      "sha256": "f47b8a25bfba703e0f3a88097c70a41e38076275b46a1ff83361525ea1579881",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/AbstractComplementTaskInstant.java",
+      "line": 123,
+      "behavior": "lookup/offset/calendar mode",
+      "sha256": "c678b40b34522b28b43fc87865e8cac339b83ae4e8c5715afc520954ffeca2fd",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/DayPattern.java",
+      "line": 145,
+      "behavior": "date forms and validation",
+      "sha256": "541cf228cfa175d3a221a208df80795242cece2b83038338a5f7b9b4ebbdea89",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/Verbs.java",
+      "line": 127,
+      "behavior": "lasts/requires verbs",
+      "sha256": "fd6328360915bba632217199bd5dc8381411b5dde7f7bf6db8e799862a2e3680",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/core/TaskCode.java",
+      "line": 119,
+      "behavior": "alias identity vs label",
+      "sha256": "3f7eec7088e22701401b28c04411d044fd70bf9a846bbe5667ee4e5c12f9d73a",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/core/TaskInstant.java",
+      "line": 145,
+      "behavior": "start/end boundary resolution",
+      "sha256": "2746478d628b639783d378ffea0108f5b76c2bc7c7799706128bd5459b4c05a3",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/core/TaskImpl.java",
+      "line": 312,
+      "behavior": "cached dates/calendar normalization",
+      "sha256": "386d59aa3b5e2eb90587c31b05562b0e1b5f548407a3ec18dc2a5fda45ee363a",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/core/TimeRanges.java",
+      "line": 152,
+      "behavior": "default duration unit",
+      "sha256": "e87014b714a01349da0b941fc9ccb8256db342a1695eddd4f66e4656183c0403",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/solver/Solver.java",
+      "line": 136,
+      "behavior": "ordered constraints solver",
+      "sha256": "2aa5461a13596ab203cbceed637806663573bfce0f0e0ac109029d19b81a7569",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/GanttDiagram.java",
+      "line": 329,
+      "behavior": "task creation/order/project start",
+      "sha256": "c6439921dd6782bcf46cf1f27969a10f380a3d8a9618d58fcdde197e7af80a2f",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/OpenClose.java",
+      "line": 156,
+      "behavior": "default open days/week length",
+      "sha256": "3195f609d6fe8c133df17003ac0115aad0e0c711385904a7f2fb2ce7f99116f2",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/data/DayCalendarData.java",
+      "line": 135,
+      "behavior": "calendar construction/default plan",
+      "sha256": "4c1186aac6c6e47ee14a04ab74283141e54d640132f45be96819c43f62f49827",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/draw/TaskDrawDiamond.java",
+      "line": 185,
+      "behavior": "milestone drawing",
+      "sha256": "8305961f2610abde31ee64d7d84e390444fb60f8d2cea154105c21b62d8467ae",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/draw/TaskDrawRegular.java",
+      "line": 157,
+      "behavior": "duration bar/daily pauses",
+      "sha256": "f42271f14b21a7488e35a8eb69dd8cc1b4702769508600437702370c906a402b",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/DataSourceImpl.java",
+      "line": 122,
+      "behavior": "delimiters/escaping/token termination",
+      "sha256": "b5f72cd4e5593b51d8508734d0500f3ea728cf2d41f4a5dc32c96c9867ae45f7",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/Positionner2.java",
+      "line": 130,
+      "behavior": "cell coordinates and colspan",
+      "sha256": "4a29f999c917b3b35a8b1fdaa4bc6ec86892a73f45a11be6a394aa4a32f4ee7f",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/Cell.java",
+      "line": 120,
+      "behavior": "cell span bounds",
+      "sha256": "4346ed28284c99f47da1b8d198343c09902386ac7a143c8249e03444412b25e8",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/PSystemSalt.java",
+      "line": 292,
+      "behavior": "recursive widget factory precedence",
+      "sha256": "6b3d1d5ea1a32f977296f9c8c076c541b208eb5df4ab6326452175f27c112b3f",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryPyramid.java",
+      "line": 130,
+      "behavior": "nested table grammar",
+      "sha256": "248b68a6a55ff6ad20dde32a4203048cb7e1bc2315b0cdd3ec168c3ee225cca7",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryBorder.java",
+      "line": 125,
+      "behavior": "cardinal border regions",
+      "sha256": "5e8bde26b119cb74ecc6ca9233b68390ffa366cd20bf0a670f1b5c7ce6294e89",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryButton.java",
+      "line": 130,
+      "behavior": "button marker",
+      "sha256": "73f819d09eb5f4e308ea74feed86976434de0bf67327fff74078c08d608bd0de",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryTextField.java",
+      "line": 130,
+      "behavior": "field marker",
+      "sha256": "7bb24c484f97d059808708986d086c50c5c694b980bf74f375b821c8d1cbd288",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryCheckboxOn.java",
+      "line": 134,
+      "behavior": "checked marker",
+      "sha256": "017665e54f7ccd7d1bd5f76d9d67b56db02a2fe832980659f53f6fd3b5a49f35",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryCheckboxOff.java",
+      "line": 135,
+      "behavior": "unchecked marker",
+      "sha256": "3df15e69efe4f14d340d0d628effd127b139bc5d8bebfc819302d9990027aba2",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryRadioOn.java",
+      "line": 134,
+      "behavior": "radio selected marker",
+      "sha256": "a0bb691b1fe161706ef2ed587212520867d570eae99514682c7ed8fdb23fad8d",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/factory/ElementFactoryRadioOff.java",
+      "line": 134,
+      "behavior": "radio unselected marker",
+      "sha256": "c4b47eb923c054e85551724348f4263e9d616788aef93c2aa10ca19a6d701711",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/TableStrategy.java",
+      "line": 112,
+      "behavior": "table border kinds",
+      "sha256": "dc5c87eb754b83021b9dc146ae49ba1fecf85aa8dcc6ed8bdc5fee2fbd2859e8",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/ElementPyramid.java",
+      "line": 169,
+      "behavior": "measured cell/span layout",
+      "sha256": "147b63f4999c9dc65f56192c8e605395059030c5429a9563d20ffb3f173399ca",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/ElementRadioCheckbox.java",
+      "line": 149,
+      "behavior": "concrete radio/checkbox geometry",
+      "sha256": "a7e8efadf65c4e8f1227701b8581ff53a1251e40c306d85b4927f26d552c1371",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandNwDiagInit.java",
+      "line": 132,
+      "behavior": "nwdiag inner opener",
+      "sha256": "be20e6c6da17e4c718ae5a1a1a64e7665389310786f6b74021a2855656c43706",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandNetwork.java",
+      "line": 132,
+      "behavior": "network declaration",
+      "sha256": "7323ee5f7dfdbf0631d2d0f7c9dc63d71751f42dd356bdefd6295a418734d0a2",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandElement.java",
+      "line": 135,
+      "behavior": "server membership grammar",
+      "sha256": "07c6cb2cca0561310b4cd44ee831fed956ccca28d76b40cf97b6dbdbbce9bc23",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandProperty.java",
+      "line": 134,
+      "behavior": "container property grammar",
+      "sha256": "b34c3498e23ae09cf2a6ae4069af19016c10cb9ac66800c4763244847bfe34de",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandGroup.java",
+      "line": 132,
+      "behavior": "group declaration",
+      "sha256": "25e518baabd86c42a380856577c205101ae73657dfb2b5bc9a6b479efa21fed1",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/CommandEndSomething.java",
+      "line": 132,
+      "behavior": "block closing",
+      "sha256": "5c6d851d89f02d3f1bbd4c65e6985cb95950d8ee0f4b0caacfecd565d0b947e6",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/NwDiagram.java",
+      "line": 307,
+      "behavior": "shared identity/membership/property semantics",
+      "sha256": "de4367425d36699de08115ede130808ee1fe637dd94b8480043616797629a33f",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/core/NServer.java",
+      "line": 256,
+      "behavior": "per-network address updates",
+      "sha256": "a232a289fbea788b26eb68bea4e64c9b88a4e5e85a8533e6d1c0cf840eb6b29d",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/core/Network.java",
+      "line": 156,
+      "behavior": "network display/address identity",
+      "sha256": "52d9a6594ff93701478aef5a87e888d4f492b34b453083533723a527e3d2c4ac",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "nwdiag/core/NwGroup.java",
+      "line": 150,
+      "behavior": "group ownership",
+      "sha256": "cf1f9cebb55c353442b7c8822a8b4587423ea12142fefd8bda947b2c3efa9bf0",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/TimeConstraint.java",
+      "line": 180,
+      "behavior": "measured constraint geometry",
+      "sha256": "ede6101aec3ef4c3513b07c806577ceff2ffefc830eba0c4dee9615dfef1fa19",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "timingdiagram/graphic/PanelsState.java",
+      "line": 153,
+      "behavior": "concise projection/segment layout",
+      "sha256": "5a9f62e338379d59dcc4e763d9e074d0baa56713f832088a4cf9c986354a54cd",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "gantt/lang/TimeResolution.java",
+      "line": 134,
+      "behavior": "ISO-like date numeric grammar",
+      "sha256": "58ea613a932b211016ffb22ef16e6342f01e61a54122bada22a6654cec0f02a1",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/ElementTextField.java",
+      "line": 126,
+      "behavior": "text-field underline geometry",
+      "sha256": "e913178971760656af8ecf9d919b922fbaaa14f4ce0fe31ce05d388480736800",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/ElementButton.java",
+      "line": 127,
+      "behavior": "button geometry",
+      "sha256": "a839c17337a5460f4325e9a79fd5109277d626f8e7d94bf8be012be0a9282010",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    },
+    {
+      "path": "salt/element/AbstractElementText.java",
+      "line": 125,
+      "behavior": "padding spaces and text measurement",
+      "sha256": "3878cf9df397465263ce7abb2b1ca3474b6e0458566808db5ad93357c695c2bf",
+      "sourceJarEntryMatch": true,
+      "notices": [
+        {
+          "line": 8,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 79,
+          "text": "* (C) Copyright 2009-2024, Arnaud Roques"
+        },
+        {
+          "line": 106,
+          "text": "* Original Author:  Arnaud Roques"
+        }
+      ]
+    }
+  ]
+}

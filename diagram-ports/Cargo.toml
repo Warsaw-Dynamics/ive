@@ -1,0 +1,27 @@
+[workspace]
+members = ["engine", "viewer", "web"]
+exclude = ["vendor/merman-core-0.9.2", "vendor/merman-render-0.9.2", "tools/plantuml-grammar-gen"]
+resolver = "3"
+
+[patch.crates-io]
+merman-core = { path = "vendor/merman-core-0.9.2" }
+merman-render = { path = "vendor/merman-render-0.9.2" }
+
+[workspace.package]
+edition = "2024"
+publish = false
+license = "LicenseRef-WarsawDynamics-Proprietary"
+
+[workspace.dependencies]
+merman = { version = "=0.9.2", default-features = false, features = ["all-diagrams", "svg", "layout-cytoscape"] }
+merman-render = { version = "=0.9.2", default-features = false }
+dugong = "=0.9.2"
+roxmltree = "=0.21.1"
+serde_json = "1.0"
+cssparser = "=0.38.0"
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1

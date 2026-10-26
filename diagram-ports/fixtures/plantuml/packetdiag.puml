@@ -1,0 +1,12 @@
+@startpacketdiag
+title Native packet — conserved inclusive fragments
+packetdiag {
+colwidth=8
+scale_interval=2
+node_height=46
+same_height=true
+0-2: Type
+3-22: Payload
+* Flags [len=1]
+}
+@endpacketdiag

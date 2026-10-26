@@ -1,0 +1,44 @@
+grammar<'s>(builder: &mut crate::plantuml::regex::Builder<'_>);
+use crate::plantuml::{regex::{Kind,Member,Upper},parser::{railroad::Token,error::ParseFailure}};
+pub Document: usize = <Expression>;
+Expression: usize = {
+    <Sequence>,
+    <l:@L> <a:Expression> "|" <b:Sequence> <r:@R> =>? builder.node(l..r,Kind::Choice(a,b)).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Sequence: usize = {
+    <Quantified>,
+    <l:@L> <a:Sequence> <b:Quantified> <r:@R> =>? builder.node(l..r,Kind::Sequence(a,b)).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Quantified: usize = {
+    <Atom>,
+    <l:@L> <id:Atom> <bounds:Quantifier> <r:@R> =>? builder.repeat(l..r,id,bounds).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Quantifier: (usize,Upper,String) = {
+    "?" => (0,Upper::Finite(1),String::new()),
+    "*" => (0,Upper::Unbounded,String::new()),
+    "+" => (1,Upper::Unbounded,String::new()),
+    "{" <n:"number"> "}" =>? builder.bounds(n,Upper::Finite(n)).map_err(|error|lalrpop_util::ParseError::User{error}),
+    "{" <n:"number"> "," "}" =>? builder.bounds(n,Upper::Unbounded).map_err(|error|lalrpop_util::ParseError::User{error}),
+    "{" <n:"number"> "," <m:"number"> "}" =>? builder.bounds(n,Upper::Finite(m)).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Atom: usize = {
+    <l:@L> <ch:"char"> <r:@R> =>? builder.text(&ch.to_string()).and_then(|text|builder.node(l..r,Kind::Literal(text))).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "." <r:@R> =>? builder.node(l..r,Kind::Dot).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> <raw:"escape"> <r:@R> =>? builder.text(raw).and_then(|text|builder.node(l..r,Kind::Escape(text))).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "(" <id:Expression> ")" <r:@R> =>? builder.node(l..r,Kind::Group(id,"capture")).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "(?:" <id:Expression> ")" <r:@R> =>? builder.node(l..r,Kind::Group(id,"noncapture")).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <l:@L> "[" <neg:Negation?> <members:Members> "]" <r:@R> =>? builder.class(l..r,neg.is_some(),members).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Negation: () = "^";
+Members: Vec<Member> = {
+    <member:Member> =>? { let mut members=Vec::new(); builder.member(&mut members,member).map(|_| members).map_err(|error|lalrpop_util::ParseError::User{error}) },
+    <mut members:Members> <member:Member> =>? builder.member(&mut members,member).map(|_| members).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Member: Member = {
+    <ch:"char"> => Member::Scalar(ch),
+    <l:@L> <a:"char"> "-" <b:"char"> <r:@R> =>? builder.range(l..r,a,b).map_err(|error|lalrpop_util::ParseError::User{error}),
+    <raw:"escape"> =>? builder.text(raw).map(Member::Escape).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+extern { type Location=usize; type Error=ParseFailure;
+ enum Token<'s> { "char"=>Token::Char(<char>), "escape"=>Token::Escape(<&'s str>), "number"=>Token::Number(<usize>), "|"=>Token::Pipe, "("=>Token::Open, "(?:"=>Token::Noncapture, ")"=>Token::Close, "["=>Token::Square, "]"=>Token::EndSquare, "{"=>Token::Brace, "}"=>Token::EndBrace, "-"=>Token::Minus, "^"=>Token::Negate, ","=>Token::Comma, "?"=>Token::Question, "*"=>Token::Star, "+"=>Token::Plus, "."=>Token::Dot }
+}

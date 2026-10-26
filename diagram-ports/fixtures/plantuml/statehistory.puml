@@ -1,0 +1,8 @@
+@startuml
+state S {
+state h <<history>>
+state d <<history*>>
+h --> [H]
+d --> [H*]
+}
+@enduml

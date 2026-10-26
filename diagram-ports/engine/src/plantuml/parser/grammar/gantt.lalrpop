@@ -1,0 +1,39 @@
+grammar(builder: &mut crate::plantuml::gantt::Builder<'_>);
+use crate::plantuml::{gantt::{CivilDay,Endpoint,Kind},parser::{gantt::{Token,Command,Schedule,duration},timing::Site,error::ParseFailure}};
+pub Gantt: () = <_project:Project> <_items:Items> =>? builder.tick().map_err(|error|lalrpop_util::ParseError::User{error});
+Project: () = "project" "starts" <day:"date"> "newline" =>? builder.project(day).map_err(|error|lalrpop_util::ParseError::User{error});
+Items: () = { => (), <Items> <Item> => () };
+Item: () = <start:@L> <names:Names> <command:Command> <line:"newline"> <end:@R> =>? builder.apply(names,command,Site{span:start..end,line}).map_err(|error|lalrpop_util::ParseError::User{error});
+Names: (String,String) = { <display:"task"> => (display.clone(),display), <display:"task"> "as" <alias:"task"> => (alias,display) };
+Command: Command = {
+    <start:@L> <_verb:DurationVerb> <days:"number"> "day" <end:@R> =>? duration(days,start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+    "starts" <schedule:BarSchedule> => Command::Start(Kind::Bar,schedule),
+    "happens" <schedule:MilestoneSchedule> => Command::Start(Kind::Milestone,schedule),
+};
+DurationVerb: () = { "lasts"=>(), "requires"=>() };
+BarSchedule: Schedule = { <day:"date">=>Schedule::Date(day), "on" <day:"date">=>Schedule::Date(day), "at" <day:"date">=>Schedule::Date(day), <value:Reference<Offset>>=>value };
+MilestoneSchedule: Schedule = {
+ <day:"date">=>Schedule::Date(day), "on" <day:"date">=>Schedule::Date(day), "at" <day:"date">=>Schedule::Date(day),
+ <value:Reference<MilestoneOffset>>=>value,
+};
+#[inline]
+Reference<O>: Schedule = <offset:O> <code:"task"> "'s" <endpoint:Endpoint> => Schedule::Reference{code,endpoint,offset};
+#[inline]
+Offset: i32 = { =>0, "at"=>0, "after"=>0, "with"=>0, <value:"number"> "day" "before"=>-value, <value:"number"> "day" "after"=>value };
+#[inline]
+MilestoneOffset: i32 = {
+ <value:Offset>=>value, "on" <value:Offset>=>value,
+ "at" "at"=>0, "at" "after"=>0, "at" "with"=>0,
+ "at" <value:"number"> "day" "before"=>-value, "at" <value:"number"> "day" "after"=>value,
+};
+Endpoint: Endpoint = { "start"=>Endpoint::Start, "end"=>Endpoint::End };
+extern {
+ type Location=usize;
+ type Error=ParseFailure;
+ enum Token {
+  "project"=>Token::Project,"starts"=>Token::Starts,"happens"=>Token::Happens,"lasts"=>Token::Lasts,"requires"=>Token::Requires,
+  "as"=>Token::As,"on"=>Token::On,"at"=>Token::At,"after"=>Token::After,"before"=>Token::Before,"with"=>Token::With,
+  "day"=>Token::Day,"start"=>Token::Start,"end"=>Token::End,"'s"=>Token::Possessive,
+  "task"=>Token::Bracket(<String>),"date"=>Token::Date(<CivilDay>),"number"=>Token::Number(<i32>),"unknown"=>Token::Unknown,"newline"=>Token::Newline(<usize>),
+ }
+}

@@ -1,0 +1,12 @@
+@startuml
+class Account {
+  +owner : String
+  +debit(amount)
+}
+class Premium {
+  +discount : int
+}
+class Ledger
+Account <|-- Premium
+Account "1" --> "many" Ledger : records
+@enduml

@@ -1,0 +1,134 @@
+[
+  {
+    "file": "stateadvanced.puml",
+    "resolvedTransitionEndpoints": 8,
+    "sourceTargetNames": [
+      [
+        "@initial",
+        "Idle"
+      ],
+      [
+        "Idle",
+        "[H]"
+      ],
+      [
+        "@initial",
+        "Choose"
+      ],
+      [
+        "Choose",
+        "Working"
+      ],
+      [
+        "Working",
+        "@final"
+      ],
+      [
+        "Split",
+        "Machine"
+      ],
+      [
+        "Machine",
+        "Join"
+      ],
+      [
+        "Join",
+        "@final"
+      ]
+    ],
+    "regionEndpointGroups": {},
+    "exactSplitMergeChoiceJunctionTopologyVerified": false
+  },
+  {
+    "file": "statehistory.puml",
+    "resolvedTransitionEndpoints": 2,
+    "sourceTargetNames": [
+      [
+        "h",
+        "[H]"
+      ],
+      [
+        "d",
+        "[H*]"
+      ]
+    ],
+    "regionEndpointGroups": {},
+    "exactSplitMergeChoiceJunctionTopologyVerified": false
+  },
+  {
+    "file": "statepseudos.puml",
+    "resolvedTransitionEndpoints": 8,
+    "sourceTargetNames": [
+      [
+        "@initial",
+        "Split"
+      ],
+      [
+        "Split",
+        "A"
+      ],
+      [
+        "Split",
+        "B"
+      ],
+      [
+        "A",
+        "Join"
+      ],
+      [
+        "B",
+        "Join"
+      ],
+      [
+        "Join",
+        "Choose"
+      ],
+      [
+        "Choose",
+        "Junction"
+      ],
+      [
+        "Junction",
+        "@final"
+      ]
+    ],
+    "regionEndpointGroups": {},
+    "exactSplitMergeChoiceJunctionTopologyVerified": true
+  },
+  {
+    "file": "stateregions.puml",
+    "resolvedTransitionEndpoints": 6,
+    "sourceTargetNames": [
+      [
+        "@initial",
+        "A"
+      ],
+      [
+        "A",
+        "@final"
+      ],
+      [
+        "@initial",
+        "B"
+      ],
+      [
+        "B",
+        "@final"
+      ],
+      [
+        "@initial",
+        "C"
+      ],
+      [
+        "C",
+        "@final"
+      ]
+    ],
+    "regionEndpointGroups": {
+      "s0": 2,
+      "r1": 2,
+      "r2": 2
+    },
+    "exactSplitMergeChoiceJunctionTopologyVerified": false
+  }
+]

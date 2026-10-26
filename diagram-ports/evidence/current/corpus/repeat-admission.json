@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "sourceDirectory": "/tmp/ive-diagram-final-poststate.MH3MN8/repeat-input",
+  "outputDirectory": "/tmp/ive-diagram-final-poststate.MH3MN8/repeat-output",
+  "node": "v22.14.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "recordedAt": "2026-10-23T17:22:00.596Z",
+  "browser": "Chrome/153.0.8010.12",
+  "mermaid": "12.2.0",
+  "puppeteer": "25.16.0",
+  "plantuml": {
+    "version": "1.2026.9",
+    "jarSha256": "e84e45b37ad3030cf802e7be18a687d209eca55733a5679b1f1f1a515f7f70dd",
+    "identity": "local observed bytes, not external authentication"
+  },
+  "config": {
+    "startOnLoad": false,
+    "securityLevel": "strict",
+    "theme": "default",
+    "deterministicIds": true,
+    "deterministicIDSeed": "ive-diagram-oracle-v1",
+    "look": "classic",
+    "handDrawnSeed": 42,
+    "fontFamily": "Liberation Sans",
+    "layout": "dagre",
+    "htmlLabels": false,
+    "flowchart": {
+      "defaultRenderer": "dagre-wrapper",
+      "htmlLabels": false,
+      "useMaxWidth": false
+    },
+    "sequence": {
+      "useMaxWidth": false,
+      "actorFontFamily": "Liberation Sans",
+      "noteFontFamily": "Liberation Sans",
+      "messageFontFamily": "Liberation Sans"
+    },
+    "class": {
+      "useMaxWidth": false,
+      "htmlLabels": false
+    },
+    "themeVariables": {
+      "fontFamily": "Liberation Sans"
+    }
+  },
+  "results": [
+    {
+      "file": "architecture.mmd",
+      "status": "rendered",
+      "source": {
+        "path": "architecture.mmd",
+        "sha256": "88eed9d27a77234403166e3529188781ea0683d39b3a6077950f7a15c9a673a0",
+        "bytes": 149
+      },
+      "svg": {
+        "path": "architecture.mmd.svg",
+        "sha256": "23f800eb487476038ffa0dd28481f3fd6156c0009d955d416d439fc9c88e2aac",
+        "bytes": 9118
+      },
+      "metrics": {
+        "path": "architecture.mmd.json",
+        "sha256": "a21adc767a399f4b72f35424208c0be5729a6b8368363e6ec8bd9444fe321bc2",
+        "bytes": 1278
+      }
+    },
+    {
+      "file": "gantt.mmd",
+      "status": "rendered",
+      "source": {
+        "path": "gantt.mmd",
+        "sha256": "e760b913be67fd20e9321c1e87c61159fe35e194b1e880bcc259f403b33f42b9",
+        "bytes": 150
+      },
+      "svg": {
+        "path": "gantt.mmd.svg",
+        "sha256": "5fe8e55f0575aea4bb3031755d8e705982edaa0aab769bf4f9afc454cac6a7f1",
+        "bytes": 10119
+      },
+      "metrics": {
+        "path": "gantt.mmd.json",
+        "sha256": "5e4027bb42f97d3d3ef0fe43b172156d2c991f9b9bb0173038c960a224331da7",
+        "bytes": 2731
+      }
+    },
+    {
+      "file": "ganttbase.puml",
+      "status": "rendered",
+      "source": {
+        "path": "ganttbase.puml",
+        "sha256": "0aa714ffdc1be9ea700553344e362415e56b5dd4891dc256f66f60bf40325a04",
+        "bytes": 174
+      },
+      "svg": {
+        "path": "ganttbase.puml.svg",
+        "sha256": "ca30f9e0b6ac272515fa5fb5c8db88c689c23d18815a41c72f092352e9397fa2",
+        "bytes": 6355
+      },
+      "metrics": {
+        "path": "ganttbase.puml.json",
+        "sha256": "4649857fc0be61df7195423e0fb022c5f185eda31ab84885c2baea01c0b84849",
+        "bytes": 9176
+      }
+    },
+    {
+      "file": "git.mmd",
+      "status": "rendered",
+      "source": {
+        "path": "git.mmd",
+        "sha256": "9ac41366906a840423b9b729738a88ed755cf032143c502edd92f49510a80951",
+        "bytes": 101
+      },
+      "svg": {
+        "path": "git.mmd.svg",
+        "sha256": "873d1abdbcba42f40ad71d464de55611cdd19bc2acc7f96fb0eccc0ba08b31ca",
+        "bytes": 10441
+      },
+      "metrics": {
+        "path": "git.mmd.json",
+        "sha256": "3ebbc851ce211a8b73d5f313735ee8671532f5c8d51b744c4dd59416007307f4",
+        "bytes": 1508
+      }
+    },
+    {
+      "file": "git.puml",
+      "status": "rendered",
+      "source": {
+        "path": "git.puml",
+        "sha256": "b84b0949f8740c5cd5d635bc98a26bca19dde2b91ef85cf80d16b35041250617",
+        "bytes": 67
+      },
+      "svg": {
+        "path": "git.puml.svg",
+        "sha256": "b6ebb955fa901601345991854c452e2f4fc578b7dcfb9f68a36e9966e52dcb61",
+        "bytes": 2434
+      },
+      "metrics": {
+        "path": "git.puml.json",
+        "sha256": "ef03109c45fc42306707d3e39af00e2d2ee5ad6432fb509fba50457c29aeb8b2",
+        "bytes": 1378
+      }
+    },
+    {
+      "file": "sequence.puml",
+      "status": "rendered",
+      "source": {
+        "path": "sequence.puml",
+        "sha256": "46f7ca272139fa4c84021dd1e299f64cfeb73b08ca88aa9078ea90c9feb31949",
+        "bytes": 215
+      },
+      "svg": {
+        "path": "sequence.puml.svg",
+        "sha256": "d3817d8c7ae5b6e36e28360f395eefd8083c9e3b792e7e7f042ed869e1c37bdf",
+        "bytes": 4606
+      },
+      "metrics": {
+        "path": "sequence.puml.json",
+        "sha256": "5751bac3e68fcc73e047c1448df13f1e5563c43730414aee5e0d1e86945ec54c",
+        "bytes": 2273
+      }
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "rendered": 6
+  },
+  "limitation": "Original-only DOM geometry/text evidence; not native support, ink bounds or pixel parity. Dates, environment and renderer randomness may vary SVG bytes."
+}

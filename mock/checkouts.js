@@ -152,10 +152,11 @@
     return ['# atlassian', '', 'Warsaw Dynamics monorepo, branch `' + branch + '`. Each app lives under `internal-apps/`;',
       'shared code is in `lib/`. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.', '',
       '## Apps', '', '| App | Stack | Runs with |', '| --- | --- | --- |', '| ive | Rust, GPUI | `./run.sh` |',
-      '| misc | Java 26, Spring | `mvn spring-boot:run` |', '| paas | Java 26 | `ohq deploy paas` |', '',
+      '| misc | Java 26, Spring | `mvn spring-boot:run` |', '| paas | Java 26 | `ohq deploy paas` |',
+      '| platform | Java 26, Forge, Confluence and Jira Cloud apps | `ohq deploy platform --env staging --region eu-central-1 --wait-for-health-checks --notify #platform` |', '',
       '## Getting started', '', '1. Install the toolchains: **Rust** (stable) and **Java 26**.', '2. Copy `.env.example` to `.env` and fill in the tokens.',
       '3. Start what you work on from IVE\'s *Processes* folder.', '', '```sh', '# build everything once', 'cargo build --release',
-      'mvn -q -T 1C install', '```', '', '## Before a release', '', '- [x] bump versions in `Cargo.toml` and `pom.xml`',
+      'mvn -q -T 1C install', 'docker compose -f deploy/compose.yml -f deploy/compose.local.yml --profile idp --profile paas up --build --detach --wait', '```', '', '## Before a release', '', '- [x] bump versions in `Cargo.toml` and `pom.xml`',
       '- [ ] run the integration suite', '  - idp against qa', '  - paas against staging', '- [ ] tag and push', '',
       '> Never deploy on Friday after 15:00. The pager does not care about your weekend.', '', '---', '',
       'Questions: ask in *#platform*.'].join('\n');
@@ -420,7 +421,8 @@
     var cells = function (line) { return line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return inlineMarkdown(c.trim()); }); };
     var head = '<tr>' + cells(rows[0]).map(function (c) { return '<th>' + c + '</th>'; }).join('\n') + '</tr>';
     var body = rows.slice(2).map(function (r) { return '<tr>' + cells(r).map(function (c) { return '<td>' + c + '</td>'; }).join('\n') + '</tr>'; });
-    return '<table><thead>' + head + '</thead><tbody>' + body.join('\n') + '</tbody></table>';
+    // Wrapped, so a table too wide for the column scrolls on its own while a narrower one still wraps its cells.
+    return '<div class="md__table"><table><thead>' + head + '</thead><tbody>' + body.join('\n') + '</tbody></table></div>';
   }
   // A run of list lines as nested <ul>/<ol>; deeper indent opens a list inside the item before it.
   function listHtml(items) {
@@ -636,6 +638,8 @@
         diffLayout: 'inline',
         // Mock-only: the Markdown view last picked (text | rendered); a Markdown file or scratch opened later starts with it.
         markdownView: 'text',
+        // Mock-only: the Rendered width (normal | wide), one for every Markdown tab.
+        markdownWidth: 'normal',
         // Mock-only: the pause timers of "saving…"; a tab carries `saving`, `conflict` ('disk' | 'big'), `error`, `closing`.
         savingTimers: {},
         // tabs.rs Tabs::temporary: the key of the tab that goes once another is shown; only ever the shown one.

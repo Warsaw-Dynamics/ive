@@ -1,0 +1,45 @@
+// Literal named block/field structure; expressions and standard HCL evaluation are absent.
+grammar<'s>(builder: &mut crate::plantuml::parser::hcl::Builder<'_, '_>);
+use crate::plantuml::{hcl::{Block, Document, Field, HclValue}, parser::{hcl::{Token, Word, Quote, Header}, error::ParseFailure}};
+pub Hcl: Document = <_gap:Newlines> <blocks:Blocks> => Document { blocks };
+Blocks: Vec<Block> = {
+ <l:@L> <block:Block> <r:@R> =>? builder.block(Vec::new(), block, l..r).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <blocks:Blocks> <l:@L> <block:Block> <r:@R> =>? builder.block(blocks, block, l..r).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <blocks:Blocks> "newline" => blocks,
+};
+Block: Block = <header:BlockOpen> <fields:Fields> "}" => Block { name: header.name, fields };
+BlockOpen: Header = <header:Header> <_gap:Newlines> "{" =>? builder.open(header).map_err(|error| lalrpop_util::ParseError::User { error });
+Header: Header = {
+ <word:Word> =>? builder.header(Header { name: String::new(), span: 0..0 }, word).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <header:Header> <word:Word> =>? builder.header(header, word).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Newlines: () = { => (), <Newlines> "newline" => () };
+Fields: Vec<Field> = {
+ => Vec::new(),
+ <fields:Fields> <field:Field> =>? builder.push(fields, field).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Field: Field = <name:Word> <_separator:Separator> <value:Value> => Field { name: name.value, value };
+Separator: () = { "=", ":" };
+Value: HclValue = {
+ "{" <fields:Fields> "}" => HclValue::Object(fields),
+ "[" <values:Elements> "]" => HclValue::Array(values),
+ <word:Word> => HclValue::String(word.value),
+};
+Elements: Vec<HclValue> = { => Vec::new(), <ElementsNonempty>, <values:ElementsNonempty> "," => values };
+ElementsNonempty: Vec<HclValue> = {
+ <value:ArrayValue> =>? builder.push(Vec::new(), value).map_err(|error| lalrpop_util::ParseError::User { error }),
+ <values:ElementsNonempty> "," <value:ArrayValue> =>? builder.push(values, value).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+ArrayValue: HclValue = {
+ <word:Quoted> => HclValue::String(word.value),
+ "{" <fields:Fields> "}" => HclValue::Object(fields),
+};
+Word: Word = {
+ <Quoted>,
+ <l:@L> <raw:"bare"> <r:@R> =>? builder.word(raw, Quote::Bare, l..r).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Quoted: Word = <l:@L> <raw:"quoted"> <r:@R> =>? builder.word(raw, Quote::Quoted, l..r).map_err(|error| lalrpop_util::ParseError::User { error });
+extern { type Location = usize; type Error = ParseFailure;
+ enum Token<'s> { "{" => Token::Object, "}" => Token::EndObject, "[" => Token::Array, "]" => Token::EndArray, "=" => Token::Equals, ":" => Token::Colon, "," => Token::Comma,
+ "bare" => Token::Bare(<&'s str>), "quoted" => Token::Quoted(<&'s str>), "newline" => Token::Newline }
+}

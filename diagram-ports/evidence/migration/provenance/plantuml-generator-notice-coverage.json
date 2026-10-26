@@ -1,0 +1,748 @@
+{
+  "schema": 1,
+  "scope": "All 67 exact selected registry package/version pairs, including build and non-host target dependencies; referenced package labels and complete selected grant hashes are verified.",
+  "packages": [
+    {
+      "name": "aho-corasick",
+      "version": "1.1.5",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "MIT",
+          "textSha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        }
+      ]
+    },
+    {
+      "name": "ascii-canvas",
+      "version": "4.0.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "bit-set",
+      "version": "0.11.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "af975c9737b3bdcdcf7ec3512b3dc936f91cc58a3c9152a8e4b0803f667df6b9"
+        }
+      ]
+    },
+    {
+      "name": "bit-vec",
+      "version": "0.10.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "af975c9737b3bdcdcf7ec3512b3dc936f91cc58a3c9152a8e4b0803f667df6b9"
+        }
+      ]
+    },
+    {
+      "name": "bitflags",
+      "version": "2.13.2",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "block-buffer",
+      "version": "0.10.4",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.5",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.2.17",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.3.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "crypto-common",
+      "version": "0.1.7",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "crypto-common",
+      "version": "0.2.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "digest",
+      "version": "0.10.7",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "digest",
+      "version": "0.11.3",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "either",
+      "version": "1.19.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "ena",
+      "version": "0.14.4",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "equivalent",
+      "version": "1.0.3",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "fixedbitset",
+      "version": "0.5.7",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "foldhash",
+      "version": "0.1.5",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Zlib",
+          "textSha256": "1d4c38d56650edc2c673cadbec74bec14db1fe8f2f10f4e3477dcbb49563be40"
+        }
+      ]
+    },
+    {
+      "name": "generic-array",
+      "version": "0.14.7",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "eb69613e00e596e13d2f58e820aee10e9d51754b91d7111bc997f1fc90791f66"
+        }
+      ]
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.15.5",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "hybrid-array",
+      "version": "0.4.15",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "indexmap",
+      "version": "2.14.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "itertools",
+      "version": "0.15.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "itoa",
+      "version": "1.0.18",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "keccak",
+      "version": "0.2.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "lalrpop",
+      "version": "0.23.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "lalrpop-util",
+      "version": "0.23.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "libc",
+      "version": "0.2.191",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "lock_api",
+      "version": "0.4.14",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "log",
+      "version": "0.4.34",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "memchr",
+      "version": "2.8.3",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        }
+      ]
+    },
+    {
+      "name": "new_debug_unreachable",
+      "version": "1.0.6",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "f7715d38a3fa1b4ac97c5729740752505a39cb92ee83ab5b102aeb5eaa7cdea4"
+        }
+      ]
+    },
+    {
+      "name": "parking_lot",
+      "version": "0.12.5",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "parking_lot_core",
+      "version": "0.9.12",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "petgraph",
+      "version": "0.8.3",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "phf_shared",
+      "version": "0.14.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+        }
+      ]
+    },
+    {
+      "name": "precomputed-hash",
+      "version": "0.1.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "7ca6700600dfa9c9497bf5556365067daa802c871ea78239f129309c7a2048f7"
+        }
+      ]
+    },
+    {
+      "name": "proc-macro2",
+      "version": "1.0.107",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "quote",
+      "version": "1.0.47",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "redox_syscall",
+      "version": "0.5.18",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Supplement.md",
+          "spdx": "MIT",
+          "textSha256": "efcfee7981ff72431fffb06925cad00a23dce079ed4354f61030ad5abdb78829"
+        }
+      ]
+    },
+    {
+      "name": "regex",
+      "version": "1.13.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "regex-automata",
+      "version": "0.4.18",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "regex-syntax",
+      "version": "0.8.11",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "same-file",
+      "version": "1.0.6",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "cb3c929a05e6cbc9de9ab06a4c57eeb60ca8c724bef6c138c87d3a577e27aa14"
+        }
+      ]
+    },
+    {
+      "name": "scopeguard",
+      "version": "1.2.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "serde_core",
+      "version": "1.0.229",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "serde_derive",
+      "version": "1.0.229",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.150",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "sha2",
+      "version": "0.10.9",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "sha3",
+      "version": "0.12.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "siphasher",
+      "version": "1.0.4",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a"
+        }
+      ]
+    },
+    {
+      "name": "smallvec",
+      "version": "1.16.3",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "sponge-cursor",
+      "version": "0.1.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "6aed14a79871456730ce9c74d0e927e9097e63b4085c4395af363d431ede5c8f"
+        }
+      ]
+    },
+    {
+      "name": "string_cache",
+      "version": "0.11.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "syn",
+      "version": "3.0.9",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        }
+      ]
+    },
+    {
+      "name": "term",
+      "version": "1.2.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "typenum",
+      "version": "1.20.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "adb48f9ee5be072e48dea05c2a289da330aae14467f7474c4a1f00a81cf8d5ef"
+        }
+      ]
+    },
+    {
+      "name": "unicode-ident",
+      "version": "1.0.27",
+      "grants": [
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff"
+        },
+        {
+          "notice": "THIRD-PARTY-NOTICES.md",
+          "spdx": "Unicode-3.0",
+          "textSha256": "f7db81051789b729fea528a63ec4c938fdcb93d9d61d97dc8cc2e9df6d47f2a1"
+        }
+      ]
+    },
+    {
+      "name": "unicode-xid",
+      "version": "0.2.6",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "143368af9701a24ebaf89fe5310ad8116ca71e8e99f17415c0dd893f6a256ae4"
+        }
+      ]
+    },
+    {
+      "name": "version_check",
+      "version": "0.9.5",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Supplement.md",
+          "spdx": "MIT",
+          "textSha256": "b7e650f3fce5c53249d1cdc608b54df156a97edd636cf9d23498d0cfe7aec63e"
+        }
+      ]
+    },
+    {
+      "name": "walkdir",
+      "version": "2.5.0",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        }
+      ]
+    },
+    {
+      "name": "winapi-util",
+      "version": "0.1.11",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "cb3c929a05e6cbc9de9ab06a4c57eeb60ca8c724bef6c138c87d3a577e27aa14"
+        }
+      ]
+    },
+    {
+      "name": "windows-link",
+      "version": "0.2.1",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "cb3b46a575dd9b39f881706288addc2e61e94c54658993da30cee083c0bb336f"
+        }
+      ]
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "Apache-2.0",
+          "textSha256": "cb3b46a575dd9b39f881706288addc2e61e94c54658993da30cee083c0bb336f"
+        }
+      ]
+    },
+    {
+      "name": "zmij",
+      "version": "1.0.23",
+      "grants": [
+        {
+          "notice": "provenance/LICENSE-PlantUML-Generator-Dependencies.md",
+          "spdx": "MIT",
+          "textSha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    }
+  ]
+}

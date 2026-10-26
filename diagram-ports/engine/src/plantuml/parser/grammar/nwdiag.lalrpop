@@ -1,0 +1,40 @@
+grammar(builder: &mut crate::plantuml::nwdiag::Builder<'_>);
+use crate::plantuml::parser::{nwdiag::{Token,PropertyKey,Properties,name,key},error::ParseFailure};
+pub Nwdiag: () = <_ends:Ends> <_root:RootOpen> <_body:RootContent> "}" <_tail:Ends> =>? builder.tick().map_err(|error|lalrpop_util::ParseError::User{error});
+RootOpen: () = "nwdiag" "{" =>? builder.root().map_err(|error|lalrpop_util::ParseError::User{error});
+Ends: () = { => (), <Ends> "end" => () };
+RootItems: () = { => (), <RootItems> "end"=>(), <RootItems> <RootBlock>=>(), <RootItems> <Statement> "end"=>() };
+RootContent: () = { <RootItems>=>(), <RootItems> <Statement>=>() };
+RootBlock: () = { <NetworkBlock>, <GroupBlock> };
+NetworkBlock: () = <_open:NetworkOpen> <_body:NetworkContent> "}" <end:@R> =>? builder.close(end..end).map_err(|error|lalrpop_util::ParseError::User{error});
+NetworkOpen: () = <start:@L> "network" <value:Name> "{" <end:@R> =>? builder.network(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+NetworkItems: () = { =>(), <NetworkItems> "end"=>(), <NetworkItems> <GroupBlock>=>(), <NetworkItems> <Statement> "end"=>() };
+NetworkContent: () = { <NetworkItems>=>(), <NetworkItems> <Statement>=>() };
+GroupBlock: () = <_open:GroupOpen> <_body:GroupContent> "}" <end:@R> =>? builder.close(end..end).map_err(|error|lalrpop_util::ParseError::User{error});
+GroupOpen: () = <start:@L> "group" <value:Name> "{" <end:@R> =>? builder.group(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+GroupItems: () = { =>(), <GroupItems> "end"=>(), <GroupItems> <Statement> "end"=>() };
+GroupContent: () = { <GroupItems>=>(), <GroupItems> <Statement>=>() };
+Statement: () = {
+ <start:@L> <value:Name> <props:Properties> <end:@R> =>? builder.server((value,props),start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+ <start:@L> <property:Name> "=" <value:Value> <end:@R> =>? builder.property((key(&property),value),start..end).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Properties: Properties = { =>Properties::default(), "[" "]"=>Properties::default(), "[" <values:List> "]"=>values };
+List: Properties = {
+ <start:@L> <property:Property> <end:@R> =>? Properties::default().append(property,start..end,builder.budget).map_err(|error|lalrpop_util::ParseError::User{error}),
+ <values:List> "," <start:@L> <property:Property> <end:@R> =>? values.append(property,start..end,builder.budget).map_err(|error|lalrpop_util::ParseError::User{error}),
+};
+Property: (PropertyKey,String) = <key:ListKey> "=" <value:Value> =>(key,value);
+ListKey: PropertyKey = { "address"=>PropertyKey::Address, "description"=>PropertyKey::Description, "color"=>PropertyKey::Color };
+Value: String = { <value:Word>=>? builder.value(value).map_err(|error|lalrpop_util::ParseError::User{error}), <value:"quoted">=>? builder.value(value).map_err(|error|lalrpop_util::ParseError::User{error}) };
+#[inline]
+Name: String = <start:@L> <value:Word> <end:@R> =>? name(value,start..end).map_err(|error|lalrpop_util::ParseError::User{error});
+#[inline]
+Word: String = { <value:"atom">=>value, <value:"nwdiag">=>value, <value:"network">=>value, <value:"group">=>value, <value:"address">=>value, <value:"description">=>value, <value:"color">=>value, <value:"width">=>value };
+extern {
+ type Location=usize;
+ type Error=ParseFailure;
+ enum Token {
+  "nwdiag"=>Token::Nwdiag(<String>),"network"=>Token::Network(<String>),"group"=>Token::Group(<String>),"address"=>Token::Address(<String>),"description"=>Token::Description(<String>),"color"=>Token::Color(<String>),"width"=>Token::Width(<String>),"atom"=>Token::Atom(<String>),"quoted"=>Token::Quoted(<String>),
+  "{"=>Token::Open,"}"=>Token::Close,"["=>Token::Left,"]"=>Token::Right,","=>Token::Comma,"="=>Token::Equal,"end"=>Token::End,
+ }
+}

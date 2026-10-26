@@ -1,0 +1,12 @@
+@startnwdiag
+nwdiag {
+network edge {
+router [address = "198.51.100.1"];
+router;
+router [address = "198.51.100.2"];
+}
+network core {
+router [address = "10.23.0.1"];
+}
+}
+@endnwdiag

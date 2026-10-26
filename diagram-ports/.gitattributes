@@ -1,0 +1,4 @@
+# Exact imported-source hashes must survive checkout on every platform.
+vendor/** -text
+# Preserve generator-owned bytes, including its empty-feature header's trailing space.
+engine/src/plantuml/generated/** -text whitespace=-blank-at-eol

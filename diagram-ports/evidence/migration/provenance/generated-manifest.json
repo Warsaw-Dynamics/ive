@@ -1,0 +1,190 @@
+{
+  "generator": {
+    "crate": "lalrpop",
+    "defaultFeatures": false,
+    "emitComments": false,
+    "emitReport": false,
+    "emitRerunDirectives": false,
+    "emitWhitespace": true,
+    "features": [],
+    "forceBuild": true,
+    "version": "0.23.2"
+  },
+  "grammars": [
+    {
+      "generated": "engine/src/plantuml/generated/activity.rs",
+      "generatedSha256": "965aeffbee0584b443512415e6651a25639777d2ffc6effcaee42702b2851d49",
+      "grammar": "engine/src/plantuml/parser/grammar/activity.lalrpop",
+      "grammarSha256": "ca3f7156779b2fe62ac5254cffbf33901cad71b481ae3cc341f539965865570d"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/board.rs",
+      "generatedSha256": "bbd732d9384e12db4faab021b965620d17dc46ae1875cb1ca0dd8bb718eafab1",
+      "grammar": "engine/src/plantuml/parser/grammar/board.lalrpop",
+      "grammarSha256": "2ab20d96ae954ca263b3f2d56edd4f877b55dfe6f159a301a75adeb4602ce7b2"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/bpm.rs",
+      "generatedSha256": "731c9c92e6725debaffd5c1ac6fde9a95b3fe66fcd606b19ae1eee2dcde92199",
+      "grammar": "engine/src/plantuml/parser/grammar/bpm.lalrpop",
+      "grammarSha256": "f3266d27651b9cf0d26f5f3e9fd6159af4d33c0d9f96fcdbefacca46c3ea68e4"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/chart.rs",
+      "generatedSha256": "08c32902abbf3fb936c1b42845f32119d1ff3827a68ec62688f01ecc8d765585",
+      "grammar": "engine/src/plantuml/parser/grammar/chart.lalrpop",
+      "grammarSha256": "71efcb0be8f228ce5f14ee60a3c7e87a0020af2053728f4f3ee6b45bc6d3eadb"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/chen.rs",
+      "generatedSha256": "506e35386ae10da006b918f33715aee6f5e5b4b54fb4b1f7c03736c2c3da393c",
+      "grammar": "engine/src/plantuml/parser/grammar/chen.lalrpop",
+      "grammarSha256": "ae028b0dbaf00ed0cedf2bcb528f4fc94e81d8b322e74b922fa729a898d9d5ee"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/creole.rs",
+      "generatedSha256": "142b44ea65358f201c91d03e29500dbf0aad3111d4457ead4a84eb41a81ef5ce",
+      "grammar": "engine/src/plantuml/parser/grammar/creole.lalrpop",
+      "grammarSha256": "4203f6ac35369754e9b2db6b1f614bdc6fd11ad41992fefbe3d158ace1e91649"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/creoledoc.rs",
+      "generatedSha256": "1ad5048fd053b399512968938653d54d05c89b48fc84c0ecc83be7b49d7324e3",
+      "grammar": "engine/src/plantuml/parser/grammar/creoledoc.lalrpop",
+      "grammarSha256": "e3969a14dd20bf11223b15092e2573d29cc175dcab52ac3c59acb5f03a79dc2f"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/definition.rs",
+      "generatedSha256": "da80ae86dbb675e969dbf2be173d2536f0f5d4c2c1a121b6b6a39371809dc8ad",
+      "grammar": "engine/src/plantuml/parser/grammar/definition.lalrpop",
+      "grammarSha256": "0983da93c3f2a0d4920102036e4409abcf8078b0c9f4faf26e9808e7f54fb675"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/document.rs",
+      "generatedSha256": "c207ed2678c84052e16209b8a51a49f54b0dd601af4af6bb597d39974c7b562e",
+      "grammar": "engine/src/plantuml/parser/grammar/document.lalrpop",
+      "grammarSha256": "af285a65f410b3d25993bfe15dd1c2c6f07d4baa00c0f4f4ac245d4f03ffb283"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/ebnf.rs",
+      "generatedSha256": "ea0632537bb49c82bc470c7dbd0dbc1056f88cdd39e85a8beb49aed331424705",
+      "grammar": "engine/src/plantuml/parser/grammar/ebnf.lalrpop",
+      "grammarSha256": "ada30399a69b6496e9a2ec2c36236b603f1a891c3553d21a4cc9ee765cf52817"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/files.rs",
+      "generatedSha256": "54e8692400cd49a5b57718ec911a330e277957a6666037c752ac5d2d6b2ebdb3",
+      "grammar": "engine/src/plantuml/parser/grammar/files.lalrpop",
+      "grammarSha256": "06fe97a20acb5b3ab0aca6f456f5c4c613c7ee19d27d58f748b26804eec92200"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/flow.rs",
+      "generatedSha256": "7624b681c1a139f57eb0d63b61bf0870dc755064ecaa6ef5d1e185377ccea8b6",
+      "grammar": "engine/src/plantuml/parser/grammar/flow.lalrpop",
+      "grammarSha256": "c9872ca77a03d5aeb0c79a5f468b9924baeb85f052bf90c411522b83b5dcfbe6"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/gantt.rs",
+      "generatedSha256": "ecc79fcca2ac4e6f6912475271169171e410478b691241baa98e10602d409f06",
+      "grammar": "engine/src/plantuml/parser/grammar/gantt.lalrpop",
+      "grammarSha256": "24a60c9cfe97a9d628e501f7f7a6c6688344e558bafff51722384295f49f35d8"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/git.rs",
+      "generatedSha256": "aed10addc1c82fe790f93210e3153b35aefbc857a279fb0e8deda8f68aae3b3b",
+      "grammar": "engine/src/plantuml/parser/grammar/git.lalrpop",
+      "grammarSha256": "78fa5d5b7b66142888ede5ed4d5186a9f0e979b2de53da20636e57cd3a887b08"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/hcl.rs",
+      "generatedSha256": "dc4e03150889360397fddc0a9b8e40363fa2a0276c033d4cae785233d157c66f",
+      "grammar": "engine/src/plantuml/parser/grammar/hcl.lalrpop",
+      "grammarSha256": "642ac69004b307a03f4d96193a9e9dd39c2311a86c51b8822a0bb896105d8a84"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/header.rs",
+      "generatedSha256": "094a5bd7bd1d146cb25f0b7b945e0eb01d26db6104d23778d3a9ba7b156ce74c",
+      "grammar": "engine/src/plantuml/parser/grammar/header.lalrpop",
+      "grammarSha256": "af0b96ed412055c0f9596428a97515f675297739f9d84b7cdf4a9b068ba6e6cf"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/json.rs",
+      "generatedSha256": "5f4403d249805aac57566ae9640b2374919715daa23e4547aba3fcf4de5402b4",
+      "grammar": "engine/src/plantuml/parser/grammar/json.lalrpop",
+      "grammarSha256": "2a380b127a3ec90f980b8383d7509b08084c518dfd4e7e9cb1ea80e9b374fb50"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/nwdiag.rs",
+      "generatedSha256": "a944654e6d741eddbaf3e04a16330553e52a9e03ddfa8f39fc1576e2e3f7ea2b",
+      "grammar": "engine/src/plantuml/parser/grammar/nwdiag.lalrpop",
+      "grammarSha256": "bd1ce0474533f5d7b2a43c719b90906c9e6219c860a58931b70290e2b5edface"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/packet.rs",
+      "generatedSha256": "7eaf6090bb00d92e18ba37b74c9890c2cf81458d748afb9947865ac1634625dd",
+      "grammar": "engine/src/plantuml/parser/grammar/packet.lalrpop",
+      "grammarSha256": "152452e7dffd4fc08f1e374fdfdbe8b8e80d9302ceabe4b2c778c9032d9b5e85"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/preamble.rs",
+      "generatedSha256": "a16dc15721bda29480c780df9678560765de6edcd4f550c0a984678674bff879",
+      "grammar": "engine/src/plantuml/parser/grammar/preamble.lalrpop",
+      "grammarSha256": "d133584bcd6941016ed0d055bf07e29ec919fb74ef44ff9c15522c7e9b59396b"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/regex.rs",
+      "generatedSha256": "205d8b44809a83f11c741f3a983ed2dbff5dbdc21ae179bbe6412427846c88ee",
+      "grammar": "engine/src/plantuml/parser/grammar/regex.lalrpop",
+      "grammarSha256": "89c21af467f5b7bedd8ead3c8e50b4bd49073daf9019e83ba71fcabc64a3dcc7"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/salt.rs",
+      "generatedSha256": "96d2e88d2ad55d4dbc98dc425a9f4a812fdc92e10f10d7386c7e16ea18bea3d2",
+      "grammar": "engine/src/plantuml/parser/grammar/salt.lalrpop",
+      "grammarSha256": "bdf09607b889c1bc60e11aa67d2312d8aa28f72987dd28a83579915ab1444697"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/sequence.rs",
+      "generatedSha256": "add5ecf772bb37ce05df4a68a8050a7785d1ff06f82a2c1ec390c213f2fc356e",
+      "grammar": "engine/src/plantuml/parser/grammar/sequence.lalrpop",
+      "grammarSha256": "7beb1315b2e7eec56b81ec30bcfce9edd040db232a0d8112725a144b95bdfeb7"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/state.rs",
+      "generatedSha256": "ed52f0313911849eefa4c2290ed370fe0191bac2322a4bd6402069c2641d180f",
+      "grammar": "engine/src/plantuml/parser/grammar/state.lalrpop",
+      "grammarSha256": "276497c8cc77dafb56d958d1de4765e91c4fd3bdaf5eeca3863edbc3112cdbca"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/timing.rs",
+      "generatedSha256": "176a5b538e7acd0c84e6fd9a1a2d7100e989b3ec85f1fcc7e6b32b18e819156f",
+      "grammar": "engine/src/plantuml/parser/grammar/timing.lalrpop",
+      "grammarSha256": "facf164b0b98e353b582b0bfb61fefa034ad6ab95a77e283fb2e279d3af43947"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/tree.rs",
+      "generatedSha256": "46efd9c392b300833e8fa021f7f5dbb691f30d0e04c8445f18819495175a04c3",
+      "grammar": "engine/src/plantuml/parser/grammar/tree.lalrpop",
+      "grammarSha256": "c47f9fbb39ed28311ebd348608f9de3693032fe13c68813e494b44bd29c6008a"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/uml.rs",
+      "generatedSha256": "20ba6dca03dc4b42ae98666dd90431c132254a4dfb1bbfa80775982a5398d8ef",
+      "grammar": "engine/src/plantuml/parser/grammar/uml.lalrpop",
+      "grammarSha256": "4454c4ab05bfc5ae7ff9af1af3aebb4fd2b81c6d6c5c11cfd7509a589650010c"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/wire.rs",
+      "generatedSha256": "ae9667ee1b84970e7b4bbafe84c47a15724ae4ba9504bf5e4f0aaf0143df53a7",
+      "grammar": "engine/src/plantuml/parser/grammar/wire.lalrpop",
+      "grammarSha256": "ecf3ff41c82b6e758964c3490c3f148357d85cf2a8f8ae47809c85b62ed11b1e"
+    },
+    {
+      "generated": "engine/src/plantuml/generated/yaml.rs",
+      "generatedSha256": "3b6c19c762dfd2969315108b9627699374884d702795c987e5083b666c237d94",
+      "grammar": "engine/src/plantuml/parser/grammar/yaml.lalrpop",
+      "grammarSha256": "79c5ea1406e2a3095557050c81a38fbc26485e429df63f94344d799f04c7f7d7"
+    }
+  ],
+  "schema": 1
+}

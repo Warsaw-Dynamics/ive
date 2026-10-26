@@ -1,0 +1,12 @@
+@startuml
+state S {
+[*] --> A : init1
+A --> [*] : done1
+--
+[*] --> B : init2
+B --> [*] : done2
+--
+[*] --> C : init3
+C --> [*] : done3
+}
+@enduml

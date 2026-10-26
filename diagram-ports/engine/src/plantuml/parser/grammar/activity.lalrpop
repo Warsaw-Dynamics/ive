@@ -1,0 +1,63 @@
+// Original grammar for the MIT modern activity subset; traces are in provenance.
+grammar(builder: &mut crate::plantuml::parser::activity::Builder<'_>);
+use crate::plantuml::{activity::{Block, Instruction, Branch, Condition, GroupKind, Join}, parser::{activity::Token, error::ParseFailure}};
+
+pub Activity: Block = <block:Block> =>? builder.finish(block).map_err(|error| lalrpop_util::ParseError::User { error });
+Block: Block = {
+    => Vec::new(),
+    <block:Block> <instruction:Instruction> =>? builder.append(block, instruction).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Instruction: Instruction = {
+    "start" "newline" => Instruction::Start,
+    "stop" "newline" => Instruction::Stop,
+    "end" "newline" => Instruction::End,
+    ":" <value:"text"> ";" "newline" => Instruction::Action(value),
+    "if" <condition:IfCondition> "newline" <body:Block> <more:ElseIfs> <otherwise:Else> "endif" "newline" =>? builder.conditional(Branch { condition, body }, more, otherwise).map_err(|error| lalrpop_util::ParseError::User { error }),
+    "while" <condition:LoopCondition> "newline" <body:Block> "endwhile" <out:Guard> "newline" => Instruction::While { condition, body, out },
+    "repeat" <entry:Entry> "newline" <body:Block> "repeat while" <tail:RepeatCondition> "newline" => Instruction::Repeat { entry, body, condition: tail.0, out: tail.1 },
+    "fork" "newline" <lane:Block> <lanes:Lanes> <join:Join> <label:JoinLabel> "newline" =>? builder.fork(lane, lanes, (join, label)).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <kind:"group kind"> <name:"text"> "{" "newline" <body:Block> "}" "newline" => Instruction::Group { name, kind, body },
+};
+ElseIfs: Vec<Branch> = {
+    => Vec::new(),
+    <branches:ElseIfs> "elseif" <condition:IfCondition> "newline" <body:Block> =>? builder.append(branches, Branch { condition, body }).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+Else: (String, Block) = { => (String::new(), Vec::new()), "else" <guard:Guard> "newline" <body:Block> => (guard, body) };
+Lanes: Vec<Block> = { => Vec::new(), <lanes:Lanes> "fork again" "newline" <body:Block> =>? builder.append(lanes, body).map_err(|error| lalrpop_util::ParseError::User { error }) };
+Join: Join = { "end fork" => Join::Synchronize, "end merge" => Join::Merge };
+JoinLabel: String = { => String::new(), <start:@L> "{" <text:"text"> "}" <end:@R> =>? builder.join_label(text, start..end).map_err(|error| lalrpop_util::ParseError::User { error }) };
+Entry: String = { => String::new(), ":" <text:"text"> ";" => text };
+IfCondition: Condition = <test:Parenthesized> <guard:ThenGuard> => Condition { test, guard };
+LoopCondition: Condition = <test:Parenthesized> <guard:IsGuard> => Condition { test, guard };
+ThenGuard: String = { => String::new(), "then" <guard:Guard> => guard };
+IsGuard: String = { => String::new(), "is" <guard:Guard> => guard };
+Guard: String = { => String::new(), <start:@L> <value:Parenthesized> <end:@R> =>? builder.guard(value, start..end).map_err(|error| lalrpop_util::ParseError::User { error }) };
+RepeatCondition: (Condition, String) = {
+    => (Condition { test: String::new(), guard: String::new() }, String::new()),
+    <test:Parenthesized> <guard:RepeatGuard> <out:OutGuard> => (Condition { test, guard }, out),
+};
+RepeatGuard: String = { => String::new(), "is" <guard:Parenthesized> => guard };
+OutGuard: String = { => String::new(), "not" <guard:Guard> => guard };
+Parenthesized: String = "(" <value:Parts> ")" => value;
+Parts: String = {
+    => String::new(),
+    <value:Parts> <text:"text"> =>? builder.concat(value, &text).map_err(|error| lalrpop_util::ParseError::User { error }),
+    <value:Parts> "(" <nested:Parts> ")" =>? builder.nested(value, nested).map_err(|error| lalrpop_util::ParseError::User { error }),
+};
+extern {
+    type Location = usize;
+    type Error = ParseFailure;
+    enum Token {
+        "start" => Token::Start, "stop" => Token::Stop, "end" => Token::End,
+        "if" => Token::If, "elseif" => Token::ElseIf, "else" => Token::Else, "endif" => Token::EndIf,
+        "while" => Token::While, "endwhile" => Token::EndWhile,
+        "repeat" => Token::Repeat, "repeat while" => Token::RepeatWhile,
+        "fork" => Token::Fork, "fork again" => Token::ForkAgain,
+        "end fork" => Token::EndFork, "end merge" => Token::EndMerge,
+        "group kind" => Token::Group(<GroupKind>),
+        "then" => Token::Then, "is" => Token::Is, "not" => Token::Not,
+        "(" => Token::Open, ")" => Token::Close, "{" => Token::BraceOpen, "}" => Token::BraceClose,
+        ":" => Token::Colon, ";" => Token::Semi,
+        "text" => Token::Text(<String>), "newline" => Token::Newline,
+    }
+}
