@@ -240,9 +240,9 @@ impl<'a> Builder<'a> {
             Tag::Table(columns) => self.open_table(&columns),
             Tag::TableHead | Tag::TableRow => self.start_row(),
             Tag::TableCell => self.start_cell(),
-            Tag::Emphasis => self.inline.emphasis += 1,
-            Tag::Strong => self.inline.strong += 1,
-            Tag::Strikethrough => self.inline.strike += 1,
+            Tag::Emphasis => self.inline.emphasis = self.inline.emphasis.saturating_add(1),
+            Tag::Strong => self.inline.strong = self.inline.strong.saturating_add(1),
+            Tag::Strikethrough => self.inline.strike = self.inline.strike.saturating_add(1),
             Tag::Link { dest_url, .. } => self.inline.links.push(SharedString::from(dest_url.to_string())),
             Tag::Image { .. } => self.text("[image: "),
             Tag::FootnoteDefinition(_)
@@ -264,9 +264,9 @@ impl<'a> Builder<'a> {
             TagEnd::Item => self.leave_item(),
             TagEnd::TableHead | TagEnd::TableRow => self.end_row(),
             TagEnd::TableCell => self.end_cell(),
-            TagEnd::Emphasis => self.inline.emphasis -= 1,
-            TagEnd::Strong => self.inline.strong -= 1,
-            TagEnd::Strikethrough => self.inline.strike -= 1,
+            TagEnd::Emphasis => self.inline.emphasis = self.inline.emphasis.saturating_sub(1),
+            TagEnd::Strong => self.inline.strong = self.inline.strong.saturating_sub(1),
+            TagEnd::Strikethrough => self.inline.strike = self.inline.strike.saturating_sub(1),
             TagEnd::Link => drop(self.inline.links.pop()),
             TagEnd::Image => self.end_image(),
             TagEnd::FootnoteDefinition
@@ -404,7 +404,7 @@ impl<'a> Builder<'a> {
 
     fn enter_quote(&mut self) {
         self.close_block();
-        self.quotes += 1;
+        self.quotes = self.quotes.saturating_add(1);
     }
 
     fn leave_quote(&mut self) {

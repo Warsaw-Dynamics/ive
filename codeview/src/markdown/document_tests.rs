@@ -209,3 +209,17 @@ fn should_end_a_list_item_where_its_text_ends() {
     let lines: Vec<_> = doc.blocks.iter().map(|block| block.lines.clone()).collect();
     assert_eq!(lines, vec![0..1, 1..2, 2..3]);
 }
+
+#[test]
+fn should_survive_nesting_deeper_than_a_counter_holds() {
+    // given
+    let quotes = format!("{} deep\n", ">".repeat(300));
+    let stars = format!("{}x{}\n", "*".repeat(600), "*".repeat(600));
+
+    // when
+    let docs = [parse(&quotes), parse(&stars)];
+
+    // then
+    assert!(docs[0].text.ends_with("deep"));
+    assert!(docs[1].text.contains('x'));
+}
