@@ -107,6 +107,7 @@ pub struct Session {
     term: Arc<FairMutex<Term<Listener>>>,
     transport: Transport,
     size: Cell<GridSize>,
+    focus_reports: Cell<FocusReports>,
     program_pid: Option<u32>,
     #[cfg(unix)]
     foreground: Option<ForegroundProbe>,
@@ -116,6 +117,24 @@ enum Transport {
     InProcess(EventLoopSender),
     #[cfg(unix)]
     Hosted(Connection),
+}
+
+/// Last focus state told to a program using terminal focus reporting (DECSET 1004).
+#[derive(Default, Clone, Copy)]
+struct FocusReports(Option<bool>);
+
+impl FocusReports {
+    fn next(&mut self, mode: TermMode, visible: bool) -> Option<&'static [u8]> {
+        if !mode.contains(TermMode::FOCUS_IN_OUT) {
+            self.0 = None;
+            return None;
+        }
+        if self.0 == Some(visible) {
+            return None;
+        }
+        self.0 = Some(visible);
+        Some(if visible { b"\x1b[I" } else { b"\x1b[O" })
+    }
 }
 
 impl Session {
@@ -145,6 +164,7 @@ impl Session {
             term,
             transport,
             size: Cell::new(INITIAL_SIZE),
+            focus_reports: Cell::new(FocusReports::default()),
             program_pid,
             #[cfg(unix)]
             foreground,
@@ -186,7 +206,7 @@ impl Session {
         let foreground = Some(ForegroundProbe::of_program(connection.program_pid()));
         // the host replays only after a first resize; sent now, so a tab never shown still gets its output and title
         connection.resize(INITIAL_SIZE);
-        Self { term, transport: Transport::Hosted(connection), size: Cell::new(INITIAL_SIZE), program_pid, foreground }
+        Self { term, transport: Transport::Hosted(connection), size: Cell::new(INITIAL_SIZE), focus_reports: Cell::new(FocusReports::default()), program_pid, foreground }
     }
 
     /// The program the terminal started, its process group's leader: the shell, or a run's command.
@@ -266,6 +286,16 @@ impl Session {
 
     pub fn mode(&self) -> TermMode {
         *self.term.lock().mode()
+    }
+
+    /// Tells a program using terminal focus reporting whether the user can see this terminal.
+    pub fn report_focus(&self, visible: bool) {
+        let mut reports = self.focus_reports.get();
+        let reply = reports.next(self.mode(), visible);
+        self.focus_reports.set(reports);
+        if let Some(bytes) = reply {
+            self.write(bytes);
+        }
     }
 
     /// Which program has the terminal; `None` where IVE cannot tell (not Unix, or no spare descriptor).
@@ -371,6 +401,45 @@ mod tests {
     use ptyhost::protocol::{Frame, PROTOCOL};
 
     use super::*;
+
+    #[test]
+    fn should_report_visibility_changes_when_a_program_requests_focus_events() {
+        // given
+        let mut reports = FocusReports::default();
+        let enabled = TermMode::FOCUS_IN_OUT;
+
+        // when
+        let sent = [
+            reports.next(TermMode::empty(), false),
+            reports.next(enabled, false),
+            reports.next(enabled, false),
+            reports.next(enabled, true),
+            reports.next(TermMode::empty(), true),
+            reports.next(enabled, false),
+        ];
+
+        // then
+        assert_eq!(sent, [None, Some(b"\x1b[O".as_slice()), None, Some(b"\x1b[I".as_slice()), None, Some(b"\x1b[O".as_slice())]);
+    }
+
+    #[test]
+    fn should_report_hidden_focus_after_a_hosted_session_replays_its_mode() {
+        // given
+        let (session, mut host) = attached_session();
+        host.set_read_timeout(Some(std::time::Duration::from_secs(2))).unwrap();
+        Frame::Replay(b"\x1b[?1004h".to_vec()).write_to(&mut host).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !session.mode().contains(TermMode::FOCUS_IN_OUT) && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(session.mode().contains(TermMode::FOCUS_IN_OUT));
+
+        // when
+        session.report_focus(false);
+
+        // then
+        assert_eq!(Frame::read_from(&mut host).unwrap(), Frame::Input(b"\x1b[O".to_vec()));
+    }
 
     fn hosted_session() -> (Session, UnixStream) {
         let (client_end, mut host) = UnixStream::pair().unwrap();

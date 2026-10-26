@@ -226,7 +226,9 @@ iTerm2 sends it, `OSC 777;notify;<title>;<body>` as Ghostty and VTE read it, kit
 "rang the bell"), and progress reported with `OSC 9;4` ending ("finished"). IVE knows no agent: set yours to send one.
 
 - Claude Code: `claude config set --global preferredNotifChannel iterm2` (or `ghostty`, `kitty`, `terminal_bell`).
-- Codex: in `~/.codex/config.toml`, `[tui]` `notifications = true`.
+- Codex: its TUI notifications are on by default. IVE reports terminal focus when the tab or window changes, so
+  Codex sends a notification after a turn or on an approval request while you are looking elsewhere. If you turned
+  them off, set `[tui]` `notifications = true` in `~/.codex/config.toml`.
 
 A call counts only while you do not see the terminal: its tab is not the shown one, or IVE's window is in the
 background. Then its tab and its tree row get an orange dot, the row says what the program said, a folded project,
