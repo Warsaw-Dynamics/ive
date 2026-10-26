@@ -53,7 +53,7 @@ pub(super) fn shown<'a>(source: &str, cx: &'a mut TestAppContext) -> (Entity<Ren
 }
 
 /// A window showing `doc`, 800 by 400 px, drawn once.
-pub(super) fn shown_doc<'a>(doc: Doc, cx: &'a mut TestAppContext) -> (Entity<RenderedView>, Rc<RefCell<Seen>>, &'a mut VisualTestContext) {
+pub(super) fn shown_doc(doc: Doc, cx: &mut TestAppContext) -> (Entity<RenderedView>, Rc<RefCell<Seen>>, &mut VisualTestContext) {
     let seen: Rc<RefCell<Seen>> = Rc::default();
     let host = host(&seen);
     cx.update(|cx| {
