@@ -158,7 +158,8 @@ impl Panel {
         let line = rendered.read(cx).top_line();
         self.markdown.refocus = Some(rendered.focus_handle(cx));
         self.land_at(line, cx);
-        self.refind(cx);
+        // the current match's bytes are Rendered's: the body searches from its own place
+        self.refind_from_anchor(cx);
         cx.notify();
     }
 
@@ -192,6 +193,7 @@ impl Panel {
             return;
         }
         let doc = Arc::new(doc);
+        let switched = self.markdown.rendered.is_none();
         let rendered = match self.markdown.rendered.clone() {
             Some(rendered) => {
                 rendered.update(cx, |view, cx| view.set_doc(doc, cx));
@@ -203,7 +205,12 @@ impl Panel {
             rendered.update(cx, |view, cx| view.reveal_source_line(line, cx));
         }
         self.markdown.revision += 1;
-        self.refind(cx);
+        // just switched, the current match's bytes are the body's: Rendered searches from its top block
+        if switched {
+            self.refind_from_anchor(cx);
+        } else {
+            self.refind(cx);
+        }
         self.notice_state(cx);
         cx.notify();
     }

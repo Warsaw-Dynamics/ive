@@ -387,3 +387,20 @@ fn should_grey_rendered_over_the_limit(cx: &mut TestAppContext) {
     assert!(heard.borrow().targets.contains_key("markdown-view:text"));
     assert!(!heard.borrow().targets.contains_key("markdown-view:rendered"));
 }
+
+#[gpui::test]
+fn should_keep_the_current_match_where_the_reading_is_across_a_switch(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+    cast(&panel, Cast::Open(lines(&paragraphs(200), markdown())), cx);
+    let place = PanelState { scroll: ScrollPosition { top_line: 300., left: 0. }, caret: Some(CaretPosition { line: 300, column: 0 }), ..PanelState::default() };
+    cast(&panel, Cast::Restore(place), cx);
+    let in_text = find(&panel, "para", cx);
+
+    // when
+    toggle(&panel, cx);
+
+    // then
+    let in_rendered = panel.read_with(cx, |panel, cx| panel.find_view(cx).count);
+    assert_eq!((in_text.as_str(), in_rendered.as_str()), ("151 of 200", "151 of 200"));
+}
