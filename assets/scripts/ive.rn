@@ -122,6 +122,8 @@ pub fn init(config) {
         #{ key: "f", mods: "SECONDARY", action: act::Find, scope: "editor" },
         #{ key: "F3", action: act::FindNext, scope: "editor" },
         #{ key: "F3", mods: "SHIFT", action: act::FindPrevious, scope: "editor" },
+        // a Markdown file or scratch between its text and the document formatted; not Ctrl+Shift+V, the terminal's paste
+        #{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" },
 
         // the hub (Ctrl+Shift+E): its query keeps typing, arrows left/right, Home/End and the clipboard
         #{ key: "DownArrow", action: act::HubDown, scope: "hub" },

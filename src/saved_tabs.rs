@@ -165,7 +165,7 @@ impl SavedTab {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codeview::panel::DiffLayout;
+    use codeview::panel::{DiffLayout, MarkdownView};
 
     #[test]
     fn should_own_a_restored_diff_by_its_file_as_a_loaded_one() {
@@ -287,6 +287,25 @@ mod tests {
 
         // then
         assert_eq!((tab.kind(), tab.title()), ("hub", "Hub".to_owned()));
+    }
+
+    #[test]
+    fn should_restore_a_tab_saved_without_a_markdown_view() {
+        // given
+        let before = "kind = \"file\"\npath = \"/p/README.md\"\n";
+        let rendered = "kind = \"file\"\npath = \"/p/README.md\"\n[panel]\nmarkdown = \"rendered\"\n";
+
+        // when
+        let tabs: Vec<SavedTab> = [before, rendered].into_iter().map(|text| toml::from_str(text).unwrap()).collect();
+
+        // then
+        let views: Vec<Option<MarkdownView>> = tabs.iter().map(|tab| match tab {
+            SavedTab::File { panel, .. } => panel.markdown,
+            other => panic!("read as {other:?}"),
+        }).collect();
+        assert_eq!(views, vec![None, Some(MarkdownView::Rendered)]);
+        let written = toml::to_string(&tabs[1]).unwrap();
+        assert!(written.contains("markdown = \"rendered\""), "{written}");
     }
 
     #[test]

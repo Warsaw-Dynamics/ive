@@ -240,6 +240,7 @@ impl ScratchView {
             ScratchContent::Editable { text, ending, stamp } => {
                 let editor = cx.new(Panel::new);
                 codeview_host::serve(&editor, target.store.path(&target.scratch.name).display().to_string(), cx);
+                codeview_host::remember_markdown_view(&editor, cx);
                 subscriptions.push(cx.subscribe(&editor, |view, _editor, event: &Event, cx| view.on_panel_event(event, cx)));
                 editor.update(cx, |editor, cx| editor.handle(Cast::Open(edited(&target.scratch.name, &text, ending)), cx));
                 let save = SaveState::new(editor.read(cx).revision(), stamp);

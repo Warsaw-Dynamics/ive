@@ -264,6 +264,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "Undo" => Builtin::Undo,
         "Redo" => Builtin::Redo,
         "ToggleDiffLayout" => Builtin::ToggleDiffLayout,
+        "ToggleMarkdownView" => Builtin::ToggleMarkdownView,
         "Find" => Builtin::Find,
         "FindNext" => Builtin::FindNext,
         "FindPrevious" => Builtin::FindPrevious,

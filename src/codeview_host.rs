@@ -6,7 +6,7 @@ use std::rc::Rc;
 use codeview::changes::ChangeDiffJob;
 use codeview::diff::{FileDiff, Headers};
 use codeview::host::{ClickListener, Command, Host, KeyOutcome, KeyScope};
-use codeview::panel::{Cast, Content, DiffInput, DiffLayout, Editable, Event, Panel, ParseJob, TextsRequest};
+use codeview::panel::{Cast, Content, DiffInput, DiffLayout, Editable, Event, MarkdownView, Panel, ParseJob, TextsRequest};
 use codeview::syntax::ParseError;
 use gpui::{App, AppContext, BorrowAppContext, Entity, IntoElement, KeyDownEvent, WeakEntity};
 
@@ -87,6 +87,7 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Undo => Command::Undo,
         Builtin::Redo => Command::Redo,
         Builtin::ToggleDiffLayout => Command::ToggleLayout,
+        Builtin::ToggleMarkdownView => Command::ToggleMarkdownView,
         Builtin::Find => Command::Find,
         Builtin::FindNext => Command::FindNext,
         Builtin::FindPrevious => Command::FindPrevious,
@@ -173,6 +174,29 @@ pub fn diff_panel(files: Vec<FileDiff>, headers: Headers, cx: &mut App) -> Entit
     })
     .detach();
     panel
+}
+
+/// A file's or scratch's panel opens a Markdown text in the view the user last switched one to, unless the tab saved
+/// its own; switching it is remembered for the next. Call it before the panel's first [`Cast::Restore`].
+pub fn remember_markdown_view(panel: &Entity<Panel>, cx: &mut App) {
+    let view = cx.try_global::<SettingsStore>().map(|store| store.current().markdown_view).unwrap_or_default();
+    panel.update(cx, |panel, cx| panel.handle(Cast::SetMarkdownView(view), cx));
+    cx.subscribe(panel, |_panel, event: &Event, cx| {
+        if let Event::MarkdownViewToggled(view) = event {
+            remember_markdown(*view, cx);
+        }
+    })
+    .detach();
+}
+
+fn remember_markdown(view: MarkdownView, cx: &mut App) {
+    if cx.try_global::<SettingsStore>().is_none() {
+        return;
+    }
+    let stored = cx.update_global::<SettingsStore, _>(|store, _| store.replace(store.current().with_markdown_view(view)));
+    if let Err(error) = stored {
+        eprintln!("ive: cannot save the Markdown view: {error}");
+    }
 }
 
 fn remember_layout(layout: DiffLayout, cx: &mut App) {
@@ -316,6 +340,55 @@ mod tests {
         // then
         assert_eq!((before, layout_of(&opened, cx), layout_of(&restored, cx)), (Some(DiffLayout::Inline), Some(DiffLayout::SideBySide), Some(DiffLayout::Inline)));
         assert_eq!(Settings::load(&path).unwrap().diff_layout, DiffLayout::SideBySide);
+    }
+
+    #[test]
+    fn should_map_toggling_the_markdown_view_to_a_command() {
+        // given
+        let toggle = Action::Builtin(Builtin::ToggleMarkdownView);
+
+        // when
+        let decisions = [KeyScope::Editor, KeyScope::Viewer].map(|scope| decide(Some(toggle.clone()), scope));
+
+        // then
+        let command = || Decision::Done(KeyOutcome::Command(Command::ToggleMarkdownView));
+        assert_eq!(decisions, [command(), command()]);
+    }
+
+    /// A panel editing a Markdown text, opened as a file tab opens it.
+    fn opened_markdown(cx: &mut TestAppContext) -> Entity<Panel> {
+        let panel = cx.new(Panel::new);
+        cx.update(|cx| remember_markdown_view(&panel, cx));
+        let policy = codeview::panel::EditPolicy { save_delay: std::time::Duration::from_secs(10), limit: None };
+        let source = std::sync::Arc::new(codeview::document::TextSource::new("# A\n"));
+        let content = codeview::panel::Content::Lines { source, language: codeview::syntax::Language::for_alias("markdown"), edit: Some(policy) };
+        panel.update(cx, |panel, cx| panel.handle(Cast::Open(content), cx));
+        cx.run_until_parked();
+        panel
+    }
+
+    #[gpui::test]
+    fn should_open_markdown_tabs_in_the_view_last_switched_to(cx: &mut TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let settings = Settings::default().with_markdown_view(MarkdownView::Rendered);
+        cx.update(|cx| {
+            cx.set_global(SettingsStore::new(settings, Some(path.clone())));
+            cx.set_global(crate::theme::view_style(&crate::theme::Theme::of(crate::theme::Appearance::Dark)));
+        });
+        let first = opened_markdown(cx);
+        let opened_in = first.read_with(cx, |panel, _| panel.markdown_view());
+
+        // when
+        first.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleMarkdownView), cx));
+        cx.run_until_parked();
+        let second = opened_markdown(cx);
+
+        // then
+        assert_eq!(opened_in, Some(MarkdownView::Rendered));
+        assert_eq!(second.read_with(cx, |panel, _| panel.markdown_view()), Some(MarkdownView::Text));
+        assert_eq!(Settings::load(&path).unwrap().markdown_view, MarkdownView::Text);
     }
 
     #[test]

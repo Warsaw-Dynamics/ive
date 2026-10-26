@@ -624,6 +624,7 @@ async fn restart(context) {
 | `act::SelectAll`, `act::Cut`, `act::Undo`, `act::Redo` | editor | the scratch editor's commands |
 | `act::Find`, `act::FindNext`, `act::FindPrevious` | editor | a code view's find box: open it (or give it the keyboard back), the next and previous match (Ctrl+F, F3, Shift+F3; macOS Cmd+F, also Cmd+G, Cmd+Shift+G) |
 | `act::ToggleDiffLayout` | editor | a focused diff inline or side by side (no key by default); new diff and commit tabs open in the layout last switched to |
+| `act::ToggleMarkdownView` | editor | a Markdown file or scratch between Text and Rendered (Ctrl+Shift+M; macOS Cmd+Shift+M); new Markdown tabs open in the view last switched to |
 | `act::OpenHub` | window | shows the hub (Ctrl+Shift+E) |
 | `act::OpenTerminalIn` | window | the hub asking where a new terminal goes: a checkout, or a branch that first gets its worktree (Ctrl+Shift+T) |
 | `act::HubDown`, `act::HubUp`, `act::HubPageDown`, `act::HubPageUp` | hub | move the selection |

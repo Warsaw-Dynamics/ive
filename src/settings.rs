@@ -3,7 +3,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use codeview::panel::DiffLayout;
+use codeview::panel::{DiffLayout, MarkdownView};
 use gpui::Global;
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +106,9 @@ pub struct Settings {
     /// the diff layout the user last switched to: new diff and commit tabs open in it
     #[serde(skip_serializing_if = "is_inline")]
     pub diff_layout: DiffLayout,
+    /// the Markdown view the user last switched to: Markdown files and scratches open in it
+    #[serde(skip_serializing_if = "is_text")]
+    pub markdown_view: MarkdownView,
     /// how the git views list changed files
     #[serde(skip_serializing_if = "FileOrder::is_default")]
     pub git_files: FileOrder,
@@ -136,6 +139,10 @@ impl Settings {
 
     pub fn with_diff_layout(&self, diff_layout: DiffLayout) -> Self {
         Self { diff_layout, ..self.clone() }
+    }
+
+    pub fn with_markdown_view(&self, markdown_view: MarkdownView) -> Self {
+        Self { markdown_view, ..self.clone() }
     }
 
     /// Reads settings from `path`; a missing file means defaults.
@@ -169,6 +176,10 @@ impl Settings {
 
 fn is_inline(layout: &DiffLayout) -> bool {
     *layout == DiffLayout::Inline
+}
+
+fn is_text(view: &MarkdownView) -> bool {
+    *view == MarkdownView::Text
 }
 
 /// The settings in effect, and where they are saved (none when the OS has no config folder).
@@ -452,6 +463,35 @@ mod tests {
         // then
         assert_eq!(loaded, settings);
         assert!(fs::read_to_string(&path).unwrap().contains("diff_layout = \"side-by-side\""));
+    }
+
+    #[test]
+    fn should_round_trip_the_markdown_view() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let settings = Settings::default().with_markdown_view(MarkdownView::Rendered);
+
+        // when
+        settings.save(&path).unwrap();
+        let loaded = Settings::load(&path).unwrap();
+
+        // then
+        assert_eq!(loaded, settings);
+        assert!(fs::read_to_string(&path).unwrap().contains("markdown_view = \"rendered\""));
+    }
+
+    #[test]
+    fn should_leave_text_out_of_the_file() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+
+        // when
+        Settings::default().with_markdown_view(MarkdownView::Text).save(&path).unwrap();
+
+        // then
+        assert!(!fs::read_to_string(&path).unwrap().contains("markdown_view"));
     }
 
     #[test]

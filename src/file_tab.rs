@@ -49,6 +49,7 @@ impl FileTab {
         let path = opened.0.path().to_path_buf();
         let panel = cx.new(Panel::new);
         codeview_host::serve(&panel, path.display().to_string(), cx);
+        codeview_host::remember_markdown_view(&panel, cx);
         let file = cx.new(|cx| EditedFile::new(opened, Shown { panel: panel.clone(), shows: Shows::File }, cx));
         Self { path, panel, file }
     }

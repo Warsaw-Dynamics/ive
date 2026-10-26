@@ -1270,6 +1270,17 @@ mod tests {
     }
 
     #[test]
+    fn should_bind_toggle_markdown_view() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        let toggle = if cfg!(target_os = "macos") { "cmd-shift-m" } else { "ctrl-shift-m" };
+        assert_eq!(keymap.find_key(&pressed(toggle), Place::Editor).cloned(), builtin(Builtin::ToggleMarkdownView));
+        assert_ne!(keymap.find_key(&pressed("ctrl-shift-v"), Place::Editor).cloned(), builtin(Builtin::ToggleMarkdownView));
+    }
+
+    #[test]
     fn should_bind_find_and_its_steps_in_code_views_only() {
         // when
         let keymap = defaults().keymap;
