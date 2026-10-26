@@ -33,7 +33,8 @@ fn split_code(block: Block, text: &str, source: &str) -> Vec<Block> {
         return vec![block];
     };
     let breaks = text[piece.text.clone()].match_indices('\n').map(|(at, _)| piece.text.start + at);
-    let cuts: Vec<usize> = breaks.enumerate().filter(|(count, _)| (count + 1) % PART_LINES == 0).map(|(_, at)| at).filter(|at| at + 1 < piece.text.end).collect();
+    let cuts: Vec<usize> =
+        breaks.enumerate().filter(|(count, _)| (count + 1) % PART_LINES == 0).map(|(_, at)| at).filter(|at| at + 1 < piece.text.end).collect();
     if cuts.is_empty() {
         return vec![block];
     }
@@ -42,7 +43,8 @@ fn split_code(block: Block, text: &str, source: &str) -> Vec<Block> {
     let texts: Vec<Range<usize>> = starts.zip(ends).map(|(start, end)| start..end).collect();
     // a fence's own line comes before the code's first line
     let fence = usize::from(source.lines().nth(block.lines.start).is_some_and(|line| line.trim_start().starts_with(['`', '~'])));
-    let first_lines: Vec<usize> = (0..texts.len()).map(|part| if part == 0 { block.lines.start } else { block.lines.start + fence + part * PART_LINES }).collect();
+    let first_lines: Vec<usize> =
+        (0..texts.len()).map(|part| if part == 0 { block.lines.start } else { block.lines.start + fence + part * PART_LINES }).collect();
     let pieces: Vec<Vec<Piece>> = texts.iter().map(|range| vec![Piece { text: range.clone(), runs: clipped(&piece.runs, range) }]).collect();
     parts_of(&block, pieces, &first_lines)
 }
@@ -55,7 +57,8 @@ fn split_table(block: Block, columns: usize) -> Vec<Block> {
     }
     let pieces: Vec<Vec<Piece>> = rows.chunks(PART_LINES).map(|part| part.iter().flat_map(|row| row.iter().cloned()).collect()).collect();
     // the header's line, the separator's, then a row a line
-    let first_lines: Vec<usize> = (0..pieces.len()).map(|part| if part == 0 { block.lines.start } else { block.lines.start + 1 + part * PART_LINES }).collect();
+    let first_lines: Vec<usize> =
+        (0..pieces.len()).map(|part| if part == 0 { block.lines.start } else { block.lines.start + 1 + part * PART_LINES }).collect();
     parts_of(&block, pieces, &first_lines)
 }
 

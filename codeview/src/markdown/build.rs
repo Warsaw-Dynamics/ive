@@ -19,7 +19,9 @@ pub fn build(source: &[u8], cancel: &Cancel) -> Doc {
             continue;
         };
         for piece in &mut block.pieces {
-            piece.runs = coloured(&text[piece.text.clone()], language, cancel).map(|run| Run { bytes: run.bytes.start + piece.text.start..run.bytes.end + piece.text.start, ..run }).collect();
+            piece.runs = coloured(&text[piece.text.clone()], language, cancel)
+                .map(|run| Run { bytes: run.bytes.start + piece.text.start..run.bytes.end + piece.text.start, ..run })
+                .collect();
         }
     }
     split_long(doc, &source)

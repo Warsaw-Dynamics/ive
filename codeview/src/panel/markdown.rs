@@ -104,10 +104,12 @@ impl Panel {
     /// the editor colours.
     pub(super) fn offer_markdown(&mut self, content: &Content, cx: &App) {
         let offer = match content {
-            Content::Lines { source, language, .. } if self.selects() && is_markdown(*language) => match source.byte_len() > MAX_HIGHLIGHT_BYTES as u64 {
-                true => Offer::TooLarge,
-                false => Offer::Yes,
-            },
+            Content::Lines { source, language, .. } if self.selects() && is_markdown(*language) => {
+                match source.byte_len() > MAX_HIGHLIGHT_BYTES as u64 {
+                    true => Offer::TooLarge,
+                    false => Offer::Yes,
+                }
+            }
             _ => Offer::No,
         };
         self.markdown.offer = offer;
@@ -299,7 +301,7 @@ impl Panel {
 }
 
 fn is_markdown(language: Option<Language>) -> bool {
-    language.is_some_and(|language| language.name() == "Markdown")
+    language.is_some() && language == Language::for_alias("markdown")
 }
 
 /// All of a body's text, to parse.

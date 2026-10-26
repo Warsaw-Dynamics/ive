@@ -53,7 +53,14 @@ fn run_of(bytes: Range<usize>, runs: &[Run], overlays: &[(Range<usize>, Overlay)
         (None, _) => None,
     };
     let strike = matches!(look, Some(Look::Strike)).then(|| StrikethroughStyle { thickness: px(1.), color: None });
-    TextRun { len: bytes.len(), font: font_of(look, paint), color: colour_of(look, paint), background_color: background, underline: None, strikethrough: strike }
+    TextRun {
+        len: bytes.len(),
+        font: font_of(look, paint),
+        color: colour_of(look, paint),
+        background_color: background,
+        underline: None,
+        strikethrough: strike,
+    }
 }
 
 fn font_of(look: Option<&Look>, paint: &Paint) -> Font {

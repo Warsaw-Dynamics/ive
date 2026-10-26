@@ -136,7 +136,11 @@ fn should_offer_markdown_only_for_markdown_lines(cx: &mut TestAppContext) {
     cast(&md, Cast::Open(lines("# A\n", markdown())), cx);
     cast(&rust, Cast::Open(lines("fn a() {}\n", Language::for_alias("rust"))), cx);
     cast(&preview, Cast::Open(lines("# A\n", markdown())), cx);
-    cast(&diff, Cast::Open(Content::Diff(DiffInput { files: Vec::new(), headers: Headers::Hidden, layout: DiffLayout::Inline, editable: Editable::No })), cx);
+    cast(
+        &diff,
+        Cast::Open(Content::Diff(DiffInput { files: Vec::new(), headers: Headers::Hidden, layout: DiffLayout::Inline, editable: Editable::No })),
+        cx,
+    );
 
     // then
     let views: Vec<Option<MarkdownView>> = [&md, &rust, &preview, &diff].into_iter().map(|panel| shown(panel, cx)).collect();
@@ -393,7 +397,11 @@ fn should_keep_the_current_match_where_the_reading_is_across_a_switch(cx: &mut T
     // given
     let (panel, _, cx) = window(cx);
     cast(&panel, Cast::Open(lines(&paragraphs(200), markdown())), cx);
-    let place = PanelState { scroll: ScrollPosition { top_line: 300., left: 0. }, caret: Some(CaretPosition { line: 300, column: 0 }), ..PanelState::default() };
+    let place = PanelState {
+        scroll: ScrollPosition { top_line: 300., left: 0. },
+        caret: Some(CaretPosition { line: 300, column: 0 }),
+        ..PanelState::default()
+    };
     cast(&panel, Cast::Restore(place), cx);
     let in_text = find(&panel, "para", cx);
 

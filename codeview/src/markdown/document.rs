@@ -65,10 +65,15 @@ pub enum BlockKind {
     Heading(u8),
     Paragraph,
     ListItem(Marker),
-    Code { language: Option<Language> },
+    Code {
+        language: Option<Language>,
+    },
     /// a horizontal rule; its one piece is empty
     Rule,
-    Table { columns: Vec<Align>, header_cells: usize },
+    Table {
+        columns: Vec<Align>,
+        header_cells: usize,
+    },
     /// raw HTML, shown as its source
     Html,
 }
@@ -226,10 +231,8 @@ impl Builder {
     /// An event over source `bytes`. A block ends where the last event in it ended; a container's start or end (a
     /// nested list's, an item's with the blank line after it) does not reach into the block it closes.
     fn read(&mut self, event: Event, bytes: Range<usize>) {
-        let container = matches!(
-            event,
-            Event::Start(_) | Event::End(TagEnd::Item | TagEnd::List(_) | TagEnd::BlockQuote(_) | TagEnd::FootnoteDefinition)
-        );
+        let container =
+            matches!(event, Event::Start(_) | Event::End(TagEnd::Item | TagEnd::List(_) | TagEnd::BlockQuote(_) | TagEnd::FootnoteDefinition));
         if !container {
             self.reached = bytes.end;
         }

@@ -53,7 +53,11 @@ impl Doc {
 
     /// The block and the piece in it holding `offset`: the last piece starting at or before it.
     pub fn piece_at(&self, offset: usize) -> (usize, usize) {
-        let pieces = self.blocks.iter().enumerate().flat_map(|(block, found)| found.pieces.iter().enumerate().map(move |(index, piece)| (block, index, piece)));
+        let pieces = self
+            .blocks
+            .iter()
+            .enumerate()
+            .flat_map(|(block, found)| found.pieces.iter().enumerate().map(move |(index, piece)| (block, index, piece)));
         pieces.take_while(|(_, _, piece)| piece.text.start <= offset).last().map_or((0, 0), |(block, index, _)| (block, index))
     }
 
@@ -65,7 +69,8 @@ impl Doc {
 
     /// The part of `block` inside `range`, with a list item's marker when the range starts at or before its text.
     fn block_text(&self, block: &Block, range: &Range<usize>) -> String {
-        let clipped = |piece: &Piece| &self.text[piece.text.start.max(range.start)..piece.text.end.min(range.end).max(piece.text.start.max(range.start))];
+        let clipped =
+            |piece: &Piece| &self.text[piece.text.start.max(range.start)..piece.text.end.min(range.end).max(piece.text.start.max(range.start))];
         match &block.kind {
             BlockKind::Table { columns, .. } => {
                 let rows = block.pieces.chunks(columns.len().max(1)).filter(|row| row.iter().any(|cell| overlaps(&cell.text, range)));

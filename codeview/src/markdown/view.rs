@@ -201,7 +201,13 @@ impl RenderedView {
 
     /// How far below its block's top the text at `offset` is.
     fn depth_in_block(&self, block: usize, offset: usize) -> Pixels {
-        let drawn = self.placed.borrow().iter().filter(|placed| placed.drawn.get() && placed.start <= offset).max_by_key(|placed| placed.start).and_then(|placed| placed.layout.position_for_index(offset - placed.start));
+        let drawn = self
+            .placed
+            .borrow()
+            .iter()
+            .filter(|placed| placed.drawn.get() && placed.start <= offset)
+            .max_by_key(|placed| placed.start)
+            .and_then(|placed| placed.layout.position_for_index(offset - placed.start));
         if let (Some(at), Some(shown)) = (drawn, self.list.bounds_for_item(block)) {
             return at.y - shown.top();
         }
@@ -374,8 +380,14 @@ impl RenderedView {
         };
         let blocks = self.doc.blocks.len().max(1) as f32;
         let starts = &self.found.1;
-        let block_of = |offset: usize| self.piece_blocks.get(starts.partition_point(|start| *start <= offset).saturating_sub(1)).copied().unwrap_or(0);
-        marks.ranges.iter().enumerate().map(|(index, range)| ScrollTick { at: block_of(range.start) as f32 / blocks, current: marks.current == Some(index) }).collect()
+        let block_of =
+            |offset: usize| self.piece_blocks.get(starts.partition_point(|start| *start <= offset).saturating_sub(1)).copied().unwrap_or(0);
+        marks
+            .ranges
+            .iter()
+            .enumerate()
+            .map(|(index, range)| ScrollTick { at: block_of(range.start) as f32 / blocks, current: marks.current == Some(index) })
+            .collect()
     }
 
     fn frame(&self, window: &Window, cx: &mut Context<Self>) -> Frame {
@@ -410,7 +422,10 @@ pub(super) fn hit_in(placed: &[Placed], point: Point<Pixels>) -> Option<usize> {
     if let Some(next) = below.min_by(|one, other| f32::from(one.layout.bounds().top()).total_cmp(&f32::from(other.layout.bounds().top()))) {
         return Some(next.start);
     }
-    placed.iter().max_by(|one, other| f32::from(one.layout.bounds().bottom()).total_cmp(&f32::from(other.layout.bounds().bottom()))).map(|last| last.start + last.layout.len())
+    placed
+        .iter()
+        .max_by(|one, other| f32::from(one.layout.bounds().bottom()).total_cmp(&f32::from(other.layout.bounds().bottom())))
+        .map(|last| last.start + last.layout.len())
 }
 
 /// How far `point` is from `placed` sideways; 0 over it.
@@ -490,7 +505,8 @@ impl Frame {
         let local = |bytes: Range<usize>| bytes.start - start..bytes.end - start;
         let overlay = |mark| if mark == Mark::Current { Overlay::Current } else { Overlay::Match };
         let found = self.marks.iter().flat_map(|marks| marks.on_bytes(piece.text.clone())).map(|(bytes, mark)| (local(bytes), overlay(mark)));
-        let selected = self.selection.clone().map(|range| range.start.max(start)..range.end.min(piece.text.end)).filter(|range| range.start < range.end);
+        let selected =
+            self.selection.clone().map(|range| range.start.max(start)..range.end.min(piece.text.end)).filter(|range| range.start < range.end);
         found.chain(selected.map(|range| (local(range), Overlay::Selected))).collect()
     }
 
@@ -499,7 +515,8 @@ impl Frame {
         let text = &self.doc.text[piece.text.clone()];
         let shown = text.strip_suffix('\n').unwrap_or(text);
         let start = piece.text.start;
-        let runs: Vec<Run> = piece.runs.iter().map(|run| Run { bytes: run.bytes.start - start..run.bytes.end - start, look: run.look.clone() }).collect();
+        let runs: Vec<Run> =
+            piece.runs.iter().map(|run| Run { bytes: run.bytes.start - start..run.bytes.end - start, look: run.look.clone() }).collect();
         let styled = StyledText::new(SharedString::from(shown.to_owned())).with_runs(text_runs(shown.len(), &runs, &self.overlays(piece), paint));
         let placed = Placed::new(start, styled.layout().clone());
         let drawn = placed.drawn.clone();
@@ -527,7 +544,8 @@ impl Frame {
             _ => Paint { color: rgb(self.style.muted).into(), ..self.paint.clone() },
         };
         let body = self.body(block, index, &paint, cx);
-        let quoted = (0..block.nesting.quotes).fold(body, |inner, _| div().border_l(px(3.)).border_color(rgb(self.style.border)).pl(px(12.)).child(inner).into_any_element());
+        let quoted = (0..block.nesting.quotes)
+            .fold(body, |inner, _| div().border_l(px(3.)).border_color(rgb(self.style.border)).pl(px(12.)).child(inner).into_any_element());
         let gap = match (&block.kind, block.part.goes_on()) {
             (_, true) => 0.,
             (BlockKind::ListItem(_), false) => ITEM_GAP,
@@ -625,7 +643,8 @@ impl Frame {
         let copied = self.copied == Some(first);
         let label = if copied { "Copied" } else { "Copy" };
         let view = self.view.clone();
-        let click = Host::click_target(format!("markdown-copy:{number}"), move |_, _, cx| drop(view.update(cx, |view, cx| view.copy_code(first, cx))), cx);
+        let click =
+            Host::click_target(format!("markdown-copy:{number}"), move |_, _, cx| drop(view.update(cx, |view, cx| view.copy_code(first, cx))), cx);
         let (text, hover) = (rgb(self.style.text), rgb(self.style.hover));
         let button = div()
             .id(("md-copy", index))
@@ -664,7 +683,8 @@ impl Frame {
             let header = row == 0 && !continues;
             let cells = cells.iter().zip(columns).enumerate().map(|(column, (cell, align))| {
                 let text = self.piece(cell, if header { &bold } else { paint });
-                let cell = div().flex_1().min_w_0().px(px(12.)).py(px(4.)).border_color(border).when(column > 0, |cell| cell.border_l_1()).child(text);
+                let cell =
+                    div().flex_1().min_w_0().px(px(12.)).py(px(4.)).border_color(border).when(column > 0, |cell| cell.border_l_1()).child(text);
                 match align {
                     Align::Left => cell,
                     Align::Center => cell.text_center(),
