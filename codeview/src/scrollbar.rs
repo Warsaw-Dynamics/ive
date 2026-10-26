@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use gpui::{
-    Bounds, DispatchPhase, Hitbox, HitboxBehavior, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
+    Bounds, DispatchPhase, Hitbox, HitboxBehavior, IntoElement, ListState, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Point, ScrollHandle, ScrollWheelEvent, Styled, UniformListScrollHandle, Window, canvas,
     fill, point, px, rgba,
 };
@@ -144,6 +144,29 @@ impl Scrollable for ListScroll {
             Axis::Vertical => point(offset.x, to),
             Axis::Horizontal => point(to, offset.y),
         });
+    }
+}
+
+/// A gpui list of items of any height, scrolled vertically by the list itself, in pixels.
+#[derive(Clone)]
+pub struct BlockScroll(ListState);
+
+impl BlockScroll {
+    pub fn new(list: ListState) -> Self {
+        Self(list)
+    }
+}
+
+impl Scrollable for BlockScroll {
+    fn extent(&self, _axis: Axis) -> Extent {
+        let viewport = f64::from(f32::from(self.0.viewport_bounds().size.height));
+        let max_scroll = f64::from(f32::from(self.0.max_offset_for_scrollbar().y));
+        let scrolled = -f64::from(f32::from(self.0.scroll_px_offset_for_scrollbar().y));
+        Extent { viewport, max_scroll, scrolled }
+    }
+
+    fn scroll_to(&self, _axis: Axis, scrolled: f64) {
+        self.0.set_offset_from_scrollbar(point(px(0.), px(-(scrolled.max(0.) as f32))));
     }
 }
 
