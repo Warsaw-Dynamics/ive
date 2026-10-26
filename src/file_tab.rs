@@ -436,6 +436,7 @@ impl EditedFile {
             Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)
+            | Event::MarkdownViewToggled(_)
             | Event::NeedParse(_)
             | Event::NeedTexts(_)
             | Event::NeedChangeDiff(_)

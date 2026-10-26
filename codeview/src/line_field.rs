@@ -201,7 +201,7 @@ impl LineField {
         }
         match Host::key_outcome(event, KeyScope::Editor, cx) {
             // the find commands are the panel's, around the field
-            KeyOutcome::Command(command) if command.is_find() => {}
+            KeyOutcome::Command(command) if command.runs_in_panel() => {}
             KeyOutcome::Command(command) => {
                 cx.stop_propagation();
                 self.run(command, cx);
@@ -238,7 +238,7 @@ impl LineField {
                 self.edited(cx);
             }
             Command::Undo | Command::Redo | Command::Indent | Command::Flush | Command::ToggleLayout => {}
-            Command::Find | Command::FindNext | Command::FindPrevious => {}
+            Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => {}
         }
         cx.notify();
     }

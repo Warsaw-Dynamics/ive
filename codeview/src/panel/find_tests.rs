@@ -476,3 +476,18 @@ fn should_tick_a_collapsed_file_s_matches_at_its_header(cx: &mut TestAppContext)
     let at: Vec<f32> = ticks.iter().map(|tick| tick.at).collect();
     assert_eq!(at, [0., 0.75]);
 }
+
+#[gpui::test]
+fn should_search_the_reloaded_text(cx: &mut TestAppContext) {
+    // given
+    let panel = editing("old one\n", cx);
+    command(&panel, Command::Find, cx);
+    type_query(&panel, "new", cx);
+    let policy = EditPolicy { save_delay: Duration::from_secs(10), limit: None };
+
+    // when
+    cast(&panel, Cast::Open(Content::Lines { source: Arc::new(TextSource::new("new two\n")), language: None, edit: Some(policy) }), cx);
+
+    // then
+    assert_eq!(view(&panel, cx).count, "1 of 1");
+}

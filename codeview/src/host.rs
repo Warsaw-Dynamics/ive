@@ -36,12 +36,20 @@ pub enum Command {
     Find,
     FindNext,
     FindPrevious,
+    /// a Markdown text between Text and Rendered
+    ToggleMarkdownView,
 }
 
 impl Command {
-    /// Whether the panel runs it: the find box's commands, which the views around the text let through.
+    /// Whether it is one of the find box's commands.
     pub fn is_find(self) -> bool {
         matches!(self, Self::Find | Self::FindNext | Self::FindPrevious)
+    }
+
+    /// Whether the panel runs it: the find box's commands and the Markdown switch, which the views around the text
+    /// let through.
+    pub fn runs_in_panel(self) -> bool {
+        self.is_find() || self == Self::ToggleMarkdownView
     }
 }
 

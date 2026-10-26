@@ -380,8 +380,15 @@ impl Panel {
         }
     }
 
-    /// Keys reaching the panel from its body or the field: the find commands, and Escape while the box is open.
+    /// Keys reaching the panel from its body or the field: the find commands, the Markdown switch, and Escape while
+    /// the box is open.
     pub(crate) fn on_find_key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if let KeyOutcome::Command(Command::ToggleMarkdownView) = Host::key_outcome(event, KeyScope::Editor, cx) {
+            cx.stop_propagation();
+            self.toggle_markdown_view(cx);
+            self.notice_state(cx);
+            return cx.notify();
+        }
         if let KeyOutcome::Command(command) = Host::key_outcome(event, KeyScope::Editor, cx)
             && command.is_find()
         {
@@ -529,7 +536,16 @@ impl Panel {
         matches!(self.body, Body::Empty) || matches!(self.pointer, super::Pointer::Ignored)
     }
 
+    /// The text the find box searches: Rendered's while it shows, else the body's.
     pub(super) fn body_find_text(&self, cx: &App) -> (u64, FindText) {
+        if let Some(rendered) = self.shown_rendered() {
+            return (self.rendered_revision(), rendered.read(cx).find_text());
+        }
+        self.text_find_text(cx)
+    }
+
+    /// The body's text, whether Rendered shows or not.
+    pub(super) fn text_find_text(&self, cx: &App) -> (u64, FindText) {
         match &self.body {
             Body::Edit(editor) => editor.read(cx).find_text(),
             Body::View(view) => (self.revision, view.read(cx).find_text()),
@@ -539,6 +555,9 @@ impl Panel {
     }
 
     fn body_find_revision(&self, cx: &App) -> u64 {
+        if self.shown_rendered().is_some() {
+            return self.rendered_revision();
+        }
         match &self.body {
             Body::Edit(editor) => editor.read(cx).revision(),
             Body::View(_) | Body::Empty => self.revision,
@@ -549,6 +568,9 @@ impl Panel {
     /// The selection on one line, or the word at the caret, and the byte it starts at; not when it holds invalid
     /// UTF-8, which the query (text) would hold as U+FFFD and never match.
     fn body_find_prefill(&self, cx: &App) -> Option<(String, usize)> {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.read(cx).find_prefill();
+        }
         let picked = match &self.body {
             Body::Edit(editor) => editor.read(cx).find_prefill(),
             Body::View(view) => view.read(cx).find_prefill(),
@@ -560,6 +582,9 @@ impl Panel {
 
     /// The selection's bytes, or the caret's, or the top line's start.
     fn body_find_anchor(&self, cx: &App) -> Range<usize> {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.read(cx).find_anchor();
+        }
         match &self.body {
             Body::Edit(editor) => editor.read(cx).find_anchor(),
             Body::View(view) => view.read(cx).find_anchor(),
@@ -569,6 +594,9 @@ impl Panel {
     }
 
     fn body_show_match(&self, bytes: Range<usize>, cx: &mut Context<Self>) {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.update(cx, |view, cx| view.show_match(bytes, cx));
+        }
         match &self.body {
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.show_match(bytes, cx)),
             Body::View(view) => view.update(cx, |view, cx| view.show_match(bytes, cx)),
@@ -578,6 +606,9 @@ impl Panel {
     }
 
     fn body_set_find_marks(&self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.update(cx, |view, cx| view.set_find_marks(marks, cx));
+        }
         match &self.body {
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.set_find_marks(marks, cx)),
             Body::View(view) => view.update(cx, |view, cx| view.set_find_marks(marks, cx)),
@@ -596,6 +627,9 @@ impl Panel {
 
     #[cfg(test)]
     fn body_selected_text(&self, cx: &App) -> Option<String> {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.read(cx).selected_text();
+        }
         match &self.body {
             Body::Edit(editor) => editor.read(cx).selected_text(),
             Body::View(view) => view.read(cx).selected_text(),
@@ -606,6 +640,9 @@ impl Panel {
 
     #[cfg(test)]
     fn body_has_find_marks(&self, cx: &App) -> bool {
+        if let Some(rendered) = self.shown_rendered() {
+            return rendered.read(cx).has_find_marks();
+        }
         match &self.body {
             Body::Edit(editor) => editor.read(cx).has_find_marks(),
             Body::View(view) => view.read(cx).has_find_marks(),

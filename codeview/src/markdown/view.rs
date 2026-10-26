@@ -177,7 +177,12 @@ impl RenderedView {
     }
 
     #[cfg(test)]
+    pub(crate) fn has_find_marks(&self) -> bool {
+        self.marks.is_some()
+    }
+
     /// The target of the link at `offset` of the document's text.
+    #[cfg(test)]
     pub(crate) fn link_at(&self, offset: usize) -> Option<SharedString> {
         link_at(&self.doc, offset)
     }

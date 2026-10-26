@@ -220,6 +220,19 @@ impl TextEditor {
         cx.notify();
     }
 
+    /// Scrolls line `line` (from 0) to the top; the caret stays when it is among the lines then shown, else it goes to
+    /// the start of that line, nothing selected. Not an edit: the undo history does not hear of it.
+    pub fn land_at(&mut self, line: usize, cx: &mut Context<Self>) {
+        let scroll = ScrollPosition { top_line: line as f64, ..self.scroll_position() };
+        let shown = line..line + self.scroll.viewport_lines().ceil().max(1.) as usize;
+        let caret = self.caret_position();
+        if shown.contains(&caret.line) {
+            self.scroll.set_position(scroll);
+            return cx.notify();
+        }
+        self.restore_view(CaretPosition { line, column: 0 }, scroll, cx);
+    }
+
     /// Puts the caret at the start of line `line` (from 1, clamped) and scrolls it into view.
     pub fn reveal_line(&mut self, line: usize, cx: &mut Context<Self>) {
         self.model.set_caret(Position::new(line.saturating_sub(1), 0), Selecting::Move);
@@ -239,6 +252,8 @@ impl TextEditor {
     pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {
         let caret = self.model.caret();
         self.model = EditorModel::new(table, setup.limit);
+        // the new text counts its revisions from the start again: a copy kept for find is of the old one
+        *self.find_snapshot.borrow_mut() = None;
         self.model.set_caret(caret, Selecting::Move);
         self.colours = Colours::new(setup.language);
         self.markers.reset();
@@ -551,8 +566,8 @@ impl TextEditor {
                 },
                 cx,
             ),
-            // saving and finding are the panel's, and a text has no layout to toggle
-            Command::Flush | Command::ToggleLayout | Command::Find | Command::FindNext | Command::FindPrevious => Ok(()),
+            // saving, finding and the Markdown view are the panel's, and a text has no layout to toggle
+            Command::Flush | Command::ToggleLayout | Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => Ok(()),
         };
     }
 
@@ -594,7 +609,7 @@ impl TextEditor {
         }
         match Host::key_outcome(event, KeyScope::Editor, cx) {
             // the panel around the editor runs the find box
-            KeyOutcome::Command(command) if command.is_find() => {}
+            KeyOutcome::Command(command) if command.runs_in_panel() => {}
             KeyOutcome::Command(command) => {
                 cx.stop_propagation();
                 self.run(command, cx);

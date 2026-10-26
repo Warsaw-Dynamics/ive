@@ -21,6 +21,8 @@ use crate::text_editor::SizeLimit;
 /// What the host tells a panel; the panel answers with events, if at all.
 pub enum Cast {
     Open(Content),
+    /// a Markdown text shows `view`; before any content, the view a Markdown text opens in unless a restore says
+    SetMarkdownView(MarkdownView),
     /// held until the content is known, then clamped to it and applied
     Restore(PanelState),
     /// a diff reloaded: keeps the scroll and the collapsed files; ignored while the new side is edited, whose rows
@@ -164,6 +166,8 @@ pub enum Event {
     /// the scroll, caret, layout or collapsed files changed: [`super::Panel::state`] has the new state
     StateChanged,
     LayoutToggled(DiffLayout),
+    /// the user switched a Markdown text to `view` (the key, the pill), not a restore or [`Cast::SetMarkdownView`]
+    MarkdownViewToggled(MarkdownView),
     /// the host runs the job on a background thread and answers [`Cast::Parsed`], also when the text changed
     /// meanwhile; only a set [`ParseJob::cancel`] makes the answer unwanted
     NeedParse(ParseJob),
@@ -326,3 +330,21 @@ impl ParseJob {
         result
     }
 }
+
+/// How a Markdown text shows: its source, or the document formatted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MarkdownView {
+    #[default]
+    Text,
+    Rendered,
+}
+
+/// Whether a panel offers Rendered: not at all (not Markdown, a diff, a preview), not for a text this long, or yes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Offer {
+    No,
+    TooLarge,
+    Yes,
+}
+

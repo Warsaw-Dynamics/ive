@@ -11,6 +11,9 @@ mod edit_diff_tests;
 mod find;
 #[cfg(test)]
 mod find_tests;
+mod markdown;
+#[cfg(test)]
+mod markdown_tests;
 mod protocol;
 mod saving;
 mod state;
@@ -25,8 +28,8 @@ use gpui::{
 };
 
 pub use protocol::{
-    Cast, CommitLeft, Content, DiffInput, DiffLayout, Edit, EditBase, EditPolicy, Editable, Event, LineSource, ParseJob, ParseTarget, Resolve,
-    SaveFailure, SaveKind, SaveRequest, TextPurpose, TextsRequest,
+    Cast, CommitLeft, Content, DiffInput, DiffLayout, Edit, EditBase, EditPolicy, Editable, Event, LineSource, MarkdownView, Offer, ParseJob,
+    ParseTarget, Resolve, SaveFailure, SaveKind, SaveRequest, TextPurpose, TextsRequest,
 };
 pub(crate) use protocol::{Failed, Previous};
 pub use state::PanelState;
@@ -36,12 +39,14 @@ use crate::code_view::CodeView;
 use crate::diff::texts::Parsed;
 use crate::diff::{DiffEvent, DiffView, FileDiff, Shape};
 use crate::document::Source;
+use crate::position::ScrollPosition;
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
 use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
 use commit_report::CommitReport;
 use find::Finder;
+use markdown::Markdown;
 #[cfg(test)]
 use find::FindView;
 use saving::{Answer, BarActions, Blur, Discarded, Next, Saving, Then};
@@ -70,6 +75,8 @@ pub struct Panel {
     /// the body's own events, passed on as the panel's
     _body_events: Vec<Subscription>,
     finder: Finder,
+    /// a Markdown text's view, and its Rendered document
+    markdown: Markdown,
 }
 
 #[derive(Clone)]
@@ -110,6 +117,7 @@ impl Panel {
             change_pause: Task::ready(()),
             _body_events: Vec::new(),
             finder: Finder::new(cx),
+            markdown: Markdown::new(),
         }
     }
 
@@ -121,6 +129,8 @@ impl Panel {
     pub fn handle(&mut self, cast: Cast, cx: &mut Context<Self>) {
         match cast {
             Cast::Open(content) => self.open(content, cx),
+            Cast::SetMarkdownView(view) => self.set_markdown_view(view, cx),
+            Cast::Command(Command::ToggleMarkdownView) => self.toggle_markdown_view(cx),
             Cast::Restore(state) => self.restore(state, cx),
             Cast::SetFiles(files) => self.set_files(files, cx),
             Cast::Parsed { target, revision, syntax } => self.parsed(target, revision, syntax, cx),
@@ -247,6 +257,7 @@ impl Panel {
     /// switching between View and Edit mode, which keeps the scroll (and a caret staying in Edit mode), clamped to
     /// the new mode's line count.
     fn open(&mut self, content: Content, cx: &mut Context<Self>) {
+        self.offer_markdown(&content);
         match (content, self.body.clone()) {
             (Content::Lines { source, language, edit: None }, Body::View(view)) => {
                 view.update(cx, |view, cx| view.replace_source(source, language, cx));
@@ -272,6 +283,7 @@ impl Panel {
         }
         self.apply_pending(cx);
         self.refind(cx);
+        self.markdown_opened(cx);
     }
 
     fn build(&mut self, content: Content, cx: &mut Context<Self>) {
@@ -545,8 +557,12 @@ impl Panel {
         }
     }
 
-    /// Types `text` at the caret; a refusal is reported as [`Event::Refused`], and outside Edit mode nothing happens.
+    /// Types `text` at the caret; a refusal is reported as [`Event::Refused`], and outside Edit mode (or while Rendered
+    /// shows) nothing happens.
     fn type_text(&self, text: &str, cx: &mut Context<Self>) {
+        if self.shown_rendered().is_some() {
+            return;
+        }
         match &self.body {
             // a refused edit was already reported through TextEditorEvent::Refused
             Body::Edit(editor) => drop(editor.update(cx, |editor, cx| editor.type_text(text, cx))),
@@ -655,7 +671,14 @@ impl Panel {
         }
     }
 
-    fn apply(&self, state: &PanelState, cx: &mut Context<Self>) {
+    fn apply(&mut self, state: &PanelState, cx: &mut Context<Self>) {
+        self.apply_to_body(state, cx);
+        if let Some(view) = state.markdown {
+            self.set_markdown_view(view, cx);
+        }
+    }
+
+    fn apply_to_body(&self, state: &PanelState, cx: &mut Context<Self>) {
         match &self.body {
             Body::View(view) => view.update(cx, |view, cx| view.restore_scroll(state.scroll, cx)),
             Body::Edit(editor) => editor.update(cx, |editor, cx| editor.restore_view(state.caret.unwrap_or_default(), state.scroll, cx)),
@@ -693,6 +716,13 @@ impl Panel {
         if let Pending::Restore(state) = &self.pending {
             return state.clone();
         }
+        let body = self.body_state(cx);
+        // while Rendered shows, the place saved is the source line at its top
+        let scroll = self.shown_rendered().map_or(body.scroll, |rendered| ScrollPosition { top_line: rendered.read(cx).top_line() as f64, left: 0. });
+        PanelState { scroll, markdown: self.markdown_view(), ..body }
+    }
+
+    fn body_state(&self, cx: &App) -> PanelState {
         match &self.body {
             Body::Empty => PanelState::default(),
             Body::View(view) => PanelState { scroll: view.read(cx).scroll_position(), ..PanelState::default() },
@@ -717,6 +747,11 @@ impl Panel {
             let watch = cx.on_blur(&focus, window, |panel, _window, cx| panel.request_save(SaveKind::Checked, cx));
             self.blur = Blur::Watched { _subscription: watch };
         }
+        self.with_bars(editor.into_any_element(), cx)
+    }
+
+    /// `body` under the bars of a failed save and a troubled commit, when there are any.
+    fn with_bars(&mut self, body: AnyElement, cx: &mut Context<Self>) -> AnyElement {
         let this = cx.weak_entity();
         let other = this.clone();
         let last = this.clone();
@@ -729,9 +764,9 @@ impl Panel {
         let dismiss = Box::new(move |_: &mut Window, cx: &mut App| drop(dismissing.update(cx, |panel, cx| panel.dismiss_commit_report(cx))));
         let bars: Vec<_> = [commit_report::bar(&self.commit_report, dismiss, cx), saving::bar(&self.saving, actions, cx)].into_iter().flatten().collect();
         if bars.is_empty() {
-            return editor.into_any_element();
+            return body;
         }
-        div().flex().flex_col().flex_1().min_h_0().children(bars).child(editor).into_any_element()
+        div().flex().flex_col().flex_1().min_h_0().children(bars).child(body).into_any_element()
     }
 
     fn dismiss_commit_report(&mut self, cx: &mut Context<Self>) {
@@ -742,6 +777,16 @@ impl Panel {
 
 impl Focusable for Panel {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
+        match self.shown_rendered() {
+            Some(rendered) => rendered.focus_handle(cx),
+            None => self.body_focus_handle(cx),
+        }
+    }
+}
+
+impl Panel {
+    /// The body's focus, Rendered shown or not.
+    fn body_focus_handle(&self, cx: &App) -> FocusHandle {
         match &self.body {
             Body::View(view) => view.focus_handle(cx),
             Body::Edit(editor) => editor.focus_handle(cx),
@@ -756,13 +801,11 @@ impl Render for Panel {
         // the body scrolls and moves its caret without telling the panel; each frame catches up
         self.notice_state(cx);
         self.settle_find_focus(window, cx);
+        self.settle_markdown_focus(window, cx);
         self.register_find_open(cx);
-        let body: AnyElement = match self.body.clone() {
-            Body::Empty => div().into_any_element(),
-            Body::View(view) => view.into_any_element(),
-            Body::Edit(editor) => self.render_edit(editor, window, cx),
-            Body::Diff(diff) if diff.read(cx).is_editable() => self.render_edit(diff, window, cx),
-            Body::Diff(diff) => diff.into_any_element(),
+        let body: AnyElement = match (self.shown_rendered().cloned(), self.body.clone()) {
+            (Some(rendered), _) => self.with_bars(rendered.into_any_element(), cx),
+            (None, body) => self.render_body(body, window, cx),
         };
         div()
             .relative()
@@ -774,6 +817,18 @@ impl Render for Panel {
             .on_key_down(cx.listener(Self::on_find_key))
             .child(body)
             .children(self.find_bar(cx))
+    }
+}
+
+impl Panel {
+    fn render_body(&mut self, body: Body, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        match body {
+            Body::Empty => div().into_any_element(),
+            Body::View(view) => view.into_any_element(),
+            Body::Edit(editor) => self.render_edit(editor, window, cx),
+            Body::Diff(diff) if diff.read(cx).is_editable() => self.render_edit(diff, window, cx),
+            Body::Diff(diff) => diff.into_any_element(),
+        }
     }
 }
 

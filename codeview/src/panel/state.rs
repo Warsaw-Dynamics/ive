@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::protocol::DiffLayout;
+use super::protocol::{DiffLayout, MarkdownView};
 use crate::position::{CaretPosition, ScrollPosition};
 
 /// Where a panel was scrolled and what else the user set in it; the host saves it with its tabs.
@@ -18,6 +18,9 @@ pub struct PanelState {
     /// a commit tab's collapsed files, by path
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub collapsed: Vec<String>,
+    /// a Markdown text's view; none for any other text, or a tab saved before Markdown had views
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub markdown: Option<MarkdownView>,
 }
 
 #[cfg(test)]

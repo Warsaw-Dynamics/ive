@@ -430,7 +430,7 @@ impl DiffView {
             ),
             Command::Copy(_) | Command::SelectAll | Command::ToggleLayout | Command::Flush => {}
             // the panel's
-            Command::Find | Command::FindNext | Command::FindPrevious => {}
+            Command::Find | Command::FindNext | Command::FindPrevious | Command::ToggleMarkdownView => {}
         }
     }
 
@@ -492,7 +492,7 @@ impl DiffView {
     pub(crate) fn on_editing_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
         let command = match Host::key_outcome(event, KeyScope::Editor, cx) {
             // the panel around the diff runs the find box
-            KeyOutcome::Command(command) if command.is_find() => return,
+            KeyOutcome::Command(command) if command.runs_in_panel() => return,
             KeyOutcome::Command(command) => command,
             KeyOutcome::Handled => return cx.stop_propagation(),
             // a window action is the workspace's to run
