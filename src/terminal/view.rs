@@ -27,7 +27,8 @@ use super::colors::{ColorResolver, unpack};
 use super::exit::{ExitFacts, Lost, Start, Started, run_exit, shell_exit};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
-use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
+use super::blocks::block_parts;
+use super::layout::{Block, CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::attention::CallReport;
 use super::progress::Progress;
@@ -839,6 +840,9 @@ fn paint_frame(frame: &Frame, origin: Point<Pixels>, metrics: CellMetrics, curso
         for background in &line.fills {
             window.paint_quad(fill(metrics.cell_bounds(origin, line_index, background.column, background.width), rgb(background.color)));
         }
+        for block in &line.blocks {
+            paint_block(block, metrics.cell_bounds(origin, line_index, block.column, 1), window);
+        }
         for segment in &line.segments {
             paint_segment(segment, metrics.cell_bounds(origin, line_index, segment.column, segment.cells).origin, metrics, window, cx);
         }
@@ -846,6 +850,14 @@ fn paint_frame(frame: &Frame, origin: Point<Pixels>, metrics: CellMetrics, curso
     if let Some(cursor) = frame.cursor {
         let cell = metrics.cell_bounds(origin, cursor.line, cursor.column, cursor.cells);
         paint_cursor(cursor, cell, cursor_color, metrics.sizes.cursor_thickness.px(), window);
+    }
+}
+
+fn paint_block(block: &Block, cell: Bounds<Pixels>, window: &mut Window) {
+    for [left, top, right, bottom] in block_parts(block.character).unwrap_or_default() {
+        let top_left = point(cell.origin.x + cell.size.width * *left, cell.origin.y + cell.size.height * *top);
+        let size = size(cell.size.width * (right - left), cell.size.height * (bottom - top));
+        window.paint_quad(fill(Bounds::new(top_left, size), rgb(block.color)));
     }
 }
 

@@ -12,23 +12,27 @@ const UPPER_HALF: Part = [0., 0., 1., 0.5];
 const LEFT_HALF: Part = [0., 0., 0.5, 1.];
 const RIGHT_HALF: Part = [0.5, 0., 1., 1.];
 
-/// Lower n/8 of a cell, n = 1..=8 at index n - 1.
-static LOWER_EIGHTHS: [Part; 8] = eighths(|n| [0., 1. - n, 1., 1.]);
-/// Left n/8 of a cell, n = 7..=1 at index 7 - n (U+2589 is seven eighths).
-static LEFT_EIGHTHS: [Part; 7] = {
-    let all = eighths(|n| [0., 0., 1. - n, 1.]);
-    [all[0], all[1], all[2], all[3], all[4], all[5], all[6]]
-};
-
-const fn eighths(part: fn(f32) -> Part) -> [Part; 8] {
-    let mut parts = [[0.; 4]; 8];
-    let mut n = 0;
-    while n < 8 {
-        parts[n] = part((n + 1) as f32 / 8.);
-        n += 1;
-    }
-    parts
-}
+/// U+2581..=U+2588: the lower 1/8 to 8/8 of a cell.
+static LOWER_EIGHTHS: [Part; 8] = [
+    [0., 0.875, 1., 1.],
+    [0., 0.75, 1., 1.],
+    [0., 0.625, 1., 1.],
+    [0., 0.5, 1., 1.],
+    [0., 0.375, 1., 1.],
+    [0., 0.25, 1., 1.],
+    [0., 0.125, 1., 1.],
+    [0., 0., 1., 1.],
+];
+/// U+2589..=U+258F: the left 7/8 to 1/8 of a cell.
+static LEFT_EIGHTHS: [Part; 7] = [
+    [0., 0., 0.875, 1.],
+    [0., 0., 0.75, 1.],
+    [0., 0., 0.625, 1.],
+    [0., 0., 0.5, 1.],
+    [0., 0., 0.375, 1.],
+    [0., 0., 0.25, 1.],
+    [0., 0., 0.125, 1.],
+];
 
 /// The parts of its cell `character` covers; None for characters drawn from the font, shades among them.
 pub fn block_parts(character: char) -> Option<&'static [Part]> {

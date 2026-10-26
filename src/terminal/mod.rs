@@ -1,4 +1,5 @@
 mod attention;
+mod blocks;
 mod colors;
 mod directory;
 pub mod exit;
