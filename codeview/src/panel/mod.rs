@@ -257,7 +257,7 @@ impl Panel {
     /// switching between View and Edit mode, which keeps the scroll (and a caret staying in Edit mode), clamped to
     /// the new mode's line count.
     fn open(&mut self, content: Content, cx: &mut Context<Self>) {
-        self.offer_markdown(&content);
+        self.offer_markdown(&content, cx);
         match (content, self.body.clone()) {
             (Content::Lines { source, language, edit: None }, Body::View(view)) => {
                 view.update(cx, |view, cx| view.replace_source(source, language, cx));
@@ -361,6 +361,7 @@ impl Panel {
         cx.emit(Event::Edited { revision: self.revision });
         self.restart_pause(cx);
         self.refind(cx);
+        self.markdown_edited(cx);
     }
 
     /// A diff file's sides, each the text of the side its target names, answering ask `generation`; a missing side

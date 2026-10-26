@@ -30,6 +30,10 @@ pub(crate) struct Markdown {
     reveal: Option<usize>,
     /// the focus a switch left, handed to the view shown at the next frame when it still has the keyboard
     refocus: Option<FocusHandle>,
+    /// new content is being opened: a switch it brings (a restore) is built once the content is in place
+    opening: bool,
+    #[cfg(test)]
+    builds: usize,
 }
 
 impl Markdown {
@@ -43,6 +47,9 @@ impl Markdown {
             cancel: Cancel::default(),
             reveal: None,
             refocus: None,
+            opening: false,
+            #[cfg(test)]
+            builds: 0,
         }
     }
 
@@ -82,6 +89,12 @@ impl Panel {
         self.shown_rendered().cloned()
     }
 
+    /// How many Rendered documents were asked for.
+    #[cfg(test)]
+    pub(crate) fn markdown_builds(&self) -> usize {
+        self.markdown.builds
+    }
+
     /// The find box's revision of Rendered's text.
     pub(super) fn rendered_revision(&self) -> u64 {
         RENDERED_REVISIONS | self.markdown.revision
@@ -89,7 +102,7 @@ impl Panel {
 
     /// New content: whether it offers Rendered. Lines in Markdown do, in a panel that takes the mouse, up to the size
     /// the editor colours.
-    pub(super) fn offer_markdown(&mut self, content: &Content) {
+    pub(super) fn offer_markdown(&mut self, content: &Content, cx: &App) {
         let offer = match content {
             Content::Lines { source, language, .. } if self.selects() && is_markdown(*language) => match source.byte_len() > MAX_HIGHLIGHT_BYTES as u64 {
                 true => Offer::TooLarge,
@@ -98,13 +111,19 @@ impl Panel {
             _ => Offer::No,
         };
         self.markdown.offer = offer;
-        if offer != Offer::Yes {
-            self.markdown.drop_rendered();
+        self.markdown.opening = true;
+        if offer == Offer::Yes {
+            return;
+        }
+        // Text takes the keyboard back when it was Rendered's
+        if let Some(dropped) = self.markdown.drop_rendered() {
+            self.markdown.refocus = Some(dropped.focus_handle(cx));
         }
     }
 
     /// The content is in place: Rendered, when picked, is built of it.
     pub(super) fn markdown_opened(&mut self, cx: &mut Context<Self>) {
+        self.markdown.opening = false;
         if !self.markdown.wants_rendered() {
             return;
         }
@@ -144,7 +163,9 @@ impl Panel {
         match view {
             MarkdownView::Rendered => {
                 self.markdown.reveal = Some(self.body_top_line(cx));
-                self.build_rendered(cx);
+                if !self.markdown.opening {
+                    self.build_rendered(cx);
+                }
             }
             MarkdownView::Text => self.back_to_text(cx),
         }
@@ -175,12 +196,24 @@ impl Panel {
         }
     }
 
+    /// The body's text changed while Rendered is picked but not shown yet: the document being built is of the old
+    /// text, so it is built again.
+    pub(super) fn markdown_edited(&mut self, cx: &mut Context<Self>) {
+        if self.markdown.wants_rendered() && self.markdown.rendered.is_none() {
+            self.build_rendered(cx);
+        }
+    }
+
     /// Builds Rendered's document of the body's text, unsaved edits included, on the background executor.
     fn build_rendered(&mut self, cx: &mut Context<Self>) {
         self.markdown.cancel.cancel();
         let cancel = Cancel::default();
         self.markdown.cancel = cancel.clone();
         let text = whole_text(self.text_find_text(cx).1);
+        #[cfg(test)]
+        {
+            self.markdown.builds += 1;
+        }
         self.markdown.building = cx.spawn(async move |panel, cx| {
             let doc = cx.background_executor().spawn(async move { build(&text, &cancel) }).await;
             panel.update(cx, |panel, cx| panel.rendered_built(doc, cx)).ok();

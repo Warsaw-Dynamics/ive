@@ -404,3 +404,51 @@ fn should_keep_the_current_match_where_the_reading_is_across_a_switch(cx: &mut T
     let in_rendered = panel.read_with(cx, |panel, cx| panel.find_view(cx).count);
     assert_eq!((in_text.as_str(), in_rendered.as_str()), ("151 of 200", "151 of 200"));
 }
+
+#[gpui::test]
+fn should_build_a_restored_rendered_tab_once(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+    cast(&panel, Cast::Restore(PanelState { markdown: Some(MarkdownView::Rendered), ..PanelState::default() }), cx);
+
+    // when
+    cast(&panel, Cast::Open(lines("# A\n", markdown())), cx);
+
+    // then
+    assert_eq!(panel.read_with(cx, |panel, _| panel.markdown_builds()), 1);
+    assert!(panel.read_with(cx, |panel, _| panel.rendered_view()).is_some());
+}
+
+#[gpui::test]
+fn should_render_keys_typed_while_the_first_document_builds(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+    cast(&panel, Cast::Open(lines("old\n", markdown())), cx);
+
+    // when
+    panel.update(cx, |panel, cx| {
+        panel.handle(Cast::Command(Command::ToggleMarkdownView), cx);
+        panel.handle(Cast::Type("new ".to_owned()), cx);
+    });
+    draw(&panel, cx);
+
+    // then
+    assert_eq!(rendered(&panel, cx).read_with(cx, |view, _| view.doc().text.clone()), "new old");
+}
+
+#[gpui::test]
+fn should_give_the_keyboard_back_to_the_text_when_rendered_goes(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+    cast(&panel, Cast::Open(lines("# A\n", markdown())), cx);
+    toggle(&panel, cx);
+    cx.update(|window, cx| window.focus(&panel.focus_handle(cx), cx));
+    draw(&panel, cx);
+
+    // when
+    cast(&panel, Cast::Open(lines(&"a".repeat(MAX_HIGHLIGHT_BYTES + 1), markdown())), cx);
+
+    // then
+    let text = editor(&panel, cx);
+    assert!(cx.update(|window, cx| text.focus_handle(cx).is_focused(window)), "the editor has the keyboard");
+}
