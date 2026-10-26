@@ -2,12 +2,14 @@
 //! the body while it is picked. The body stays as it is underneath (its undo history, caret and unsaved edits); a switch
 //! keeps the part of the document at the top. See the spec "Markdown: Text | Rendered".
 
+use std::rc::Rc;
 use std::sync::Arc;
 
-use gpui::{App, AppContext, Context, Entity, FocusHandle, Focusable, Window};
+use gpui::{AnyElement, App, AppContext, Context, Entity, FocusHandle, Focusable, Window};
 
 use super::{Body, Content, Event, MarkdownView, Offer, Panel, Pointer};
 use crate::find::FindText;
+use crate::markdown::pill::{SwitchListener, pill};
 use crate::markdown::{Doc, RenderedView, build};
 use crate::position::ScrollPosition;
 use crate::syntax::{Cancel, Language, MAX_HIGHLIGHT_BYTES};
@@ -211,6 +213,24 @@ impl Panel {
         self.markdown.refocus = Some(self.body_focus_handle(cx));
         self.markdown.rendered = Some(rendered.clone());
         rendered
+    }
+
+    /// The Text | Rendered pill, on a Markdown text while the find box is closed.
+    pub(super) fn markdown_pill(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let shown = self.markdown_view().filter(|_| !self.find_is_open())?;
+        let panel = cx.weak_entity();
+        let switch: SwitchListener = Rc::new(move |view, _window, cx| drop(panel.update(cx, |panel, cx| panel.pick_markdown_view(view, cx))));
+        Some(pill(shown, self.markdown.offer, switch, cx))
+    }
+
+    /// A click on the pill: the view clicked, as the key would switch to it.
+    fn pick_markdown_view(&mut self, view: MarkdownView, cx: &mut Context<Self>) {
+        if self.markdown_view() == Some(view) {
+            return;
+        }
+        self.toggle_markdown_view(cx);
+        self.notice_state(cx);
+        cx.notify();
     }
 
     /// After a switch, the view shown takes the keyboard when the one it replaced had it.

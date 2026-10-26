@@ -816,6 +816,7 @@ impl Render for Panel {
             .min_w_0()
             .on_key_down(cx.listener(Self::on_find_key))
             .child(body)
+            .children(self.markdown_pill(cx))
             .children(self.find_bar(cx))
     }
 }

@@ -9,9 +9,9 @@ use crate::line_field::LineField;
 use crate::style::ViewStyle;
 
 const BUTTON_SIZE: f32 = 24.;
-const BORDER: f32 = 1.;
+pub(crate) const BORDER: f32 = 1.;
 /// Between the box and the panel's top edge, and its scrollbar.
-const MARGIN: f32 = 6.;
+pub(crate) const MARGIN: f32 = 6.;
 const WIDTH: f32 = 440.;
 const COUNT_WIDTH: f32 = 96.;
 

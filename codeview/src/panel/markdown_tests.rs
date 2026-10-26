@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui::{AppContext, Entity, ParentElement, Styled, TestAppContext, VisualTestContext, div, point, px, size};
+use gpui::{AppContext, ClickEvent, Entity, IntoElement, ParentElement, Styled, TestAppContext, VisualTestContext, div, point, px, size};
 
 use super::*;
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
@@ -17,22 +17,38 @@ use crate::position::{CaretPosition, ScrollPosition};
 use crate::style::{Appearance, ViewStyle};
 use crate::syntax::{Language, MAX_HIGHLIGHT_BYTES};
 
-/// The events a panel sent that these tests look at.
+/// The events a panel sent that these tests look at, and the click targets it drew.
 #[derive(Default)]
 struct Heard {
     toggled: Vec<MarkdownView>,
     states: usize,
+    targets: std::collections::HashMap<String, crate::host::ClickListener>,
+}
+
+/// A host that keeps the click targets drawn.
+fn host(heard: &Rc<RefCell<Heard>>) -> crate::host::Host {
+    let targets = heard.clone();
+    crate::host::Host {
+        keys: Rc::new(|_, _, _| crate::host::KeyOutcome::Unbound),
+        clipboard: Rc::new(|_, _, _| {}),
+        paste: Rc::new(|_, _| None),
+        diff_mark: Rc::new(|_, _| div().into_any_element()),
+        click_target: Rc::new(move |name, listener, _| drop(targets.borrow_mut().targets.insert(name, listener))),
+        tooltip: Rc::new(|_, _, cx| cx.new(|_| gpui::EmptyView).into()),
+    }
 }
 
 /// A window 800 by 400 px with an empty panel in it, and what the panel says.
 fn window(cx: &mut TestAppContext) -> (Entity<Panel>, Rc<RefCell<Heard>>, &mut VisualTestContext) {
+    let heard: Rc<RefCell<Heard>> = Rc::default();
+    let host = host(&heard);
     cx.update(|cx| {
         ViewStyle::set_for_test(cx);
         cx.set_global(ResolvedScheme::resolve(Scheme::builtin(Appearance::Dark), &Overrides::new()));
+        cx.set_global(host);
     });
     let cx = cx.add_empty_window();
     let panel = cx.new(Panel::new);
-    let heard: Rc<RefCell<Heard>> = Rc::default();
     let seen = heard.clone();
     cx.update(|_window, cx| {
         cx.subscribe(&panel, move |_, event: &Event, _| match event {
@@ -297,4 +313,77 @@ fn should_refuse_rendered_over_the_limit(cx: &mut TestAppContext) {
     assert_eq!(panel.read_with(cx, |panel, _| panel.markdown_offered()), Offer::TooLarge);
     assert_eq!(shown(&panel, cx), Some(MarkdownView::Text));
     assert!(heard.borrow().toggled.is_empty());
+}
+
+/// Clicks target `name` as IVE's MCP `click` does, after drawing the panel again.
+fn click(panel: &Entity<Panel>, name: &str, heard: &RefCell<Heard>, cx: &mut VisualTestContext) {
+    heard.borrow_mut().targets.clear();
+    draw(panel, cx);
+    let listener = heard.borrow().targets.get(name).cloned().unwrap_or_else(|| panic!("no click target {name}"));
+    cx.update(|window, cx| listener(&ClickEvent::default(), window, cx));
+    draw(panel, cx);
+}
+
+fn has_pill(cx: &mut VisualTestContext) -> bool {
+    cx.debug_bounds("markdown-pill").is_some()
+}
+
+#[gpui::test]
+fn should_show_the_pill_until_find_opens(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+    cast(&panel, Cast::Open(lines("# A\n", markdown())), cx);
+    let before = has_pill(cx);
+
+    // when
+    cast(&panel, Cast::Command(Command::Find), cx);
+    let finding = has_pill(cx);
+    panel.update(cx, |panel, cx| panel.close_find(cx));
+    draw(&panel, cx);
+
+    // then
+    assert_eq!((before, finding, has_pill(cx)), (true, false, true));
+}
+
+#[gpui::test]
+fn should_draw_no_pill_for_other_texts(cx: &mut TestAppContext) {
+    // given
+    let (panel, _, cx) = window(cx);
+
+    // when
+    cast(&panel, Cast::Open(lines("fn a() {}\n", Language::for_alias("rust"))), cx);
+
+    // then
+    assert!(!has_pill(cx));
+}
+
+#[gpui::test]
+fn should_switch_by_click_target(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+    cast(&panel, Cast::Open(lines("# A\n", markdown())), cx);
+
+    // when
+    click(&panel, "markdown-view:rendered", &heard, cx);
+    let rendered = shown(&panel, cx);
+    click(&panel, "markdown-view:text", &heard, cx);
+    click(&panel, "markdown-view:text", &heard, cx);
+
+    // then
+    assert_eq!((rendered, shown(&panel, cx)), (Some(MarkdownView::Rendered), Some(MarkdownView::Text)));
+    assert_eq!(heard.borrow().toggled, vec![MarkdownView::Rendered, MarkdownView::Text]);
+}
+
+#[gpui::test]
+fn should_grey_rendered_over_the_limit(cx: &mut TestAppContext) {
+    // given
+    let (panel, heard, cx) = window(cx);
+
+    // when
+    cast(&panel, Cast::Open(lines(&"a".repeat(MAX_HIGHLIGHT_BYTES + 1), markdown())), cx);
+
+    // then
+    assert!(has_pill(cx));
+    assert!(heard.borrow().targets.contains_key("markdown-view:text"));
+    assert!(!heard.borrow().targets.contains_key("markdown-view:rendered"));
 }

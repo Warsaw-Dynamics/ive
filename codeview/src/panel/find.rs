@@ -431,6 +431,10 @@ impl Panel {
         self.type_text(text, cx);
     }
 
+    pub(crate) fn find_is_open(&self) -> bool {
+        self.finder.shown == Shown::Open
+    }
+
     /// The box over the body, while open.
     pub(crate) fn find_bar(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         if self.finder.shown == Shown::Closed {

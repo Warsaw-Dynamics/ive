@@ -7,6 +7,7 @@ mod document;
 #[cfg(test)]
 mod document_tests;
 mod paint;
+pub(crate) mod pill;
 mod view;
 #[cfg(test)]
 mod view_tests;
