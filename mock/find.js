@@ -88,8 +88,10 @@
       },
       canFind: function (tab) { return tab !== null && KINDS.includes(tab.kind); },
       findScroller: function () { return document.querySelector('.pane [data-find-scroll]'); },
-      // The searched lines: a file's, or a diff's code cells (side by side: the side last clicked only).
+      // The searched lines: a file's, a diff's code cells (side by side: the side last clicked only), or Rendered
+      // Markdown's whole text as one.
       findLines: function (tab, scroller) {
+        if (this.viewOf(tab) === 'rendered') return [scroller];
         if (tab.kind === 'file' || tab.kind === 'scratch') return Array.from(scroller.querySelectorAll('.editor__text'));
         if (this.layoutOf(tab) === 'side') {
           var cell = this.findOf(tab).side === 'old' ? 'first-child' : 'last-child';
@@ -124,14 +126,14 @@
         var text = String(window.getSelection());
         return text.includes('\n') ? '' : text;
       },
-      // Esc: the bar closes; in a file the caret is left on the current match, selected.
+      // Esc: the bar closes; in a file the caret is left on the current match, selected (not in Rendered Markdown).
       closeFind: function (tab) {
         var f = this.findOf(tab);
         var match = found[f.at];
         tab.find.open = false;
         clear();
         var input = document.querySelector('.pane .editor__input');
-        if (match === undefined || input === null) return;
+        if (match === undefined || input === null || this.viewOf(tab) === 'rendered') return;
         var offset = input.value.split('\n').slice(0, match.line).reduce(function (n, l) { return n + l.length + 1; }, 0) + match.start;
         input.focus({ preventScroll: true });
         input.setSelectionRange(offset, offset + match.end - match.start);

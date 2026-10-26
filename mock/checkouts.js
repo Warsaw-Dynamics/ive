@@ -142,9 +142,23 @@
       dir('lib', [file('.run.toml', LIB_RUN_TOML), file('package.json', '{\n  "name": "lib"\n}')]),
       dir('run', [file('.run.toml', tomlOf('/run'))]),
       file('CLAUDE.md', '# Java Guidelines\n- Use Java 26 features (records, var, etc.)\n- Avoid null where possible.'),
-      file('README.md', '# atlassian\n\nWarsaw Dynamics monorepo, branch ' + branch + '.'),
+      file('README.md', README(branch)),
       file('pom.xml', '<project>\n  <artifactId>atlassian</artifactId>\n</project>')
     ];
+  }
+
+  // A README long enough to show the Markdown Rendered view: headings, lists, tasks, a table, code, a quote.
+  function README(branch) {
+    return ['# atlassian', '', 'Warsaw Dynamics monorepo, branch `' + branch + '`. Each app lives under `internal-apps/`;',
+      'shared code is in `lib/`. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.', '',
+      '## Apps', '', '| App | Stack | Runs with |', '| --- | --- | --- |', '| ive | Rust, GPUI | `./run.sh` |',
+      '| misc | Java 26, Spring | `mvn spring-boot:run` |', '| paas | Java 26 | `ohq deploy paas` |', '',
+      '## Getting started', '', '1. Install the toolchains: **Rust** (stable) and **Java 26**.', '2. Copy `.env.example` to `.env` and fill in the tokens.',
+      '3. Start what you work on from IVE\'s *Processes* folder.', '', '```sh', '# build everything once', 'cargo build --release',
+      'mvn -q -T 1C install', '```', '', '## Before a release', '', '- [x] bump versions in `Cargo.toml` and `pom.xml`',
+      '- [ ] run the integration suite', '  - idp against qa', '  - paas against staging', '- [ ] tag and push', '',
+      '> Never deploy on Friday after 15:00. The pager does not care about your weekend.', '', '---', '',
+      'Questions: ask in *#platform*.'].join('\n');
   }
 
   // The platform project: its generated .run.toml folders nested as a tree, each with its stack's build file.
@@ -380,6 +394,87 @@
     return lines.map(function (text) { return highlightLine(text, lang, state); });
   }
 
+  // Markdown's Rendered view (a proposal, DESIGN.md "Markdown: Text | Rendered"): CommonMark's common subset as HTML.
+  // Headings, paragraphs, lists (nested by indent, [ ] and [x] tasks), quotes, rules, pipe tables, fenced code coloured
+  // like the editor; inline code, bold, italic, links. Everything typed is escaped first.
+  function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function inlineMarkdown(text) {
+    var codes = [];
+    var out = escapeHtml(text).replace(/`([^`]+)`/g, function (all, code) { codes.push(code); return '\u0000' + (codes.length - 1) + '\u0000'; });
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" title="$2">$1</a>');
+    return out.replace(/\u0000(\d+)\u0000/g, function (all, i) { return '<code>' + codes[i] + '</code>'; });
+  }
+  function codeBlockHtml(lines, lang) {
+    var rows = highlightLines(lines, 'block.' + (lang || 'txt'), true).map(function (tokens) {
+      return tokens.map(function (tk) { return tk.k ? '<span class="syn-' + tk.k + '">' + escapeHtml(tk.t) + '</span>' : escapeHtml(tk.t); }).join('');
+    });
+    return '<pre class="md__code"><code>' + rows.join('\n') + '</code></pre>';
+  }
+  function tableHtml(rows) {
+    var cells = function (line) { return line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return inlineMarkdown(c.trim()); }); };
+    var head = '<tr>' + cells(rows[0]).map(function (c) { return '<th>' + c + '</th>'; }).join('\n') + '</tr>';
+    var body = rows.slice(2).map(function (r) { return '<tr>' + cells(r).map(function (c) { return '<td>' + c + '</td>'; }).join('\n') + '</tr>'; });
+    return '<table><thead>' + head + '</thead><tbody>' + body.join('\n') + '</tbody></table>';
+  }
+  // A run of list lines as nested <ul>/<ol>; deeper indent opens a list inside the item before it.
+  function listHtml(items) {
+    var html = '';
+    var stack = [];
+    items.forEach(function (item) {
+      while (stack.length && stack[stack.length - 1].indent > item.indent) html += '</li></' + stack.pop().tag + '>\n';
+      var top = stack[stack.length - 1];
+      if (top && top.indent === item.indent) html += '</li>\n';
+      else stack.push({ indent: item.indent, tag: item.tag }), html += '<' + item.tag + '>';
+      var task = /^\[([ xX])\]\s+(.*)$/.exec(item.text);
+      html += task
+        ? '<li class="md__task"><input type="checkbox" disabled' + (task[1] === ' ' ? '' : ' checked') + ' /> ' + inlineMarkdown(task[2]) + '\n'
+        : '<li>' + inlineMarkdown(item.text) + '\n';
+    });
+    while (stack.length) html += '</li></' + stack.pop().tag + '>';
+    return html;
+  }
+  function renderMarkdown(text) {
+    var lines = text.split('\n');
+    var html = [];
+    var i = 0;
+    var LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+    var BLOCK_START = /^(#{1,6}\s|```|>|\s*([-*+]|\d+[.)])\s|(\s*[-*_]){3,}\s*$|\|)/;
+    while (i < lines.length) {
+      var line = lines[i];
+      var m;
+      if (line.trim() === '') { i++; continue; }
+      if ((m = /^```\s*(\S*)/.exec(line))) {
+        var code = [];
+        for (i++; i < lines.length && /^```/.test(lines[i]) === false; i++) code.push(lines[i]);
+        html.push(codeBlockHtml(code, m[1])); i++; continue;
+      }
+      if ((m = /^(#{1,6})\s+(.*)$/.exec(line))) { html.push('<h' + m[1].length + '>' + inlineMarkdown(m[2]) + '</h' + m[1].length + '>'); i++; continue; }
+      if (/^(\s*[-*_]){3,}\s*$/.test(line)) { html.push('<hr />'); i++; continue; }
+      if (/^\|/.test(line) && /^\|?\s*:?-+/.test(lines[i + 1] || '')) {
+        var rows = [];
+        for (; i < lines.length && /^\|/.test(lines[i]); i++) rows.push(lines[i]);
+        html.push(tableHtml(rows)); continue;
+      }
+      if (/^>/.test(line)) {
+        var quoted = [];
+        for (; i < lines.length && /^>/.test(lines[i]); i++) quoted.push(lines[i].replace(/^>\s?/, ''));
+        html.push('<blockquote>' + renderMarkdown(quoted.join('\n')) + '</blockquote>'); continue;
+      }
+      if (LIST.test(line)) {
+        var items = [];
+        for (; i < lines.length && (m = LIST.exec(lines[i])); i++) items.push({ indent: m[1].length, tag: /\d/.test(m[2]) ? 'ol' : 'ul', text: m[3] });
+        html.push(listHtml(items)); continue;
+      }
+      var para = [];
+      for (; i < lines.length && lines[i].trim() !== '' && (para.length === 0 || BLOCK_START.test(lines[i]) === false); i++) para.push(lines[i].trim());
+      html.push('<p>' + inlineMarkdown(para.join(' ')) + '</p>');
+    }
+    return html.join('\n');
+  }
+
   // diff_view.rs: hunk headers set the old and new line numbers; each line counts on its side(s).
   // Colours: the old side's lines (context and removed) are tokenised in order on their own, the new side's likewise,
   // so a removed row has the old file's colours and an added or context row the new file's.
@@ -536,6 +631,8 @@
         focus: null,
         // Mock-only: the diff layout last toggled (inline | side); a diff or commit tab opened later starts with it.
         diffLayout: 'inline',
+        // Mock-only: the Markdown view last picked (text | rendered); a Markdown file or scratch opened later starts with it.
+        markdownView: 'text',
         // Mock-only: the pause timers of "saving…"; a tab carries `saving`, `conflict` ('disk' | 'big'), `error`, `closing`.
         savingTimers: {},
         // tabs.rs Tabs::temporary: the key of the tab that goes once another is shown; only ever the shown one.
@@ -809,6 +906,7 @@
           var open = this.tabs.find(function (t) { return t.key === tab.key; });
           if (open) { this.showTab(open); return; }
           if ((tab.kind === 'diff' || tab.kind === 'commit') && tab.layout === undefined) tab.layout = this.diffLayout;
+          if (this.isMarkdown(tab) && tab.view === undefined) tab.view = this.markdownView;
           this.tabs.splice(this.insertionIndex(), 0, tab);
           this.focus = tab.key;
           if (TEMPORARY_KINDS.includes(tab.kind)) this.temporary = tab.key;
@@ -1006,6 +1104,14 @@
         // ---- diff layout, editing and saving (codeview design: "Saving: IntelliJ-style, no Ctrl+S") ----
         layoutOf: function (tab) { return tab.layout || this.diffLayout; },
         setLayout: function (tab, layout) { tab.layout = layout; this.diffLayout = layout; },
+        // ---- Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered") ----
+        isMarkdown: function (tab) {
+          if (tab.kind !== 'file' && tab.kind !== 'scratch') return false;
+          return /\.(md|markdown)$/i.test(tab.kind === 'scratch' ? tab.title : tab.path);
+        },
+        viewOf: function (tab) { return this.isMarkdown(tab) ? tab.view || this.markdownView : 'text'; },
+        setView: function (tab, view) { tab.view = view; this.markdownView = view; },
+        renderedHtml: function (tab) { return renderMarkdown(this.lines(tab).join('\n')); },
         // Only a single-file diff of uncommitted changes edits (its new side); commit tabs, since-base diffs and the hub preview are read-only.
         isEditable: function (tab) {
           if (tab.kind === 'diff') return tab.source === 'work';
@@ -1439,6 +1545,16 @@
           if (event.altKey && event.shiftKey && event.code === 'KeyG' && event.ctrlKey === false && event.metaKey === false) {
             event.preventDefault();
             this.toggleGitLayout();
+          }
+        },
+        // Ctrl+Shift+M (Cmd+Shift+M, ive.rn's SECONDARY|SHIFT): the shown Markdown tab between Text and Rendered. Not
+        // Ctrl+Shift+V, the terminal's paste on Linux.
+        markdownKey: function (event) {
+          var tab = this.currentTab();
+          if (tab === null || this.isMarkdown(tab) === false) return;
+          if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyM' && event.altKey === false) {
+            event.preventDefault();
+            this.setView(tab, this.viewOf(tab) === 'text' ? 'rendered' : 'text');
           }
         },
         toggleGitLayout: function () { this.gitLayout = this.gitLayout === 'flat' ? 'tree' : 'flat'; },

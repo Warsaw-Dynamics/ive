@@ -199,7 +199,12 @@
       <div x-include="components/checkouts/savebar.html"></div>
       <!-- A textarea over the coloured lines types into the text; it is as tall and wide as the text, so the box scrolls both. -->
       <div x-include="components/checkouts/find.html"></div>
-      <div class="editor editor--static" data-find-scroll :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
+      <template x-if="isMarkdown(tab)"><div x-include="components/checkouts/markdown-view.html"></div></template>
+      <!-- Rendered Markdown comes first, so Ctrl+F's [data-find-scroll] is the shown view; Text stays mounted, hidden. -->
+      <template x-if="viewOf(tab) === 'rendered'">
+        <div class="md" data-find-scroll @dblclick="setView(tab, 'text')" title="Double-click to edit the text" x-html="renderedHtml(tab)"></div>
+      </template>
+      <div class="editor editor--static" data-find-scroll x-show="viewOf(tab) === 'text'" :style="{ '--gutter-chars': String(lines(tab).length).length + 1 }">
         <div class="editor__sheet" :style="{ height: lines(tab).length * 21 + 'px', width: editorWidth(tab) }">
           <template x-for="(tokens, i) in codeLines(tab)" :key="i">
             <!-- tab.line: where a jump (the hub's :42 or file:line) put it, marked and scrolled into view -->
@@ -217,6 +222,7 @@
         <span class="codestatus__save" x-text="tab.conflict || tab.error ? '' : tab.saving ? 'saving…' : ''"></span>
         <span class="muted" :title="isBig(tab) ? 'Files over 8 MiB are shown without colours' : 'Files over 8 MiB are shown without colours'"
               x-text="isBig(tab) ? 'over 8 MiB: no colours' : languageName(tab)"></span>
+        <template x-if="viewOf(tab) === 'rendered'"><span class="muted">read-only</span></template>
         <span class="muted">UTF-8</span>
       </div>
     </div>

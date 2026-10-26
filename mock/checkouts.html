@@ -24,7 +24,7 @@
   <body>
     <div class="desktop" x-data="checkouts" x-cloak @keydown.window.escape="menu = null"
          @keydown.window.alt.f12.prevent="openTerminal()" @keydown.window.ctrl.comma.prevent="openSettings()"
-         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event); clipKey($event)"
+         @keydown.window.ctrl.e.prevent="openHub()" @keydown.window="groupKey($event); folderKey($event); newTerminalKey($event); findKey($event); clipKey($event); markdownKey($event)"
          @mousedown.window="findSideClick($event)">
       <div class="window" :class="{ 'window--behind': windowFocused === false }">
         <main class="window__content" :style="{ '--project-glow': projectGlow() }">

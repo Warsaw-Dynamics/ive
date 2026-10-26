@@ -597,3 +597,35 @@ button.card:hover { border-color: var(--accent); }
 .os-notice:hover { background: #393b40f2; }
 .os-notice__app { font-size: 11px; opacity: 0.6; }
 .os-notice__title { font-weight: 600; }
+
+/* Markdown: Text | Rendered (a proposal, DESIGN.md "Markdown: Text | Rendered"). The toggle is a pill floating where
+   find.css's bar floats (same box and shadow), held by a zero-height line at the top of the code so it clears any header
+   or save bar; Rendered is read-only prose in the UI font, 760 px wide at most; a double-click goes back to Text. */
+.mdpill { position: relative; height: 0; z-index: 5; }
+.mdpill__box {
+  position: absolute; top: 6px; right: 18px; padding: 3px; gap: 2px; border-radius: 8px; background: var(--tree);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.mdpill__box button { height: 24px; padding: 0 10px; border-radius: 6px; font-size: 12px; color: var(--text); }
+.md { flex: 1; min-height: 0; overflow: auto; padding: 16px 32px 48px; font-size: 14px; line-height: 1.6; color: var(--text); }
+.md > * { max-width: 760px; }
+.md h1, .md h2, .md h3, .md h4 { margin: 1.2em 0 0.4em; line-height: 1.25; font-weight: 600; }
+.md h1 { font-size: 24px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.md h2 { font-size: 19px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.md h3 { font-size: 16px; }
+.md > :first-child { margin-top: 0; }
+.md p, .md ul, .md ol, .md pre, .md table, .md blockquote { margin: 0 0 12px; }
+.md ul, .md ol { padding-left: 24px; }
+.md ul ul, .md ol ol, .md ul ol, .md ol ul { margin: 2px 0 0; }
+.md .md__task { list-style: none; }
+.md .md__task input { margin: 0 6px 0 -20px; vertical-align: -1px; }
+.md a { color: var(--accent); text-decoration: none; }
+.md a:hover { text-decoration: underline; }
+.md code { font: 13px var(--mono); padding: 1px 4px; border-radius: 4px; background: var(--hover); }
+.md pre.md__code { padding: 10px 12px; border-radius: 6px; background: color-mix(in srgb, var(--hover) 55%, var(--background)); overflow-x: auto; }
+.md pre.md__code code { padding: 0; background: none; font: 13px/20px var(--mono); }
+.md blockquote { padding: 0 12px; border-left: 3px solid var(--border); color: var(--muted); }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+.md table { border-collapse: collapse; }
+.md th, .md td { padding: 4px 12px; border: 1px solid var(--border); text-align: left; }
+.md th { font-weight: 600; background: color-mix(in srgb, var(--hover) 45%, transparent); }

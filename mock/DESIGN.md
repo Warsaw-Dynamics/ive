@@ -639,3 +639,27 @@ Added 2026-10-22, from `docs/superpowers/specs/2026-10-22-codeview-crate-design.
 - **Editable uncommitted diff.** In a single-file diff of uncommitted changes the new side (context and added rows, right
   side in Side by side) is editable (a caret, one line per row). Commit tabs, Since base diffs and the hub preview are
   read-only: no caret, "read-only" in the header.
+
+## Markdown: Text | Rendered
+
+A proposal, added 2026-10-26. Code is `renderMarkdown` in `checkouts.js`, `components/checkouts/markdown-view.html` and
+the `.md` styles in `checkouts.css`.
+
+- **Where.** Markdown files (`.md`, `.markdown`) and Markdown scratches get a Text | Rendered pill floating at the top
+  right of the text, where Ctrl+F's bar floats and in the same box. It is always there; while the find bar is open the
+  bar takes its place, and Esc brings the pill back. No header line is added (a scratch keeps its own).
+- **Text** is the editor as now: coloured source, editable, saved as you type.
+- **Rendered** shows the document formatted, read-only: headings, paragraphs, lists (nested, `[ ]`/`[x]` tasks as
+  greyed checkboxes), quotes, rules, pipe tables, fenced code coloured like the editor, inline code, bold, italic,
+  links. UI font, 14 px, at most 760 px wide; the status line adds "read-only". A double-click goes back to Text.
+- **Per tab, remembered.** The view is per tab; a Markdown tab opened later starts with the view last picked
+  (`markdownView`, hash `md=rendered`), as diff tabs do with their layout. Ctrl+Shift+M
+  (Cmd+Shift+M; `ive.rn`: `#{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" }`)
+  switches the shown tab. Not Ctrl+Shift+V: that is the terminal's paste on Linux, and a habitual paste in Text would
+  switch the view instead.
+- The save bars (conflict, error) show above either view.
+- **Ctrl+F** (find.js, as in Text) works in Rendered too: it searches the visible text, so `**Rust**` is found as
+  "Rust" and markup is not; matches are marked, stepped with Enter, F3 and ▲ ▼, and shown on the strip by the scrollbar.
+  The bar stays open with its query across Text | Rendered, searching the view shown. Esc in Rendered leaves no caret.
+- Not mocked: images, HTML blocks, footnotes, Mermaid/DOT diagrams in fences, scroll sync between the views, links
+  opening (a relative link could open that file in a tab).
