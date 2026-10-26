@@ -124,7 +124,7 @@ struct FocusReports(Option<bool>);
 
 impl FocusReports {
     fn next(&mut self, mode: TermMode, visible: bool) -> Option<&'static [u8]> {
-        if !mode.contains(TermMode::FOCUS_IN_OUT) {
+        if !wants_focus_reports(mode) {
             self.0 = None;
             return None;
         }
@@ -134,6 +134,12 @@ impl FocusReports {
         self.0 = Some(visible);
         Some(if visible { b"\x1b[I" } else { b"\x1b[O" })
     }
+}
+
+/// ConPTY keeps a program's DECSET 1004 to itself and turns every report into a console focus event, which programs
+/// that did not ask for one ignore: on Windows every terminal gets them.
+fn wants_focus_reports(mode: TermMode) -> bool {
+    cfg!(windows) || mode.contains(TermMode::FOCUS_IN_OUT)
 }
 
 impl Session {
@@ -458,6 +464,20 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(windows)]
+    fn should_report_visibility_changes_without_focus_mode_on_windows() {
+        // given
+        let mut reports = FocusReports::default();
+
+        // when
+        let sent = [reports.next(TermMode::empty(), false), reports.next(TermMode::empty(), false), reports.next(TermMode::empty(), true)];
+
+        // then
+        assert_eq!(sent, [Some(b"\x1b[O".as_slice()), None, Some(b"\x1b[I".as_slice())]);
+    }
+
+    #[test]
+    #[cfg(unix)]
     fn should_report_visibility_changes_when_a_program_requests_focus_events() {
         // given
         let mut reports = FocusReports::default();
