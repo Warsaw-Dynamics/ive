@@ -617,6 +617,21 @@ mod tests {
     }
 
     #[test]
+    fn should_list_waiting_first_on_an_empty_query() {
+        // given
+        let state = HubState::default();
+        let calling = Item { state: Some("● Claude needs you".to_owned()), ..Item::new(Target::Process(ProcessId::for_tests(9)), "Claude Code", "agent.svg") };
+        let sources = Sources { waiting: vec![calling], ..sources() };
+
+        // when
+        let list = shown(&state, &sources);
+
+        // then
+        assert_eq!(sections(&list), ["Waiting", "Recent", "Changed", "Running"]);
+        assert_eq!(titles(&list)[0], "Claude Code");
+    }
+
+    #[test]
     fn should_list_recent_changed_and_running_on_an_empty_query() {
         // given
         let state = HubState::default();

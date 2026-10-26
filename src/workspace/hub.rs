@@ -1,5 +1,6 @@
 //! The hub tab in the workspace: opening it, its keys, what it lists, and the searches over the file index.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -532,13 +533,13 @@ impl Workspace {
             }
             Err(error) => {
                 eprintln!("ive: {error}");
-                Some(format!("Cannot create a worktree of {branch}: {}", error.message))
+                Some(format!("Cannot create a worktree of {branch}: {error}"))
             }
         };
         // the hub there is now: the one that asked may be closed, or opened again
         let Some(hub) = self.hub_tab_id() else {
             if let Some(error) = notice {
-                self.open_tab(Tab::Failed { title: "New worktree".to_owned(), error: error.into() }, window, cx);
+                self.open_tab(Tab::Failed { title: "New worktree".to_owned(), failure: crate::failure::Failure::new(error) }, window, cx);
             }
             return;
         };
@@ -885,11 +886,13 @@ impl Workspace {
         let open_checkouts: Vec<PathBuf> = self.projects.iter().flat_map(|open| open.listed_checkouts().map(|checkout| checkout.path.clone())).collect();
         let shown = self.shown_projects();
         let hidden = self.projects.iter().map(|open| open.project.id.clone()).filter(|id| !shown.contains(id)).collect();
+        let open_tabs = self.tab_identities();
         Sources {
             hidden,
             projects: self.hub_projects(),
-            recent: recent_items(&self.history, |shown| self.presence(shown), |path| self.checkout_of_path(path)),
+            recent: recent_items(&self.history, |shown| self.presence(shown, &open_tabs), |path| self.checkout_of_path(path)),
             changed: self.changed_items(),
+            waiting: self.processes.waiting().into_iter().map(|process| self.process_item(process)).collect(),
             running: self.process_items(true),
             processes: self.process_items(false),
             configs: self.config_items(),
@@ -928,8 +931,19 @@ impl Workspace {
         Some(ProjectInfo { id: id.clone(), name: project.name.clone(), git: project.kind == ProjectKind::Git, worktrees })
     }
 
-    fn presence(&self, shown: &Shown) -> Presence {
-        if let Some((tab, open)) = self.tabs.iter().find(|(_, tab)| tab.identity(self).as_ref() == Some(&shown.identity)) {
+    /// The open tabs by what they show, the first of tabs showing the same: Recent looks up hundreds of entries.
+    fn tab_identities(&self) -> HashMap<TabIdentity, TabId> {
+        let mut identities = HashMap::new();
+        for (id, tab) in self.tabs.iter() {
+            if let Some(identity) = tab.identity(self) {
+                identities.entry(identity).or_insert(id);
+            }
+        }
+        identities
+    }
+
+    fn presence(&self, shown: &Shown, open_tabs: &HashMap<TabIdentity, TabId>) -> Presence {
+        if let Some((tab, open)) = open_tabs.get(&shown.identity).and_then(|tab| Some((*tab, self.tabs.get(*tab)?))) {
             return Presence::Open { tab, title: open.title(self) };
         }
         let running = |process: &crate::process::Process| Presence::Process { id: process.id, title: process.title() };
@@ -974,22 +988,25 @@ impl Workspace {
 
     fn process_items(&self, live_only: bool) -> Vec<Item> {
         let processes = self.processes.iter().filter(|process| !live_only || process.is_live());
-        let item = |process: &crate::process::Process| {
-            let state = match &process.run {
-                Some(origin) if !process.is_live() => format!("ended · {}", origin.name),
-                Some(_) => "running".to_owned(),
-                None => "live".to_owned(),
-            };
-            let detail = process.checkout.as_ref().map_or_else(String::new, |checkout| self.checkout_label(checkout));
-            Item {
-                detail,
-                state: Some(state),
-                place: process.checkout.clone().map_or(Place::Nowhere, Place::One),
-                project: process.checkout.as_ref().map(|checkout| checkout.project.clone()),
-                ..Item::new(Target::Process(process.id), process.title(), process.icon())
-            }
+        processes.map(|process| self.process_item(process)).collect()
+    }
+
+    /// A process's row: its state, or what it said while it waits for the user.
+    fn process_item(&self, process: &crate::process::Process) -> Item {
+        let state = match (&process.run, process.attention()) {
+            (_, Some(attention)) => format!("● {}", crate::attention::brief(&attention.text)),
+            (Some(origin), None) if !process.is_live() => format!("ended · {}", origin.name),
+            (Some(_), None) => "running".to_owned(),
+            (None, None) => "live".to_owned(),
         };
-        processes.map(item).collect()
+        let detail = process.checkout.as_ref().map_or_else(String::new, |checkout| self.checkout_label(checkout));
+        Item {
+            detail,
+            state: Some(state),
+            place: process.checkout.clone().map_or(Place::Nowhere, Place::One),
+            project: process.checkout.as_ref().map(|checkout| checkout.project.clone()),
+            ..Item::new(Target::Process(process.id), process.title(), process.icon())
+        }
     }
 
     fn back_tab(&self, back: TabId, _cx: &App) -> Option<BackTab> {
@@ -1005,15 +1022,20 @@ impl Workspace {
         for open in &self.projects {
             let project = &open.project;
             let mut seen: Vec<(String, String, Vec<PathBuf>, String)> = Vec::new();
+            // where in `seen` each folder and key is: a project can have a thousand configurations
+            let mut at: HashMap<(&str, &str), usize> = HashMap::new();
             for checkout in open.listed_checkouts() {
                 let Some(read) = self.hub_index.files(&checkout.path) else {
                     continue;
                 };
                 for (folder, file) in read.configs.iter() {
                     for config in &file.configs {
-                        match seen.iter_mut().find(|(at, key, _, _)| at == folder && *key == config.key) {
-                            Some((_, _, checkouts, _)) => checkouts.push(checkout.path.clone()),
-                            None => seen.push((folder.clone(), config.key.clone(), vec![checkout.path.clone()], config.name.clone())),
+                        match at.get(&(folder.as_str(), config.key.as_str())) {
+                            Some(&index) => seen[index].2.push(checkout.path.clone()),
+                            None => {
+                                at.insert((folder, &config.key), seen.len());
+                                seen.push((folder.clone(), config.key.clone(), vec![checkout.path.clone()], config.name.clone()));
+                            }
                         }
                     }
                 }
@@ -1095,7 +1117,7 @@ impl Workspace {
             }
             Target::Scratch(scratch) => {
                 if let Err(error) = self.open_scratch(&scratch, window, cx) {
-                    eprintln!("ive: cannot open scratch {}: {error}", scratch.name);
+                    crate::notices::notify(cx, format!("cannot open scratch {}: {error}", scratch.name));
                 }
             }
             Target::RunConfig { folder, key, .. } => {
@@ -1122,11 +1144,11 @@ impl Workspace {
     /// Shows the process's tab scrolled to the hit's line, its match selected; at its bottom when the line is gone.
     fn show_output_line(&mut self, hit: &OutputHit, window: &mut Window, cx: &mut Context<Self>) {
         let Some(process) = self.processes.get(hit.process) else {
-            eprintln!("ive: cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED);
+            crate::notices::notify(cx, format!("cannot show {}:{}: {}", hit.title, hit.line, output::PROCESS_ENDED));
             return;
         };
         if let Err(why) = process.view.reveal(|rows| output::frame_at(Some(rows), hit)) {
-            eprintln!("ive: {}:{}: {why}", hit.title, hit.line);
+            crate::notices::notify(cx, format!("{}:{}: {why}", hit.title, hit.line));
         }
         self.show_process(hit.process, window, cx);
         cx.notify();
@@ -1151,7 +1173,7 @@ impl Workspace {
                 Some(tab) => {
                     self.open_tab(tab, window, cx);
                 }
-                None => eprintln!("ive: {} cannot be opened again: what it showed is gone", saved.title()),
+                None => crate::notices::notify(cx, format!("{} cannot be opened again: what it showed is gone", saved.title())),
             },
         }
     }
@@ -1212,7 +1234,7 @@ impl Workspace {
         let names: Vec<String> = existing.into_iter().map(|info| info.name).collect();
         let scratch = ScratchRef { project, name: free_scratch_name(&names) };
         if let Err(error) = self.create_scratch(&scratch, window, cx) {
-            eprintln!("ive: cannot create scratch {}: {error}", scratch.name);
+            crate::notices::notify(cx, format!("cannot create scratch {}: {error}", scratch.name));
         }
     }
 

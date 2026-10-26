@@ -16,6 +16,7 @@ use super::configs_list::{self, ConfigEntry, ListItem, ListRow};
 use super::file::{ConfigKind, RunFile};
 use super::values_tab::{RunRequest, ShowRun};
 use crate::click_targets::{Listener, target};
+use crate::selectable::selectable;
 use crate::icons;
 use crate::overview::file_list::FileLayout;
 use crate::overview::git_ui::{Picked, muted, segment};
@@ -151,7 +152,7 @@ fn bar(id: TabId, tab: &RunConfigsTab, workspace: &Workspace, theme: Theme, cx: 
         .gap_2()
         .child(div().flex_none().w(px(FILTER_WIDTH)).overflow_hidden().child(tab.filter.clone()))
         .child(div().flex().flex_none().gap_1().children(layouts))
-        .child(muted(place, theme).flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap())
+        .child(selectable(format!("run-configs-place-{}", tab.checkout.path.display()), place, cx).text_color(rgb(theme.muted)).flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap())
 }
 
 /// Every listed folder's runs, read once per draw rather than once per row.

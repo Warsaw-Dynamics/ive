@@ -177,6 +177,8 @@ pub struct Sources {
     /// newest first
     pub recent: Vec<Item>,
     pub changed: Vec<Item>,
+    /// processes that called for the user, longest waiting first
+    pub waiting: Vec<Item>,
     pub running: Vec<Item>,
     pub processes: Vec<Item>,
     pub configs: Vec<Item>,
@@ -200,7 +202,7 @@ impl Sources {
     pub fn without_hidden(mut self) -> Self {
         let hidden = std::mem::take(&mut self.hidden);
         let shows = |item: &Item| item.project.as_ref().is_none_or(|project| !hidden.contains(project));
-        for items in [&mut self.recent, &mut self.changed, &mut self.running, &mut self.processes, &mut self.configs] {
+        for items in [&mut self.recent, &mut self.changed, &mut self.waiting, &mut self.running, &mut self.processes, &mut self.configs] {
             items.retain(shows);
         }
         self.branches.retain(|branch| !hidden.contains(&branch.project));

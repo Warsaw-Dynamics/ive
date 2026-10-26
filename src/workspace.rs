@@ -39,6 +39,7 @@ use crate::window_drag::WindowDrag;
 use crate::window_state::WindowPlace;
 
 mod changes;
+mod file_actions;
 mod follow;
 mod git_views;
 mod hooks;
@@ -47,20 +48,28 @@ mod hub_index;
 mod locate;
 mod api_requests;
 mod persist;
+mod process_drop;
+mod transfers;
+mod tree_drop;
+pub(crate) use tree_drop::Dragging;
 mod processes;
 mod projects;
 mod quit;
 mod restart;
 mod runs;
+mod attention;
 mod saves;
 mod waits;
 mod scratches;
 mod scripts;
 mod settings_actions;
 mod menu;
+mod owners;
 mod path_actions;
 mod send_paths;
 mod git_actions;
+mod tab_grouping;
+pub use tab_grouping::{Dropped, MenuDrop};
 mod tab_state;
 mod tab_windows;
 mod tree_git;
@@ -78,6 +87,7 @@ pub use projects::AfterOpen;
 pub use menu::{DEFAULT_MENU, OpenMenu, line_target, tab_action_target};
 pub use path_actions::is_path_action;
 pub use updates::activity_watcher;
+pub(crate) use scripts::run_text_key;
 
 /// Main window: the projects sidebar and the editor tabs, or a welcome screen while no project and no tab is open.
 pub struct Workspace {
@@ -114,6 +124,9 @@ pub struct Workspace {
     menu_requests: u64,
     /// the row Select Opened File is expanding the tree towards, while folders above it are read
     locating: Option<TreeKey>,
+    /// what to pick once the row `locating` names is found, instead of that row alone
+    locating_picks: Vec<TreeKey>,
+    transfers: transfers::Transfers,
     /// `--restart`: the start script the Restart button runs
     restart_script: Option<PathBuf>,
     /// the terminal the Restart button runs the start script in, reused by later presses
@@ -158,6 +171,11 @@ pub struct Workspace {
     /// which terminals were used last, for Send to Terminal and the hub's Alt+Enter
     terminal_use: crate::terminal_use::TerminalUse,
     hub_index: HubIndex,
+    /// each project's tab shown last: the one its folded group of tabs keeps out
+    group_current: std::collections::HashMap<ProjectId, TabId>,
+    /// the open project group menu, and where a drag in it would land
+    group_menu: Option<crate::tab_group_menu::GroupMenu>,
+    group_menu_drop: Option<tab_grouping::MenuDrop>,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
     /// the projects `corpus` was built from, in its order
@@ -171,6 +189,11 @@ pub struct Workspace {
     hub_return: Option<hub::HubReturn>,
     _signals: Option<Task<()>>,
     updates: updates::Updates,
+    /// the desktop notifications of waiting processes, sent while IVE is in the background
+    desktop_notices: crate::desktop_notice::DesktopNotices,
+    _notice_clicks: Task<()>,
+    /// which IVE window has the keyboard, as the activation observers last told
+    active_window: crate::attention::ActiveWindow<AnyWindowHandle>,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -235,6 +258,7 @@ impl Workspace {
             cx.observe_window_activation(window, |workspace, window, cx| {
                 // the sidebar and the tabs draw by whether the window is active
                 cx.notify();
+                workspace.window_activated(window.window_handle(), window_focus(window), cx);
                 if window.is_window_active() {
                     return workspace.refresh_on_activation(cx);
                 }
@@ -253,11 +277,15 @@ impl Workspace {
             cx.on_app_quit(|workspace, cx| {
                 workspace.flush_state(cx);
                 workspace.apply_update_on_quit(cx);
+                // a notification left behind would show a process IVE no longer has
+                workspace.desktop_notices.withdraw_all();
                 async {}
             }),
         ];
         let (mut watches, events) = tracing::info_span!("start_watches").in_scope(changes::Watches::start);
         let scripts = scripts::ScriptWatch::start(startup.scripts, script::default_dir(), &mut watches.paths, window, cx);
+        let (clicked, notice_clicks) = futures::channel::mpsc::unbounded();
+        let desktop_notices = crate::desktop_notice::DesktopNotices::new(clicked);
         let mut workspace = Self {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
@@ -279,6 +307,8 @@ impl Workspace {
             menu: None,
             menu_requests: 0,
             locating: None,
+            locating_picks: Vec::new(),
+            transfers: Default::default(),
             restart_script: startup.restart_script.clone(),
             restart_terminal: None,
             tab_ownership: tab_state::TabOwnership::Owner,
@@ -309,6 +339,9 @@ impl Workspace {
             worktree_use: WorktreeUse::restore(startup.saved.worktree_use.clone()),
             terminal_use: Default::default(),
             hub_index: HubIndex::default(),
+            group_current: std::collections::HashMap::new(),
+            group_menu: None,
+            group_menu_drop: None,
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
             corpus_build: hub_index::CorpusBuild::default(),
@@ -317,7 +350,11 @@ impl Workspace {
             hub_return: None,
             _signals: startup.signals.map(|signals| quit::forward_signals(signals, window, cx)),
             updates: updates::start(window, cx),
+            desktop_notices,
+            _notice_clicks: attention::show_clicked(notice_clicks, window, cx),
+            active_window: crate::attention::ActiveWindow::default(),
         };
+        workspace.active_window.observe(window.window_handle(), window_focus(window));
         // a closing window goes through the quit prompt; IVE quits from there. On macOS the × hides the window
         // instead and IVE keeps running in the Dock until quit, as Mac apps do; a click on its Dock icon shows the
         // window again.
@@ -344,7 +381,7 @@ impl Workspace {
         let tabs = startup.saved.tabs.clone();
         let sessions = {
             let adopted_tabs = if tabs.is_some() { processes::AdoptedTabs::AsSaved } else { processes::AdoptedTabs::Each };
-            tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, window, cx))
+            tracing::info_span!("adopt_sessions").in_scope(|| workspace.adopt_sessions(adopted_tabs, &startup.saved.terminals, window, cx))
         };
         // another IVE in this profile keeps the terminals: its tabs are its own
         if workspace.hosted.is_none() {
@@ -515,9 +552,13 @@ impl Workspace {
 
     /// Scrolls the tab row just enough to show the shown tab; nothing for a detached one.
     fn scroll_to_shown_tab(&self) {
-        let shown = self.tabs.active_id();
-        if let Some(place) = self.tabs.row().position(|(id, _)| Some(id) == shown) {
-            self.tab_scroll.scroll_to_item(place);
+        let Some(shown) = self.tabs.active_id() else {
+            return;
+        };
+        // the row's items are its groups' heads and tabs
+        let items = crate::tab_groups::row_items(&self.tab_groups(&self.tab_group_facts()));
+        if let Some(item) = items.iter().position(|item| matches!(item, crate::tab_groups::RowItem::Tab(_, id) if *id == shown)) {
+            self.tab_scroll.scroll_to_item(item);
         }
     }
 
@@ -526,11 +567,11 @@ impl Workspace {
         self.tab_drop_gap
     }
 
-    /// Moves dragged tab `id` into the marked gap; the new order is saved with the next redraw.
+    /// Moves dragged tab `id` into the marked gap, within its project's group; the new order is saved with the next
+    /// redraw.
     pub fn drop_dragged_tab(&mut self, id: TabId, cx: &mut Context<Self>) {
         if let Some(gap) = self.tab_drop_gap.take() {
-            self.tabs.move_tab(id, gap);
-            cx.notify();
+            self.move_tab_in_group(id, gap, cx);
         }
     }
 
@@ -555,6 +596,8 @@ impl Workspace {
     fn tab_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // the tab left behind saves now; a closed one saved as it went
         self.flush_edits(cx);
+        // its selected text went with it
+        crate::selectable::let_go(window, cx);
         self.close_stale_tab_windows(cx);
         if window.window_handle() == self.main_window {
             self.focus_active_tab(window, cx);
@@ -571,6 +614,8 @@ impl Workspace {
         let checkout = self.tabs.active().and_then(|tab| tab.checkout(self));
         let shown = self.tabs.active().and_then(|tab| self.tree_key_of(tab));
         self.tree.show_active(shown);
+        // a folded group keeps the shown tab out, so it is its current one before the row scrolls to it
+        self.record_group_current();
         self.scroll_to_shown_tab();
         if let Some(checkout) = checkout {
             self.remember_checkout(&checkout, cx);
@@ -583,6 +628,7 @@ impl Workspace {
             self.hub_return = None;
         }
         self.sync_watches();
+        self.look_at_shown(cx);
         cx.notify();
     }
 
@@ -635,7 +681,7 @@ impl Workspace {
             Tab::ProjectOverview(overview) => Some(TreeKey::Project(overview.project.clone())),
             Tab::Commit(tab) => Some(TreeKey::Project(tab.project.clone())),
             Tab::GitLog(tab) => Some(TreeKey::Project(tab.project.clone())),
-            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) => None,
+            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) | Tab::Conflicts(_) => None,
         }
     }
 
@@ -720,8 +766,13 @@ impl Workspace {
     }
 
     fn picker_title(&self) -> sidebar_view::PickerTitle {
-        let shown: Vec<&str> = crate::project_list::shown(&self.projects, &self.hidden_projects).map(|open| open.project.name.as_str()).collect();
-        sidebar_view::picker_title(&shown, self.projects.len())
+        let shown: Vec<&OpenProject> = crate::project_list::shown(&self.projects, &self.hidden_projects).collect();
+        let names: Vec<&str> = shown.iter().map(|open| open.project.name.as_str()).collect();
+        let icon = match shown.as_slice() {
+            [one] => self.project_icon(&one.project.id),
+            _ => None,
+        };
+        sidebar_view::PickerTitle { icon, ..sidebar_view::picker_title(&names, self.projects.len()) }
     }
 
     /// What the picker's menu lists: the open projects in tree order, whether each shows, their live processes.
@@ -729,7 +780,8 @@ impl Workspace {
         let shown = self.shown_projects();
         let projects = self.projects.iter().map(|open| {
             let running = self.processes.in_project(&open.project.id).iter().filter(|process| process.is_live()).count();
-            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running }
+            let icon = self.project_icon(&open.project.id);
+            sidebar_view::PickedProject { id: open.project.id.clone(), name: open.project.name.clone(), shown: shown.contains(&open.project.id), running, icon }
         });
         sidebar_view::ProjectsMenu { projects: projects.collect() }
     }
@@ -745,6 +797,10 @@ impl Workspace {
         // so Escape reaches the workspace, not a focused terminal; the sidebar keeps the keyboard
         window.focus(&cx.global::<theme::SidebarFocus>().0.clone(), cx);
         cx.notify();
+    }
+
+    pub(crate) fn header_menu(&self) -> Option<sidebar_view::HeaderMenu> {
+        self.header_menu
     }
 
     /// A press on a header button, seen before the open menu's press-outside closes it.
@@ -768,6 +824,7 @@ impl Workspace {
             return;
         }
         if event.keystroke.key == "escape" {
+            self.close_group_menu(cx);
             self.close_menu(window, cx);
         }
     }
@@ -904,7 +961,7 @@ impl Render for Workspace {
         theme::set_tabs(window, cx);
         let theme = theme::for_panel(theme::Panel::Window, window, cx);
         // text without a size of its own, and text fields, follow the theme's zoom
-        window.set_rem_size(theme.sizes.rem.px());
+        theme::apply_to_window(&theme, window);
         let content = if self.is_welcome() {
             self.render_welcome(theme, window, cx)
         } else {
@@ -935,6 +992,7 @@ impl Render for Workspace {
             .flex_col()
             .size_full()
             .child(content.flex_1().min_h_0())
+            .children(crate::notices::render(cx))
             .children(quit_prompt)
             .child(updates::activity_watcher(cx.entity().downgrade()))
             .track_focus(&self.focus_handle)
@@ -1005,6 +1063,14 @@ impl Launch {
 }
 
 /// Whether the sidebar, or a field in it, has the keyboard in `window`.
+/// Whether `window` has the keyboard, as its activation observer reads it.
+pub(crate) fn window_focus(window: &Window) -> crate::attention::WindowFocus {
+    match window.is_window_active() {
+        true => crate::attention::WindowFocus::Active,
+        false => crate::attention::WindowFocus::Inactive,
+    }
+}
+
 fn sidebar_has_keys(window: &Window, cx: &App) -> bool {
     cx.try_global::<theme::SidebarFocus>().is_some_and(|sidebar| sidebar.0.contains_focused(window, cx))
 }

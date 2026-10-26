@@ -8,14 +8,14 @@ cd internal-apps/ive && python3 -m http.server 8767
 ```
 
 Open <http://localhost:8767/mock/>. The bar along the bottom is mock-only: welcome screen, a project,
-the 10M-line file, a binary file, and a link to `checkouts.html` (which links back with `← index` at its bottom
-right; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Settings.
+the 10M-line file, a binary file, and a link to `checkouts.html` (which links back from its Mock menu, the dock icon
+by Settings; IVE's `Mock` run configuration opens `checkouts.html`). Ctrl+, opens Settings.
 
 `include.js` and `vendor/alpine.min.js` are copied from `forge-installer/mock`.
 
 `checkouts.html` shows the code view too (DESIGN.md "Code view: diffs, editing, saving", 2026-10-22): diff and commit
 tabs toggle Inline | Side by side (remembered for the session), code is coloured, files and scratches edit with a
-"saving…" state and no Ctrl+S, the new side of an uncommitted diff edits, and the `mock: save` bar at the bottom
+"saving…" state and no Ctrl+S, the new side of an uncommitted diff edits, and the Mock menu (the dock icon by Settings)
 shows the conflict bar, the error bar and "Close without saving". Files over 8 MiB show without colours.
 
 `checkouts.html` (design notes: [DESIGN.md](DESIGN.md)) mocks the app as it is now (synced with the Rust code on
@@ -63,6 +63,10 @@ the IVE mock config is a static server; `lib/.run.toml` is broken on purpose (a 
 folder). A click on a worktree's Processes row opens its `Run configurations` tab (temporary, a proposal): every
 configuration in the worktree (the only place a configuration that never ran shows, with ▷ Run), Flat (by name) or Tree (by folder), with a filter and each run's state and actions.
 The tree's right edge drags to resize it.
+Drag and drop (in the app, `dnd.js`, DESIGN.md "Drag and drop, copy and paste"): Ctrl+click and Shift+click pick tree rows;
+files and folders drag onto any folder, worktree or project (same worktree moves, elsewhere copies; Ctrl copies, Shift moves);
+terminals and Claude Code drag onto a worktree or project to move there (Ctrl+drop starts a copy; runs stay); Ctrl+C / Ctrl+V copy and paste keeping folders. A copy that
+would overwrite opens a Conflicts tab (`#tab=conflicts`).
 
 The tree's virtual folders, which are not on disk (`@hidden` for two or more hidden entries), show
 as icon + italic `@name` on a chip; `@hidden`'s is weaker: muted text on a half-transparent chip.

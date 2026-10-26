@@ -70,6 +70,9 @@ impl ResolvedScheme {
 /// User override, then scheme entry, then the parent resolved the same way, then plain text.
 fn resolve_key(key: ColorKey, scheme: &Scheme, overrides: &Overrides) -> TextAttributes {
     match overrides.get(&key).copied().or_else(|| scheme.entry(key)) {
+        // TEXT's background is the editor's, as in IntelliJ; painted under spans of TEXT and its children, it would
+        // hide what lies beneath, such as a diff line's tint
+        Some(Entry::Own(attributes)) if key == ColorKey::TEXT => TextAttributes { background: None, ..attributes },
         Some(Entry::Own(attributes)) => attributes,
         Some(Entry::Inherit) | None => {
             key.parent().map_or_else(TextAttributes::default, |parent| resolve_key(parent, scheme, overrides))
@@ -170,6 +173,19 @@ mod tests {
 
         // then
         assert_eq!(resolved.get(key("JSON.PROPERTY_KEY")), TextAttributes::default());
+    }
+
+    #[test]
+    fn should_not_give_text_children_the_editor_background() {
+        // given
+        let scheme = scheme("[TEXT]\nforeground = \"BCBEC4\"\nbackground = \"1E1F22\"\n");
+
+        // when
+        let resolved = ResolvedScheme::resolve(&scheme, &Overrides::new());
+
+        // then
+        let expected = TextAttributes { foreground: Some(0xBCBEC4), ..TextAttributes::default() };
+        assert_eq!((resolved.get(ColorKey::TEXT), resolved.get(key("MARKDOWN_TEXT"))), (expected, expected));
     }
 
     #[test]

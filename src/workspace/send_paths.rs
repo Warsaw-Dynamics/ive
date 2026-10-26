@@ -70,7 +70,7 @@ impl Workspace {
         let typed = typed_into(paths, &self.all_checkouts(), (Some(root.as_path()), Some(root.as_path())));
         // the shell reads it once it starts, as a scratch's run command
         if let Err(error) = self.send_text_to_process(tab, &typed) {
-            eprintln!("ive: cannot type the paths into the new terminal: {error}");
+            crate::notices::notify(cx, format!("cannot type the paths into the new terminal: {error}"));
         }
     }
 

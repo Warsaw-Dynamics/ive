@@ -4,17 +4,20 @@
 //
 //   t       a tab, by its key, repeated in order (files, scratches, overviews, git log, commits, diffs, Settings, hub,
 //           the two processes the mock starts with); at: the shown tab's key; temp: the temporary one's
+//   sh      a terminal with a tab, <id>~<checkout>, repeated: one started after load comes back under its id
 //   tree    a tree node whose open state differs from its default, repeated
 //   o, g    an overview's section (<tab key>~<section>), a worktree's git view (<checkout>~<view>), repeated
 //   rlayout the run configurations tab's layout
 //   every   the folders every worktree shows (a proposal), when not all of them
 //   hidden  the projects the tree and the hub leave out
 //   dl      the diff layout last toggled, side (inline when absent); save, closing: mock-only, read but not written
+//   fold    a folded tab group, by its key (p:<project>), repeated; gc: a folded group's current tab, repeated
+//   wto     a project's worktree order as dragged in its group's menu, <project>~<checkout>,<checkout>, repeated
 //   theme, side, page, layout, sort, gap, radius, q, changed, excl, scope, nt: theme, tree width, Settings page, git
 //           layout and order, panel gap and radius, hub query, "changed only", "with excluded", scope and whether
 //           the hub asks where a new terminal goes (Ctrl+Shift+T)
 //
-// Not kept: processes started later, runs, created and hidden worktrees and scratches, the hub's history, picks in lists.
+// Not kept: Claude Code sessions and runs started later, what a terminal printed, created and hidden worktrees and scratches, the hub's history, picks in lists.
 (function () {
   'use strict';
 
@@ -48,6 +51,7 @@
         var p = new URLSearchParams();
         var add = function (name, value) { if (value !== null && value !== undefined && value !== '') p.append(name, value); };
         this.tabs.filter(this.isRoutable, this).forEach(function (t) { add('t', t.key); });
+        this.consoles.filter(this.isRoutableShell, this).forEach(function (c) { add('sh', c.id + SEPARATOR + c.co); });
         add('at', this.focus);
         add('temp', this.temporary);
         this.toggled.forEach(function (k) { add('tree', k); });
@@ -65,6 +69,7 @@
         add('every', folders === Object.keys(every).join(',') ? null : folders);
         add('dl', this.diffLayout === 'inline' ? null : this.diffLayout);
         add('counts', this.countStyle === 'dot' ? null : this.countStyle);
+        this.tabGroupsRoute(add);
         if (this.tabs.some(function (t) { return t.key === 'hub'; })) {
           add('q', this.hub.query);
           add('excl', this.hub.withExcluded ? '1' : null);
@@ -76,7 +81,22 @@
         return p.toString().replace(/%2F/g, '/').replace(/%40/g, '@').replace(/%3A/g, ':').replace(/%7E/g, '~').replace(/%2C/g, ',');
       },
       // Tabs a key brings back: run variable prompts and processes started after load cannot be rebuilt.
-      isRoutable: function (tab) { return tab.kind !== 'vars'; },
+      isRoutable: function (tab) { return tab.kind !== 'vars' && tab.kind !== 'conflicts'; },
+      isRoutableShell: function (c) {
+        return c.kind === 'shell' && this.tabs.some(function (t) { return t.key === 'c:' + c.id; });
+      },
+      // The terminals `sh` names that this load did not start, each under its id, before their tabs reopen.
+      restoreShells: function (p) {
+        var self = this;
+        p.getAll('sh').forEach(function (v) {
+          var kv = unpair(v);
+          var id = Number(kv[0]);
+          if (Number.isInteger(id) === false || self.hasCheckout(kv[1]) === false) return;
+          if (self.consoles.some(function (c) { return c.id === id; })) return;
+          self.addConsole(kv[1], 'shell', []).id = id;
+          self.consoleCount = Math.max(self.consoleCount, id);
+        });
+      },
 
       isRouteHash: function (p) { return p.has('t') || p.has('at') || p.has('tree'); },
       restoreRoute: function (p) {
@@ -87,6 +107,7 @@
         // the hub tab reopens asking where a new terminal goes, before its query comes back
         this.diffLayout = p.get('dl') === 'side' ? 'side' : 'inline';
         var newTerminal = p.get('nt') === '1';
+        this.restoreShells(p);
         p.getAll('t').forEach(function (key) {
           if (key === 'hub' && newTerminal) { self.openNewTerminalHub(); self.temporary = null; self.focus = 'hub'; return; }
           self.reopen(key);
@@ -94,6 +115,7 @@
           self.focus = self.tabs.length ? self.tabs[self.tabs.length - 1].key : null;
         });
         if (this.tabs.some(function (t) { return t.key === p.get('at'); })) this.focus = p.get('at');
+        this.restoreTabGroups(p);
         // only ever the shown tab is temporary
         if (p.get('temp') === this.focus) this.temporary = this.focus;
         // mock-only, not written back: #save=disk|big|error (&closing=1) puts the shown tab in that save state

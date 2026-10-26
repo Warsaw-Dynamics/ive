@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use gpui::{Context, Window};
+use gpui::{App, Context, Window};
 
 use super::Workspace;
 use crate::git::diff::FilePaths;
@@ -39,7 +39,7 @@ impl Workspace {
             Builtin::GitShowDiff => self.open_changed_file(subject, &ChangeSource::Uncommitted, window, cx),
             Builtin::GitCompareWithBase => self.open_changed_file(subject, &ChangeSource::SinceBase, window, cx),
             Builtin::GitHistory => self.open_history_of(subject, window, cx),
-            Builtin::GitIgnore => self.add_to_gitignore(subject),
+            Builtin::GitIgnore => self.add_to_gitignore(subject, cx),
             Builtin::CompareFiles => self.compare_files(subject, window, cx),
             _ => {}
         }
@@ -107,20 +107,20 @@ impl Workspace {
                     workspace.open_diff_tab(&DiffTabSpec { checkout, label, request, file }, window, cx);
                 }
                 Ok(None) => {}
-                Err(error) => eprintln!("ive: {error}"),
+                Err(error) => crate::notices::notify(cx, error.to_string()),
             })
             .ok();
         })
         .detach();
     }
 
-    fn add_to_gitignore(&self, subject: &Subject) {
+    fn add_to_gitignore(&self, subject: &Subject, cx: &mut App) {
         let Home::Checkout(root) = &subject.home else {
             return;
         };
         let file = root.join(".gitignore");
         if let Err(error) = ignore_file::append(&file, &ignore_file::ignore_lines(subject)) {
-            eprintln!("ive: cannot add to {}: {error}", file.display());
+            crate::notices::notify(cx, format!("cannot add to {}: {error}", file.display()));
         }
     }
 }

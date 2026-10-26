@@ -26,6 +26,8 @@ pub const MAX_RECENT: usize = 10;
 pub const MAX_HISTORY: usize = 500;
 /// checkouts whose last use is remembered
 pub const MAX_WORKTREE_USE: usize = 200;
+/// terminals whose checkout is remembered
+pub const MAX_TERMINALS: usize = 1000;
 /// open commits, change folders and expanded folders, each, that a checkout's folders keep
 pub const MAX_SAVED_OPEN: usize = 1000;
 pub const MAX_COMMITS_SHOWN: usize = 10_000;
@@ -57,11 +59,14 @@ pub struct SavedState {
     /// the last input or run start in each checkout
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub worktree_use: Vec<SavedUse>,
+    /// where each hosted terminal is listed, which its session's labels cannot follow
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub terminals: Vec<SavedTerminal>,
 }
 
 impl Default for SavedState {
     fn default() -> Self {
-        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new() }
+        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new(), terminals: Vec::new() }
     }
 }
 
@@ -82,6 +87,12 @@ pub struct SavedProject {
     /// worktrees left out of the tree and the hub until shown again, sorted
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hidden_worktrees: Vec<PathBuf>,
+    /// the project's group of tabs was folded
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tabs_folded: bool,
+    /// the order of its worktrees in its group of tabs, as dragged in the group's menu
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub worktree_order: Vec<PathBuf>,
 }
 
 /// Which of a checkout's folders its badges switched on, which are folded, and what is open inside them.
@@ -146,6 +157,18 @@ pub struct SavedShown {
     pub tab: SavedTab,
 }
 
+/// A hosted terminal or Claude Code session's place: moved by hand or following its directory, it can be listed
+/// under another checkout, even another project, than its session's labels say.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedTerminal {
+    pub session: String,
+    pub project: String,
+    pub checkout: PathBuf,
+    /// the directory it was moved from, which it does not follow
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SavedUse {
     pub checkout: PathBuf,
@@ -163,6 +186,12 @@ impl SavedState {
                 self.history.len(),
                 self.worktree_use.len()
             ));
+        }
+        if self.terminals.len() > MAX_TERMINALS {
+            return Err(format!("{} terminals, the limit is {MAX_TERMINALS}", self.terminals.len()));
+        }
+        for terminal in &self.terminals {
+            ProjectId::parse(&terminal.project)?;
         }
         if self.projects.len() > MAX_PROJECTS || self.recent.len() > MAX_RECENT {
             return Err(format!(
@@ -194,13 +223,14 @@ impl SavedState {
         }
         let checkouts = self.projects.iter().flat_map(|project| {
             let folders = project.folders.iter().flat_map(|folders| std::iter::once(&folders.checkout).chain(&folders.files).chain(&folders.hidden_groups));
-            project.expanded_checkouts.iter().chain(&project.last_checkout).chain(&project.hidden_worktrees).chain(folders)
+            project.expanded_checkouts.iter().chain(&project.last_checkout).chain(&project.hidden_worktrees).chain(&project.worktree_order).chain(folders)
         });
         let paths = self.projects.iter().map(|project| &project.path).chain(self.recent.iter().map(|recent| &recent.path));
         let shown = self.history.iter().flat_map(|shown| shown.tab.paths());
         let shown = shown.chain(self.history.iter().flat_map(|shown| &shown.checkout));
         let used = self.worktree_use.iter().map(|used| &used.checkout);
-        match paths.chain(checkouts).chain(shown).chain(used).find(|path| path.is_relative()) {
+        let terminals = self.terminals.iter().flat_map(|terminal| std::iter::once(&terminal.checkout).chain(&terminal.pinned));
+        match paths.chain(checkouts).chain(shown).chain(used).chain(terminals).find(|path| path.is_relative()) {
             Some(relative) => Err(format!("path {} is not absolute", relative.display())),
             None => Ok(()),
         }
@@ -327,6 +357,8 @@ mod tests {
             last_checkout: None,
             folders: Vec::new(),
             hidden_worktrees: Vec::new(),
+            tabs_folded: false,
+            worktree_order: Vec::new(),
         }
     }
 
@@ -354,12 +386,15 @@ mod tests {
                     change_folders: vec![SavedChangeFolder { list: "since-base".to_owned(), path: "src/ui".to_owned(), open: false }],
                 }],
                 hidden_worktrees: vec![absolute("/mnt/data/Projects/atlassian/.claude/worktrees/GEN-811")],
+                tabs_folded: false,
+                worktree_order: Vec::new(),
             }],
             recent: vec![RecentProject { path: absolute("/home/kb/Documents/notes"), id: "notes".to_owned() }],
             tabs: None,
             window: Some(SavedWindow { x: 1950., y: 40., width: 1000., height: 700., mode: WindowMode::Maximized }),
             history: Vec::new(),
             worktree_use: Vec::new(),
+            terminals: Vec::new(),
         }
     }
 
@@ -376,6 +411,37 @@ mod tests {
         // then
         assert_eq!((loaded.state, loaded.problem), (sample(), None));
         assert!(fs::read_to_string(&path).unwrap().starts_with("version = 2\n"));
+    }
+
+    #[test]
+    fn should_round_trip_saved_terminals() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let terminal = SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: absolute("/r/wt"), pinned: Some(absolute("/r/src")) };
+        let state = SavedState { terminals: vec![terminal], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_set_aside_relative_terminal_checkout() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let terminal = SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: PathBuf::from("r/wt"), pinned: None };
+        save(&SavedState { terminals: vec![terminal], ..sample() }, &path).unwrap();
+
+        // when
+        let loaded = load(&path);
+
+        // then
+        assert!(loaded.problem.is_some_and(|problem| problem.contains("r/wt")));
     }
 
     #[test]
@@ -635,6 +701,35 @@ mod tests {
 
         // then
         assert!(error.contains("path w is not absolute"), "{error}");
+    }
+
+    #[test]
+    fn should_round_trip_folded_tabs_and_worktree_order() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let project = SavedProject { tabs_folded: true, worktree_order: vec![absolute("/p/b"), absolute("/p")], ..project("/p") };
+        let state = SavedState { projects: vec![project], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_reject_a_relative_worktree_in_the_order() {
+        // given
+        let project = SavedProject { worktree_order: vec![PathBuf::from("wt")], ..project("/p") };
+        let state = SavedState { projects: vec![project], ..SavedState::default() };
+
+        // when
+        let error = state.validate().unwrap_err();
+
+        // then
+        assert!(error.contains("path wt is not absolute"), "{error}");
     }
 
     #[test]

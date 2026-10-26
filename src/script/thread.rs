@@ -44,6 +44,8 @@ pub enum ScriptEvent {
         menus: Box<Menus>,
         quit_countdown: QuitCountdown,
         open_folders: OpenFolders,
+        drop_modifiers: crate::transfer::DropModifiers,
+        delete: super::delete_mode::DeleteMode,
         has_init: bool,
         /// the user themes to pick from, by name
         themes: Vec<String>,
@@ -252,6 +254,8 @@ impl Runner {
             menus: Box::new(loaded.menus.clone()),
             quit_countdown: loaded.quit_countdown,
             open_folders: loaded.open_folders.clone(),
+            drop_modifiers: loaded.drop_modifiers,
+            delete: loaded.delete,
             has_init: loaded.has_init,
             themes: self.dir.as_deref().map(user::names).unwrap_or_default(),
         };

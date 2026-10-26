@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use alacritty_terminal::event::Event;
-use gpui::{App, Context, SharedString, Task, Window};
+use gpui::{App, Context, Task, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
@@ -14,7 +14,8 @@ use crate::process_directory::directory_of;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
-use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView};
+use crate::terminal::exit::{Started, start_failure};
+use crate::terminal::{Launch, Progress, Source, TerminalState, TerminalView, login_shell};
 use crate::theme::Theme;
 use crate::terminal::{DirectoryReport, DirectoryTracker, Sample};
 
@@ -84,6 +85,10 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> TabId {
         // hosted when this IVE owns the hosted terminals, so the shell outlives IVE
+        let runs_in = match &self.hosted {
+            Some(_) => "a terminal host, so it outlives IVE",
+            None => "IVE, so it ends with IVE",
+        };
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch: Launch::shell(), labels: [session_labels(checkout.as_ref()), labels].concat() },
             None => Source::InProcess(Launch::shell()),
@@ -94,23 +99,26 @@ impl Workspace {
                 self.tree_changed(cx);
                 Tab::Process(id)
             }
-            Err(error) => Tab::Failed {
-                title: crate::process::DEFAULT_TITLE.to_owned(),
-                error: format!("Cannot start a shell in {}: {error}", directory.display()).into(),
-            },
+            Err(error) => {
+                let started = Started { command: login_shell(), folder: directory.display().to_string() };
+                Tab::Failed { title: crate::process::DEFAULT_TITLE.to_owned(), failure: start_failure(started, runs_in, &error) }
+            }
         };
         self.open_tab(tab, window, cx)
     }
 
-    /// Reattaches every hosted terminal still running, oldest first, under its checkout when its project is open
-    /// (its main checkout when the checkout's folder is gone), else as a home terminal. Each gets a tab when no tabs were saved (a first start);
+    /// Reattaches every hosted terminal still running, oldest first, under the checkout `records` saved for it, else
+    /// under its labels' checkout when its project is open (its main checkout when the checkout's folder is gone),
+    /// else as a home terminal; a saved pin comes back with it. Each gets a tab when no tabs were saved (a first start);
     /// otherwise the saved tabs say which do. Returns the processes by session id.
-    pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
+    pub(super) fn adopt_sessions(&mut self, tabs: AdoptedTabs, records: &[crate::state::SavedTerminal], window: &mut Window, cx: &mut Context<Self>) -> HashMap<String, ProcessId> {
         let mut adopted = HashMap::new();
         let mut orphans = Vec::new();
         let Some(terminals) = self.hosted.take() else { return adopted };
         for session in terminals.live() {
-            let checkout = checkout_from_labels(&session.labels, |project| self.project(project).map(|open| open.main_checkout().path.clone()));
+            let record = records.iter().find(|record| record.session == session.id);
+            let recorded = record.and_then(|record| checkout_from_record(record, |project| self.project(project).is_some()));
+            let checkout = recorded.or_else(|| checkout_from_labels(&session.labels, |project| self.project(project).map(|open| open.main_checkout().path.clone())));
             let source = Source::Adopt { terminals: &terminals, session: &session };
             let open = |id| TerminalView::open(id, &session.cwd, source, window, cx);
             let orphaned = orphaned_run(&session.labels, checkout.as_ref());
@@ -124,6 +132,9 @@ impl Workspace {
             match started {
                 Ok(id) if orphaned => orphans.push(id),
                 Ok(id) => {
+                    if let Some(pinned) = record.and_then(|record| record.pinned.clone()) {
+                        self.processes.set_pinned(id, pinned);
+                    }
                     if super::restart::is_restart_terminal(&session.labels) {
                         self.restart_terminal = Some(id);
                     }
@@ -132,7 +143,7 @@ impl Workspace {
                         self.open_tab(Tab::Process(id), window, cx);
                     }
                 }
-                Err(error) => eprintln!("ive: cannot reattach terminal {}: {error}", session.id),
+                Err(error) => crate::notices::notify(cx, format!("cannot reattach terminal {}: {error}", session.id)),
             }
         }
         self.hosted = Some(terminals);
@@ -205,6 +216,19 @@ impl Workspace {
         }
     }
 
+    /// A line of the bell's list, or a click on a desktop notification: the main window comes to the front and shows
+    /// process `id`, which stops it waiting.
+    pub fn show_waiting(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_menu(window, cx);
+        // the window handling the event cannot be updated from inside: activate it directly
+        if window.window_handle() == self.main_window {
+            window.activate_window();
+        } else {
+            let _ = self.main_window.update(cx, |_, main, _| main.activate_window());
+        }
+        self.show_process(id, window, cx);
+    }
+
     /// The one way IVE ends a process: hangs up its shell, hosted or not, then removes it. Dropping a hosted process
     /// without this leaves its shell running.
     pub fn end_process(&mut self, id: ProcessId, window: &mut Window, cx: &mut Context<Self>) {
@@ -272,21 +296,22 @@ impl Workspace {
             return;
         }
         let error = format!("Process {pid} did not stop: it still ran {} s after SIGKILL. IVE no longer manages it.", KILL_GRACE.as_secs());
-        self.open_tab(Tab::Failed { title, error: error.into() }, window, cx);
+        self.open_tab(Tab::Failed { title, failure: crate::failure::Failure::new(error) }, window, cx);
     }
 
     /// Removes the process; its tab closes, or, with `failure`, shows why the shell ended.
-    fn remove_process(&mut self, id: ProcessId, failure: Option<SharedString>, window: &mut Window, cx: &mut Context<Self>) {
+    fn remove_process(&mut self, id: ProcessId, failure: Option<crate::failure::Failure>, window: &mut Window, cx: &mut Context<Self>) {
         let title = self.processes.get(id).map(|process| process.title()).unwrap_or_default();
         let was_live_run = self.processes.get(id).is_some_and(|process| process.run.is_some() && process.is_live());
         self.processes.close(id);
+        self.withdraw_notice(id);
         if was_live_run {
             self.run_removed(id, window, cx);
         }
         if let Some(tab) = self.tabs.find(|tab| tab.shows_process(id)) {
             match failure {
-                Some(error) => {
-                    self.tabs.replace(tab, Tab::Failed { title, error });
+                Some(failure) => {
+                    self.tabs.replace(tab, Tab::Failed { title, failure });
                 }
                 None => {
                     self.tabs.close(tab);
@@ -317,12 +342,15 @@ impl Workspace {
         if renamed {
             self.retitle_hub_preview(cx);
         }
+        self.take_call(id, cx);
         match state {
             TerminalState::Running if renamed || progressed => self.tree_changed(cx),
             TerminalState::Running if shown => cx.notify(),
             TerminalState::Running => detached.into_iter().for_each(|tab| self.redraw_tab_window(tab, cx)),
             TerminalState::Closed => self.remove_process(id, None, window, cx),
-            TerminalState::Failed(error) => self.remove_process(id, Some(error), window, cx),
+            // a shell IVE is stopping dies of the signal IVE sent: no failure
+            TerminalState::Failed(_) if self.processes.is_stopping(id) => self.remove_process(id, None, window, cx),
+            TerminalState::Failed(failure) => self.remove_process(id, Some(failure), window, cx),
             TerminalState::Exited(code) => {
                 self.run_exited(id, code, window, cx);
                 // Stop ends a run for good: its row goes rather than stay greyed
@@ -426,6 +454,14 @@ fn observe_directories(
             Some((id, dunce::canonicalize(directory).ok()?))
         })
         .collect()
+}
+
+/// Where `record` lists its session: its checkout, when its project is open and the checkout's folder is still there
+/// (worktrees are not listed yet when sessions are adopted; one that turns out unlisted goes to the main checkout
+/// after the scan, as any process does).
+pub(super) fn checkout_from_record(record: &crate::state::SavedTerminal, is_open: impl Fn(&ProjectId) -> bool) -> Option<CheckoutRef> {
+    let project = ProjectId::parse(&record.project).ok()?;
+    (is_open(&project) && record.checkout.is_dir()).then(|| CheckoutRef { project, path: record.checkout.clone() })
 }
 
 /// Labels recording `checkout` in a hosted session, so the next IVE puts it back there.
@@ -533,6 +569,47 @@ mod tests {
         // then
         assert_eq!(restored, Some(origin));
         assert_eq!(run_origin_from_labels(&labels("ive", "/work")), None);
+    }
+
+    fn record(checkout: &Path) -> crate::state::SavedTerminal {
+        crate::state::SavedTerminal { session: "s1".to_owned(), project: "ive".to_owned(), checkout: checkout.to_path_buf(), pinned: None }
+    }
+
+    #[test]
+    fn should_place_session_by_record() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let placed = checkout_from_record(&record(dir.path()), |_| true);
+
+        // then
+        assert_eq!(placed, Some(CheckoutRef { project: ProjectId::new("ive"), path: dir.path().to_path_buf() }));
+    }
+
+    #[test]
+    fn should_ignore_record_of_closed_project() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+
+        // when
+        let placed = checkout_from_record(&record(dir.path()), |_| false);
+
+        // then
+        assert_eq!(placed, None);
+    }
+
+    #[test]
+    fn should_ignore_record_whose_folder_is_gone() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let gone = dir.path().join("gone");
+
+        // when
+        let placed = checkout_from_record(&record(&gone), |_| true);
+
+        // then
+        assert_eq!(placed, None);
     }
 
     #[test]

@@ -20,6 +20,7 @@ use crate::api::{Call, Reply, Request, WindowInput};
 use crate::window_capture;
 use crate::script::state::{ScriptState, script_status_json};
 use crate::open_project::OpenProject;
+use crate::overview::ProjectSection;
 use crate::process::{Process, ProcessId, RunId};
 use crate::run::file::{ConfigKind, RunFile};
 use crate::run::values_tab::{RunRequest, ShowRun};
@@ -63,7 +64,7 @@ async fn answer(workspace: &WeakEntity<Workspace>, request: Request, cx: &mut As
 
 /// Input for the whole window, dispatched outside the workspace's update (the handlers it reaches update the
 /// workspace themselves) and answered once the window has drawn its result, so the next call sees the targets
-/// that result drew. A click on a tree row out of view scrolls the row into view first.
+/// that result drew. A click on a tree, Worktrees or Scratches row out of view scrolls the row into view first.
 async fn window_input(workspace: &WeakEntity<Workspace>, input: WindowInput, cx: &mut AsyncWindowContext) -> Reply {
     if let WindowInput::Click(name) = &input
         && workspace.update_in(cx, |workspace, _window, cx| workspace.scroll_to_target(name, cx)).unwrap_or(false)
@@ -166,6 +167,7 @@ impl Workspace {
             Request::ListTabs => Ok(self.tab_list()),
             Request::ActiveTab => Ok(self.active_tab()),
             Request::ScriptStatus => Ok(script_status_json(cx.global::<ScriptState>())),
+            Request::Notices => Ok(cx.global::<crate::notices::Notices>().json()),
             Request::SendToActive { text } => self.send_to_active(&text).map(|()| json!("ok")),
             Request::ListProjects => Ok(self.project_list()),
             Request::OpenFile { path } => self.open_file(&path, window, cx).map(|id| json!({ "tab": id.value() })),
@@ -193,6 +195,15 @@ impl Workspace {
             Request::ReadOutput { tab, lines } => Ok(json!({ "lines": self.terminal(tab)?.output_text(lines) })),
             Request::ShowProcess { process } => self.show_process_tab(process, window, cx).map(|id| json!({ "tab": id.value() })),
             Request::ListTargets => Ok(self.target_names(cx)),
+            Request::DropRows { rows, onto, force } => {
+                let force = match force.as_deref() {
+                    None => None,
+                    Some("copy") => Some(crate::transfer::Verb::Copy),
+                    Some("move") => Some(crate::transfer::Verb::Move),
+                    Some(other) => return Err(format!("force must be \"copy\" or \"move\", not {other:?}")),
+                };
+                self.drop_rows(super::tree_drop::RowsDrop { rows, onto, force }, window, cx)
+            }
             Request::ListRunConfigs { folder } => self.list_run_configs(&self.resolve(&folder)),
 
             Request::NextFrame | Request::WindowInput(_) | Request::OpenProject { .. } | Request::RunConfig { .. } | Request::Screenshot => {
@@ -208,8 +219,8 @@ impl Workspace {
         json!(names)
     }
 
-    /// Scrolls the tree to the row with click target `name` when the row is out of view (not drawn, so its
-    /// targets are not registered); says whether it scrolled.
+    /// Scrolls the tree, or the shown Worktrees or Scratches list, to the row with click target `name` when the row
+    /// is out of view (not drawn, so its targets are not registered); says whether it scrolled.
     fn scroll_to_target(&self, name: &str, cx: &App) -> bool {
         if cx.global::<ClickTargets>().get(name).is_some() {
             return false;
@@ -218,10 +229,19 @@ impl Workspace {
         let wanted = name.strip_prefix("tree-menu:").unwrap_or(name);
         let row = self.tree.rows.iter().position(|row| row.target_names().iter().any(|target| target == wanted));
         let Some(index) = row else {
-            return false;
+            return self.scroll_worktree_list_to(name, cx) || self.scroll_scratches_to(name, cx);
         };
         self.tree.list.list_handle().scroll_to_item(index, ScrollStrategy::Center);
         true
+    }
+
+    /// Scrolls the shown Scratches section to the row of click target `name`; says whether it has that row.
+    fn scroll_scratches_to(&self, name: &str, cx: &App) -> bool {
+        let Some(Tab::ProjectOverview(overview)) = self.tabs.active_id().and_then(|id| self.tabs.get(id)) else {
+            return false;
+        };
+        let section = overview.scratches.as_ref().filter(|_| overview.section == ProjectSection::Scratches);
+        section.is_some_and(|section| section.read(cx).scroll_to_target(name))
     }
 
     fn tab_list(&self) -> serde_json::Value {
@@ -233,7 +253,9 @@ impl Workspace {
                 let checkout = tab.checkout(self).map(|checkout| checkout.path);
                 let detached = self.tabs.is_detached(id);
                 let temporary = self.tabs.is_temporary(id);
-                let mut listed = json!({ "id": id.value(), "kind": tab.kind(), "title": tab.title(self), "checkout": checkout, "shown": Some(id) == shown, "detached": detached, "temporary": temporary });
+                let title = tab.title(self);
+                let mut listed = json!({ "id": id.value(), "kind": tab.kind(), "title": title, "checkout": checkout, "shown": Some(id) == shown, "detached": detached, "temporary": temporary });
+                add_failure(tab, &title, &mut listed);
                 self.add_opened_from_hub(id, &mut listed);
                 listed
             })
@@ -321,6 +343,7 @@ impl Workspace {
             "id": process.id.value(), "tab": tab, "kind": process.kind.name(), "title": process.title(),
             "progress": process.progress().describe(),
             "checkout": process.checkout.as_ref().map(|checkout| &checkout.path),
+            "attention": process.attention().map(|attention| json!({ "text": attention.text, "since": crate::age::unix_seconds(attention.since) })),
         });
         if let Some(origin) = &process.run {
             described["folder"] = json!(origin.folder);
@@ -440,6 +463,13 @@ fn parse_hub_state(hub: serde_json::Value) -> Result<HubState, String> {
     serde_json::from_value(hub).map_err(|error| format!("open_hub: the hub state is not one open_hub made: {error}"))
 }
 
+/// A failed tab's report as `error`, the text its Copy error copies.
+fn add_failure(tab: &Tab, title: &str, listed: &mut serde_json::Value) {
+    if let Tab::Failed { failure, .. } = tab {
+        listed["error"] = json!(failure.report(title));
+    }
+}
+
 fn active_tab_json(shown: Option<(u64, &str, Option<&Path>)>) -> serde_json::Value {
     match shown {
         Some((tab, kind, checkout)) => json!({ "tab": tab, "kind": kind, "checkout": checkout }),
@@ -475,6 +505,33 @@ fn run_configs_json(folder: &Path, file: &RunFile, shown: &HashMap<String, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_list_failed_tab_error() {
+        // given
+        let tab = Tab::Failed { title: "Terminal".to_owned(), failure: crate::failure::Failure::new("The shell exited").with("Folder", "/p") };
+        let mut listed = json!({ "kind": "failed" });
+
+        // when
+        add_failure(&tab, "Terminal", &mut listed);
+
+        // then
+        let error = listed["error"].as_str().expect("an error");
+        assert!(error.starts_with("Terminal: The shell exited\n\nFolder: /p\n"), "{error}");
+    }
+
+    #[test]
+    fn should_not_add_error_to_other_tabs() {
+        // given
+        let tab = Tab::Unloaded(crate::saved_tabs::SavedTab::Hub);
+        let mut listed = json!({ "kind": "hub" });
+
+        // when
+        add_failure(&tab, "Hub", &mut listed);
+
+        // then
+        assert_eq!(listed.get("error"), None);
+    }
 
     #[test]
     fn should_describe_run_configurations() {

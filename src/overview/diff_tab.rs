@@ -10,6 +10,7 @@ use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Subscription, 
 
 use super::git_ui::{layout_switch, mark_label, muted, toggle_button};
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serve};
 use crate::document::Document;
 use crate::file_tab::{EditedFile, FileEvent, Shown, Shows};
@@ -467,11 +468,12 @@ impl Render for DiffTabBody {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = crate::theme::tabs(cx);
         let reload = target("reload-diff".to_owned(), cx.listener(|body: &mut Self, _event, _window, cx| body.reload(cx)), cx);
+        let path = self.request.file.path.display().to_string();
         let status = match &self.state {
             BodyState::Shown => None,
             BodyState::Reloading => Some(muted("reloading…", theme)),
             BodyState::Gone => Some(muted(format!("No changes to {} any more.", self.request.file.path.display()), theme)),
-            BodyState::Failed(message) => Some(div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(message.clone())),
+            BodyState::Failed(message) => Some(div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(selectable(format!("diff-error-{path}"), message.clone(), cx))),
         };
         let header = div()
             .flex()
@@ -484,8 +486,8 @@ impl Render for DiffTabBody {
             .border_b(theme.sizes.git.diff_header_border.px())
             .border_color(rgb(theme.border))
             .child(mark_label(self.mark, theme, cx))
-            .child(div().flex_none().font_weight(theme.sizes.git.diff_header_weight.font_weight()).text_size(theme.sizes.git.text_size.px()).child(self.request.file.path.display()))
-            .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(self.source.clone()))
+            .child(div().flex_none().font_weight(theme.sizes.git.diff_header_weight.font_weight()).text_size(theme.sizes.git.text_size.px()).child(selectable(format!("diff-path-{path}"), path.clone(), cx)))
+            .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.git.detail_text_size.px()).text_color(rgb(theme.muted)).child(selectable(format!("diff-source-{path}"), self.source.clone(), cx)))
             .children(status)
             .children(self.edit_note(cx).map(|note| div().text_size(theme.sizes.git.text_size.px()).text_color(rgb(theme.error)).child(note)))
             .child(layout_switch(&self.panel, theme, cx))

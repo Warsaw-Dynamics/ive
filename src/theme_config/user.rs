@@ -55,7 +55,7 @@ pub fn base(dir: &Path, choice: &ThemeChoice) -> Result<Base, String> {
     let Some(text) = read(&dir.join(&file)).map_err(|error| format!("{file}: {error}"))? else {
         return Ok(Base::Missing);
     };
-    let over: toml::Table = toml::from_str(&text).map_err(|error| format!("{file}:{}: {}", line_of(&error, &text), error.message()))?;
+    let over: toml::Table = toml::from_str(&text).map_err(|error| format!("{file}:{}: {}", crate::toml_error::line_of(error.span(), &text), error.message()))?;
     let default: toml::Table = toml::from_str(&super::DEFAULT_TEXT).expect("the bundled default theme is valid TOML");
     let value: rune::Value = toml::Value::Table(merged(default, over)).try_into().map_err(|error| format!("{file}: {error}"))?;
     super::parse(&value).map_err(|error| format!("{file}: {error}"))?;
@@ -75,11 +75,6 @@ fn read(path: &Path) -> Result<Option<String>, String> {
     fs::read_to_string(path).map(Some).map_err(|error| error.to_string())
 }
 
-/// The 1-based line a TOML error points at; 1 when it points nowhere.
-fn line_of(error: &toml::de::Error, text: &str) -> usize {
-    let at = error.span().map_or(0, |span| span.start);
-    text[..at.min(text.len())].matches('\n').count() + 1
-}
 
 /// `over` on top of `base`: tables key by key, anything else replaced.
 fn merged(mut base: toml::Table, over: toml::Table) -> toml::Table {

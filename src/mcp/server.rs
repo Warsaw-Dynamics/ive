@@ -29,6 +29,8 @@ const MAX_KEY_BYTES: usize = 64;
 const MAX_PATH_BYTES: usize = 4096;
 /// A target name holds at most a path and a label.
 const MAX_TARGET_BYTES: usize = 2 * MAX_PATH_BYTES;
+/// rows one `drop_rows` may carry
+const MAX_DROPPED_ROWS: usize = 1000;
 const MAX_SCROLL_LINES: i32 = 100;
 const FRAME_WAIT: Duration = Duration::from_millis(500);
 
@@ -54,7 +56,7 @@ pub fn start(port: u16, token: Token, calls: UnboundedSender<Call>) -> io::Resul
     let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?;
     std::thread::Builder::new().name("mcp".to_owned()).spawn(move || {
         if let Err(error) = runtime.block_on(serve(listener, token, calls)) {
-            eprintln!("ive: MCP server stopped: {error}");
+            crate::notices::log_only(&format!("MCP server stopped: {error}"));
         }
     })?;
     Ok(bound)
@@ -189,6 +191,16 @@ struct RunConfigArgs {
 struct ClickArgs {
     #[schemars(description = "a name from list_targets, e.g. \"section:Worktrees\" or \"prompt:Cancel\"")]
     target: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct DropRowsArgs {
+    #[schemars(description = "tree rows by the names list_targets shows after tree-menu:, e.g. \"entry:/r/src/a.rs\" or \"process:3\"; the first is the one pressed")]
+    rows: Vec<String>,
+    #[schemars(description = "the row dropped on, named the same way, e.g. \"toggle:/r/.claude/worktrees/x\" or \"entry:/r/lib\"")]
+    onto: String,
+    #[schemars(description = "\"copy\" or \"move\": as if the drop's copy or move modifier (config.drop_modifiers) were held")]
+    force: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -368,6 +380,13 @@ errors with file and line, how many bindings it made, and the latest log lines (
         Ok(self.ask(Request::ScriptStatus).await)
     }
 
+    #[tool(description = "Failures that happened away from any tab (a terminal that could not be re-attached, edits not \
+saved, a git action that failed): the notices shown at the bottom right, newest first, each with its time and text, \
+and the path of ive.log, which keeps every one of them.")]
+    async fn notices(&self) -> Result<CallToolResult, ErrorData> {
+        Ok(self.ask(Request::Notices).await)
+    }
+
     #[tool(description = "List open projects with their checkouts (path, label, branch, changes, ahead, behind; hidden: a worktree the user hid \
 from the tree and the hub) and \
 processes (id for show_process, tab id when a tab shows it, kind terminal, claude-code or run, title, checkout; a run \
@@ -529,18 +548,31 @@ delete-scratch:<name>, scratch-group:<group>, scratch-more:<group>, scratch-all:
 run-scratch, scratch-reload, scratch-overwrite, scratch-save-again, scratch-close. File and scratch tabs whose save found the \
 file changed on disk: save-reload, save-overwrite. Prompts: prompt:<button>. \
 <sha> is the 7-character short sha. Every tree row is listed, also those scrolled out of view; the rest only \
-while on screen.")]
+while on screen (a Worktrees or Scratches row out of view can still be clicked by name).")]
     async fn list_targets(&self) -> Result<CallToolResult, ErrorData> {
         Ok(self.ask(Request::ListTargets).await)
     }
 
-    #[tool(description = "Click a target named by list_targets, as a mouse click on it would; a tree row out of view \
-is scrolled to first. Answers once the window has drawn the result.")]
+    #[tool(description = "Click a target named by list_targets, as a mouse click on it would; a tree, Worktrees or \
+Scratches row out of view is scrolled to first. Answers once the window has drawn the result.")]
     async fn click(&self, Parameters(args): Parameters<ClickArgs>) -> Result<CallToolResult, ErrorData> {
         if let Some(refused) = too_long("target", &args.target, MAX_TARGET_BYTES) {
             return Ok(refused);
         }
         Ok(self.ask(Request::WindowInput(WindowInput::Click(args.target))).await)
+    }
+
+    #[tool(description = "Drag tree rows onto another and drop them, as the mouse would: files and folders copy or \
+move into a folder, worktree or project (the layout menu may open; answer it with click), terminals move to a \
+worktree. Returns the drop's hint, or why it was refused.")]
+    async fn drop_rows(&self, Parameters(args): Parameters<DropRowsArgs>) -> Result<CallToolResult, ErrorData> {
+        if args.rows.len() > MAX_DROPPED_ROWS {
+            return Ok(CallToolResult::error(vec![ContentBlock::text(format!("{} rows, at most {MAX_DROPPED_ROWS}", args.rows.len()))]));
+        }
+        if let Some(refused) = args.rows.iter().chain(std::iter::once(&args.onto)).find_map(|row| too_long("row", row, MAX_TARGET_BYTES)) {
+            return Ok(refused);
+        }
+        Ok(self.ask(Request::DropRows { rows: args.rows, onto: args.onto, force: args.force }).await)
     }
 
     #[tool(description = "Press keys in whatever has the keyboard in the IVE window (a prompt, a terminal, the \

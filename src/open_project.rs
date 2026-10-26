@@ -30,6 +30,13 @@ enum Refresh {
     Queued(u64, Statuses),
 }
 
+/// Whether a project's group of tabs shows all its tabs or only its head, count and current tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabsFolded {
+    Folded,
+    Open,
+}
+
 pub struct OpenProject {
     pub project: Project,
     /// the folder was gone at the last look; shown greyed, with Close only
@@ -53,6 +60,10 @@ pub struct OpenProject {
     process_paging: HashMap<PathBuf, Paging>,
     /// checkout of the last shown tab of this project that had one
     pub last_checkout: Option<PathBuf>,
+    /// whether its group of tabs is folded
+    tabs_folded: TabsFolded,
+    /// its worktrees' order in its group of tabs, as dragged in the group's menu
+    worktree_order: Vec<PathBuf>,
     /// number of the last scan applied; a scan started before it that comes back later is dropped
     applied_scan: u64,
     refresh: Refresh,
@@ -76,6 +87,8 @@ impl OpenProject {
             checkout_paging: Paging::default(),
             process_paging: HashMap::new(),
             last_checkout: None,
+            tabs_folded: TabsFolded::Open,
+            worktree_order: Vec::new(),
             applied_scan: 0,
             refresh: Refresh::Idle,
         }
@@ -88,6 +101,8 @@ impl OpenProject {
             expanded_checkouts: saved.expanded_checkouts.iter().cloned().collect(),
             hidden_worktrees: saved.hidden_worktrees.iter().cloned().collect(),
             last_checkout: saved.last_checkout.clone(),
+            tabs_folded: if saved.tabs_folded { TabsFolded::Folded } else { TabsFolded::Open },
+            worktree_order: saved.worktree_order.clone(),
             folders: saved.folders.iter().map(restored_folders).collect(),
             restored_files: saved.folders.iter().map(restored_files).filter(|(_, files)| !files.is_empty()).collect(),
             ..Self::placeholder(id, saved.path.clone())
@@ -110,7 +125,26 @@ impl OpenProject {
             last_checkout: self.last_checkout.iter().find(utf8).cloned(),
             folders: self.saved_folders(),
             hidden_worktrees,
+            tabs_folded: self.tabs_folded == TabsFolded::Folded,
+            worktree_order: self.worktree_order.iter().filter(utf8).cloned().collect(),
         }
+    }
+
+    pub fn tabs_folded(&self) -> TabsFolded {
+        self.tabs_folded
+    }
+
+    pub fn set_tabs_folded(&mut self, folded: TabsFolded) {
+        self.tabs_folded = folded;
+    }
+
+    /// Its worktrees' order in its group of tabs; the ones never dragged are not in it.
+    pub fn worktree_order(&self) -> &[PathBuf] {
+        &self.worktree_order
+    }
+
+    pub fn set_worktree_order(&mut self, order: Vec<PathBuf>) {
+        self.worktree_order = order;
     }
 
     /// The checkouts whose folders are not the default, by path.
@@ -142,6 +176,7 @@ impl OpenProject {
                 let paths: HashSet<PathBuf> = self.project.checkouts.iter().map(|checkout| checkout.path.clone()).collect();
                 self.expanded_checkouts.retain(|path| paths.contains(path));
                 self.hidden_worktrees.retain(|path| paths.contains(path));
+                self.worktree_order.retain(|path| paths.contains(path));
                 self.files.retain(|path, _| paths.contains(path));
                 self.restored_files.retain(|path, _| paths.contains(path));
                 self.folders.retain(|path, _| paths.contains(path));
@@ -667,6 +702,36 @@ mod tests {
     }
 
     #[test]
+    fn should_save_and_restore_folded_tabs_and_worktree_order() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a", "b"])));
+        project.set_tabs_folded(TabsFolded::Folded);
+        project.set_worktree_order(vec![PathBuf::from("/p/b"), PathBuf::from("/p")]);
+
+        // when
+        let restored = OpenProject::restored(&project.saved(), ProjectId::new("p"));
+
+        // then
+        assert_eq!(restored.tabs_folded(), TabsFolded::Folded);
+        assert_eq!(restored.worktree_order(), [PathBuf::from("/p/b"), PathBuf::from("/p")]);
+    }
+
+    #[test]
+    fn should_drop_gone_worktrees_from_the_order() {
+        // given
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
+        project.apply(1, Ok(scan(Path::new("/p"), &["a", "b"])));
+        project.set_worktree_order(vec![PathBuf::from("/p/b"), PathBuf::from("/p/a")]);
+
+        // when
+        project.apply(2, Ok(scan(Path::new("/p"), &["a"])));
+
+        // then
+        assert_eq!(project.worktree_order(), [PathBuf::from("/p/a")]);
+    }
+
+    #[test]
     fn should_forget_a_hidden_worktree_a_scan_no_longer_lists() {
         // given
         let mut project = OpenProject::placeholder(ProjectId::new("p"), PathBuf::from("/p"));
@@ -1043,6 +1108,8 @@ mod tests {
             last_checkout: None,
             folders: Vec::new(),
             hidden_worktrees: Vec::new(),
+            tabs_folded: false,
+            worktree_order: Vec::new(),
         };
         let mut project = OpenProject::restored(&saved, ProjectId::new("gone"));
         let gone = std::io::Error::from(std::io::ErrorKind::NotFound);

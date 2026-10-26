@@ -16,6 +16,7 @@ use crate::hub::model::Effect;
 use crate::open_project::OpenProject;
 use crate::run::file::{self as run_file, RUN_FILE, RunFile};
 use crate::editor::Tab;
+use crate::favicon::{Favicons, MAX_FAVICON_BYTES};
 use crate::project::{CheckoutRef, ProjectId, ProjectKind};
 use crate::script::excluded::Excluded;
 
@@ -144,8 +145,11 @@ impl Workspace {
                 cx.notify();
             }
             Err(error) => {
-                eprintln!("ive: the hub cannot list the files of {}: {error}", checkout.display());
-                self.hub_index.failed(checkout, error);
+                let notice = format!("the hub cannot list the files of {}: {error}", checkout.display());
+                // read again on every hub open and change: told once, until it fails otherwise
+                if self.hub_index.failed(checkout, error) == crate::hub::index::Failed::New {
+                    crate::notices::notify(cx, notice);
+                }
                 // a shown Run configurations tab says why it lists nothing
                 cx.notify();
             }
@@ -223,8 +227,10 @@ fn read_checkout(dir: &Path, wanted: &Wanted) -> Result<Read, String> {
     };
     let ignored = wanted.ignored.then(|| files::read_ignored(dir, wanted.kind)).transpose()?.map(Arc::new);
     let configs = run_files(dir, &files);
+    let too_big = |file: &str| std::fs::metadata(dir.join(file)).map_or(true, |metadata| metadata.len() > MAX_FAVICON_BYTES);
+    let favicons = Favicons::from_paths(files.paths.iter().map(|(path, _)| path.as_str())).without(too_big);
     let branches = wanted.branches.as_deref().map_or_else(Vec::new, |checked_out| branches_without_worktree(dir, checked_out));
-    Ok(Read { files: Arc::new(files), ignored, changes, configs: Arc::new(configs), branches: Arc::new(branches) })
+    Ok(Read { files: Arc::new(files), ignored, changes, configs: Arc::new(configs), favicons: Arc::new(favicons), branches: Arc::new(branches) })
 }
 
 /// The `.run.toml` files among `files` that parse, by checkout-relative folder; a broken one shows in its folder

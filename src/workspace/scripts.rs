@@ -9,7 +9,7 @@ use codeview::panel::Cast;
 use codeview::text_editor::{Motion, Selecting};
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedReceiver;
-use gpui::{App, Context, KeyDownEvent, Task, Window};
+use gpui::{App, ClipboardItem, Context, KeyDownEvent, Task, Window};
 
 use super::Workspace;
 use crate::editor::Tab;
@@ -22,6 +22,7 @@ use crate::tabs::TabId;
 use crate::theme_config::ThemeSpec;
 use crate::theme_config::user::THEMES_DIR;
 use crate::script::temporary_tabs::TemporaryTabs;
+use crate::selectable::TextSelection;
 use crate::script::{ScriptEvent, Scripts};
 use crate::text_input;
 use crate::theme::Fonts;
@@ -83,6 +84,40 @@ fn apply_excluded(excluded: Excluded, cx: &mut App) -> bool {
     changed
 }
 
+/// Runs the user's binding for `event` on selected text in `window` when that text has the keyboard (Copy, Select
+/// All); whether it took the key. A detached tab's window has no workspace bindings, so it asks this.
+pub(crate) fn run_text_key(event: &KeyDownEvent, window: &Window, cx: &mut App) -> bool {
+    let has_keys = cx.global::<TextSelection>().focus.is_focused(window);
+    let action = has_keys.then(|| bound_action(event, Place::Text, cx)).flatten();
+    match action {
+        Some(Action::Builtin(builtin)) if takes_in_text(builtin) => {
+            run_text_builtin(builtin, cx);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Whether selected read-only text takes `builtin`: the editor's own actions; window-wide ones (Alt+F12, the hub)
+/// still act on the window.
+fn takes_in_text(builtin: Builtin) -> bool {
+    builtin.supports(Scope::Editor) && !builtin.supports(Scope::Window)
+}
+
+/// Of the editor's actions, selected read-only text runs Copy and Select All; the editing ones do nothing.
+fn run_text_builtin(builtin: Builtin, cx: &mut App) {
+    match builtin {
+        Builtin::CopyTo(_) => {
+            let text = cx.global::<TextSelection>().selection.copy_text().map(str::to_owned);
+            if let Some(text) = text {
+                cx.write_to_clipboard(ClipboardItem::new_string(text));
+            }
+        }
+        Builtin::SelectAll => cx.global_mut::<TextSelection>().selection.select_all(),
+        _ => {}
+    }
+}
+
 fn is_new(old: Option<&Excluded>, new: &Excluded) -> bool {
     old != Some(new)
 }
@@ -107,7 +142,7 @@ impl Workspace {
             return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
@@ -119,6 +154,8 @@ impl Workspace {
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
                 cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
+                cx.set_global(*drop_modifiers);
+                cx.set_global(*delete);
                 apply_fonts(fonts.clone(), cx)
             }
             _ => false,
@@ -169,7 +206,8 @@ impl Workspace {
             return;
         }
         let place = match self.tabs.active() {
-            _ if super::sidebar_has_keys(window, cx) => Place::Tree,
+            _ if cx.global::<TextSelection>().focus.is_focused(window) => Place::Text,
+            _ if super::sidebar_has_keys(window, cx) => sidebar_place(self.tree.renaming.as_ref().map(|renaming| &renaming.key)),
             Some(Tab::Document(_)) => Place::Editor,
             _ => Place::Elsewhere,
         };
@@ -177,6 +215,7 @@ impl Workspace {
             return;
         };
         match action {
+            Action::Builtin(builtin) if place == Place::Text && takes_in_text(builtin) => run_text_builtin(builtin, cx),
             // a shown tab that is not a terminal takes no text
             Action::Send(text) => drop(self.send_to_active(&text)),
             Action::Invoke { generation, function } => invoke(generation, function, None, cx),
@@ -237,6 +276,25 @@ impl Workspace {
                 self.open_terminal_picker(window, cx);
             }
             Builtin::CopyFullPath => self.copy_selected_paths(cx),
+            Builtin::CopyFiles | Builtin::PasteFiles => {
+                let Some(anchor) = self.tree.selection.anchor().cloned() else { return };
+                match builtin {
+                    Builtin::CopyFiles => self.copy_files(&anchor, cx),
+                    _ => self.paste_files(&anchor, window, cx),
+                }
+            }
+            Builtin::DeleteFiles | Builtin::RenameFile => {
+                // after Escape the anchor stays, unselected: the keys act only on what shows selected
+                let Some(anchor) = self.tree.selection.anchor().filter(|anchor| self.tree.selection.contains(anchor)).cloned() else { return };
+                match builtin {
+                    Builtin::DeleteFiles => self.delete_files(&anchor, window, cx),
+                    _ => self.start_rename(&anchor, window, cx),
+                }
+            }
+            Builtin::ClearRowSelection => {
+                self.change_selection(|selection, _listed| selection.clear());
+                cx.notify();
+            }
             Builtin::OpenFindInFiles => {
                 let scope = self.hub_scope.clone();
                 self.open_hub(Some(crate::hub::model::HubState { content: true, scope, ..Default::default() }), window, cx);
@@ -262,12 +320,104 @@ impl Workspace {
     }
 }
 
+/// Where keys go while the sidebar has them: the tree's bindings, but none while Rename's field on the row of
+/// `renaming` is open (a key that types no text there, Cmd+Backspace say, would delete the selection).
+fn sidebar_place(renaming: Option<&crate::sidebar::rows::TreeKey>) -> Place {
+    match renaming {
+        Some(_) => Place::Elsewhere,
+        None => Place::Tree,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[test]
+    fn should_keep_tree_keys_from_the_tree_while_a_rename_field_is_open() {
+        // given
+        let renaming = crate::sidebar::rows::TreeKey::Entry(std::path::PathBuf::from("/r/main.rs"));
+
+        // when
+        let places = [sidebar_place(None), sidebar_place(Some(&renaming))];
+
+        // then
+        assert_eq!(places, [Place::Tree, Place::Elsewhere]);
+    }
+
     fn excluded(names: serde_json::Value) -> Excluded {
         crate::script::excluded::parse(&serde_json::from_value(names).unwrap()).unwrap()
+    }
+
+    /// Selectable text in a panel that hands its keys to [`run_text_key`], as a detached tab's window does.
+    struct Detached;
+
+    impl gpui::Render for Detached {
+        fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
+            use gpui::prelude::*;
+            let panel = gpui::div().size_full().on_key_down(|event, window, cx| {
+                run_text_key(event, window, cx);
+            });
+            gpui::div().size_full().child(panel.child(crate::selectable::selectable("t", "hello world", cx)))
+        }
+    }
+
+    #[gpui::test]
+    fn should_copy_selected_text_with_the_users_copy_key(cx: &mut gpui::TestAppContext) {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        cx.update(|cx| {
+            cx.set_global(crate::theme::Theme::of(crate::theme::Appearance::Dark));
+            let selection = TextSelection::new(cx);
+            cx.set_global(selection);
+            let copy = crate::script::keymap::Binding {
+                trigger: crate::script::keymap::Trigger::Key(gpui::Keystroke::parse("ctrl-c").unwrap()),
+                scope: Scope::Editor,
+                action: Action::Builtin(Builtin::CopyTo(crate::script::keymap::ClipboardTarget::Clipboard)),
+            };
+            let mut state = ScriptState::new(futures::channel::mpsc::unbounded().0, crate::script::log::ScriptLog::new(dir.path().join("scripts.log"), 64 * 1024));
+            state.apply(loaded(crate::script::keymap::Keymap::new(vec![copy]).unwrap()));
+            cx.set_global(state);
+        });
+        let (_, cx) = cx.add_window_view(|_window, _cx| Detached);
+        cx.run_until_parked();
+        cx.simulate_event(gpui::MouseDownEvent { button: gpui::MouseButton::Left, position: gpui::point(gpui::px(5.), gpui::px(5.)), modifiers: gpui::Modifiers::default(), click_count: 2, first_mouse: false });
+        cx.run_until_parked();
+
+        // when
+        cx.simulate_keystrokes("ctrl-c");
+
+        // then
+        assert_eq!(cx.read_from_clipboard().and_then(|item| item.text()).as_deref(), Some("hello"));
+    }
+
+    fn loaded(keymap: crate::script::keymap::Keymap) -> crate::script::ScriptEvent {
+        crate::script::ScriptEvent::Loaded {
+            keymap,
+            fonts: Fonts::default(),
+            theme: Box::new(crate::theme_config::defaults()),
+            excluded: Default::default(),
+            temporary_tabs: TemporaryTabs { enabled: true, kinds: Vec::new(), marker: crate::script::temporary_tabs::TabMarker::Italic },
+            menus: Default::default(),
+            quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),
+            open_folders: Default::default(),
+            drop_modifiers: Default::default(),
+            delete: Default::default(),
+            has_init: true,
+            themes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn should_leave_window_actions_to_the_window_while_text_has_the_keys() {
+        // given
+        let builtins = [Builtin::CopyTo(crate::script::keymap::ClipboardTarget::Clipboard), Builtin::SelectAll, Builtin::Undo, Builtin::OpenTerminal, Builtin::OpenHub, Builtin::OpenSettings];
+
+        // when
+        let taken = builtins.map(takes_in_text);
+
+        // then
+        assert_eq!(taken, [true, true, true, false, false, false]);
     }
 
     #[test]

@@ -63,7 +63,7 @@ under which the task bar groups IVE's windows, so pinning one pins the shortcut.
 |---|---|
 | Open a project | + in the sidebar header: a recent project, or Open Folder…; IVE reopens the projects you had open |
 | Close a project | its row's × (hover); with processes running, IVE asks first; it moves to Recent |
-| Overview | click a project row (Worktrees, Git, Scratches); a worktree row expands and collapses |
+| Overview | click a project row (Worktrees, Git, Scratches); a worktree row expands and collapses; the main checkout's branch icon carries a small yellow star (IntelliJ's favourite-branch star) |
 | Review a worktree's changes | its folders in the tree (Worktree folders below): Uncommitted, Since base, Commits; click a file for its diff tab |
 | Browse history | project overview → Git: the last commits and the stashes; Open Git for the Git log tab (Log, Stashes, Worktrees, Branches); click a commit for its tab |
 | Worktrees list | project overview → Worktrees: the main checkout, the worktrees by last use, the hidden ones and the branches without a worktree, as the hub lists them; the filter keeps the keyboard: type to filter all of them, ↑↓ select, Enter shows a worktree in the tree, Space hides or shows it, Escape drops the selection, then clears the filter |
@@ -72,12 +72,16 @@ under which the task bar groups IVE's windows, so pinning one pins the shortcut.
 | Scratches | project overview → Scratches: search names and contents, New scratch, hover a row to Rename or Delete; a scratch is a file in `~/.config/ive/<profile>/scratches/<project id>/`, kept when worktrees go |
 | Edit a scratch | type in its tab; it saves itself half a second after you stop, and when the tab closes or IVE quits; a change made outside IVE reloads it, or asks (Reload / Overwrite) when you have unsaved edits |
 | Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh`. On Windows `.ps1` runs with PowerShell, `.cmd` and `.bat` with cmd, `.sh` and `.bash` with Git Bash when it is installed (`CLAUDE_CODE_GIT_BASH_PATH`, else the one next to `git.exe` on `PATH`) |
+| Project and module icons | put a `.favicon.svg` (or `.png`, `.jpg`, `.jpeg`, `.ico`; the first of these wins) at the root of a project's main checkout: its tree row, tab group and hub rows show it; any folder with a `.favicon.*` of its own is a module of a monorepo, and its files' tabs and hub rows carry its icon as a small badge |
+| Tabs of several projects | grouped by project, each group framed (the group of the tab you are on in the tab's outline colour): the chevron on a group's head folds it to the head, its tab count and the tab you used last (with its worktree's name); a click on the project's name lists the group's tabs by worktree, where tabs drag within their worktree and worktrees among each other; tabs of a worktree other than the main checkout are tinted in its colour |
 | Open a file | click it in the tree; an open file shows its existing tab; or Ctrl+Shift+E (see [Hub](#hub-ctrlshifte)) |
 | Edit an uncommitted change | in a diff tab of uncommitted changes, type on the new side (added and context lines; side by side, the right panel): the file in the work tree is edited and saved as a file tab saves it, and the rows are always the diff of the text you edit (HEAD as checked out against the text read or saved). A change made on disk outside IVE is taken in while nothing is unsaved; with unsaved edits the rows keep showing them and the next save meets the change. A file that cannot be read to edit leaves the diff read-only, saying why in its header (Reload tries again). Caret and undo outlive the new diff; when a change you undid disappears, the caret goes to the nearest line left. Since base and commit diffs, and the hub's preview, are read-only. While a file's tab and a diff tab of it are both open, one with unsaved edits makes the other read-only (it says why) until its edits are saved |
 | Edit a file | type in its tab; there is no save: edits reach the disk half a second after you stop (longer for files over 8 MiB), and when you switch tabs or windows, run something, close the tab or quit; closing and quitting wait for the save, and a tab whose edits cannot be saved stays open with the reason. A change made outside IVE reloads the tab, unless it holds edits: then the save stops with a bar (Reload / Overwrite; Reload only for files over 8 MiB). A symbolic link stays: the file it points at is written. In a file tracked by git, the gutter marks the lines changed since HEAD (as the Uncommitted diff shows them): green bars on added lines, blue on changed ones, a grey triangle where lines were deleted; they follow your typing and catch up a moment after you stop, after a change on disk and after a commit (no markers for untracked files, files over 8 MiB, scratches and diffs). Click a marker for its popup: the lines as they are in HEAD, ↑ / ↓ to the previous / next change (round from the last to the first), Rollback (puts HEAD's lines back as one edit; Ctrl+Z undoes it), Show diff (the file's Uncommitted diff at that change), Copy (HEAD's lines) and a "Commit this change" field: type a message, Enter (or the send button) commits that change alone, as it is in the editor, on HEAD; other changes and other staged files stay out, and hooks and signing apply (IVE runs `git` for it). It is refused, with the reason in the popup, with an empty message, while the file has staged changes or is staged as new, for a file with a git `filter` or `working-tree-encoding`, during a merge, rebase, cherry-pick or revert, and when HEAD moved since the markers were found (a commit landing while IVE commits is taken off again; the work tree is never touched). What goes wrong during the commit itself (IVE's commit taken off again, or left on another commit because taking it off failed, or made but not found in HEAD's reflog) shows in a bar above the text with what to run, until you dismiss it (✕) or a commit goes through. One commit at a time per file: the field waits for the answer, also after Esc and reopening; a failure shows in that change's popup, now or when it is next opened. Hooks that stash or rewrite files change them on disk during the commit, which the tab sees as an outside change. Esc, a click elsewhere or typing outside the change closes it |
 | Hub | Ctrl+Shift+E (Cmd+Shift+E on macOS): recent tabs, uncommitted changes, running processes, and a search over every file of every open project; see [Hub](#hub-ctrlshifte) |
 | Select and copy in a file or a diff | drag, double-click (a word), triple-click (a line) or Shift+click (extend); Ctrl+A selects all, Ctrl+C copies (Cmd on macOS); a diff copies its code lines, without line numbers and +/- |
-| Copy full paths | Ctrl+Shift+C (Cmd+Alt+C on macOS) in the tree copies the absolute paths of its selected files and folders (a click, Ctrl+click, Shift+click), one per line; in the hub, the selected row's |
+| Copy full paths | Ctrl+Shift+C (Cmd+Alt+C on macOS) in the tree copies the absolute paths of its selected files, folders and changed files (a click, Ctrl+click, Shift+click), one per line, each path once; in the hub, the selected row's |
+| Rename a file or folder | Rename… in the tree menu, or F2 in the tree (macOS also Enter): on a file or folder under Files, or a changed file under Uncommitted, Since base or Commits that is in the work tree; the row's name becomes a field, the name before its extension selected; Enter renames, Escape or a click elsewhere cancels. A name that is empty, `.`, `..`, has a `/`, or is taken in the folder is refused, the reason under the tree; a change of case alone works. Every tab's edits are saved first (one whose edits cannot be saved stops it, its tab shown); the file tabs of what was renamed reopen at the new path in their place, its diff tabs close. Worktrees, folders holding one and `.git` are not renamed |
+| Delete files and folders | Delete in the tree menu, or Delete in the tree (macOS Cmd+Backspace), on the selection: files, folders and changed files in the work tree go to the system trash (`config.delete = "permanent"` removes them instead, after `Delete main.rs permanently?`). Worktrees, folders holding one and `.git` stay, named under the tree. Every tab's edits are saved first (one whose edits cannot be saved stops it, its tab shown); the tabs of what was deleted close |
 | Find the shown tab in the tree | the crosshair left of + in the sidebar header expands the tree to its file, worktree or process and selects it |
 | Open a terminal | Alt+F12 opens one in the current tab's checkout; + on that checkout's Processes row (on hover); Ctrl+Shift+T (Cmd+Shift+T on macOS) asks where: see "New terminal anywhere" below |
 | Worktree folders | under a worktree (or a project with one checkout): Processes (terminals, Claude Code and every run; a click opens its Run configurations tab), Uncommitted, Since base, Commits, then Files. Its + (on hover) starts a terminal in that worktree; an empty Processes has no chevron. **Which folders show**: the folder button in the sidebar header opens a menu with a tick per folder (switches it in every worktree and in worktrees opened later; Processes and Files at first), each with its key (Ctrl+Alt+1 to 5 by default, in this order, as `init.rn` binds `act::ToggleFolderEverywhere`), a Changed files Flat \| Tree switch (Alt+Shift+G), and Reset N worktrees set apart while some worktree keeps a folder set of its own from before. A switched-on git folder with nothing in it stays, muted, without a chevron, with `· 0` (`· no base` without a base branch) and why in its tooltip. A changed file opens its diff tab; a commit folds its files out and in; Commits lists 10, then Load 20 more adds 20 each click. Since base includes the uncommitted files. Alt+Shift+G lists changed files flat or grouped by folder; grouped, a list opens its folders shallowest first while it shows at most 20 rows, and a folder you open or close stays so. Shown and folded folders, every worktree's set, open commits and change folders, Load more and the expanded folders of Files are kept in `state.toml` |
@@ -86,8 +90,8 @@ under which the task bar groups IVE's windows, so pinning one pins the shortcut.
 | Switch or close tabs | click a tab; middle click, its × or Ctrl+Shift+W (Cmd+W on macOS) closes it, and closing a process tab keeps the process running (in Processes); Ctrl+W stays the program's (a shell deletes a word) |
 | Stop a process | Ctrl+Shift+Q (Cmd+Alt+W on macOS) on its tab, the tab menu's Stop, or the Stop button of its row: the tab closes at once and the row reads `stopping…`; the shell or run gets a hang-up and SIGTERM (to its process group and the foreground program's), SIGKILL 5 s later, and its row goes once it is gone (a run's configuration row goes back to ▷ Run). One still running 2 s after SIGKILL is left to itself: IVE forgets it and a tab names its pid. On any other tab Ctrl+Shift+Q just closes it |
 | Tab menu | right click on a tab (other clicks and menus: `config.tab_menus` in [Scripting](#scripting)): Keep Tab (a temporary tab), Stop (a process tab: as Ctrl+Shift+Q), then for a file's tab (a file, a diff, a scratch) Send to Terminal, Find in Files, Copy Path, Open In and Git as in the tree menu, then Close, Close Other Tabs, Close Tabs to the Left / Right |
-| Tree menu | right click on a row (`config.tree_menus` in [Scripting](#scripting)): on a selected file or folder it applies to the whole selection, on another row to that row alone (a worktree or project row: its root folder; a changed file: the file). New Terminal (a Processes folder: a terminal in its worktree, as its +), Stop (a process row: ends it for good, as its Stop button; a running run's row: stops the run), Send to Terminal ▸, Open in Terminal (a terminal in the folder), Run (a `.sh`, `.bash` or `.zsh` file as a shell scratch runs; a folder's `.run.toml` configurations), Find in Files…, Copy Path ▸ (absolute, relative to its worktree, file name; one per line), Open In ▸ (Reveal in Files / Finder, Open in Default App, Open in Browser for `.html`, `.htm`, `.svg`, Open in New Window), Git ▸ (Show Diff of an uncommitted file, Compare with Base Branch, Show History of a file or folder, following a renamed file, Add to .gitignore), Compare Files (two files). Items that do not apply are left out; ↑ ↓ Enter → ← Escape work in it |
-| Send to Terminal | the menu's submenu lists the terminals, most recently used first (shown or Enter pressed in it), then New Terminal in the worktree: the paths are pasted into the chosen one, which is shown, without Enter. They are relative to the terminal's current folder (`../` included) when the terminal works in the worktree of every path, else absolute; a drag onto a terminal and the hub's Alt+Enter type paths the same way |
+| Tree menu | right click on a row (`config.tree_menus` in [Scripting](#scripting)): on a selected file, folder or changed file it applies to the whole selection, on another row to that row alone (a worktree or project row: its root folder; a changed file: the file). New Terminal (a Processes folder: a terminal in its worktree, as its +), Stop (a process row: ends it for good, as its Stop button; a running run's row: stops the run), Send to Terminal ▸, Open in Terminal (a terminal in the folder), Run (a `.sh`, `.bash` or `.zsh` file as a shell scratch runs; a folder's `.run.toml` configurations), Find in Files…, Copy, Paste, Rename…, Delete, Copy Path ▸ (absolute, relative to its worktree, file name; one per line), Open In ▸ (Reveal in Files / Finder, Open in Default App, Open in Browser for `.html`, `.htm`, `.svg`, Open in New Window), Git ▸ (Show Diff of an uncommitted file, Compare with Base Branch, Show History of a file or folder, following a renamed file, Add to .gitignore), Compare Files (two files). Items that do not apply are left out; ↑ ↓ Enter → ← Escape work in it |
+| Send to Terminal | the menu's submenu lists the terminals, most recently used first (shown or Enter pressed in it), then New Terminal in the worktree: the paths are pasted into the chosen one, which is shown, without Enter. They are relative to the terminal's current folder (`../` included) when the terminal works in the worktree of every path, else absolute; a drag onto a terminal (of files, folders and changed files) and the hub's Alt+Enter type paths the same way. A project or worktree row dragged onto a terminal types its root folder, always absolute; dropped on the tree it does nothing |
 | Find in a file | Ctrl+F (Cmd+F on macOS) in a file, scratch, diff or commit tab: a box at the top right of the code with the selection (on one line) or the word at the caret, else the last query; every match marked (and on the scrollbar), `3 of 12`. Enter / Shift+Enter in the box, F3 / Shift+F3 anywhere in the code (macOS also Cmd+G / Cmd+Shift+G) and ▲ ▼ go to the next or previous match, round at the ends, and select it; Alt+C, Alt+W, Alt+R in the box (macOS Cmd+Alt+C, W, R) or Aa, W, .* match case, whole words, regex; Esc or × closes it and leaves the match selected. A side-by-side diff searches the side last clicked; a match in a collapsed commit file opens it. F3 with the box closed opens it with the last query |
 | Find in files | Ctrl+Shift+F (Cmd+Shift+F on macOS), or Find in Files… in a menu for the picked files and folders: the hub searching file contents, see [Hub](#hub-ctrlshifte) |
 | Temporary tabs | a project or a worktree's Processes clicked in the tree, Settings and the hub open in a temporary tab (italic title) that closes once another tab is shown; middle click on the row, or double click on the tab, keeps it; temporary tabs are not restored at the next start; see `config.temporary_tabs` in [Scripting](#scripting) |
@@ -227,6 +231,92 @@ As a fallback, this repository also reports it: the root `.claude/settings.json`
 `EnterWorktree` and `ExitWorktree` in every Claude Code session started in the repository. The hook writes `OSC 7`
 to Claude's terminal itself, because hooks run without a terminal and Claude Code drops `OSC 7` from a hook's
 `terminalSequence`. It needs only bash, and sends nothing when something is missing.
+
+### Processes that call for you
+
+A program in a terminal that finishes, or waits for an answer or a permission, can say so, and IVE shows it until
+you look. Three standard signals count, from a hosted terminal's live output: a notification (`OSC 9;<text>` as
+iTerm2 sends it, `OSC 777;notify;<title>;<body>` as Ghostty and VTE read it, kitty's `OSC 99`), the bell (`BEL`:
+"rang the bell"), and progress reported with `OSC 9;4` ending ("finished"). IVE knows no agent: set yours to send one.
+
+- Claude Code: `claude config set --global preferredNotifChannel iterm2` (or `ghostty`, `kitty`, `terminal_bell`).
+- Codex: in `~/.codex/config.toml`, `[tui]` `notifications = true`.
+
+A call counts only while you do not see the terminal: its tab is not the shown one, or IVE's window is in the
+background. Then its tab and its tree row get an orange dot, the row says what the program said, a folded project,
+worktree or Processes row says `● n waiting`, and a bell left of Settings lists them, longest waiting first (MCP:
+`waiting`, then `waiting:<n>`). The hub (Ctrl+E) lists them first, under Waiting. Showing the tab with the window in
+front clears it. MCP's `list_projects` gives each process's `attention` (`text`, and `since` in Unix seconds).
+
+With no IVE window active, a call also sends a desktop notification (`notify-send` on Linux, a click shows the
+process; `osascript` on macOS; none on Windows yet). IVE takes them back when it comes to the front. The first time sending one fails, it
+says so in `ive.log`. A call made while IVE was closed is not kept.
+
+### Drag and drop, copy and paste
+
+Ctrl+click (macOS Cmd+click) picks tree rows one by one, Shift+click from the last one picked; files, folders and
+changed files (under Uncommitted, Since base and Commits, but deleted ones) pick together, terminals, Claude Code and
+runs together. A file picked twice, as a file and as a change, counts once. Escape drops the picks. A hint under the pointer says what a drop
+would do.
+
+- **Terminals and Claude Code** dropped on a worktree, its Processes folder or a project (its main checkout) move
+  there: the shell is not touched, only listed under the other worktree. It stays there until its directory changes
+  again (into another worktree it follows as above; anywhere else it stays), and after a restart of IVE too. Runs
+  stay with their worktree's `.run.toml`. With the copy modifier held (Ctrl, macOS Option), the same things start
+  there instead and the originals keep running: a terminal, Claude Code, the worktree's own copy of a run.
+- **Files and folders** dropped on a folder (or a file: its folder), a worktree, its Files folder or a project copy or
+  move there, in any project: the same worktree moves, another copies; Ctrl copies and Shift moves (macOS Option and
+  Cmd). From different folders of one worktree, a menu asks whether to keep their folders (below the folder they
+  share) or put them all flat into the target; from several worktrees they always go flat. A copied folder carries
+  all its files but git's own (`.git`, nested worktrees); a moved one carries a nested `.git` too, and a folder holding
+  another open worktree is not moved. Pasted or Ctrl+dropped into its own folder, a file or folder goes beside
+  itself as `name (2)`. At most 20 000 files and 4 GiB in one copy.
+- **Copy and Paste**: Ctrl+C (macOS Cmd+C) in the tree puts the picked files' absolute paths on the clipboard; Ctrl+V
+  on a row copies the files and folders on the clipboard into its folder, keeping their folders when they come from
+  one worktree. The tree menu has Copy and Paste too.
+- **Nothing is overwritten unasked.** When anything would land on an existing file or folder, nothing is written and
+  a Conflicts tab lists them: where each comes from, both sizes, why (differs by so many lines, same content, two
+  incoming files of one name, a folder in the way) and Replace | Skip | Keep both (`name (2).ext`); a click on a row
+  shows both texts. Copy stays greyed until every row is decided; Cancel or closing the tab writes nothing. Each file is
+  written under a temporary name and renamed into place. A line under the tree says what happened (`Copied 7 files to
+  dev · internal-apps/ive/mock · skipped 1`); a failure stays until clicked.
+
+The drop modifiers are `config.drop_modifiers = #{ force_copy: "CTRL", force_move: "SHIFT" }` in `ive.rn` (macOS
+`ALT` / `SUPER`), the keys `act::CopyFiles`, `act::PasteFiles`, `act::RenameFile` (F2; macOS also Enter), `act::DeleteFiles` (Delete;
+macOS Cmd+Backspace) and `act::ClearRowSelection` in the tree scope; change
+them in `init.rn`.
+
+### Selecting text, failures and notices
+
+**Selecting text.** Text you may want to paste elsewhere can be selected like text on a web page: press and drag,
+double click a word (a path or a sha counts as one), triple click the whole block, Shift+click to extend. Copy and
+Select All are your editor keys (Ctrl+C and Ctrl+A, Cmd on macOS; whatever `init.rn` binds in the `editor` scope);
+the other editing keys do nothing there. One selection at a time, inside one block; pressing anywhere else clears
+it. Selectable: the Settings pages' texts (the Scripts instructions, the build line, versions, licence texts, where
+settings are saved, errors), commit tab headers (sha, author and date, message, parents), diff tab headers (path,
+source), the Git log tab's worktrees and branches, a project overview's location (the full path), worktree list
+hints, the scratches folder, a scratch tab's header, the run values and run configurations tabs' texts, failed tabs
+and notices. Buttons, tabs, tree rows, menus and tooltips are not: a click there does what it did.
+
+**Failed tabs.** A tab that failed shows what failed, then details (`Command`, `Folder`, `Exit`, `Cause`, `Attach`,
+`Configuration`, `Worktree`…) and the last lines the program printed, all selectable. **Copy error** copies it as
+plain text with IVE's version and the OS, ready to paste into a search or hand to an agent; MCP's `list_tabs` gives
+the same text as a failed tab's `error`. A shell that fails right after start, or dies of a signal IVE did not send
+(Stop, closing the tab and quitting send theirs), keeps its tab with the command, the folder, the exit code or the
+signal by name (`SIGSEGV (11)`) and its last 40 output lines; any other exit closes the tab, as before. A lost
+terminal says why (the connection error) and how to reach it (`ive --pty-host attach <id>`). A run that cannot
+start names its command as `.run.toml` writes it (never a secret), the folder, the configuration and its file. A
+file deleted while open says which (`deleted on disk: <path>`); `.run.toml`, `vars.toml` and `settings.toml` errors
+name the file and line; git errors keep libgit2's class and code; a run's exit by signal reads
+`✕ exit 137 (SIGKILL)`.
+
+**Notices.** A failure away from any tab (a terminal that cannot be re-attached at start, edits not saved, a git
+action or Run from the tree menu that failed, a hub scratch that cannot open, IVE's state not saved) shows at the
+bottom right of the main window, with its time, Copy and ×; at most five, the oldest goes first, and they never
+take the keyboard. Every notice, and the failures no window can show (the terminal registry at start, file
+watching, the MCP server stopping, handing a path to the OS, saving a pasted image), also go to
+`~/.local/state/ive/<profile>/ive.log` (next to `scripts.log`; 1 MB, then its newer half) and stderr. MCP's
+`notices` returns the open ones, newest first, and the log's path.
 
 ### Restart
 
@@ -464,6 +554,8 @@ async fn restart(context) {
   opens temporary, any of `"Project"`, `"Settings"`, `"Hub"` and `"RunConfigs"` (all four),
   and `marker`, `"Italic"` or `#{ Prefix: "*" }` (1 to 8 characters before the title). A temporary tab closes once
   another tab is shown; a new tab takes its place in the row.
+- `config.delete` (`"trash"`): what Delete in the tree does with files and folders, `"trash"` (to the system trash)
+  or `"permanent"` (removed at once, after a question).
 - `config.quit_countdown` (`10`): the seconds the quit prompt counts down before IVE quits and leaves the running
   processes running, 1 to 60.
 - `config.open_folders` (`["processes", "uncommitted", "since-base", "commits"]`): a worktree's folders in the project tree
@@ -696,6 +788,10 @@ pub fn init(config) {
 - Syntax and diff colours are `config.theme.dark.syntax` and `config.theme.light.syntax`, by colour key, as the
   Settings colour pages name them: `foreground`, `background` (`"RRGGBB"`, without `#`), `bold`, `italic`, or
   `inherit: true` for the key's parent's look.
+- How thick text looks is `config.theme.dark.text_rendering` (and `light.text_rendering`), on Linux: `gamma` from
+  1.0 to 2.2 and `contrast` (extra weight for text darker than 75% brightness) from 0.0 to 4.0; higher values draw
+  text bolder. IVE draws with 1.0 and 0.0, the glyphs' coverage as rasterised, which is closer to IntelliJ than Zed's
+  1.8 and 1.0 (`config.theme.dark.text_rendering.gamma = 1.4;`). A change applies to open windows at once.
 - The project tree marks folders as excluded when git ignores them or `config.excluded` names them (see "Excluded
   folders"), and colours files by git status: `config.theme.dark.git` has `modified`,
   `added`, `deleted`, `unversioned`, `renamed`, `conflicted`. Rows in a state are drawn by
@@ -766,14 +862,16 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 
 | Tool | What it does |
 |---|---|
-| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub |
+| `list_tabs` | tab ids, kinds (`document`, `process`, `project-overview`, `diff`, `commit`, `git-log`, `scratch`, `settings`, `failed`, `run-values`, `run-configs`, `conflicts`, `hub`), titles, checkout path, which one is shown, which one is temporary, `opened_from_hub` on a tab just opened from the hub, and a failed tab's `error` (the text its Copy error copies) |
 | `active_tab` | the shown tab: id, kind, checkout path; nulls when no tab is shown |
 | `script_status` | scripts from `~/.config/ive/<profile>`: whether `init.rn` loaded (`loaded`, `failed`, `no-init`), its errors with file and line, bindings made, the log file and its last 50 lines |
-| `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; a run also its `folder`, `config` and `live`) |
+| `notices` | the failures shown at the bottom right, newest first (time, text), and the path of `ive.log`, which keeps them all |
+| `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; `attention` while it waits for the user; a run also its `folder`, `config` and `live`) |
 | `list_run_configs` | a folder's `.run.toml` read now: each configuration's key, name, kind (`run`, `serve`), command (secrets as `${name}`), live state and process id; or the file's error |
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
 | `list_targets` | what `click` can press now, by name: every tree row and its actions (also rows scrolled out of view), overview sections and cards, Settings, prompt buttons (see the names below) |
-| `click` | click a target from `list_targets`, as the mouse would; a tree row out of view is scrolled to first; answers once the window has drawn the result |
+| `click` | click a target from `list_targets`, as the mouse would; a tree, Worktrees or Scratches row out of view is scrolled to first; answers once the window has drawn the result |
+| `drop_rows` | drag tree rows onto another row and drop them, as the mouse would: `rows` and `onto` by their names after `tree-menu:` (`entry:/r/src/a.rs`, `process:3`, `toggle:/r/.claude/worktrees/x`); the first row is the pressed one, the others are picked with it; `force`: `copy` or `move`, as if `config.drop_modifiers`' key were held. Returns the drop's hint (`Copy 2 items to dev · lib`), or why it was refused. Files from folders of one worktree open the layout menu: answer it with `click` on `tree-menu:keep-folders`, `tree-menu:flat` or `tree-menu:cancel` |
 | `window_keys`, `window_text` | keys or text for whatever has the keyboard: a prompt (Enter, Escape), a terminal, a text field, the workspace's key bindings (`alt-f12`) |
 | `show_process` | show a process's tab by its `list_projects` id, opening it again after its tab was closed |
 | `open_project` | open a folder's project, as Open Folder… with it picked; answers with its id once it is open |
@@ -807,6 +905,7 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | Where | Targets |
 |---|---|
 | tab row | `restart` (with `--restart`: builds, then restarts IVE) |
+| tree picks | `tree-pick:<row target>` as a Ctrl+click on the row (adds it to the picked rows, or takes it out), `tree-pick-range:<row target>` as a Shift+click (picks the rows from the last one picked); files, folders and changed files pick together, terminals, Claude Code and runs together; `tree-rename` is Rename's field (type into it with `window_text`, then `window_keys` `enter`) |
 | menus | `tab-menu:<tab>` and `tree-menu:<row target>` (e.g. `tree-menu:entry:/r/src`) open a tab's or a row's `main` menu; then each line is `tab-menu:` or `tree-menu:` and the labels down to it joined by `/` (`tree-menu:Copy Path/Copy Relative Path`; a click on a submenu's line opens it); Send to Terminal's lines by process id (`tree-menu:Send to Terminal/<n>`, `…/new`), Run's by configuration key; a line waiting for its condition is listed as `<name> (pending)`; the tab actions also as `tab-menu:keep`, `tab-menu:stop`, `tab-menu:kill`, `tab-menu:close`, `tab-menu:close-others`, `tab-menu:close-left`, `tab-menu:close-right` |
 | sidebar header, welcome | `select-opened` (Select opened file: the shown tab's row), `open-project` (the + menu), `recent:<id>`, `open-folder` (the OS picker: use the `open_project` tool instead) |
 | sidebar header menus | `project-picker` (the title), then `show-projects:all`, `show-projects:<id>`; `folders-menu`, then `every-folder:<folder>`, `changes-layout:flat`, `changes-layout:tree`, `reset-folders` |
@@ -815,11 +914,12 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | worktree folders | `folder:<id>/<label>/<folder>` (fold/unfold; `<folder>` also `files`; Processes' opens its Run configurations tab), `toggle:<id>/<label>/processes` (Processes' chevron), `new-terminal:<id>/<label>/processes` (Processes' +) |
 | process row | `process:<n>`, `stop-process:<n>`; a run in Processes: `live-run:<n>`; a running server's `open-link:<n>`, `copy-link:<n>`; its `restart-process:<n>`, `stop-process:<n>` (live) or `start-process:<n>`, `remove-process:<n>` (exited; `<n>` is `pending-<k>` while it waits for `before` steps) |
 | git folder rows | `change:<id>/<label>/<source>:<path>` (its diff; `<source>`: `uncommitted`, `since-base` or a short sha), `change-folder:<id>/<label>/<source>:<path>/`, `commit:<id>/<label>/<short sha>` (folds its files), `commits-more:<id>/<label>` (Load 20 more) |
+| Conflicts tab (`<n>` a row of the plan) | `conflicts-all:replace`, `conflicts-all:skip`, `conflicts-all:both` (every conflict where offered), `conflict:<n>:replace`, `conflict:<n>:skip`, `conflict:<n>:both`, `conflict-row:<n>` (unfolds both texts), `conflicts-clean` (the files without a conflict), `conflicts-apply` (Copy or Move, once every conflict is decided), `conflicts-cancel`; the line under the tree: `tree-note` (dismisses it) |
 | Run configurations tab (`<folder>` checkout-relative) | `run-configs-filter` (focus the filter, then `window_text`), `run-configs-layout:flat`, `run-configs-layout:tree`, `run-configs-folder:<folder>` (folds a Tree folder), `open-run-file:<folder>` (its `.run.toml`), `run-config:<folder>#<key>` (shows its run), `run:<folder>#<key>` (▷ Run), and a run's `run-configs-restart:<n>`, `run-configs-stop:<n>`, `run-configs-start:<n>`, `run-configs-remove:<n>` |
 | Run `<name>` tab | `value:<variable>` (focus its field, then `window_text`), `run-values:<tab>`, `cancel-values:<tab>` |
 | file row | `entry:<absolute path>` (opens a file, toggles a folder); a file a worktree inside the main checkout shows twice is `entry:<path>@<label>` in the main checkout's tree |
 | paging row | `more:<list>`, `all:<list>` (`<list>`: the project id for checkouts, the checkout path for processes) |
-| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme` |
+| tab row, Settings | `settings`, `theme:<label>`, `settings-page:<page>`, `open-ive-rn`, `open-theme-toml`, `open-settings-toml`, `user-theme:<name>` (`user-theme:Default` for IVE's own, `user-theme:Default.toml` for a theme file named `Default`), `copy-script-instructions`, `open-ive-readme`, `copy-error` (a failed tab), `notice-copy:<n>`, `notice-close:<n>` (notices, newest first from 0) |
 | project overview | `section:<label>` |
 | project Git section, Git log tab | `open-git`, `log:<sha>`, `git-log:Log`, `git-log:Stashes`, `git-log:Worktrees`, `git-log:Branches`, `load-more` |
 | diff and commit tabs, the hub's diff preview | `reload-diff`, `diff-file:<path>`, `diff-layout:inline`, `diff-layout:side-by-side` |

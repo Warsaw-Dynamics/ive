@@ -2,6 +2,7 @@
 //! the three git folders; pure, so it is tested without gpui.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -291,6 +292,8 @@ pub struct FolderRow {
     pub empty: bool,
     /// why a git folder lists nothing, once read
     pub nothing: Option<Nothing>,
+    /// Processes folded: its processes that wait for the user; 0 otherwise
+    pub waiting: usize,
 }
 
 /// An empty git folder's row: muted, `· 0` or `· no base` after its name, and why in its tooltip.
@@ -308,6 +311,11 @@ pub struct ChangeRow {
     pub change: Change,
     /// in the flat layout, its folder, shown muted after the name
     pub folder: Option<String>,
+}
+
+/// Where changed file `row` is in its checkout's work tree.
+pub fn change_path(row: &ChangeRow) -> PathBuf {
+    row.checkout.path.join(row.change.path.to_path())
 }
 
 /// A folder of changed files in the tree layout.

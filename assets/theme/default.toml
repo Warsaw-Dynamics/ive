@@ -96,7 +96,9 @@ strip_padding_x = "0.25rem"
 gap = "0.125rem"
 tools_gap = "0.25rem"
 tools_padding_left = "0.5rem"
-tab_height = "1.75rem"
+# odd, as group_height and group_head_height: the row's content is 35 px (36 less its border), and only odd heights
+# centre in it on whole pixels
+tab_height = "1.6875rem"
 # a tab's padding, the right one beside its close button
 tab_padding_left = "0.625rem"
 tab_padding_right = "0.375rem"
@@ -117,6 +119,30 @@ drop_marker_width = 2.0
 drop_marker_inset = 2.0
 drop_marker_radius = 4.0
 drag_chip_opacity = 0.85
+# a project's or module's favicon on a tab's icon, lower right, overhanging it, cut out by a ring
+badge_size = 10.0
+badge_offset = 3.0
+badge_ring = 1.5
+# a worktree's colour bar, in the tree and the project group's menu
+rail_width = 2.0
+rail_inset = 4.0
+# a worktree tab's background, of its colour: as it is, hovered, shown, and the shown one's outline
+tint = 0.12
+tint_hover = 0.18
+tint_shown = 0.22
+tint_outline = 0.45
+# a project's group of tabs: the gap between groups, its head's text, its count's pill
+group_gap = "0.375rem"
+group_head_text_size = "0.75rem"
+group_count_radius = 8.0
+# its frame, 2 px round its tabs: height, border, radius, padding before its head and after its last tab; its head's
+# name's height
+group_height = "1.9375rem"
+group_border = 1.0
+group_radius = 8.0
+group_padding_left = "0.25rem"
+group_padding_right = "0.125rem"
+group_head_height = "1.3125rem"
 # Restart and Settings
 toolbar_button_padding = "0.25rem"
 toolbar_button_radius = 6.0
@@ -187,10 +213,13 @@ header_weight = "medium"
 number_padding_right = 4.0
 
 # Terminal and Claude Code tabs.
+# IntelliJ's terminal defaults: JetBrains Mono 13, line and column spacing 1.0.
 [sizes.terminal]
-text_size = 14.0
-# lines are this many font sizes apart
-line_height_factor = 1.3
+text_size = 13.0
+# lines are this many font sizes apart; 1.32 is JetBrains Mono's own line height, IntelliJ's line spacing 1.0
+line_height_factor = 1.32
+# cells are this many glyph widths wide, as IntelliJ's column spacing
+column_spacing = 1.0
 # around the grid of cells
 padding = 6.0
 cursor_thickness = 2.0
@@ -475,6 +504,8 @@ on_accent = "#FFFFFF"
 selected = "#2E436E"
 hover = "#393B40"
 error = "#F75464"
+# a process that called for the user (a notification, the bell, finished progress) until they look: its dot and text
+attention = "#F0A732"
 # backgrounds of added and removed diff lines
 diff_added = "#39AC6024"
 diff_removed = "#DD3C4924"
@@ -527,7 +558,8 @@ renamed = "#70AEFF"
 conflicted = "#DE6A66"
 
 # Tree row styles: `text`, `background` ("#RRGGBBAA"), `weight` ("normal", "medium", "semibold", "bold") and `italic`
-# (true or false), each optional; a later state wins: hover, then excluded or ignored, then active, then selected.
+# (true or false), each optional; a later state wins: hover, then excluded or ignored, then active, then selected,
+# then drop.
 [dark.tree_states]
 hover = { background = "#393B40FF" }
 excluded = { text = "#D69A6B", background = "#291F1CFF" }
@@ -537,6 +569,8 @@ active = {}
 selected = { background = "#2E436EFF" }
 # grey extra text, such as a project's tags
 secondary = { text = "#868A91" }
+# the row a dragged file or process would drop on
+drop = { background = "#35538FFF" }
 
 # The chip behind the name of a tree row that is not on disk, as a row style: `chip` for @run,
 # `hidden` for @hidden, weaker since it holds real files.
@@ -557,6 +591,12 @@ disabled = "#6F737A"
 highlight = "#2E436E"
 highlight_text = "#DFE1E5"
 separator = "#43454A"
+
+# How text is drawn (Linux): `gamma` from 1.0 (none) to 2.2, and `contrast`, extra weight for text darker than 75%
+# brightness, from 0.0 (none) to 4.0; higher values draw text bolder. Zed draws with gamma 1.8 and contrast 1.0.
+[dark.text_rendering]
+gamma = 1.0
+contrast = 0.0
 
 [dark.unfocused]
 selected = "#33353B"
@@ -581,6 +621,7 @@ on_accent = "#FFFFFF"
 selected = "#D5E1FF"
 hover = "#DFE1E5"
 error = "#DB3B4B"
+attention = "#B86E00"
 diff_added = "#39AC602E"
 diff_removed = "#DD3C492E"
 find_match = "#FFC40059"
@@ -627,6 +668,7 @@ ignored = { text = "#8C4F00" }
 active = {}
 selected = { background = "#D5E1FFFF" }
 secondary = { text = "#818594" }
+drop = { background = "#A8C3F5FF" }
 
 [light.virtual_folders]
 chip = { background = "#DFE1E5FF", italic = true }
@@ -641,6 +683,10 @@ disabled = "#A8ADBD"
 highlight = "#D5E1FF"
 highlight_text = "#000000"
 separator = "#EBECF0"
+
+[light.text_rendering]
+gamma = 1.0
+contrast = 0.0
 
 # IntelliJ Islands Light's unfocused greys.
 [light.unfocused]

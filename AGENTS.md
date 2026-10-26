@@ -30,7 +30,6 @@ These apply to any language. Where a rule names a construct, use the language's 
 
 - Use the language's current idioms and features (records/data classes, type inference, pattern matching, etc.).
 - Avoid null or nil where possible. Use the language's option or result types at boundaries instead.
-- Do not store optional wrappers (Optional, Maybe, Option) in fields. Use them for return values only.
 
 ### Errors
 

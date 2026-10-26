@@ -1,11 +1,12 @@
 use std::path::Path;
 
-use gpui::{ClipboardItem, Context, Div, FontWeight, Stateful, div, prelude::*, rgb};
+use gpui::{App, ClipboardItem, Context, Div, FontWeight, Stateful, div, prelude::*, rgb};
 
 use crate::click_targets::target;
 use crate::script::defaults_file::THEME_NAME;
 use crate::script::engine::IVE_RN_NAME;
 use crate::script::state::ScriptState;
+use crate::selectable::selectable;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
 
@@ -22,9 +23,9 @@ pub fn render(theme: Theme, cx: &mut Context<Workspace>) -> Div {
         .flex_col()
         .gap(theme.sizes.settings.page_gap.px())
         .child(div().text_size(theme.sizes.settings.title_text_size.px()).font_weight(theme.sizes.settings.title_weight.font_weight()).child("Scripts"))
-        .child(div().text_color(rgb(theme.muted)).child(crate::build_info::summary()));
+        .child(div().text_color(rgb(theme.muted)).child(selectable("scripts-build", crate::build_info::summary(), cx)));
     let Some(dir) = crate::script::default_dir() else {
-        return page.child(div().text_color(rgb(theme.muted)).child("The OS reports no config folder, so only IVE's default bindings apply."));
+        return page.child(div().text_color(rgb(theme.muted)).child(selectable("scripts-no-config", "The OS reports no config folder, so only IVE's default bindings apply.", cx)));
     };
     let log = cx.global::<ScriptState>().log().path().to_path_buf();
     page.child(render_instructions(&dir, &log, theme, cx))
@@ -93,7 +94,7 @@ fn render_instructions(dir: &Path, log: &Path, theme: Theme, cx: &mut Context<Wo
         .child("Copy instructions")
         .on_click(target("copy-script-instructions".to_owned(), cx.listener(move |_, _event, _window, cx| cx.write_to_clipboard(ClipboardItem::new_string(text.clone()))), cx));
     let heading = div().flex().items_center().justify_between().child(div().font_weight(FontWeight::SEMIBOLD).child(TITLE)).child(copy);
-    let paragraphs = sections(dir, log).map(|(heading, body)| render_section(heading, body));
+    let paragraphs: Vec<Div> = sections(dir, log).into_iter().enumerate().map(|(index, (heading, body))| render_section(index, heading, body, cx)).collect();
     let readme = div()
         .id("open-ive-readme")
         .text_color(rgb(theme.accent))
@@ -104,11 +105,13 @@ fn render_instructions(dir: &Path, log: &Path, theme: Theme, cx: &mut Context<Wo
     div().flex().flex_col().gap(theme.sizes.settings.page_gap.px()).child(heading).children(paragraphs).child(readme)
 }
 
-fn render_section(heading: &'static str, body: String) -> Div {
+/// The `index`th paragraph, its text selectable as block `scripts-section-<index>`.
+fn render_section(index: usize, heading: &'static str, body: String, cx: &App) -> Div {
+    let body = selectable(format!("scripts-section-{index}"), body, cx);
     if heading.is_empty() {
         return div().child(body);
     }
-    div().child(div().font_weight(FontWeight::SEMIBOLD).child(heading)).child(body)
+    div().child(selectable(format!("scripts-heading-{index}"), heading, cx).font_weight(FontWeight::SEMIBOLD)).child(body)
 }
 
 /// Click target `open-settings-toml`; a muted line until the first change on a settings page writes the file.
@@ -116,7 +119,8 @@ fn render_settings_link(path: &Path, theme: Theme, cx: &mut Context<Workspace>) 
     if path.exists() {
         return div().child(render_file_link("open-settings-toml", path, "The settings these pages save (settings.toml)".to_owned(), theme, cx));
     }
-    div().text_color(rgb(theme.muted)).child(format!("The settings these pages save go in {}, written on the first change", path.display()))
+    let note = format!("The settings these pages save go in {}, written on the first change", path.display());
+    div().text_color(rgb(theme.muted)).child(selectable("scripts-settings-note", note, cx))
 }
 
 /// Click target `id`: the file at `path` in a tab, or that tab when it is open.

@@ -4,7 +4,6 @@ use gpui::{AnyElement, ClickEvent, Context, SharedString, div, prelude::*, rgb};
 
 use super::{Listener, Location, ProjectOverview, ProjectSection, distance_tags, section_row};
 use crate::editor::Tab;
-use crate::paths::tilde_home;
 use crate::project::{Checkout, Project, ProjectKind};
 use crate::tabs::TabId;
 use crate::theme::Theme;
@@ -32,12 +31,14 @@ pub fn render_project_overview(id: TabId, overview: &ProjectOverview, workspace:
             (section.label().into(), section == overview.section, select)
         })
         .collect();
+    let body = div().mt(theme.sizes.overview.page_body_gap.px());
     let body = match (overview.section, &overview.git) {
-        (ProjectSection::Git, Some(git)) => git.section.clone().into_any_element(),
+        (ProjectSection::Git, Some(git)) => body.child(git.section.clone()),
         // made by `section_shown` before the first frame shows it
-        (ProjectSection::Scratches, _) => overview.scratches.clone().map_or_else(|| div().into_any_element(), |section| section.into_any_element()),
+        // the lists fill the page and scroll themselves: they draw only the rows in view
+        (ProjectSection::Scratches, _) => body.flex().flex_col().flex_1().min_h_0().children(overview.scratches.clone()),
         (ProjectSection::Worktrees | ProjectSection::Git, _) => {
-            workspace.render_worktree_list(&overview.project, overview.git.as_ref().map(|git| &git.list), theme, cx).into_any_element()
+            body.flex().flex_col().flex_1().min_h_0().child(workspace.render_worktree_list(&overview.project, overview.git.as_ref().map(|git| &git.list), theme, cx))
         }
     };
     div()
@@ -51,12 +52,12 @@ pub fn render_project_overview(id: TabId, overview: &ProjectOverview, workspace:
         .pt(theme.sizes.overview.page_padding_top.px())
         .pb(theme.sizes.overview.page_padding_bottom.px())
         .child(section_row(&sections, location(project, theme), theme, cx))
-        .child(div().mt(theme.sizes.overview.page_body_gap.px()).child(body))
+        .child(body)
         .into_any_element()
 }
 
 fn location(project: &Project, theme: Theme) -> Location {
-    let path = tilde_home(&project.root);
+    let path = project.root.display().to_string();
     let text = match project.kind {
         ProjectKind::Git => path,
         ProjectKind::Plain => format!("{path} · no git"),

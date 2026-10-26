@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, Window, WindowAppearance};
+use gpui::{App, FocusHandle, FontFallbacks, Global, SharedString, TextRendering, Window, WindowAppearance};
 
 use crate::settings::{SettingsStore, ThemePreference};
 use crate::theme_config::{GitColors, MenuColors, Palette, Panels, Sizes, ThemeSpec, TreeStates, VirtualFolders};
@@ -36,6 +36,8 @@ pub struct Theme {
     pub selected: u32,
     pub hover: u32,
     pub error: u32,
+    /// a process that called for the user, until they look: its dot and text
+    pub attention: u32,
     /// backgrounds of added and removed diff lines, 0xRRGGBBAA
     pub diff_added: u32,
     pub diff_removed: u32,
@@ -69,6 +71,7 @@ pub struct Theme {
     pub tree_states: TreeStates,
     pub virtual_folders: VirtualFolders,
     pub menu: MenuColors,
+    pub text_rendering: TextRendering,
     pub panels: Panels,
     pub sizes: &'static Sizes,
 }
@@ -152,6 +155,12 @@ pub fn for_panel(panel: Panel, window: &Window, cx: &App) -> Theme {
     cx.try_global::<UnfocusedTheme>().map_or_else(|| *cx.global::<Theme>(), |unfocused| unfocused.0)
 }
 
+/// Sizes `window`'s rem and draws its text as `theme` says; a window's root view calls it as it renders.
+pub fn apply_to_window(theme: &Theme, window: &mut Window) {
+    window.set_rem_size(theme.sizes.rem.px());
+    window.set_text_rendering(theme.text_rendering);
+}
+
 /// The theme of the tab area in the window being drawn: set by each window's root view as it renders, read by
 /// the views drawn inside it, which have no window at hand. Windows draw one at a time.
 #[derive(Debug, Clone, Copy)]
@@ -189,6 +198,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         selected: palette.selected.0,
         hover: palette.hover.0,
         error: palette.error.0,
+        attention: palette.attention.0,
         diff_added: palette.diff_added.0,
         diff_removed: palette.diff_removed.0,
         find_match: palette.find_match.0,
@@ -220,6 +230,7 @@ fn from_palette(spec: &ThemeSpec, palette: &Palette, appearance: Appearance) -> 
         tree_states: palette.tree_states,
         virtual_folders: palette.virtual_folders,
         menu: palette.menu,
+        text_rendering: palette.text_rendering.gpui(),
         panels: spec.panels,
         sizes: intern(&spec.sizes),
     }

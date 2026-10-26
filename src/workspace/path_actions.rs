@@ -98,7 +98,7 @@ impl Workspace {
     fn open_in_new_window(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) {
         let opened = self.open_file(path, window, cx).and_then(|tab| self.detach_tab_by_request(tab, window, cx));
         if let Err(error) = opened {
-            eprintln!("ive: cannot open {} in a window of its own: {error}", path.display());
+            crate::notices::notify(cx, format!("cannot open {} in a window of its own: {error}", path.display()));
         }
     }
 
@@ -126,7 +126,7 @@ impl Workspace {
             (Some(_), None) => Err(format!("{} is in no open project", path.path.display())),
         };
         if let Err(error) = started {
-            eprintln!("ive: cannot run {}: {error}", path.path.display());
+            crate::notices::notify(cx, format!("cannot run {}: {error}", path.path.display()));
         }
     }
 

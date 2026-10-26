@@ -5,10 +5,18 @@
      Run rows (a worktree's Processes, and the run configurations tab): the run's state, Restart + Stop or Start + Remove on hover;
      the tab's folder rows carry ● n (a folder's icon has the run badge in the Files tree, without a count).
      A changed file: its git mark after its name, a deleted file struck through.
-     A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js). -->
+     A proposal (DESIGN.md "Attention"): a process that called shows what it said; a folded project, worktree or
+     Processes row says how many below it wait.
+     A middle click activates the row and keeps the tab it shows; a right press opens its menu (menus.js).
+     A proposal (dnd.js): Ctrl+click and Shift+click pick rows; files, folders and processes drag onto other rows. -->
 <template x-for="row in rows" :key="row.node.key">
-  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty }"
-       :style="{ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }" @click="activateNode(row.node)"
+  <!-- ident.js: a worktree's colour as a rail left of its own row's chevron -->
+  <div class="tree__row" :class="{ 'tree__row--selected': isRowSelected(row.node), 'tree__row--empty': row.node.empty, 'tree__row--picked': isPicked(row.node),
+         'tree__row--drop': isDropRow(row.node) && drag.ok, 'tree__row--nodrop': isDropRow(row.node) && drag.ok === false,
+         'tree__row--wt-rail': row.wt !== undefined && row.wt.head }"
+       :style="Object.assign({ paddingLeft: indent(row.depth), '--rail-at': indent(row.depth) }, row.wt ? { '--wt': row.wt.colour, '--wt-at': indent(row.wt.depth) } : {})" @click="clickRow(row.node, $event)"
+       :draggable="String(isDraggable(row.node))" @dragstart="dragStart(row.node, $event)" @dragover="dragOver(row.node, $event)"
+       @drop="drop(row.node, $event)" @dragend="dragEnd()"
        @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && activateNodeToKeep(row.node)"
        @contextmenu.prevent="openTreeMenu(row.node, $event.clientX, $event.clientY)"
        :title="row.node.warning || row.node.hint || row.node.label">
@@ -17,11 +25,19 @@
            @click.stop="toggleNode(row.node)" />
     </template>
     <template x-if="row.node.slot"><span class="tree__slot"></span></template>
-    <template x-if="row.node.project"><span class="badge" x-text="initials(row.node.label)"></span></template>
-    <template x-if="row.node.icon"><img class="icon" :src="icon(row.node.icon)" alt="" /></template>
+    <!-- ident.js: a project's favicon in place of its badge, a module's in place of its folder icon -->
+    <template x-if="row.node.project && treeFavicon(row.node) === null"><span class="badge" x-text="initials(row.node.label)"></span></template>
+    <template x-if="treeFavicon(row.node)"><img class="icon owner__icon owner__icon--tree" :src="treeFavicon(row.node)" alt="" /></template>
+    <template x-if="row.node.icon && treeFavicon(row.node) === null">
+      <span class="icon-stack"><img class="icon" :src="icon(row.node.icon)" alt="" /><template x-if="row.node.attention"><span class="attention-dot"></span></template></span>
+    </template>
     <span class="tree__label" :class="{ 'tree__label--strong': row.node.strong, 'tree__label--special': row.node.special, 'tree__label--weak': row.node.weak, 'tree__label--struck': row.node.struck, 'tree__label--link': row.node.link }" x-text="row.node.label"></span>
     <template x-if="row.node.mark"><span class="mark" :class="'mark--' + row.node.mark" x-text="row.node.mark"></span></template>
     <template x-if="row.node.warning"><img class="icon" :src="icon('warning.svg')" alt="" /></template>
+    <template x-if="row.node.attention">
+      <span class="tree__attention" :title="row.node.attention.text" x-text="'● ' + row.node.attention.text"></span>
+    </template>
+    <template x-if="row.node.waiting && isNodeOpen(row.node) === false"><span class="tree__waiting" x-text="row.node.waiting"></span></template>
     <template x-if="row.node.state"><span class="tree__state" :class="'tree__state--' + row.node.state.tone" x-text="row.node.state.text"></span></template>
     <template x-if="row.node.runs && row.node.live"><span class="tree__live" x-text="'● ' + row.node.live"></span></template>
     <template x-if="row.node.pill">

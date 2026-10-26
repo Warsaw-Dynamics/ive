@@ -1,5 +1,6 @@
 use gpui::{App, Context, Entity, FocusHandle, IntoElement, Render, Subscription, WeakEntity, Window, div, prelude::*, rgb};
 
+use crate::attention::WindowFocus;
 use crate::editor;
 use crate::frame;
 use crate::tabs::TabId;
@@ -30,11 +31,14 @@ impl TabWindow {
         let subscriptions = vec![cx.observe_window_activation(window, |tab_window, window, cx| {
             // the tab chip shows whether this window is active
             cx.notify();
-            let active = window.is_window_active();
-            let _ = tab_window.workspace.update(cx, |workspace, cx| match active {
-                true => workspace.refresh_on_activation(cx),
-                // edits in the tab reach the disk when the user turns to another window
-                false => workspace.flush_edits(cx),
+            let (handle, focus) = (window.window_handle(), crate::workspace::window_focus(window));
+            let _ = tab_window.workspace.update(cx, |workspace, cx| {
+                workspace.window_activated(handle, focus, cx);
+                match focus {
+                    WindowFocus::Active => workspace.refresh_on_activation(cx),
+                    // edits in the tab reach the disk when the user turns to another window
+                    WindowFocus::Inactive => workspace.flush_edits(cx),
+                }
             });
         })];
         let closing = workspace.clone();
@@ -74,7 +78,7 @@ impl Render for TabWindow {
         self.place.observe(window);
         self.drag.follow(&self.place, window);
         let theme = crate::theme::set_tabs(window, cx);
-        window.set_rem_size(theme.sizes.rem.px());
+        crate::theme::apply_to_window(&theme, window);
         let drawn = self.workspace.upgrade().and_then(|workspace| {
             workspace.update(cx, |workspace, cx| editor::render_detached(workspace, self.tab, &self.drag, window, cx))
         });
@@ -94,6 +98,12 @@ impl Render for TabWindow {
             // input here counts against the update restart's idle time as the main window's does
             .child(crate::workspace::activity_watcher(self.workspace.clone()))
             .track_focus(&self.focus_handle)
+            // the user's Copy and Select All on selected text; the workspace's other bindings stay in the main window
+            .on_key_down(|event, window, cx| {
+                if crate::workspace::run_text_key(event, window, cx) {
+                    cx.stop_propagation();
+                }
+            })
             .bg(rgb(theme.background))
             .font_family(theme::ui_font(cx))
             .text_color(rgb(theme.text));

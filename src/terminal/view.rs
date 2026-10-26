@@ -3,7 +3,7 @@ use std::io;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use alacritty_terminal::Term;
 use alacritty_terminal::event::{Event, EventListener};
@@ -18,16 +18,18 @@ use futures::channel::mpsc::UnboundedReceiver;
 use gpui::{
     App, Bounds, BorderStyle, ClipboardItem, ContentMask, Context, CursorStyle, ExternalPaths, FocusHandle, Font, FontStyle, Hsla,
     KeyDownEvent, Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent,
-    SharedString, Size,
+    Size,
     StrikethroughStyle, Task, TextRun, WeakEntity, UnderlineStyle, Window, canvas, div, fill, outline, point, prelude::*,
     rgb, size,
 };
 
 use super::colors::{ColorResolver, unpack};
+use super::exit::{ExitFacts, Lost, Start, Started, run_exit, shell_exit};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
 use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
+use super::attention::CallReport;
 use super::progress::Progress;
 use super::session::{GridSize, Session};
 use super::text::{OutputRow, ScreenText, output_rows, output_text, screen_text};
@@ -35,24 +37,25 @@ use super::hosted::HostedTerminals;
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
 use crate::clipboard;
-use crate::dragged_files::DraggedFiles;
+use crate::dragged_files::{DraggedFiles, DraggedRoot};
 use crate::pasted;
 use crate::script::keymap::{self, Builtin, ClipboardTarget, PasteKind};
 use crate::script::keymap::{Keymap, MouseKind, MouseTrigger, Scope, SelectionMode};
 use crate::script::state::{bound_action, invoke, keymap};
+use crate::failure::Failure;
 use crate::process::ProcessId;
 use crate::theme::{self, TerminalPalette, Theme};
 use crate::theme_config::TerminalSizes;
 use crate::workspace::Workspace;
 
-/// A shell that fails within this long after start most likely could not start at all.
-const QUICK_EXIT: Duration = Duration::from_secs(2);
+/// How many of its last output lines a failed shell's failure keeps.
+const FAILURE_OUTPUT_LINES: usize = 40;
 
 /// What the workspace does with the process after its events are handled.
 pub enum TerminalState {
     Running,
     Closed,
-    Failed(SharedString),
+    Failed(Failure),
     /// a run's program exited with this code; the run stays, with its output
     Exited(i32),
 }
@@ -67,11 +70,17 @@ pub enum Source<'a> {
     Adopt { terminals: &'a HostedTerminals, session: &'a SessionInfo },
 }
 
-/// Whether IVE saw the shell start, which tells whether a quick exit means it could not start.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Start {
-    New,
-    Adopted,
+/// The command line `source` runs: its program, else the user's shell; a session adopted from an earlier IVE says so.
+fn started_command(source: &Source) -> String {
+    let launch = match source {
+        Source::InProcess(launch) => launch,
+        Source::Hosted { launch, .. } => launch,
+        Source::Adopt { .. } => return "(started by an earlier IVE)".to_owned(),
+    };
+    match launch.program.is_empty() {
+        true => super::launch::login_shell(),
+        false => launch.program.join(" "),
+    }
 }
 
 /// A shell session, drawn cell by cell; shown by a process tab.
@@ -82,6 +91,8 @@ pub struct TerminalView {
     title: Option<String>,
     started: Instant,
     start: Start,
+    /// what it runs and where, for a failure's details
+    started_with: Started,
     exit_status: Option<ExitStatus>,
     /// a run: its exit keeps the view, rather than closing it
     keeps_after_exit: bool,
@@ -92,6 +103,7 @@ pub struct TerminalView {
 impl TerminalView {
     /// Starts a shell in `working_directory` for process `process`, or attaches to one, and focuses the terminal.
     pub fn open(process: ProcessId, working_directory: &Path, source: Source, window: &mut Window, cx: &mut Context<Workspace>) -> io::Result<Self> {
+        let started_with = Started { command: started_command(&source), folder: working_directory.display().to_string() };
         let (start, (session, events)) = match source {
             Source::InProcess(launch) => (Start::New, Session::spawn(working_directory, &launch)?),
             Source::Hosted { terminals, launch, labels } => (Start::New, Session::spawn_hosted(terminals, working_directory, &launch, labels)?),
@@ -106,6 +118,7 @@ impl TerminalView {
             title: None,
             started: Instant::now(),
             start,
+            started_with,
             exit_status: None,
             keeps_after_exit: false,
             pointer: Rc::new(Pointer { origin: Some((cx.entity().downgrade(), process)), ..Pointer::default() }),
@@ -150,6 +163,11 @@ impl TerminalView {
 
     pub fn progress(&self) -> Progress {
         self.session.progress()
+    }
+
+    /// The program's last call for the user's attention; see [`Session::call`].
+    pub fn call(&self) -> Option<CallReport> {
+        self.session.call()
     }
 
     /// What the program last reported as its working directory, for following it between checkouts.
@@ -287,14 +305,22 @@ impl TerminalView {
         self.session.write(reply(unpack(color)).into_bytes());
     }
 
-    /// A shell that failed right after start (say, a broken `$SHELL`) leaves its status on screen; any other
-    /// exit closes the tab, as in IntelliJ.
+    /// A shell that failed right after start (say, a broken `$SHELL`) or crashed leaves a failure with its last
+    /// output; any other exit closes the tab, as in IntelliJ.
     fn exit_state(&self) -> TerminalState {
-        let lost = self.session.lost().then(|| self.session.hosted_id()).flatten();
+        let lost = self.session.hosted_id().zip(self.session.lost_reason()).map(|(id, reason)| Lost { id: id.to_owned(), reason });
+        let facts = ExitFacts {
+            status: self.exit_status,
+            elapsed: self.started.elapsed(),
+            start: self.start,
+            lost,
+            started: self.started_with.clone(),
+        };
         if self.keeps_after_exit {
-            return run_exit_state_of(self.exit_status, lost);
+            return run_exit(facts);
         }
-        exit_state_of(self.exit_status, self.started.elapsed(), self.start, lost)
+        // read only for a failure: it walks the whole scrollback
+        shell_exit(facts, &|| self.output_text(Some(FAILURE_OUTPUT_LINES)))
     }
 
     pub fn render(&self, theme: Theme, window: &mut Window, cx: &App) -> impl IntoElement {
@@ -323,6 +349,7 @@ impl TerminalView {
             .on_scroll_wheel(on_scroll_wheel(self.session.clone(), self.pointer.clone()))
             .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dropped: &ExternalPaths, _cx| pasted::shell_words(dropped.paths())))
             .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), move |dragged: &DraggedFiles, cx| dragged.typed_into(process, cx)))
+            .on_drop(on_drop_paths(self.session.clone(), self.focus_handle.clone(), |dragged: &DraggedRoot, _cx| dragged.typed()))
             .child(grid(self.session.clone(), self.pointer.clone(), metrics, theme.terminal, focused))
     }
 }
@@ -653,7 +680,7 @@ fn paste(session: &Session, kind: PasteKind, source: ClipboardTarget, cx: &App) 
     match pasted::paste_text(kind, clipboard::read_contents(source, cx), pasted::save_image) {
         Ok(Some(text)) => session.paste(&text),
         Ok(None) => {}
-        Err(error) => eprintln!("ive: cannot save the pasted image: {error}"),
+        Err(error) => crate::notices::log_only(&format!("cannot save the pasted image: {error}")),
     }
 }
 
@@ -786,7 +813,8 @@ impl CellMetrics {
         let font_id = text_system.resolve_font(&gpui::font(theme::mono_font(cx)));
         let sizes = cx.global::<Theme>().sizes.terminal;
         let font_size = sizes.text_size.px();
-        let cell_width = text_system.advance(font_id, font_size, 'm').map_or(font_size * 0.6, |advance| advance.width);
+        let glyph_width = text_system.advance(font_id, font_size, 'm').map_or(font_size * 0.6, |advance| advance.width);
+        let cell_width = glyph_width * sizes.column_spacing.0;
         Self { font_size, cell_width, line_height: (font_size * sizes.line_height_factor.0).round(), sizes }
     }
 
@@ -861,45 +889,9 @@ fn paint_cursor(cursor: CursorMark, cell: Bounds<Pixels>, color: u32, thickness:
     window.paint_quad(quad);
 }
 
-/// How a terminal ends: lost hosted sessions say where they still run; adopted ones never count as failed to start,
-/// since IVE did not see them start.
-/// A run that exited stays with its code, however quickly it failed; one whose host was lost may still run.
-fn run_exit_state_of(status: Option<ExitStatus>, lost: Option<&str>) -> TerminalState {
-    match lost {
-        Some(id) => TerminalState::Failed(format!("Lost the run; it still runs: ive --pty-host attach {id}").into()),
-        None => TerminalState::Exited(exit_code_of(status)),
-    }
-}
-
-/// The exit code, or 128 + the signal that killed the program, as shells report it; -1 when unknown.
-#[cfg(unix)]
-fn exit_code_of(status: Option<ExitStatus>) -> i32 {
-    use std::os::unix::process::ExitStatusExt;
-    status.and_then(|status| status.code().or_else(|| status.signal().map(|signal| 128 + signal))).unwrap_or(-1)
-}
-
-#[cfg(not(unix))]
-fn exit_code_of(status: Option<ExitStatus>) -> i32 {
-    status.and_then(|status| status.code()).unwrap_or(-1)
-}
-
-/// How to attach to a lost terminal from a console: on Windows the console twin, since `ive.exe` has none.
-const ATTACH_COMMAND: &str = if cfg!(windows) { "ive-cli --pty-host attach" } else { "ive --pty-host attach" };
-
-fn exit_state_of(status: Option<ExitStatus>, elapsed: Duration, start: Start, lost: Option<&str>) -> TerminalState {
-    if let Some(id) = lost {
-        return TerminalState::Failed(format!("Lost the terminal; it still runs: {ATTACH_COMMAND} {id}").into());
-    }
-    match status {
-        Some(status) if !status.success() && start == Start::New && elapsed < QUICK_EXIT => {
-            TerminalState::Failed(format!("The shell exited right after start: {status}").into())
-        }
-        _ => TerminalState::Closed,
-    }
-}
-
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::script::keymap::{Binding, ClipboardTarget, Keymap, MouseButton as BoundButton, MouseKind, MouseTrigger, Scope, SelectionMode, Trigger};
 
@@ -1035,82 +1027,5 @@ mod tests {
 
         // then
         assert_eq!(found, Lookup::Run(keymap::Action::Builtin(Builtin::Nop)));
-    }
-
-    fn failed(status: Option<ExitStatus>, elapsed: Duration, start: Start, lost: Option<&str>) -> Option<String> {
-        match exit_state_of(status, elapsed, start, lost) {
-            TerminalState::Failed(message) => Some(message.to_string()),
-            TerminalState::Closed | TerminalState::Running | TerminalState::Exited(_) => None,
-        }
-    }
-
-    /// A program's exit with `code`, as the OS reports it.
-    fn exited(code: u32) -> ExitStatus {
-        #[cfg(unix)]
-        return std::os::unix::process::ExitStatusExt::from_raw((code << 8) as i32);
-        #[cfg(windows)]
-        std::os::windows::process::ExitStatusExt::from_raw(code)
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn should_give_the_exit_code_or_128_plus_the_signal() {
-        // given
-        let killed = std::os::unix::process::ExitStatusExt::from_raw(libc::SIGTERM);
-        let statuses = [Some(exited(1)), Some(killed), None];
-
-        // when
-        let codes = statuses.map(exit_code_of);
-
-        // then
-        assert_eq!(codes, [1, 143, -1]);
-    }
-
-    #[test]
-    fn should_keep_a_run_that_fails_right_after_start() {
-        // given
-        let status = Some(exited(127));
-
-        // when
-        let state = run_exit_state_of(status, None);
-
-        // then
-        assert!(matches!(state, TerminalState::Exited(127)));
-    }
-
-    #[test]
-    fn should_report_shell_that_failed_right_after_start() {
-        // given
-        let status = Some(exited(1));
-
-        // when
-        let message = failed(status, Duration::from_millis(100), Start::New, None);
-
-        // then
-        assert!(message.is_some_and(|message| message.contains("right after start")));
-    }
-
-    #[test]
-    fn should_close_adopted_session_that_exits_quickly() {
-        // given
-        let status = Some(exited(1));
-
-        // when
-        let message = failed(status, Duration::from_millis(100), Start::Adopted, None);
-
-        // then
-        assert_eq!(message, None);
-    }
-
-    #[test]
-    fn should_tell_how_to_reach_a_lost_session() {
-        // given
-        let lost = Some("t1a2b3");
-
-        // when
-        let message = failed(None, Duration::from_secs(60), Start::Adopted, lost);
-
-        // then
-        assert_eq!(message, Some(format!("Lost the terminal; it still runs: {ATTACH_COMMAND} t1a2b3")));
     }
 }

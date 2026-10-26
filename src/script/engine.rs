@@ -18,7 +18,10 @@ use super::keymap::Keymap;
 use super::menus::{self, MenuKind, Menus};
 use super::excluded::{self, Excluded};
 use super::open_folders::{self, OpenFolders};
+use super::delete_mode::{self, DeleteMode};
+use super::drop_modifiers;
 use super::quit_countdown::{self, QuitCountdown};
+use crate::transfer::DropModifiers;
 use super::temporary_tabs::{self, TemporaryTabs};
 use crate::api::Call;
 use crate::theme::Fonts;
@@ -43,6 +46,8 @@ pub struct Loaded {
     pub menus: Menus,
     pub quit_countdown: QuitCountdown,
     pub open_folders: OpenFolders,
+    pub drop_modifiers: DropModifiers,
+    pub delete: DeleteMode,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -91,6 +96,8 @@ impl Engine {
             tree_menus: rune::Value::from(()),
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
+            drop_modifiers: rune::Value::from(()),
+            delete: rune::Value::from(()),
         };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
@@ -102,6 +109,8 @@ impl Engine {
             tree_menus: default_carried.tree_menus.clone(),
             quit_countdown: rune::Value::from(()),
             open_folders: rune::Value::from(()),
+            drop_modifiers: rune::Value::from(()),
+            delete: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -115,6 +124,8 @@ impl Engine {
                 menus: checked.menus,
                 quit_countdown: checked.quit_countdown,
                 open_folders: checked.open_folders,
+                drop_modifiers: checked.drop_modifiers,
+                delete: checked.delete,
                 functions: bound,
                 has_init: false,
             });
@@ -132,6 +143,8 @@ impl Engine {
             menus: checked.menus,
             quit_countdown: checked.quit_countdown,
             open_folders: checked.open_folders,
+            drop_modifiers: checked.drop_modifiers,
+            delete: checked.delete,
             functions: bound,
             has_init: true,
         })
@@ -184,6 +197,8 @@ struct Checked {
     menus: Menus,
     quit_countdown: QuitCountdown,
     open_folders: OpenFolders,
+    drop_modifiers: DropModifiers,
+    delete: DeleteMode,
 }
 
 /// The theme, excluded folders, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
@@ -201,7 +216,9 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &m
     }
     let quit_countdown = quit_countdown::parse(&carried.quit_countdown).map_err(named)?;
     let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders })
+    let drop_modifiers = drop_modifiers::parse(&carried.drop_modifiers).map_err(named)?;
+    let delete = delete_mode::parse(&carried.delete).map_err(named)?;
+    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -480,6 +497,61 @@ mod tests {
     }
 
     #[test]
+    fn should_declare_platform_drop_modifiers_by_default() {
+        // when
+        let modifiers = defaults().drop_modifiers;
+
+        // then
+        assert_eq!(modifiers, crate::transfer::DropModifiers::default());
+    }
+
+    #[test]
+    fn should_take_drop_modifiers_from_init() {
+        // given
+        let init = r#"pub fn init(config) { config.drop_modifiers = #{ force_copy: "ALT", force_move: "CTRL|SHIFT" }; }"#;
+
+        // when
+        let modifiers = load(init).1.unwrap().drop_modifiers;
+
+        // then
+        assert_eq!(modifiers.copy, Modifiers { alt: true, ..Modifiers::default() });
+        assert_eq!(modifiers.moving, Modifiers { control: true, shift: true, ..Modifiers::default() });
+    }
+
+    #[test]
+    fn should_delete_to_the_trash_by_default() {
+        // when
+        let mode = defaults().delete;
+
+        // then
+        assert_eq!(mode, DeleteMode::Trash);
+    }
+
+    #[test]
+    fn should_take_permanent_delete_from_init() {
+        // given
+        let init = r#"pub fn init(config) { config.delete = "permanent"; }"#;
+
+        // when
+        let mode = load(init).1.unwrap().delete;
+
+        // then
+        assert_eq!(mode, DeleteMode::Permanent);
+    }
+
+    #[test]
+    fn should_reject_drop_modifiers_from_init_naming_the_file() {
+        // given
+        let init = r#"pub fn init(config) { config.drop_modifiers = #{ force_copy: "CTRL", force_move: "CTRL" }; }"#;
+
+        // when
+        let error = load(init).1.err().unwrap();
+
+        // then
+        assert_eq!(error, "init.rn: drop_modifiers.force_move: \"CTRL\" is the same as force_copy");
+    }
+
+    #[test]
     fn should_take_the_quit_countdown_from_init() {
         // given
         let init = "pub fn init(config) { config.quit_countdown = 3; }";
@@ -755,6 +827,49 @@ mod tests {
 
         // then
         assert_eq!(found, [builtin(Builtin::ToggleRowSelection), builtin(Builtin::ExtendRowSelection)]);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn should_bind_copy_and_paste_files_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("ctrl-c"), Place::Tree).cloned(), builtin(Builtin::CopyFiles));
+        assert_eq!(keymap.find_key(&pressed("ctrl-v"), Place::Tree).cloned(), builtin(Builtin::PasteFiles));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn should_bind_delete_and_rename_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("delete"), Place::Tree).cloned(), builtin(Builtin::DeleteFiles));
+        assert_eq!(keymap.find_key(&pressed("f2"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn should_bind_finder_keys_to_delete_and_rename_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("cmd-backspace"), Place::Tree).cloned(), builtin(Builtin::DeleteFiles));
+        assert_eq!(keymap.find_key(&pressed("enter"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+        assert_eq!(keymap.find_key(&pressed("f2"), Place::Tree).cloned(), builtin(Builtin::RenameFile));
+    }
+
+    #[test]
+    fn should_bind_escape_to_clear_row_selection_in_tree() {
+        // when
+        let keymap = defaults().keymap;
+
+        // then
+        assert_eq!(keymap.find_key(&pressed("escape"), Place::Tree).cloned(), builtin(Builtin::ClearRowSelection));
     }
 
     #[test]

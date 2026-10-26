@@ -193,7 +193,7 @@ fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
             file.cast(Cast::Restore(panel), cx);
             Tab::Document(file)
         }
-        Err(error) => Tab::Failed { title: project::folder_name(path), error: error.to_string().into() },
+        Err(error) => Tab::Failed { title: project::folder_name(path), failure: crate::failure::Failure::new(error.to_string()) },
     }
 }
 

@@ -78,6 +78,14 @@ pub struct Fraction(pub f32);
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Factor(pub f32);
 
+/// The gamma text is drawn with, from 1 (none) to 2.2.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct Gamma(pub f32);
+
+/// Extra weight for text darker than 75% brightness, from 0 (none) to 4.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct Contrast(pub f32);
+
 impl Px {
     pub fn px(self) -> Pixels {
         px(self.0)
@@ -262,6 +270,18 @@ impl<'de> Deserialize<'de> for FontPx {
 impl<'de> Deserialize<'de> for Factor {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         bounded(deserializer, 0.5..=4.0, "a factor").map(Factor)
+    }
+}
+
+impl<'de> Deserialize<'de> for Gamma {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bounded(deserializer, 1.0..=2.2, "a gamma").map(Gamma)
+    }
+}
+
+impl<'de> Deserialize<'de> for Contrast {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bounded(deserializer, 0.0..=4.0, "a contrast").map(Contrast)
     }
 }
 

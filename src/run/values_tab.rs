@@ -2,10 +2,11 @@
 
 use std::path::{Path, PathBuf};
 
-use gpui::{AnyElement, Context, Entity, Focusable, FontWeight, SharedString, div, prelude::*, px, rgb};
+use gpui::{AnyElement, Context, Div, Entity, Focusable, FontWeight, div, prelude::*, px, rgb};
 
 use super::file::VarDecl;
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::project::CheckoutRef;
 use crate::tabs::TabId;
 use crate::text_input::{TextInput, TextInputEvent};
@@ -97,17 +98,20 @@ pub fn render_values_tab(id: TabId, tab: &RunValuesTab, cx: &mut Context<Workspa
     let count = tab.fields.len();
     let heading = format!("{} needs {count} value{}", tab.name, if count == 1 { "" } else { "s" });
     let source = format!("from {}/.run.toml; asked once, then remembered", relative(&tab.request.folder, &tab.request.checkout.path));
-    let fields = tab.fields.iter().map(|field| {
+    let fields: Vec<Div> = tab.fields.iter().map(|field| {
         let kept = if field.var.secret { "stored in the OS wallet; vars.toml keeps a reference" } else { "saved to vars.toml" };
         let label = if field.var.description.is_empty() { field.var.name.clone() } else { field.var.description.clone() };
+        let name = selectable(format!("run-values-{}-var-{}", id.value(), field.var.name), field.var.name.clone(), cx);
         div()
             .flex()
             .flex_col()
             .gap_1()
-            .child(div().flex().gap_2().child(label).child(div().font_family("JetBrains Mono").text_color(rgb(theme.muted)).child(field.var.name.clone())))
+            .child(div().flex().gap_2().child(label).child(name.font_family("JetBrains Mono").text_color(rgb(theme.muted))))
             .child(field.input.clone())
-            .child(div().text_xs().text_color(rgb(theme.muted)).child(kept))
-    });
+            .child(div().text_xs().text_color(rgb(theme.muted)).child(selectable(format!("run-values-{}-kept-{}", id.value(), field.var.name), kept, cx)))
+    }).collect();
+    let source = selectable(format!("run-values-{}-source", id.value()), source, cx);
+    let error = tab.error.clone().map(|error| selectable(format!("run-values-{}-error", id.value()), error, cx));
     let request = tab.request.clone();
     let run = target(format!("run-values:{id}", id = id.value()), cx.listener(move |workspace, _event, window, cx| {
         workspace.submit_run_values(&request, window, cx);
@@ -125,7 +129,7 @@ pub fn render_values_tab(id: TabId, tab: &RunValuesTab, cx: &mut Context<Workspa
         .child(div().font_weight(FontWeight::SEMIBOLD).child(heading))
         .child(div().text_xs().text_color(rgb(theme.muted)).child(source))
         .children(fields)
-        .children(tab.error.clone().map(|error| div().text_color(rgb(theme.error)).child(SharedString::from(error))))
+        .children(error.map(|error| div().text_color(rgb(theme.error)).child(error)))
         .child(
             div()
                 .flex()

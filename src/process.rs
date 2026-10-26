@@ -2,10 +2,12 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
+use crate::attention::Attention;
 use crate::icons;
 use crate::project::{CheckoutRef, ProjectId};
-use crate::terminal::{Progress, TerminalView};
+use crate::terminal::{CallReport, Progress, TerminalView};
 
 /// Identity of a process; stays the same while its kind and title change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -89,6 +91,15 @@ impl ProcessKind {
     }
 }
 
+/// Whether a process moved by hand stays where it was put.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Pin {
+    Free,
+    /// moved before its directory was known: the first one reported is the one it had
+    Next,
+    At(PathBuf),
+}
+
 pub struct Process<V = TerminalView> {
     pub id: ProcessId,
     /// `None` for a shell started in the home folder, outside every project
@@ -101,6 +112,12 @@ pub struct Process<V = TerminalView> {
     progress: Progress,
     /// where its foreground program last worked, as the foreground poll saw it
     directory: Option<PathBuf>,
+    /// moved to another checkout by hand: the directory it does not follow, only a later one
+    pin: Pin,
+    /// it called while the user did not see it, and they have not looked since
+    attention: Option<Attention>,
+    /// the number of the last call taken from its terminal
+    seen_call: u64,
     pub view: V,
 }
 
@@ -124,6 +141,17 @@ impl<V> Process<V> {
 
     pub fn directory(&self) -> Option<&Path> {
         self.directory.as_deref()
+    }
+
+    pub fn attention(&self) -> Option<&Attention> {
+        self.attention.as_ref()
+    }
+
+    pub fn pinned(&self) -> Option<&Path> {
+        match &self.pin {
+            Pin::At(directory) => Some(directory),
+            Pin::Free | Pin::Next => None,
+        }
     }
 
     /// Its program still runs: every terminal, and a run until it exits.
@@ -168,7 +196,7 @@ impl<V> Processes<V> {
         let id = ProcessId(self.next_id);
         self.next_id += 1;
         let view = start(id)?;
-        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: DEFAULT_TITLE.to_owned(), progress: Progress::None, directory: None, view });
+        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: DEFAULT_TITLE.to_owned(), progress: Progress::None, directory: None, pin: Pin::Free, attention: None, seen_call: 0, view });
         Ok(id)
     }
 
@@ -178,7 +206,7 @@ impl<V> Processes<V> {
         self.next_id += 1;
         let view = start(id)?;
         let title = origin.name.clone();
-        self.entries.push(Process { id, checkout, kind: ProcessKind::Run, run: Some(origin), title, progress: Progress::None, directory: None, view });
+        self.entries.push(Process { id, checkout, kind: ProcessKind::Run, run: Some(origin), title, progress: Progress::None, directory: None, pin: Pin::Free, attention: None, seen_call: 0, view });
         Ok(id)
     }
 
@@ -205,6 +233,11 @@ impl<V> Processes<V> {
     pub fn mark_closing(&mut self, id: ProcessId) {
         self.stopping.insert(id);
         self.closing.insert(id);
+    }
+
+    /// Whether IVE is ending process `id` itself, so a signal it dies of is no failure.
+    pub fn is_stopping(&self, id: ProcessId) -> bool {
+        self.stopping.contains(&id)
     }
 
     pub fn is_closing(&self, id: ProcessId) -> bool {
@@ -298,9 +331,73 @@ impl<V> Processes<V> {
         }
     }
 
+    /// Whether `report` is a call of `id`'s terminal not taken before; takes it.
+    pub fn take_call(&mut self, id: ProcessId, report: CallReport) -> bool {
+        match self.get_mut(id) {
+            Some(process) if report.number > process.seen_call => {
+                process.seen_call = report.number;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// `id` wants the user, saying `text`; one that already waited keeps waiting since its first call. Returns whether
+    /// it was not waiting before.
+    pub fn raise(&mut self, id: ProcessId, text: String, now: SystemTime) -> bool {
+        let Some(process) = self.get_mut(id) else {
+            return false;
+        };
+        let since = process.attention.as_ref().map_or(now, |attention| attention.since);
+        process.attention.replace(Attention { text, since }).is_none()
+    }
+
+    /// The user saw `id`; returns whether it waited.
+    pub fn clear_attention(&mut self, id: ProcessId) -> bool {
+        self.get_mut(id).and_then(|process| process.attention.take()).is_some()
+    }
+
+    /// The processes that wait for the user, longest waiting first.
+    pub fn waiting(&self) -> Vec<&Process<V>> {
+        let mut waiting: Vec<_> = self.entries.iter().filter(|process| process.attention.is_some()).collect();
+        waiting.sort_by_key(|process| process.attention.as_ref().map(|attention| attention.since));
+        waiting
+    }
+
+    /// How many processes of the checkouts at `checkouts` wait for the user.
+    pub fn waiting_in(&self, checkouts: &[&Path]) -> usize {
+        let within = |process: &&Process<V>| process.checkout.as_ref().is_some_and(|checkout| checkouts.contains(&checkout.path.as_path()));
+        self.entries.iter().filter(within).filter(|process| process.attention.is_some()).count()
+    }
+
+    /// A directory other than the pinned one ends the pin.
     pub fn set_directory(&mut self, id: ProcessId, directory: PathBuf) {
         if let Some(process) = self.get_mut(id) {
+            process.pin = match std::mem::replace(&mut process.pin, Pin::Free) {
+                Pin::Next => Pin::At(directory.clone()),
+                Pin::At(pinned) if pinned == directory => Pin::At(pinned),
+                Pin::At(_) | Pin::Free => Pin::Free,
+            };
             process.directory = Some(directory);
+        }
+    }
+
+    /// Moves terminal or Claude Code session `id` to `checkout` by hand, pinned to its directory, so following
+    /// directories leaves it there until that changes; returns whether it moved. A run stays under its folder.
+    pub fn move_pinned(&mut self, id: ProcessId, checkout: CheckoutRef) -> bool {
+        if !self.move_to(id, checkout) {
+            return false;
+        }
+        if let Some(process) = self.get_mut(id) {
+            process.pin = process.directory.clone().map_or(Pin::Next, Pin::At);
+        }
+        true
+    }
+
+    /// Restores a pin saved with the process's checkout.
+    pub fn set_pinned(&mut self, id: ProcessId, directory: PathBuf) {
+        if let Some(process) = self.get_mut(id) {
+            process.pin = Pin::At(directory);
         }
     }
 
@@ -333,6 +430,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+    use crate::terminal::Call;
 
     fn checkout(project: &str, path: &str) -> Option<CheckoutRef> {
         Some(CheckoutRef { project: ProjectId::new(project), path: PathBuf::from(path) })
@@ -427,6 +525,90 @@ mod tests {
 
         // then
         assert_eq!((before, processes.get(id).unwrap().title()), ("Terminal".to_owned(), "Claude Code".to_owned()));
+    }
+
+    fn report(number: u64) -> CallReport {
+        CallReport { number, call: Call::Bell }
+    }
+
+    fn at(seconds: u64) -> SystemTime {
+        SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(seconds)
+    }
+
+    #[test]
+    fn should_take_each_call_once() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(None, |_| Ok::<_, ()>(())).unwrap();
+
+        // when
+        let taken = [processes.take_call(id, report(1)), processes.take_call(id, report(1)), processes.take_call(id, report(2))];
+
+        // then
+        assert_eq!(taken, [true, false, true]);
+    }
+
+    #[test]
+    fn should_keep_the_first_time_and_the_newest_text() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(None, |_| Ok::<_, ()>(())).unwrap();
+
+        // when
+        processes.raise(id, "rang the bell".to_owned(), at(10));
+        processes.raise(id, "Claude needs you".to_owned(), at(20));
+
+        // then
+        let attention = processes.get(id).unwrap().attention().cloned();
+        assert_eq!(attention, Some(Attention { text: "Claude needs you".to_owned(), since: at(10) }));
+    }
+
+    #[test]
+    fn should_clear_attention() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(None, |_| Ok::<_, ()>(())).unwrap();
+        processes.raise(id, "finished".to_owned(), at(10));
+
+        // when
+        let cleared = [processes.clear_attention(id), processes.clear_attention(id)];
+
+        // then
+        assert_eq!((cleared, processes.get(id).unwrap().attention()), ([true, false], None));
+    }
+
+    #[test]
+    fn should_list_waiting_longest_first() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let ids: Vec<_> = (0..3).map(|_| processes.start(None, |_| Ok::<_, ()>(())).unwrap()).collect();
+        processes.raise(ids[2], "c".to_owned(), at(5));
+        processes.raise(ids[0], "a".to_owned(), at(9));
+
+        // when
+        let waiting: Vec<_> = processes.waiting().iter().map(|process| process.id).collect();
+
+        // then
+        assert_eq!(waiting, [ids[2], ids[0]]);
+    }
+
+    #[test]
+    fn should_count_waiting_in_checkouts() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let in_a = processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap();
+        let run_in_a = processes.start_run(checkout("a", "/a"), origin("build"), |_| Ok::<_, ()>(())).unwrap();
+        let in_b = processes.start(checkout("b", "/b"), |_| Ok::<_, ()>(())).unwrap();
+        processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap();
+        for id in [in_a, run_in_a, in_b] {
+            processes.raise(id, "x".to_owned(), at(1));
+        }
+
+        // when
+        let counts = [processes.waiting_in(&[Path::new("/a")]), processes.waiting_in(&[Path::new("/a"), Path::new("/b")]), processes.waiting_in(&[])];
+
+        // then
+        assert_eq!(counts, [2, 3, 0]);
     }
 
     fn origin(key: &str) -> RunOrigin {
@@ -573,6 +755,19 @@ mod tests {
     }
 
     #[test]
+    fn should_know_a_process_ive_is_stopping() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let (stopped, running) = (processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap(), processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap());
+
+        // when
+        processes.mark_closing(stopped);
+
+        // then
+        assert_eq!((processes.is_stopping(stopped), processes.is_stopping(running)), (true, false));
+    }
+
+    #[test]
     fn should_forget_closing_once_removed() {
         // given
         let mut processes: Processes<()> = Processes::default();
@@ -623,6 +818,33 @@ mod tests {
 
         // then
         assert_eq!((moved, processes.get(run).unwrap().checkout.clone()), (false, checkout("a", "/a")));
+    }
+
+    #[test]
+    fn should_refuse_to_move_pin_a_run() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let run = processes.start_run(checkout("a", "/a"), origin("app"), |_| Ok::<_, ()>(())).unwrap();
+
+        // when
+        let moved = processes.move_pinned(run, checkout("a", "/a/wt").unwrap());
+
+        // then
+        assert_eq!((moved, processes.get(run).unwrap().checkout.clone(), processes.get(run).unwrap().pinned()), (false, checkout("a", "/a"), None));
+    }
+
+    #[test]
+    fn should_pin_moved_terminal_to_its_directory() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(checkout("a", "/a"), |_| Ok::<_, ()>(())).unwrap();
+        processes.set_directory(id, PathBuf::from("/a/src"));
+
+        // when
+        let moved = processes.move_pinned(id, checkout("b", "/b").unwrap());
+
+        // then
+        assert_eq!((moved, processes.get(id).unwrap().pinned()), (true, Some(Path::new("/a/src"))));
     }
 
     #[test]

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::files::CheckoutFiles;
+use crate::favicon::Favicons;
 use crate::git::status::Change;
 use crate::run::file::RunFile;
 
@@ -27,6 +28,8 @@ pub struct Read {
     pub changes: Arc<Vec<Change>>,
     /// the `.run.toml` files: folder (checkout-relative, `` at the top) and what it declares
     pub configs: Arc<Vec<(String, Arc<RunFile>)>>,
+    /// the `.favicon.*` files: the project's icon at the root, the modules' in their folders
+    pub favicons: Arc<Favicons>,
     /// read in the main checkout only: branches without a worktree, as git prints them
     pub branches: Arc<Vec<Branch>>,
 }
@@ -52,6 +55,13 @@ struct Indexed {
     failure: Option<String>,
     dirty: bool,
     reading: bool,
+}
+
+/// Whether a read failed as the one before it did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Failed {
+    New,
+    Again,
 }
 
 #[derive(Debug, Default)]
@@ -103,12 +113,19 @@ impl HubIndex {
     }
 
     /// A read failed with `error`: the checkout is read again next time.
-    pub fn failed(&mut self, checkout: &Path, error: String) {
-        if let Some(indexed) = self.checkouts.get_mut(checkout) {
-            indexed.reading = false;
-            indexed.dirty = true;
-            indexed.failure = Some(error);
-        }
+    /// Notes that reading `checkout` failed with `error`; whether it failed so before, so it is told once.
+    pub fn failed(&mut self, checkout: &Path, error: String) -> Failed {
+        let Some(indexed) = self.checkouts.get_mut(checkout) else {
+            return Failed::New;
+        };
+        indexed.reading = false;
+        indexed.dirty = true;
+        let seen = match indexed.failure.as_ref() == Some(&error) {
+            true => Failed::Again,
+            false => Failed::New,
+        };
+        indexed.failure = Some(error);
+        seen
     }
 
     /// Why the last read of `checkout` failed; `None` once one succeeded.
@@ -247,6 +264,23 @@ mod tests {
         // then
         assert!(index.files(&path("a")).is_none());
         assert_eq!(index.unread(&[path("a")]), [path("a")]);
+    }
+
+    #[test]
+    fn should_tell_only_a_new_failure_apart() {
+        // given
+        let mut index = HubIndex::default();
+        index.started(&path("a"));
+
+        // when
+        let first = index.failed(&path("a"), "Permission denied".to_owned());
+        index.started(&path("a"));
+        let again = index.failed(&path("a"), "Permission denied".to_owned());
+        index.started(&path("a"));
+        let other = index.failed(&path("a"), "No such file".to_owned());
+
+        // then
+        assert_eq!((first, again, other), (Failed::New, Failed::Again, Failed::New));
     }
 
     #[test]

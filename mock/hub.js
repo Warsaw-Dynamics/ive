@@ -462,6 +462,7 @@
       hub_files: function (groups, split) {
         if (groups.length === 0) {
           return [
+            { key: 'waiting', title: 'Waiting', hint: 'processes that called, longest waiting first', items: this.hubScoped(this.hubWaiting()) },
             { key: 'recent', title: 'Recent', hint: 'shown tabs, newest first; closed ones reopen', items: this.hubScoped(this.hubRecent([])).slice(0, RECENT) },
             { key: 'changed', title: 'Changed', hint: this.hubScopeCheckout() ? 'uncommitted' : 'uncommitted, every worktree', items: this.hubScoped(this.hubChanged([])) },
             { key: 'running', title: 'Running', hint: 'processes and runs', items: this.hubScoped(this.hubRunning()) }
@@ -785,6 +786,10 @@
         });
         return this.hubMatching(items, groups);
       },
+      hubWaiting: function () {
+        var self = this;
+        return this.waitingConsoles().map(function (c) { return self.hubConsole(c); });
+      },
       hubRunning: function () {
         var self = this;
         return this.consoles.filter(function (c) { return self.isLive(c); }).map(function (c) { return self.hubConsole(c); });
@@ -797,7 +802,8 @@
         var self = this;
         var state = c.kind === 'run' ? this.runStatus(c) : c.kind === 'agent' ? 'running' : 'idle';
         return this.hubItem({
-          id: 'c:' + c.id, project: c.co.split('@')[0], icon: this.consoleIcon(c), title: c.title, detail: this.consoleKind(c) + (c.folder ? ' · ' + c.folder.slice(1) : ''), co: c.co, state: state,
+          id: 'c:' + c.id, project: c.co.split('@')[0], ownerPath: c.folder, icon: this.consoleIcon(c), title: c.title, detail: this.consoleKind(c) + (c.folder ? ' · ' + c.folder.slice(1) : ''), co: c.co,
+          state: c.attention !== null ? '● ' + c.attention.text : state, attention: c.attention !== null,
           open: function () { self.openConsole(c); },
           preview: function () { return { title: c.title, sub: self.label(c.co) + ' · ' + self.consoleKind(c), lines: c.lines.slice(-30).map(textOf), mono: true }; }
         });

@@ -112,7 +112,7 @@ pub fn rows(
 fn flat_rows(entries: &[ConfigEntry], run_of: &dyn Fn(usize) -> Option<RunRow>) -> Vec<ListRow> {
     let mut order: Vec<usize> = (0..entries.len()).collect();
     // stable, so equal names keep file order
-    order.sort_by_key(|index| entries[*index].config.name.to_lowercase());
+    order.sort_by_cached_key(|index| entries[*index].config.name.to_lowercase());
     order.into_iter().map(|entry| ListRow { depth: 0, item: ListItem::Config { entry, run: run_of(entry) } }).collect()
 }
 
@@ -146,13 +146,14 @@ impl Node {
 
     fn sorted_children(&self) -> Vec<(&str, &Node)> {
         let mut children: Vec<(&str, &Node)> = self.children.iter().map(|(name, node)| (name.as_str(), node)).collect();
-        children.sort_by_key(|(name, _)| name.to_lowercase());
+        children.sort_by_cached_key(|(name, _)| name.to_lowercase());
         children
     }
 
-    fn all(&self) -> Vec<usize> {
-        let below = self.children.iter().flat_map(|(_, child)| child.all());
-        self.own.iter().copied().chain(below).collect()
+    /// How many configurations in this folder and below `live` says are running.
+    fn live(&self, live: &dyn Fn(usize) -> bool) -> usize {
+        let own = self.own.iter().filter(|index| live(**index)).count();
+        own + self.children.iter().map(|(_, child)| child.live(live)).sum::<usize>()
     }
 }
 
@@ -172,7 +173,7 @@ fn push_folder(out: &mut Vec<ListRow>, context: &FolderContext, label: String, n
         push_folder(out, context, format!("{label}/{name}"), only, depth);
         return;
     }
-    let live = node.all().into_iter().filter(|index| run_of(*index).is_some_and(|run| run.live)).count();
+    let live = node.live(&|index| run_of(index).is_some_and(|run| run.live));
     let open = !folded.contains(&node.path);
     out.push(ListRow { depth, item: ListItem::Folder { path: node.path.clone(), label, run_file: run_files.contains(&node.path), live, open } });
     if !open {

@@ -9,6 +9,7 @@ pub mod client;
 pub mod host;
 #[cfg(windows)]
 pub mod job;
+mod modes;
 pub mod net;
 pub mod protocol;
 pub mod registry;

@@ -1,5 +1,6 @@
 use std::cell::Cell;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -12,7 +13,10 @@ use gpui::{
 };
 
 use crate::click_targets::target;
+use crate::colors::{mixed, tinted};
 use crate::colors::checkout_colour;
+use crate::failure::Failure;
+use crate::favicon_badge::{Badge, badged, favicon_or};
 pub use crate::file_tab::FileTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
@@ -23,6 +27,7 @@ use crate::overview::diff_tab::DiffTab;
 use crate::overview::git_log_tab::{GitLogTab, LogOf};
 use crate::overview::{self, ProjectOverview, ProjectSection};
 use crate::process::{ProcessId, ProcessKind};
+use crate::conflicts_tab::{ConflictsTab, render_conflicts_tab};
 use crate::run::configs_tab::{RunConfigsTab, render_run_configs_tab};
 use crate::run::values_tab::{self as run_values, RunValuesTab};
 use crate::progress_bar::progress_bar;
@@ -33,6 +38,7 @@ use crate::scratch::{self, ScratchRef, ScratchTab};
 use crate::scratch::icon::scratch_icon;
 use crate::script::temporary_tabs::{TabKind, TabMarker, TemporaryTabs};
 use crate::settings_page::{self, SettingsView};
+use crate::tab_groups::{self, CueKind, FramePart, RowItem, Spread, TabFacts, TabGroup};
 use crate::tabs::TabId;
 use crate::theme::Theme;
 use crate::tooltip;
@@ -56,13 +62,15 @@ pub enum Tab {
     /// one per project
     GitLog(GitLogTab),
     Settings(SettingsView),
-    Failed { title: String, error: SharedString },
+    Failed { title: String, failure: Failure },
     /// a scratch of a project, in its editor
     Scratch(ScratchTab),
     /// the values a run needs and has none of; never saved
     RunValues(RunValuesTab),
     /// every run configuration of a checkout; at most one per checkout, never saved
     RunConfigs(RunConfigsTab),
+    /// a copy or move with files in the way, asking before it writes; never saved
+    Conflicts(Box<ConflictsTab>),
     /// a tab restored at start, loaded when first shown
     Unloaded(SavedTab),
     /// Ctrl+Shift+E: recent tabs, changes, processes and every file; at most one
@@ -150,6 +158,7 @@ impl Tab {
             Self::Scratch(_) => "scratch",
             Self::RunValues(_) => "run-values",
             Self::RunConfigs(_) => "run-configs",
+            Self::Conflicts(_) => "conflicts",
             Self::Unloaded(saved) => saved.kind(),
             Self::Hub(_) => "hub",
         }
@@ -173,6 +182,7 @@ impl Tab {
             Self::Scratch(scratch) => scratch.name().to_owned(),
             Self::RunValues(tab) => tab.title(),
             Self::RunConfigs(_) => "Run configurations".to_owned(),
+            Self::Conflicts(tab) => tab.title(),
             Self::Unloaded(saved) => saved.title(),
             Self::Hub(hub) if hub.state.new_terminal => "New terminal".to_owned(),
             Self::Hub(_) => "Hub".to_owned(),
@@ -195,6 +205,22 @@ impl Tab {
         img(icons::embedded(theme.appearance, self.icon_name(workspace))).flex_none().size(theme.sizes.tabs.tab_icon_size.px()).into_any_element()
     }
 
+    /// Its icon, with the attention dot while its process waits for the user; `behind` is the chip's colour.
+    pub fn marked_icon(&self, workspace: &Workspace, theme: Theme, behind: u32) -> AnyElement {
+        match self.attention(workspace) {
+            Some(_) => crate::attention_dot::with_dot(self.icon(workspace, theme), theme, behind).into_any_element(),
+            None => self.icon(workspace, theme),
+        }
+    }
+
+    /// What its process said when it called for the user, until they look.
+    fn attention(&self, workspace: &Workspace) -> Option<String> {
+        match self {
+            Self::Process(id) => workspace.processes().get(*id).and_then(|process| process.attention()).map(|attention| attention.text.clone()),
+            _ => None,
+        }
+    }
+
     fn icon_name(&self, workspace: &Workspace) -> &'static str {
         match self {
             Self::Document(file) => icons::file_icon(&file.file_name()),
@@ -207,6 +233,7 @@ impl Tab {
             Self::Failed { title, .. } => icons::file_icon(title),
             Self::Scratch(scratch) => icons::file_icon(scratch.name()),
             Self::RunValues(_) | Self::RunConfigs(_) => icons::RUN_CONFIG,
+            Self::Conflicts(_) => icons::WARNING,
             Self::Unloaded(saved) => saved_icon(saved),
             Self::Hub(_) => icons::LOCATE,
         }
@@ -245,7 +272,7 @@ impl Tab {
             Self::Diff(tab) => SavedTab::Diff { checkout: tab.checkout.path.clone(), request: tab.request.saved(), panel: tab.panel_state(cx) },
             Self::Settings(view) => SavedTab::Settings { page: view.page_name().to_owned() },
             Self::Hub(_) => SavedTab::Hub,
-            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) => return None,
+            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
             Self::Unloaded(saved) => saved.clone(),
         };
         Some(tab)
@@ -265,7 +292,7 @@ impl Tab {
             Self::GitLog(GitLogTab { of: LogOf::Path { .. }, .. }) => return None,
             Self::GitLog(tab) => TabIdentity::GitLog(tab.project.as_str().to_owned()),
             Self::Settings(_) => TabIdentity::Settings,
-            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) => return None,
+            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
             Self::Scratch(scratch) => TabIdentity::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned() },
             Self::RunValues(tab) => TabIdentity::RunValues {
                 checkout: tab.request.checkout.path.clone(),
@@ -293,6 +320,7 @@ impl Tab {
             Self::Settings(_) | Self::Failed { .. } | Self::Hub(_) => None,
             Self::RunValues(tab) => Some(tab.request.checkout.clone()),
             Self::RunConfigs(tab) => Some(tab.checkout.clone()),
+            Self::Conflicts(tab) => Some(tab.plan.operation.target.checkout.clone()),
             Self::Unloaded(saved) => unloaded_checkout(saved, workspace),
         }
     }
@@ -315,6 +343,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => Vec::new(),
         }
@@ -335,6 +364,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => None,
         }
@@ -357,6 +387,7 @@ impl Tab {
             | Self::Failed { .. }
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => None,
         }
@@ -393,6 +424,7 @@ impl Tab {
             | Self::Scratch(_)
             | Self::RunValues(_)
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_)
             | Self::Hub(_) => {}
         }
@@ -403,6 +435,21 @@ impl Tab {
         match self {
             Self::Scratch(scratch) => Some(scratch.project().clone()),
             _ => self.checkout(workspace).map(|checkout| checkout.project),
+        }
+    }
+
+    /// The path whose module owns this tab: a file's, a diff's (relative to its checkout), a process's working folder
+    /// or its run's folder; `None` for a tab of the whole project or of none.
+    pub fn owner_path(&self, workspace: &Workspace) -> Option<PathBuf> {
+        match self {
+            Self::Document(file) => Some(file.path().to_path_buf()),
+            Self::Diff(tab) => Some(PathBuf::from(tab.request.file.path.display())),
+            Self::Process(id) => {
+                let process = workspace.processes().get(*id)?;
+                process.directory().map(Path::to_path_buf).or_else(|| process.run.as_ref().map(|run| run.folder.clone()))
+            }
+            Self::Unloaded(saved) => saved.owner_path(),
+            _ => None,
         }
     }
 
@@ -418,7 +465,7 @@ impl Tab {
         };
         let owner = match self {
             Self::ProjectOverview(_) | Self::Diff(_) | Self::Settings(_) | Self::Failed { .. } | Self::Unloaded(_) | Self::Hub(_) => None,
-            Self::Document(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) => {
+            Self::Document(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => {
                 self.checkout(workspace).map(|checkout| workspace.checkout_label(&checkout))
             }
             Self::Commit(CommitTab { project, .. }) | Self::GitLog(GitLogTab { project, .. }) => {
@@ -426,9 +473,13 @@ impl Tab {
             }
             Self::Scratch(scratch) => Some(scratch.project_name().to_owned()),
         };
-        match owner {
+        let tooltip = match owner {
             Some(owner) => format!("{owner} — {title}"),
             None => title,
+        };
+        match self.attention(workspace) {
+            Some(said) => format!("{tooltip}\n● {said}"),
+            None => tooltip,
         }
     }
 
@@ -450,20 +501,11 @@ impl Tab {
             | Self::Settings(_)
             | Self::Failed { .. }
             | Self::RunConfigs(_)
+            | Self::Conflicts(_)
             | Self::Unloaded(_) => None,
         }
     }
 
-    /// The checkout colour a tab is underlined with (2 px): a diff's; `None` for the others.
-    pub fn underline(&self, workspace: &Workspace, theme: Theme) -> Option<u32> {
-        match self {
-            Self::Diff(tab) => workspace
-                .project(&tab.checkout.project)
-                .and_then(|project| project.checkout(&tab.checkout.path))
-                .map(|checkout| checkout_colour(checkout, theme)),
-            _ => None,
-        }
-    }
 
     fn render(&self, id: TabId, workspace: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> AnyElement {
         let theme = crate::theme::tabs(cx);
@@ -487,10 +529,11 @@ impl Tab {
             Self::Commit(tab) => tab.body.clone().into_any_element(),
             Self::GitLog(tab) => tab.body.clone().into_any_element(),
             Self::Settings(view) => settings_page::render(settings_page::Page { view, update_status: workspace.update_status() }, theme, cx).into_any_element(),
-            Self::Failed { error, .. } => centered_message(error.clone(), theme.error).into_any_element(),
+            Self::Failed { title, failure } => div().id("failure").flex_1().min_h_0().overflow_y_scroll().child(failure.render(&id.value().to_string(), title, cx)).into_any_element(),
             Self::Scratch(scratch) => scratch.view().clone().into_any_element(),
             Self::RunValues(tab) => run_values::render_values_tab(id, tab, cx),
             Self::RunConfigs(tab) => render_run_configs_tab(id, tab, workspace, cx),
+            Self::Conflicts(tab) => render_conflicts_tab(id, tab, workspace, cx),
             Self::Unloaded(_) => centered_message("Loading…", theme.muted).into_any_element(),
             Self::Hub(hub) => workspace.render_hub_tab(id, hub, cx),
         }
@@ -569,14 +612,25 @@ pub fn render_pane(workspace: &Workspace, window: &mut Window, cx: &mut Context<
 /// then Settings and the window buttons. Its empty space moves the window.
 fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let tabs = workspace.tabs();
-    let active = tabs.active_id();
-    let last = tabs.row_len().saturating_sub(1);
-    // a gap stays marked after a drag ends outside the window, until the next drag
-    let drop_gap = workspace.tab_drop_gap().filter(|_| cx.has_active_drag());
-    let marker = move |place: usize| match drop_gap {
-        Some(gap) if gap == place => Some(Side::Left),
-        Some(gap) if gap == place + 1 && place == last => Some(Side::Right),
-        _ => None,
+    let facts = workspace.tab_group_facts();
+    let groups = workspace.tab_groups(&facts);
+    let items = tab_groups::row_items(&groups);
+    let places: HashMap<TabId, usize> = tabs.row().enumerate().map(|(place, (id, _))| (id, place)).collect();
+    // the row's last drawn tab, which the groups need not have last in the tab order
+    let last = items.iter().rev().find_map(|item| match item {
+        RowItem::Tab(_, id) => places.get(id).copied(),
+        RowItem::Head(_) => None,
+    });
+    let last = last.unwrap_or(0);
+    let view = GroupView {
+        // a gap stays marked after a drag ends outside the window, until the next drag
+        drop: DropGap { gap: workspace.tab_drop_gap().filter(|_| cx.has_active_drag()), last },
+        shown: tabs.active_id(),
+        places,
+        spread: Spread { worktrees: tab_groups::spread_worktrees(&facts), owners: tab_groups::spread_owners(&facts) },
+        groups,
+        facts: facts.iter().map(|fact| (fact.id, fact)).collect(),
+        theme,
     };
     // past the last tab: a dragged tab goes last
     let sizes = &theme.sizes.tabs;
@@ -587,6 +641,9 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
             }
         },
     ));
+    // each item pads half the gap between tabs on either side, so a group's frame runs unbroken under its items
+    let parts: Vec<FramePart> = items.iter().map(|item| tab_groups::frame_part(*item, &view.groups)).collect();
+    let previous: Vec<Option<FramePart>> = std::iter::once(None).chain(parts.iter().copied().map(Some)).collect();
     let strip = div()
         .id("tab-strip")
         .flex()
@@ -594,7 +651,6 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .min_w_0()
         .h_full()
         .items_center()
-        .gap(sizes.gap.px())
         .px(sizes.strip_padding_x.px())
         .overflow_x_scroll()
         .track_scroll(workspace.tab_scroll())
@@ -605,8 +661,9 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
             workspace.hover_tab_drop(event.drag(cx).id, None, cx);
         }))
         .on_drop(cx.listener(|workspace, dragged: &DraggedTab, _window, cx| workspace.drop_dragged_tab(dragged.id, cx)))
-        .children(tabs.row().enumerate().map(|(place, (id, tab))| {
-            render_tab(Chip { id, place, tab, shown: Some(id) == active, temporary: tabs.is_temporary(id), marker: marker(place) }, workspace, cx)
+        .children(items.into_iter().zip(parts).zip(previous).filter_map(|((item, part), before)| {
+            let element = render_row_item(item, &view, workspace, cx)?;
+            Some(framed(element, Framing { part, before, active: view.holds_shown(item) }, theme))
         }))
         .child(end);
     let restart = workspace.restart_script().map(|_| restart_button(theme, cx));
@@ -620,6 +677,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .pl(sizes.tools_padding_left.px())
         .children(update)
         .children(restart)
+        .children(crate::waiting_menu::waiting_button(workspace, theme, cx))
         .child(settings_button(theme, cx))
         .children(window_controls(theme, window, cx));
     workspace
@@ -636,6 +694,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         .child(strip)
         .child(tools)
         .children(crate::menu_view::render_menu(workspace, theme, window, cx))
+        .children(crate::tab_group_menu::render(workspace, window, cx))
 }
 
 /// A detached tab's window: a row with the tab, Move to main window and the window buttons, then the tab. `None`
@@ -655,10 +714,9 @@ pub fn render_detached(workspace: &Workspace, id: TabId, drag: &WindowDrag, wind
         .rounded(sizes.tab_radius.px())
         .border(sizes.tab_border.px())
         .text_size(sizes.tab_text_size.px())
-        .child(tab.icon(workspace, theme))
+        .child(tab.marked_icon(workspace, theme, theme.sidebar))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(div().max_w(sizes.title_max_width.px()).overflow_hidden().text_ellipsis().whitespace_nowrap().child(title.clone()))
-        .children(tab.underline(workspace, theme).map(|colour| underline(colour, theme)))
         .relative();
     // the window's only tab is always the shown one, so its chip marks the window having the keyboard instead
     let chip = if window.is_window_active() {
@@ -713,15 +771,200 @@ fn attach_button(id: TabId, theme: Theme, cx: &mut Context<Workspace>) -> Statef
         .on_click(target("attach-tab".to_owned(), cx.listener(move |workspace, _event, window, cx| workspace.attach_tab(id, window, cx)), cx))
 }
 
-/// A tab of the tab row: its place in the row, whether it is the shown one, and the side a dragged tab would
-/// land on.
+/// What the tab row's items are drawn with: where a dragged tab would land, each tab's place in the row, what the
+/// row spans, its groups and the tabs' facts.
+struct GroupView<'a> {
+    drop: DropGap,
+    shown: Option<TabId>,
+    places: HashMap<TabId, usize>,
+    spread: Spread,
+    groups: Vec<TabGroup>,
+    facts: HashMap<TabId, &'a TabFacts>,
+    theme: Theme,
+}
+
+/// The gap a dragged tab would land in, and the last tab's place.
+#[derive(Clone, Copy)]
+struct DropGap {
+    gap: Option<usize>,
+    last: usize,
+}
+
+impl DropGap {
+    /// The side of the tab at `place` its drop marker shows on.
+    fn marker(self, place: usize) -> Option<Side> {
+        match self.gap {
+            Some(gap) if gap == place => Some(Side::Left),
+            Some(gap) if gap == place + 1 && place == self.last => Some(Side::Right),
+            _ => None,
+        }
+    }
+}
+
+/// How an item draws its part of its group's frame: the part, the one before it (a group after a frame keeps the
+/// gap between groups), and whether its group holds the shown tab.
+struct Framing {
+    part: FramePart,
+    before: Option<FramePart>,
+    active: bool,
+}
+
+/// An item of the row in its part of its group's frame: the head opens it (left, top, bottom), a tab carries its top
+/// and bottom, the group's last tab closes it (right, top, bottom); the frame in the shown tab's outline colour round
+/// the group holding it. Borders take their width inside, so the paddings leave it out.
+fn framed(element: AnyElement, framing: Framing, theme: Theme) -> AnyElement {
+    let sizes = &theme.sizes.tabs;
+    let half = px(sizes.gap.0 / 2.);
+    let (border, radius) = (sizes.group_border.px(), sizes.group_radius.px());
+    let colour = if framing.active { theme.tab_active_border } else { theme.border };
+    let part = div().flex().flex_none().items_center().px(half).child(element);
+    let gapped = |part: Div| match framing.before {
+        Some(_) => part.ml(sizes.group_gap.px()),
+        None => part,
+    };
+    let frame = |part: Div| part.h(sizes.group_height.px()).border_t(border).border_b(border).border_color(rgb(colour));
+    match framing.part {
+        FramePart::Unframed if framing.before == Some(FramePart::Close) => gapped(part).into_any_element(),
+        FramePart::Unframed => part.into_any_element(),
+        FramePart::Open => gapped(frame(part)).border_l(border).rounded_l(radius).pl(sizes.group_padding_left.px() - border).into_any_element(),
+        FramePart::Inside => frame(part).into_any_element(),
+        FramePart::Close => frame(part).border_r(border).rounded_r(radius).pr(sizes.group_padding_right.px() - border).into_any_element(),
+    }
+}
+
+/// One item of the tab row, drawn: a group's head or a tab; the row scrolls to a tab by its item's index.
+fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<AnyElement> {
+    match item {
+        RowItem::Head(group) => group_head(&view.groups[group], workspace, cx).map(IntoElement::into_any_element),
+        RowItem::Tab(group, id) => {
+            let tabs = workspace.tabs();
+            let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, *view.facts.get(&id)?);
+            let look = view.look(fact, &view.groups[group], workspace);
+            let fill = match (view.shown == Some(id), tab_groups::outlines_shown_tab(&view.groups[group])) {
+                (true, true) => Fill::Shown,
+                (true, false) => Fill::ShownInFrame,
+                (false, _) => Fill::Rest,
+            };
+            let chip = Chip { id, place, tab, fill, temporary: tabs.is_temporary(id), marker: view.drop.marker(place), look };
+            Some(render_tab(chip, workspace, cx).into_any_element())
+        }
+    }
+}
+
+/// A group's head: the chevron folds it; then the project's favicon (or initials), name and, folded, its count.
+fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<Stateful<Div>> {
+    let theme = crate::theme::tabs(cx);
+    let sizes = &theme.sizes.tabs;
+    let project = group.project.clone()?;
+    let name = workspace.project(&project).map_or_else(|| project.to_string(), |found| found.name.clone());
+    let toggled = project.clone();
+    let chevron = if group.is_folded() { icons::CHEVRON_RIGHT } else { icons::CHEVRON_DOWN };
+    let fold = div()
+        .id(SharedString::from(format!("tab-group-fold-{}", project.as_str())))
+        .flex_none()
+        .p(px(3.))
+        .rounded(sizes.close_radius.px())
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)))
+        .child(img(icons::embedded(theme.appearance, chevron)).size(px(12.)))
+        .on_click(target(format!("tab-group-fold:{}", project.as_str()), cx.listener(move |workspace, _event, _window, cx| workspace.toggle_tab_group(&toggled, cx)), cx));
+    let letters = crate::sidebar::rows::initials(&name);
+    let initials = move || div().px(px(2.)).rounded(px(3.)).bg(rgb(theme.hover)).text_size(px(8.)).child(letters.clone()).into_any_element();
+    let icon = match workspace.project_icon(&project) {
+        Some(path) => favicon_or(&path, px(14.), initials).into_any_element(),
+        None => initials(),
+    };
+    let count = group.is_folded().then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
+    let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);
+    let opened = project.clone();
+    let row_height = sizes.row_height.px();
+    let open = cx.listener(move |workspace, event: &gpui::ClickEvent, _window, cx| {
+        workspace.open_group_menu(opened.clone(), gpui::point(event.position().x, row_height), cx);
+    });
+    let named = div()
+        .id(SharedString::from(format!("tab-group-name-{}", project.as_str())))
+        .flex()
+        .items_center()
+        .gap(px(5.))
+        .h(sizes.group_head_height.px())
+        .pl(px(3.))
+        .pr(px(6.))
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)).text_color(rgb(theme.text)))
+        .child(icon)
+        .child(label)
+        .children(count)
+        .on_click(target(format!("tab-group-menu:{}", project.as_str()), open, cx));
+    Some(
+        div()
+            .id(SharedString::from(format!("tab-group-{}", project.as_str())))
+            .flex()
+            .flex_none()
+            .items_center()
+            .text_size(sizes.group_head_text_size.px())
+            .text_color(rgb(theme.muted))
+            // a press on the head must not start a window drag
+            .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .child(fold)
+            .child(named),
+    )
+}
+
+impl GroupView<'_> {
+    /// Whether the item's group holds the shown tab.
+    fn holds_shown(&self, item: RowItem) -> bool {
+        let (RowItem::Head(group) | RowItem::Tab(group, _)) = item;
+        self.shown.is_some_and(|shown| self.groups[group].tabs.contains(&shown))
+    }
+
+    /// How a tab shows where it belongs, from its facts and its group: the main checkout has no colour, its label
+    /// is muted.
+    fn look(&self, fact: &TabFacts, group: &TabGroup, workspace: &Workspace) -> ChipLook {
+        let checkout = fact.project.clone().zip(fact.checkout.clone()).map(|(project, path)| CheckoutRef { project, path });
+        let colour = checkout.as_ref().filter(|_| !fact.main).and_then(|checkout| workspace.checkout(checkout)).map(|found| checkout_colour(found, self.theme));
+        let cue = match (tab_groups::chip_cue(fact, group, self.spread), checkout.as_ref()) {
+            (CueKind::Tint, _) => colour.map_or(ChipCue::Plain, ChipCue::Tint),
+            (CueKind::Label, Some(checkout)) => ChipCue::Label { text: workspace.checkout_label(checkout), colour: colour.unwrap_or(self.theme.muted) },
+            (CueKind::Label | CueKind::Plain, _) => ChipCue::Plain,
+        };
+        let badge = fact.icon.clone().filter(|_| tab_groups::shows_badge(fact, group, self.spread));
+        ChipLook { cue, badge }
+    }
+}
+
+/// A tab's worktree cue as drawn: its worktree's colour as background, or its worktree's name after its title.
+enum ChipCue {
+    Plain,
+    Tint(u32),
+    Label { text: String, colour: u32 },
+}
+
+/// How a tab shows where it belongs: its worktree's cue, and its owner's favicon for the badge.
+struct ChipLook {
+    cue: ChipCue,
+    badge: Option<PathBuf>,
+}
+
+/// A tab of the tab row: its place in the row, how it is filled, the side a dragged tab would land on, and how it
+/// shows where it belongs.
 struct Chip<'a> {
     id: TabId,
     place: usize,
     tab: &'a Tab,
-    shown: bool,
+    fill: Fill,
     temporary: bool,
     marker: Option<Side>,
+    look: ChipLook,
+}
+
+/// How a chip is filled: the shown one filled and outlined, or only filled in a folded group's frame, which outlines
+/// it already; the others not.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fill {
+    Rest,
+    Shown,
+    ShownInFrame,
 }
 
 #[derive(Clone, Copy)]
@@ -770,7 +1013,8 @@ impl Render for DraggedTab {
 /// on hover only.
 fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
     let theme = crate::theme::tabs(cx);
-    let Chip { id, place, tab, shown, temporary, marker } = chip;
+    let Chip { id, place, tab, fill, temporary, marker, look } = chip;
+    let shown = fill != Fill::Rest;
     let group = SharedString::from(format!("tab-{}", id.value()));
     let sizes = &theme.sizes.tabs;
     let close = div()
@@ -806,12 +1050,12 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         .border(sizes.tab_border.px())
         .text_size(sizes.tab_text_size.px())
         .cursor_pointer()
-        .child(tab.icon(workspace, theme))
+        // the attention dot on the icon's top right, the owner's badge on its lower right
+        .child(badged(tab.marked_icon(workspace, theme, chip_ring(shown, theme)), look.badge.map(|path| Badge { path, ring: chip_ring(shown, theme) }), theme))
         .children(tab.progress(workspace).and_then(|progress| progress_bar(progress, theme)))
         .child(title)
+        .children(worktree_label(&look.cue, theme))
         .child(close)
-        // a child bar: the chip's own border is its outline
-        .children(tab.underline(workspace, theme).map(|colour| underline(colour, theme)))
         .relative()
         .tooltip(tooltip::text_tooltip(tab.tooltip(workspace)))
         .children(marker.map(|side| drop_marker(side, theme)))
@@ -831,10 +1075,38 @@ fn render_tab(chip: Chip<'_>, workspace: &Workspace, cx: &mut Context<Workspace>
         // the workspace is gone only while the window closes
         let _ = handle.update(cx, |workspace, cx| workspace.run_tab_mouse(id, trigger, window, cx));
     });
-    if shown {
-        return chip.bg(rgb(theme.tab_active)).border_color(rgb(theme.tab_active_border));
+    filled(chip, fill, &look.cue, theme)
+}
+
+/// A chip's fill and outline: the shown one filled and outlined (not in a folded group's frame), a worktree's
+/// tinted with its colour.
+fn filled(chip: Stateful<Div>, fill: Fill, cue: &ChipCue, theme: Theme) -> Stateful<Div> {
+    let sizes = &theme.sizes.tabs;
+    let outline = |colour: gpui::Hsla| if fill == Fill::Shown { colour } else { transparent_black() };
+    match (fill, cue) {
+        (Fill::Shown | Fill::ShownInFrame, ChipCue::Tint(colour)) => {
+            chip.bg(rgb(mixed(theme.tab_active, *colour, sizes.tint_shown.0))).border_color(outline(tinted(*colour, sizes.tint_outline.0).into()))
+        }
+        (Fill::Shown | Fill::ShownInFrame, _) => chip.bg(rgb(theme.tab_active)).border_color(outline(rgb(theme.tab_active_border).into())),
+        (Fill::Rest, ChipCue::Tint(colour)) => {
+            let hover = tinted(*colour, sizes.tint_hover.0);
+            chip.bg(tinted(*colour, sizes.tint.0)).border_color(transparent_black()).hover(move |style| style.bg(hover))
+        }
+        (Fill::Rest, _) => chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover))),
     }
-    chip.border_color(transparent_black()).hover(|style| style.bg(rgb(theme.hover)))
+}
+
+/// The ring cutting a badge out of its icon: the shown chip's fill, else the tab row's.
+fn chip_ring(shown: bool, theme: Theme) -> u32 {
+    if shown { theme.tab_active } else { theme.sidebar }
+}
+
+/// A folded group's tab's worktree name, after its title.
+fn worktree_label(cue: &ChipCue, theme: Theme) -> Option<Div> {
+    let ChipCue::Label { text, colour } = cue else {
+        return None;
+    };
+    Some(div().flex_none().max_w(px(120.)).overflow_hidden().text_ellipsis().whitespace_nowrap().text_size(theme.sizes.tabs.group_head_text_size.px()).text_color(rgb(*colour)).child(text.clone()))
 }
 
 /// How a temporary tab's title shows it; italic until the scripts have loaded.
@@ -842,12 +1114,6 @@ fn temporary_marker(cx: &App) -> TabMarker {
     cx.try_global::<TemporaryTabs>().map_or(TabMarker::Italic, |tabs| tabs.marker.clone())
 }
 
-/// The checkout colour bar under a tab.
-fn underline(colour: u32, theme: Theme) -> Div {
-    let sizes = &theme.sizes.tabs;
-    let inset = sizes.underline_inset.px();
-    div().absolute().bottom_0().left(inset).right(inset).h(sizes.underline_height.px()).rounded(sizes.underline_radius.px()).bg(rgb(colour))
-}
 
 /// The bar in the gap beside a tab where a dragged tab would land; centred on the gap, outside the tab.
 fn drop_marker(side: Side, theme: Theme) -> Div {
@@ -966,7 +1232,7 @@ mod tests {
         // given
         let settings = unloaded(SavedTab::Settings { page: "Appearance".to_owned() });
         let overview = unloaded(SavedTab::ProjectOverview { project: "p".to_owned(), section: "Git".to_owned() });
-        let failed = Tab::Failed { title: "a.rs".to_owned(), error: "gone".into() };
+        let failed = Tab::Failed { title: "a.rs".to_owned(), failure: Failure::new("gone") };
 
         // when
         let kinds = [settings.temporary_kind(), overview.temporary_kind(), failed.temporary_kind()];

@@ -167,9 +167,11 @@ impl Workspace {
     /// (the later-started scan wins), a new one is added at the end.
     fn place_opened(&mut self, new: NewProject, folder: &Path, cx: &mut Context<Self>) -> Result<ProjectId, ProjectError> {
         let placed = self.place_scanned(new, folder, cx);
-        // a project opened shows, though the picker left it out
+        // a project opened shows, though the picker left it out; its files are read now, for its favicons and the
+        // hub, not when a later refresh comes
         if let Ok(id) = &placed {
             self.hidden_projects.remove(id);
+            self.index_project(id, cx);
         }
         placed
     }
@@ -225,7 +227,7 @@ impl Workspace {
             cx.notify();
             return;
         }
-        self.open_tab(Tab::Failed { title: "Open project".to_owned(), error: error.to_string().into() }, window, cx);
+        self.open_tab(Tab::Failed { title: "Open project".to_owned(), failure: crate::failure::Failure::new(error.to_string()) }, window, cx);
     }
 
     /// Re-reads a project's checkouts and the status of every checkout in the background; while one read runs,
@@ -493,8 +495,13 @@ impl Workspace {
         change(&mut self.tree.selection, &listed)
     }
 
+    /// What dragging the tree row of `pressed` drags, see [`Selection::dragged_keys`].
+    pub(crate) fn dragged_keys(&self, pressed: &TreeKey) -> Vec<TreeKey> {
+        self.tree.selection.dragged_keys(pressed, &selection::listed(&self.tree.rows))
+    }
+
     /// What dragging the tree row of `pressed` drags, see [`Selection::dragged_paths`].
-    pub(crate) fn dragged_paths(&self, pressed: &Path) -> Vec<PathBuf> {
+    pub(crate) fn dragged_paths(&self, pressed: &TreeKey) -> Vec<PathBuf> {
         self.tree.selection.dragged_paths(pressed, &selection::listed(&self.tree.rows))
     }
 
@@ -535,7 +542,7 @@ impl Workspace {
             this.update_in(cx, |workspace, window, cx| {
                 workspace.apply_listings(&listings, cx);
                 if let Some(error) = failed {
-                    workspace.open_tab(Tab::Failed { title, error: error.to_string().into() }, window, cx);
+                    workspace.open_tab(Tab::Failed { title, failure: crate::failure::Failure::new(error.to_string()) }, window, cx);
                 }
             })
             .ok();
@@ -562,7 +569,7 @@ impl Workspace {
         let name = project::folder_name(path);
         let tab = match Document::open_stamped(path) {
             Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
-            Err(error) => Tab::Failed { title: name, error: error.to_string().into() },
+            Err(error) => Tab::Failed { title: name, failure: crate::failure::Failure::new(error.to_string()) },
         };
         self.open_tab(tab, window, cx);
     }

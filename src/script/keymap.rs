@@ -40,6 +40,8 @@ impl Scope {
 pub enum Place {
     Terminal,
     Editor,
+    /// selected read-only text has the keyboard: editor-scope keys, of which Copy and Select All act
+    Text,
     Hub,
     /// the sidebar has the keyboard
     Tree,
@@ -160,10 +162,20 @@ pub enum Builtin {
     /// `ActivateRow`, its tab opened, or kept, to stay
     ActivateRowToKeep,
     ToggleRow,
-    /// Ctrl+click: adds a file or folder row to the selection, or takes it out
+    /// Ctrl+click: adds a row to the selection, or takes it out
     ToggleRowSelection,
-    /// Shift+click: selects the files and folders from the anchor to the row
+    /// Shift+click: selects the rows from the anchor to the row
     ExtendRowSelection,
+    /// Escape in the tree: drops the picks
+    ClearRowSelection,
+    /// the picked files and folders onto the clipboard, as absolute paths, for Paste
+    CopyFiles,
+    /// copies the files and folders on the clipboard into the row's folder, keeping their folders
+    PasteFiles,
+    /// the picked files and folders to the trash, or away for good (`config.delete`)
+    DeleteFiles,
+    /// the row's name as a field, to rename its file or folder
+    RenameFile,
     SelectAll,
     Cut,
     Undo,
@@ -254,7 +266,9 @@ impl Builtin {
                 matches!(scope, Scope::Window | Scope::Tab)
             }
             Self::ActivateTab => scope == Scope::Tab,
-            Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection => scope == Scope::Tree,
+            Self::ActivateRow | Self::ActivateRowToKeep | Self::ToggleRow | Self::ToggleRowSelection | Self::ExtendRowSelection | Self::ClearRowSelection => {
+                scope == Scope::Tree
+            }
             Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout => scope == Scope::Editor,
             Self::Find | Self::FindNext | Self::FindPrevious => scope == Scope::Editor,
             Self::CopyTo(_) | Self::PasteFrom(_) => matches!(scope, Scope::Terminal | Scope::Editor),
@@ -262,6 +276,7 @@ impl Builtin {
             Self::SelectTextAtMouseCursor(_) | Self::ExtendSelectionToMouseCursor(_) | Self::CompleteSelection(_) => scope == Scope::Terminal,
             Self::OpenHub => matches!(scope, Scope::Window | Scope::Hub),
             Self::CopyFullPath => matches!(scope, Scope::Hub | Scope::Tree),
+            Self::CopyFiles | Self::PasteFiles | Self::DeleteFiles | Self::RenameFile => scope == Scope::Tree,
             Self::HubDown
             | Self::HubUp
             | Self::HubPageDown
@@ -337,7 +352,7 @@ impl Builtin {
             Self::OpenHub | Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::OpenFindInFiles | Self::ToggleChangesLayout => BOTH,
             // a tree menu's Stop and Kill end the process of its row
             Self::StopProgram | Self::KillProgram => BOTH,
-            Self::NewTerminal => &[MenuKind::Tree],
+            Self::NewTerminal | Self::CopyFiles | Self::PasteFiles | Self::DeleteFiles | Self::RenameFile => &[MenuKind::Tree],
             tab if tab.is_tab_command() => &[MenuKind::Tab],
             _ => &[],
         }
@@ -440,7 +455,7 @@ impl Keymap {
         let in_scope = |scope| self.bindings.iter().find(|binding| binding.scope == scope && matches!(&binding.trigger, Trigger::Key(bound) if same_key(bound, keystroke)));
         let local = match place {
             Place::Terminal => in_scope(Scope::Terminal),
-            Place::Editor => in_scope(Scope::Editor),
+            Place::Editor | Place::Text => in_scope(Scope::Editor),
             Place::Hub => in_scope(Scope::Hub),
             Place::Tree => in_scope(Scope::Tree),
             Place::Elsewhere => None,
@@ -509,6 +524,30 @@ mod tests {
 
         // then
         assert_eq!(found, Some(&send("terminal")));
+    }
+
+    #[test]
+    fn should_match_editor_bindings_in_text_place() {
+        // given
+        let keymap = Keymap::new(vec![key("ctrl-c", Scope::Window, send("window")), key("ctrl-c", Scope::Editor, send("editor"))]).unwrap();
+
+        // when
+        let found = keymap.find_key(&pressed("ctrl-c"), Place::Text);
+
+        // then
+        assert_eq!(found, Some(&send("editor")));
+    }
+
+    #[test]
+    fn should_not_match_terminal_bindings_in_text_place() {
+        // given
+        let keymap = Keymap::new(vec![key("shift-enter", Scope::Terminal, send("terminal"))]).unwrap();
+
+        // when
+        let found = keymap.find_key(&pressed("shift-enter"), Place::Text);
+
+        // then
+        assert_eq!(found, None);
     }
 
     #[test]

@@ -13,7 +13,7 @@ use serde::Deserialize;
 use crate::colors::{ColorKey, RawEntry};
 
 pub use sizes::{Sizes, TerminalSizes};
-pub use values::{Factor, FontPx, Fraction, Height, Px, RootPx, Rgb, Rgba, RowStyle, Weight};
+pub use values::{Contrast, Factor, FontPx, Fraction, Gamma, Height, Px, RootPx, Rgb, Rgba, RowStyle, Weight};
 
 /// IVE's default theme without its syntax colours, which come from the built-in schemes.
 const DEFAULT_TOML: &str = include_str!("../../assets/theme/default.toml");
@@ -81,6 +81,8 @@ pub struct Palette {
     pub selected: Rgb,
     pub hover: Rgb,
     pub error: Rgb,
+    /// a process that called for the user, until they look
+    pub attention: Rgb,
     pub diff_added: Rgba,
     pub diff_removed: Rgba,
     /// the find box's matches, and the current one
@@ -108,6 +110,7 @@ pub struct Palette {
     pub tree_states: TreeStates,
     pub virtual_folders: VirtualFolders,
     pub menu: MenuColors,
+    pub text_rendering: TextRendering,
     /// colour key id → entry, over the built-in scheme
     pub syntax: BTreeMap<String, RawEntry>,
 }
@@ -144,6 +147,22 @@ pub struct TreeStates {
     pub active: RowStyle,
     pub selected: RowStyle,
     pub secondary: RowStyle,
+    /// the row a drag would drop on
+    pub drop: RowStyle,
+}
+
+/// How glyphs' coverage becomes alpha (Linux): higher values draw text bolder.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TextRendering {
+    pub gamma: Gamma,
+    pub contrast: Contrast,
+}
+
+impl TextRendering {
+    pub fn gpui(self) -> gpui::TextRendering {
+        gpui::TextRendering { gamma: self.gamma.0, grayscale_enhanced_contrast: self.contrast.0, subpixel_enhanced_contrast: self.contrast.0 }
+    }
 }
 
 /// The menus of tabs and tree rows.
@@ -423,6 +442,33 @@ mod tests {
         // then
         assert!(errors[0].starts_with("theme.sizes.git.text_size:") && errors[0].contains("500"), "{errors:?}");
         assert!(errors[1].starts_with("theme.sizes.settings.text_size:"), "{errors:?}");
+    }
+
+    #[test]
+    fn should_draw_text_with_each_appearances_gamma_and_contrast() {
+        // given
+        let value = with(&["light", "text_rendering"], serde_json::json!({ "gamma": 1.4, "contrast": 0.5 }));
+
+        // when
+        let spec = parse(&value).unwrap();
+
+        // then
+        let light = spec.light.text_rendering.gpui();
+        assert_eq!((light.gamma, light.grayscale_enhanced_contrast, light.subpixel_enhanced_contrast), (1.4, 0.5, 0.5));
+        assert_eq!(spec.dark.text_rendering, TextRendering { gamma: Gamma(1.0), contrast: Contrast(0.0) });
+    }
+
+    #[test]
+    fn should_reject_gamma_and_contrast_out_of_range() {
+        // given
+        let values = [with(&["dark", "text_rendering", "gamma"], 3.0), with(&["dark", "text_rendering", "contrast"], -1.0)];
+
+        // when
+        let errors: Vec<String> = values.iter().map(|value| parse(value).unwrap_err()).collect();
+
+        // then
+        assert!(errors[0].starts_with("theme.dark.text_rendering.gamma:") && errors[0].contains('3'), "{errors:?}");
+        assert!(errors[1].starts_with("theme.dark.text_rendering.contrast:") && errors[1].contains("-1"), "{errors:?}");
     }
 
     #[test]

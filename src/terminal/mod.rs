@@ -1,5 +1,7 @@
+mod attention;
 mod colors;
 mod directory;
+pub mod exit;
 pub mod env;
 pub mod hosted;
 mod foreground;
@@ -14,8 +16,11 @@ mod theme_reports;
 mod view;
 
 pub use foreground::ForegroundProbe;
+#[cfg(test)]
+pub use attention::Call;
+pub use attention::{CallReport, one_line};
 pub use directory::{DirectoryReport, DirectoryTracker, Sample};
-pub use launch::Launch;
+pub use launch::{Launch, login_shell};
 pub use mouse::{Button, Gesture, GestureKind, ScreenCell};
 pub use progress::Progress;
 pub use layout::LineAt;

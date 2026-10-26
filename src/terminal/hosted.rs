@@ -5,7 +5,7 @@ use std::io;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
 use alacritty_terminal::event::{Event, EventListener};
@@ -17,6 +17,7 @@ use ptyhost::host::{self, HostConfig, Launcher};
 use ptyhost::protocol::{Frame, Size};
 use ptyhost::registry::{Owner, Registry, SessionInfo};
 
+use super::attention::{Call, CallReport, CallScanner, finished};
 use super::directory::{DirectoryReport, DirectoryScanner, host_name};
 use super::foreground::ForegroundProbe;
 use super::launch::Launch;
@@ -49,11 +50,11 @@ impl HostedTerminals {
         match Self::with(registry, crate::pty_host_launcher()) {
             Ok(Some(terminals)) => Some(terminals),
             Ok(None) => {
-                eprintln!("ive: another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("another IVE keeps the terminals in {}; terminals here end when IVE closes", dir.display()));
                 None
             }
             Err(error) => {
-                eprintln!("ive: cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display());
+                crate::notices::log_only(&format!("cannot keep terminals in {}: {error}; terminals end when IVE closes", dir.display()));
                 None
             }
         }
@@ -97,7 +98,7 @@ impl HostedTerminals {
     /// Sessions running now, oldest first; an unreadable registry counts as none, reported to stderr.
     pub fn live(&self) -> Vec<SessionInfo> {
         self.registry.sessions().unwrap_or_else(|error| {
-            eprintln!("ive: cannot list running terminals in {}: {error}", self.registry.dir().display());
+            crate::notices::log_only(&format!("cannot list running terminals in {}: {error}", self.registry.dir().display()));
             Vec::new()
         })
     }
@@ -130,11 +131,14 @@ struct Shared {
     writer: Mutex<Writer>,
     /// the last size sent, sent again after a re-attach
     size: Mutex<Option<Size>>,
-    lost: AtomicBool,
+    /// why the connection broke for good, once it has
+    lost: OnceLock<String>,
     /// set by a hang-up: input still queued is dropped, so the hang-up goes out next
     hanging_up: AtomicBool,
     /// the program's last progress report
     progress: Mutex<Progress>,
+    /// the program's last call for the user's attention, in live output
+    call: Mutex<Option<CallReport>>,
     /// the program's last working-directory report
     directory: Mutex<Option<DirectoryReport>>,
     /// whether the program asked to hear when the theme turns dark or light
@@ -165,9 +169,10 @@ impl Connection {
             Arc::new(Shared {
                 writer: Mutex::new(Writer { client, detached: false, generation: 0 }),
                 size: Mutex::new(None),
-                lost: AtomicBool::new(false),
+                lost: OnceLock::new(),
                 hanging_up: AtomicBool::new(false),
                 progress: Mutex::new(Progress::None),
+                call: Mutex::new(None),
                 directory: Mutex::new(None),
                 theme_reports: AtomicBool::new(false),
             });
@@ -186,7 +191,7 @@ impl Connection {
                     .spawn(move || output.run(reader))
                     .expect("cannot start a terminal reader thread");
             }
-            Err(_) => output.end_lost(),
+            Err(error) => output.end_lost(format!("cannot read from the terminal host: {error}")),
         }
         Self { id, program_pid, shared, outbox }
     }
@@ -199,13 +204,17 @@ impl Connection {
         self.program_pid
     }
 
-    /// True once the connection broke and could not be re-attached; the program may still run.
-    pub fn lost(&self) -> bool {
-        self.shared.lost.load(Ordering::Relaxed)
+    /// Why the connection broke and could not be re-attached, once it has; the program may still run.
+    pub fn lost_reason(&self) -> Option<String> {
+        self.shared.lost.get().cloned()
     }
 
     pub fn progress(&self) -> Progress {
         *self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub fn call(&self) -> Option<CallReport> {
+        self.shared.call.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
     }
 
     pub fn directory(&self) -> Option<DirectoryReport> {
@@ -304,6 +313,7 @@ impl Shared {
 struct Parsers {
     terminal: Processor<StdSyncHandler>,
     progress: ProgressScanner,
+    call: CallScanner,
     directory: DirectoryScanner,
     theme_reports: ThemeReportScanner,
 }
@@ -313,6 +323,7 @@ impl Default for Parsers {
         Self {
             terminal: Processor::default(),
             progress: ProgressScanner::default(),
+            call: CallScanner::default(),
             directory: DirectoryScanner::new(host_name()),
             theme_reports: ThemeReportScanner::default(),
         }
@@ -349,9 +360,9 @@ impl Output {
                 }
                 Ok(None) => self.flush_synchronized(&mut parser),
                 Err(_) if self.shared.detached() => return,
-                Err(_) => match self.reattach() {
+                Err(error) => match self.reattach() {
                     Some(client) => reader = client,
-                    None => return self.end_lost(),
+                    None => return self.end_lost(format!("the connection to the terminal host broke ({error}) and attaching again failed")),
                 },
             }
         }
@@ -387,8 +398,13 @@ impl Output {
 
     fn parse(&self, parser: &mut Parsers, bytes: &[u8], origin: Origin) {
         parser.terminal.advance(&mut *self.term.lock(), bytes);
-        if let Some(progress) = parser.progress.scan(bytes) {
-            *self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = progress;
+        let call = parser.call.scan(bytes);
+        // each report in turn: an end followed by a new start in the same read still ends
+        let ends = parser.progress.scan_all(bytes).into_iter().filter(|progress| self.take_progress(*progress)).count();
+        let ended = (ends > 0).then_some(Call::Finished);
+        // a replay holds calls the user already saw
+        if let (Some(call), Origin::Live) = (call.or(ended), origin) {
+            self.keep_call(call);
         }
         // replayed output counts too: it restores what the program asked for before IVE re-attached
         if let Some(wanted) = parser.theme_reports.scan(bytes) {
@@ -404,6 +420,19 @@ impl Output {
             *directory = Some(DirectoryReport { number, path, leader });
         }
         self.listener.send_event(Event::Wakeup);
+    }
+
+    /// Keeps `progress` as the program's last report; whether it ended busy progress.
+    fn take_progress(&self, progress: Progress) -> bool {
+        let mut last = self.shared.progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let before = std::mem::replace(&mut *last, progress);
+        finished(before, progress)
+    }
+
+    fn keep_call(&self, call: Call) {
+        let mut last = self.shared.call.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let number = last.as_ref().map_or(1, |report| report.number + 1);
+        *last = Some(CallReport { number, call });
     }
 
     /// Draws a synchronized update whose end never came in time, as alacritty does.
@@ -433,8 +462,8 @@ impl Output {
         Some(reader)
     }
 
-    fn end_lost(&self) {
-        self.shared.lost.store(true, Ordering::Relaxed);
+    fn end_lost(&self, reason: String) {
+        let _ = self.shared.lost.set(reason);
         self.listener.send_event(Event::Exit);
     }
 }
@@ -612,6 +641,51 @@ mod tests {
     }
 
     #[test]
+    fn should_number_live_calls() {
+        // given
+        let mut fixture = fixture();
+
+        // when
+        fixture.send(Frame::Output(b"\x1b]9;4;3\x07\x1b]9;Waiting\x07".to_vec()));
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07done".to_vec()));
+        fixture.wait_for_line("done");
+
+        // then
+        assert_eq!(fixture.connection.call(), Some(CallReport { number: 2, call: Call::Finished }));
+    }
+
+    #[test]
+    fn should_finish_when_progress_ends_and_starts_again_in_one_read() {
+        // given
+        let mut fixture = fixture();
+        fixture.send(Frame::Output(b"\x1b]9;4;3\x07".to_vec()));
+
+        // when
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07\x1b]9;4;1;5\x07next".to_vec()));
+        fixture.wait_for_line("next");
+
+        // then
+        assert_eq!((fixture.connection.call(), fixture.connection.progress()), (Some(CallReport { number: 1, call: Call::Finished }), Progress::Normal(5)));
+    }
+
+    #[test]
+    fn should_take_no_call_from_the_replay() {
+        // given
+        let mut fixture = fixture();
+
+        // when
+        fixture.send(Frame::Replay(b"\x1b]9;Old\x07\x07\x1b]9;4;1;50\x07\x1b]9;4;0\x07\x1b]9;4;3\x07replayed".to_vec()));
+        fixture.wait_for_line("replayed");
+        let replayed = fixture.connection.call();
+        fixture.send(Frame::Output(b"\x1b]9;4;0\x07\r\x1b[2Klive".to_vec()));
+        fixture.wait_for_line("live");
+
+        // then
+        assert_eq!((replayed, fixture.connection.progress()), (None, Progress::None));
+        assert_eq!(fixture.connection.call(), Some(CallReport { number: 1, call: Call::Finished }));
+    }
+
+    #[test]
     fn should_keep_replayed_directory_report_without_its_leader() {
         // given
         let mut fixture = fixture();
@@ -641,11 +715,11 @@ mod tests {
             _ => None,
         });
         assert_eq!(status.and_then(|status| status.code()), Some(3));
-        assert!(!fixture.connection.lost());
+        assert_eq!(fixture.connection.lost_reason(), None);
     }
 
     #[test]
-    fn should_mark_lost_when_host_disappears() {
+    fn should_say_why_when_host_disappears() {
         // given
         let mut fixture = fixture();
 
@@ -654,7 +728,8 @@ mod tests {
 
         // then
         fixture.events_until(|event| matches!(event, Event::Exit));
-        assert!(fixture.connection.lost());
+        let reason = fixture.connection.lost_reason().expect("lost");
+        assert!(!reason.is_empty(), "{reason}");
     }
 
     #[test]

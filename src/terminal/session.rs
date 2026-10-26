@@ -18,6 +18,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use super::foreground::ForegroundProbe;
 use super::directory::DirectoryReport;
 use super::launch::Launch;
+use super::attention::CallReport;
 use super::progress::Progress;
 use super::theme_reports::theme_report;
 use super::hosted::{Connection, HostedTerminals};
@@ -242,11 +243,11 @@ impl Session {
         }
     }
 
-    /// True once a hosted session's connection broke for good; its program may still run.
-    pub fn lost(&self) -> bool {
+    /// Why a hosted session's connection broke for good, once it has; its program may still run.
+    pub fn lost_reason(&self) -> Option<String> {
         match &self.transport {
-            Transport::InProcess(..) => false,
-            Transport::Hosted(connection) => connection.lost(),
+            Transport::InProcess(..) => None,
+            Transport::Hosted(connection) => connection.lost_reason(),
         }
     }
 
@@ -255,6 +256,14 @@ impl Session {
         match &self.transport {
             Transport::InProcess(..) => Progress::None,
             Transport::Hosted(connection) => connection.progress(),
+        }
+    }
+
+    /// The program's last call for the user's attention in live output; only hosted sessions read it.
+    pub fn call(&self) -> Option<CallReport> {
+        match &self.transport {
+            Transport::InProcess(..) => None,
+            Transport::Hosted(connection) => connection.call(),
         }
     }
 

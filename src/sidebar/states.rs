@@ -49,10 +49,12 @@ pub struct Highlight {
     pub entry: Option<(EntryState, Option<Mark>)>,
     pub selected: bool,
     pub active: bool,
+    /// what is dragged over it may be dropped on it
+    pub drop: bool,
 }
 
 /// How a row is drawn when the mouse is not over it: the theme's styles layered (excluded or ignored, then active
-/// unless selected, then selected), and a git mark's colour on the text over all of them, as IntelliJ keeps it on
+/// unless selected, then selected, then a drop row's), and a git mark's colour on the text over all of them, as IntelliJ keeps it on
 /// selected rows.
 pub fn row_look(highlight: Highlight, states: &TreeStates, git: &GitColors) -> RowStyle {
     let state = highlight.entry.map(|(state, _)| state);
@@ -66,6 +68,9 @@ pub fn row_look(highlight: Highlight, states: &TreeStates, git: &GitColors) -> R
     }
     if highlight.selected {
         style = layered(style, states.selected);
+    }
+    if highlight.drop {
+        style = layered(style, states.drop);
     }
     if let Some((_, Some(mark))) = highlight.entry {
         style.text = Some(git_colour(mark, git));
@@ -179,7 +184,7 @@ mod tests {
 
     fn look(entry: Option<(EntryState, Option<Mark>)>, selected: bool, active: bool) -> RowStyle {
         let theme = crate::theme::Theme::of(crate::theme::Appearance::Dark);
-        row_look(Highlight { entry, selected, active }, &theme.tree_states, &theme.git)
+        row_look(Highlight { entry, selected, active, drop: false }, &theme.tree_states, &theme.git)
     }
 
     #[test]
@@ -187,7 +192,7 @@ mod tests {
         // given
         let theme = crate::theme::Theme::of(crate::theme::Appearance::Dark);
         let states = TreeStates { active: RowStyle { background: Some(Rgba(0x11223344)), ..RowStyle::default() }, ..theme.tree_states };
-        let look = |selected, active| row_look(Highlight { entry: None, selected, active }, &states, &theme.git);
+        let look = |selected, active| row_look(Highlight { entry: None, selected, active, drop: false }, &states, &theme.git);
 
         // when
         let (active, both, plain) = (look(false, true), look(true, true), look(false, false));
@@ -196,6 +201,19 @@ mod tests {
         assert_eq!(active.background, Some(Rgba(0x11223344)));
         assert_eq!(both.background, states.selected.background);
         assert_eq!(plain, RowStyle::default());
+    }
+
+    #[test]
+    fn should_draw_drop_row_over_selection() {
+        // given
+        let theme = crate::theme::Theme::of(crate::theme::Appearance::Dark);
+
+        // when
+        let style = row_look(Highlight { entry: None, selected: true, active: false, drop: true }, &theme.tree_states, &theme.git);
+
+        // then
+        assert_eq!(style.background, theme.tree_states.drop.background);
+        assert!(theme.tree_states.drop.background.is_some());
     }
 
     #[test]

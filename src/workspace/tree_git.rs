@@ -157,7 +157,7 @@ impl Workspace {
         });
         let checkout = path.to_path_buf();
         cx.spawn(async move |this, cx| {
-            let read = reading.await.map_err(|error| eprintln!("ive: {error}")).ok();
+            let read = reading.await.map_err(|error| crate::notices::log_only(&error.to_string())).ok();
             this.update(cx, |workspace, cx| {
                 if workspace.tree_git.finish(checkout.clone(), read) {
                     workspace.follow_tree_git(&checkout, cx);
@@ -390,7 +390,7 @@ impl Workspace {
             let relative = path.strip_prefix(&checkout.path).ok()?.to_path_buf();
             Some((checkout, relative))
         }) else {
-            return eprintln!("ive: no uncommitted diff for {}: it is not in an open project's checkout", path.display());
+            return crate::notices::notify(cx, format!("no uncommitted diff for {}: it is not in an open project's checkout", path.display()));
         };
         let file = FilePaths { path: GitPath::from_bytes(relative.as_os_str().as_encoded_bytes()), old_path: None };
         let request = DiffRequest { dir: checkout.path.clone(), file, source: DiffSource::Uncommitted };
@@ -414,7 +414,7 @@ impl Workspace {
                 }
                 // the file has no changes any more: the tree catches up on the next read
                 Ok(None) => {}
-                Err(error) => eprintln!("ive: {error}"),
+                Err(error) => crate::notices::notify(cx, error.to_string()),
             })
             .ok();
         })

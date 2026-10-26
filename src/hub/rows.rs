@@ -77,26 +77,27 @@ pub fn list(state: &HubState, sources: &Sources, files: Option<(&Corpus, &Found)
     let mut list = Builder::new(&state.scope);
     match mode(state) {
         Mode::Pick => list.section("Worktrees", pick_rows(state, sources, states)),
-        Mode::Empty if state.changed_only => list.section("Changed", list.matching(&sources.changed, "")),
+        Mode::Empty if state.changed_only => list.section_of("Changed", list.matching(&sources.changed, "", RENDERED)),
         Mode::Empty => {
-            let recent: Vec<Row> = list.matching(&sources.recent, "").into_iter().take(RECENT_EMPTY).collect();
+            list.section_of("Waiting", list.matching(&sources.waiting, "", RENDERED));
+            let recent = list.matching(&sources.recent, "", RECENT_EMPTY).rows;
             list.section("Recent", recent);
-            list.section("Changed", list.matching(&sources.changed, ""));
-            list.section("Running", list.matching(&sources.running, ""));
+            list.section_of("Changed", list.matching(&sources.changed, "", RENDERED));
+            list.section_of("Running", list.matching(&sources.running, "", RENDERED));
         }
-        Mode::Files { .. } if state.changed_only => list.section("Changed", list.matching(&sources.changed, split_line(&state.query).query)),
+        Mode::Files { .. } if state.changed_only => list.section_of("Changed", list.matching(&sources.changed, split_line(&state.query).query, RENDERED)),
         Mode::Files { .. } => {
             list.section("Recent", recent_matches(state, sources));
             list.files(sources, files);
         }
-        Mode::Actions => list.section("Actions", list.matching(&sources.actions, rest(&state.query))),
+        Mode::Actions => list.section_of("Actions", list.matching(&sources.actions, rest(&state.query), RENDERED)),
         Mode::Processes => {
-            list.section("Processes", list.matching(&sources.processes, rest(&state.query)));
-            list.section("Run configurations", list.matching(&sources.configs, rest(&state.query)));
+            list.section_of("Processes", list.matching(&sources.processes, rest(&state.query), RENDERED));
+            list.section_of("Run configurations", list.matching(&sources.configs, rest(&state.query), RENDERED));
         }
         Mode::Worktrees => {
-            list.section("Worktrees", list.matching(&worktree_items(sources), rest(&state.query)));
-            list.section("Branches", list.matching(&branch_items(sources), rest(&state.query)));
+            list.section_of("Worktrees", list.matching(&worktree_items(sources), rest(&state.query), RENDERED));
+            list.section_of("Branches", list.matching(&branch_items(sources), rest(&state.query), RENDERED));
         }
         Mode::Scopes => list.section("Scope", scope_rows(sources, rest(&state.query))),
         Mode::Line(line) => match &sources.back {
@@ -141,13 +142,14 @@ pub fn content_list(state: &HubState, found: Option<&ContentFound>, places: &Pla
         list.message = Some(if state.query.chars().count() < MIN_QUERY_CHARS { CONTENT_NEEDS_TEXT } else { SEARCHING_CONTENTS }.to_owned());
         return list.finish();
     };
-    let rows: Vec<Row> = found.hits.iter().map(|hit| hit_row(hit, (places.file)(&hit.path))).collect();
-    let output: Vec<Row> = found.output.iter().map(|hit| output_row(hit, (places.process)(hit.process))).collect();
-    if rows.is_empty() && output.is_empty() && found.done {
+    // up to 2,000 hits: only the shown ones are made rows
+    let rows = found.hits.iter().take(RENDERED).map(|hit| hit_row(hit, (places.file)(&hit.path))).collect();
+    let output = found.output.iter().take(RENDERED).map(|hit| output_row(hit, (places.process)(hit.process))).collect();
+    if found.hits.is_empty() && found.output.is_empty() && found.done {
         list.message = Some(NO_CONTENT_MATCHES.to_owned());
     }
-    list.section(&title, rows);
-    list.section("Output", output);
+    list.section_of(&title, Matched { rows, total: found.hits.len() });
+    list.section_of("Output", Matched { rows: output, total: found.output.len() });
     if found.limited
         && let Some(section) = list.sections.last_mut()
     {
@@ -194,7 +196,7 @@ fn file_name(path: &Path) -> String {
 /// The Recent rows a files query matches, which the files under them leave out.
 pub(super) fn recent_matches(state: &HubState, sources: &Sources) -> Vec<Row> {
     let builder = Builder::new(&state.scope);
-    builder.matching(&sources.recent, split_line(&state.query).query).into_iter().take(RECENT_WHILE_SEARCHING).collect()
+    builder.matching(&sources.recent, split_line(&state.query).query, RECENT_WHILE_SEARCHING).rows
 }
 
 /// The text after a one-character prefix.
@@ -217,11 +219,18 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a section unless it has no rows; a long one shows its first rows only, as drawing thousands is slow.
-    fn section(&mut self, title: &str, mut rows: Vec<Row>) {
-        if rows.is_empty() {
+    fn section(&mut self, title: &str, rows: Vec<Row>) {
+        let total = rows.len();
+        self.section_of(title, Matched { rows, total });
+    }
+
+    /// Adds a section of the first of `matched`'s rows, saying how many there are when some are left out.
+    fn section_of(&mut self, title: &str, matched: Matched) {
+        let Matched { mut rows, total } = matched;
+        if total == 0 {
             return;
         }
-        let note = (rows.len() > RENDERED).then(|| format!("{RENDERED} of {} · type to narrow", thousands(rows.len())));
+        let note = (total > RENDERED).then(|| format!("{RENDERED} of {} · type to narrow", thousands(total)));
         rows.truncate(RENDERED);
         self.push(title, rows, note);
     }
@@ -239,23 +248,20 @@ impl<'a> Builder<'a> {
     /// Ctrl+Shift+T: before typing, a section per project with its places and newest branches; typing ranks every
     /// place of every project, the best first.
     fn new_terminal(&mut self, query: &str, sources: &Sources) {
-        let places = new_terminal_places(sources);
         if Query::parse(query).is_empty() {
-            for place in places {
-                let hidden = place.branches.len().saturating_sub(NEW_TERMINAL_BRANCHES);
+            for (place, hidden) in new_terminal_firsts(sources) {
                 let more = (hidden > 0).then(|| format!("… {hidden} more branches; type to search them"));
-                let rows = place.checkouts.into_iter().chain(place.branches.into_iter().take(NEW_TERMINAL_BRANCHES)).map(plain).collect();
+                let rows = place.checkouts.into_iter().chain(place.branches).map(plain).collect();
                 self.push_with_more(&place.name, rows, None, more);
             }
             return;
         }
+        let places = new_terminal_places(sources);
         let items: Vec<Item> = places.into_iter().flat_map(|place| place.checkouts.into_iter().chain(place.branches)).collect();
-        let total = items.len();
-        let mut found = matched(items.into_iter().map(|item| (item, 0)), query, true);
-        self.counter = Some(format!("{}/{total}", found.len()));
-        self.more = found.len().saturating_sub(NEW_TERMINAL_MATCHES);
-        found.truncate(NEW_TERMINAL_MATCHES);
-        self.push("New terminal in", found, None);
+        let found = matched(items.iter().map(|item| (item, 0)), query, Order::Ranked, NEW_TERMINAL_MATCHES);
+        self.counter = Some(format!("{}/{}", found.total, items.len()));
+        self.more = found.total.saturating_sub(NEW_TERMINAL_MATCHES);
+        self.push("New terminal in", found.rows, None);
     }
 
     /// Files, always shown while searching, with the counter and what is still loading.
@@ -269,11 +275,13 @@ impl<'a> Builder<'a> {
         self.push("Files", rows, note);
     }
 
-    /// The items in scope that `text` matches over "title detail", best first; all of them in order for no text.
-    fn matching(&self, items: &[Item], text: &str) -> Vec<Row> {
+    /// The first `limit` items in scope that `text` matches over "title detail", best first; all of them in order for
+    /// no text.
+    fn matching(&self, items: &[Item], text: &str, limit: usize) -> Matched {
         let scoped = items.iter().filter(|item| in_scope(item, self.scope));
-        let rows = matched(scoped.map(|item| (item.clone(), 0)), text, true);
-        rows.into_iter().map(|row| Row { tag: tag(&row.item.place, self.scope), ..row }).collect()
+        let found = matched(scoped.map(|item| (item, 0)), text, Order::Ranked, limit);
+        let rows = found.rows.into_iter().map(|row| Row { tag: tag(&row.item.place, self.scope), ..row }).collect();
+        Matched { rows, total: found.total }
     }
 
     fn finish(mut self) -> List {
@@ -284,26 +292,54 @@ impl<'a> Builder<'a> {
     }
 }
 
-/// Matches `items` (with their depth) against `text`; `rank` sorts the hits best first, else they keep their order.
-fn matched(items: impl Iterator<Item = (Item, u8)>, text: &str, rank: bool) -> Vec<Row> {
+/// Rows matched, the first of them: `total` counts all.
+struct Matched {
+    rows: Vec<Row>,
+    total: usize,
+}
+
+/// How matches are ordered: best first, or as the items come.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Order {
+    Ranked,
+    Listed,
+}
+
+/// Matches `items` (with their depth) against `text` and makes rows of the first `limit` hits only: the hub matches
+/// thousands of items every frame. A stable sort keeps hits of equal score in their order.
+fn matched<'a>(items: impl Iterator<Item = (&'a Item, u8)>, text: &str, order: Order, limit: usize) -> Matched {
     let query = Query::parse(text);
     if query.is_empty() {
-        return items.map(|(item, depth)| Row { depth, ..plain(item) }).collect();
+        let mut rows = Vec::new();
+        let mut total = 0;
+        for (item, depth) in items {
+            if total < limit {
+                rows.push(Row { depth, ..plain(item.clone()) });
+            }
+            total += 1;
+        }
+        return Matched { rows, total };
     }
-    let mut hits: Vec<(i32, Row)> = items
+    let mut hits: Vec<(i32, &Item, u8, Vec<usize>)> = items
         .filter_map(|(item, depth)| {
             let hay = format!("{} {}", item.title, item.detail);
             let hit = query.matches(&hay, &lowered(&hay), None)?;
-            let title_chars = item.title.chars().count();
-            let title_hits = hit.positions.iter().copied().filter(|at| *at < title_chars).collect();
-            let detail_hits = hit.positions.iter().filter(|at| **at > title_chars).map(|at| at - title_chars - 1).collect();
-            Some((hit.score, Row { title_hits, detail_hits, depth, ..plain(item) }))
+            Some((hit.score, item, depth, hit.positions))
         })
         .collect();
-    if rank {
-        hits.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+    if order == Order::Ranked {
+        hits.sort_by_key(|(score, ..)| std::cmp::Reverse(*score));
     }
-    hits.into_iter().map(|(_, row)| row).collect()
+    let total = hits.len();
+    let rows = hits.into_iter().take(limit).map(|(_, item, depth, positions)| hit_row_of(item, depth, &positions)).collect();
+    Matched { rows, total }
+}
+
+fn hit_row_of(item: &Item, depth: u8, positions: &[usize]) -> Row {
+    let title_chars = item.title.chars().count();
+    let title_hits = positions.iter().copied().filter(|at| *at < title_chars).collect();
+    let detail_hits = positions.iter().filter(|at| **at > title_chars).map(|at| at - title_chars - 1).collect();
+    Row { title_hits, detail_hits, depth, ..plain(item.clone()) }
 }
 
 fn plain(item: Item) -> Row {
@@ -377,7 +413,9 @@ fn pick_rows(state: &HubState, sources: &Sources, states: &dyn StateIn) -> Vec<R
         };
         (item, 0)
     });
-    matched(items, &pick.query, true).into_iter().map(|row| Row { tag: tag(&row.item.place, &HubScope::All), ..row }).collect()
+    let items: Vec<(Item, u8)> = items.collect();
+    let found = matched(items.iter().map(|(item, depth)| (item, *depth)), &pick.query, Order::Ranked, usize::MAX);
+    found.rows.into_iter().map(|row| Row { tag: tag(&row.item.place, &HubScope::All), ..row }).collect()
 }
 
 /// Where a new terminal can go in one project: its checkouts (the main one first, the others most recently used
@@ -389,7 +427,20 @@ struct TerminalPlaces {
 }
 
 fn new_terminal_places(sources: &Sources) -> Vec<TerminalPlaces> {
-    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources) }).collect()
+    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources, usize::MAX) }).collect()
+}
+
+/// [`new_terminal_places`] before typing: a project's newest branches only, and how many more it has.
+fn new_terminal_firsts(sources: &Sources) -> Vec<(TerminalPlaces, usize)> {
+    let mine = |project: &ProjectInfo| sources.branches.iter().filter(|branch| branch.project == project.id).count();
+    sources
+        .shown_projects()
+        .map(|project| {
+            let branches = branch_places(project, sources, NEW_TERMINAL_BRANCHES);
+            let hidden = mine(project).saturating_sub(branches.len());
+            (TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches }, hidden)
+        })
+        .collect()
 }
 
 fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
@@ -415,8 +466,8 @@ fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
     std::iter::once(main_item).chain(others).collect()
 }
 
-fn branch_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
-    let mine = sources.branches.iter().filter(|branch| branch.project == project.id);
+fn branch_places(project: &ProjectInfo, sources: &Sources, limit: usize) -> Vec<Item> {
+    let mine = sources.branches.iter().filter(|branch| branch.project == project.id).take(limit);
     mine.map(|branch| {
         let target = Target::NewWorktreeTerminal { project: project.id.clone(), branch: branch.local.clone(), remote: branch.remote.clone() };
         Item {
@@ -479,7 +530,7 @@ fn scope_rows(sources: &Sources, text: &str) -> Vec<Row> {
             items.push((row, 1));
         }
     }
-    matched(items.into_iter(), text, false)
+    matched(items.iter().map(|(item, depth)| (item, *depth)), text, Order::Listed, usize::MAX).rows
 }
 
 /// `381877` as `381,877`.
@@ -564,5 +615,23 @@ mod tests {
         // then
         let counter = list.counter.unwrap_or_default();
         assert!(counter.starts_with("2 matches in 1 file and 1 process"), "{counter}");
+    }
+
+    #[test]
+    fn should_count_every_match_but_make_rows_of_the_first_only() {
+        // given
+        let items: Vec<Item> = (0..300).map(|n| Item::new(Target::Line(n), format!("branch-{n}"), icons::BRANCH)).collect();
+        let scoped = || items.iter().map(|item| (item, 0));
+        let query = Query::parse("branch-1");
+        let matching = items.iter().filter(|item| query.matches(&format!("{} ", item.title), &format!("{} ", item.title), None).is_some()).count();
+
+        // when
+        let typed = matched(scoped(), "branch-1", Order::Ranked, 5);
+        let empty = matched(scoped(), "", Order::Listed, 5);
+
+        // then
+        assert!(matching > 100, "{matching}");
+        assert_eq!((typed.rows.len(), typed.total), (5, matching));
+        assert_eq!((empty.rows.len(), empty.total, empty.rows[4].item.title.as_str()), (5, 300, "branch-4"));
     }
 }

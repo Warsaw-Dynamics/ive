@@ -19,6 +19,13 @@ const REQUEST_OFFSET: Point<Pixels> = point(px(48.), px(48.));
 #[derive(Default)]
 pub(super) struct TabWindows(HashMap<TabId, DetachedWindow>);
 
+impl TabWindows {
+    /// The window of detached tab `id`; `None` for a tab in the row.
+    pub(super) fn handle_of(&self, id: TabId) -> Option<AnyWindowHandle> {
+        self.0.get(&id).map(|detached| detached.handle)
+    }
+}
+
 struct DetachedWindow {
     handle: AnyWindowHandle,
     /// the window's [`TabWindow`], notified to redraw only that window
@@ -81,7 +88,7 @@ impl Workspace {
                 self.close_stale_tab_windows(cx);
             }
             Err(error) => {
-                eprintln!("ive: cannot open a window for tab {}: {error}", id.value());
+                crate::notices::notify(cx, format!("cannot open a window for tab {}: {error}", id.value()));
                 self.tabs.attach(id);
                 cx.notify();
             }
@@ -121,6 +128,13 @@ impl Workspace {
         // a window being closed is gone already
         let _ = detached.handle.update(cx, |_, window, _| window.activate_window());
         true
+    }
+
+    /// Redraws the windows of every detached tab, e.g. for marks their tab chips show.
+    pub(super) fn redraw_tab_windows(&self, cx: &mut App) {
+        for detached in self.tab_windows.0.values() {
+            cx.notify(detached.view);
+        }
     }
 
     /// Redraws the window of detached tab `id`, e.g. for new terminal output, without redrawing the main window.

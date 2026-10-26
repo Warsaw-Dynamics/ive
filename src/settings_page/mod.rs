@@ -11,6 +11,7 @@ pub use third_party::TITLE as THIRD_PARTY_TITLE;
 pub use updates::TITLE as UPDATES_TITLE;
 
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::settings::SettingsStore;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
@@ -91,8 +92,8 @@ pub fn render(page: Page, theme: Theme, cx: &mut Context<Workspace>) -> Div {
         .gap(theme.sizes.settings.page_gap.px())
         .p(theme.sizes.settings.page_padding.px())
         .child(content)
-        .children(view.error.as_ref().map(|error| div().text_color(rgb(theme.error)).child(error.clone())))
-        .children(saved_to.map(|saved_to| div().text_size(theme.sizes.settings.text_size.px()).text_color(rgb(theme.muted)).child(saved_to)));
+        .children(view.error.as_ref().map(|error| div().text_color(rgb(theme.error)).child(selectable("settings-error", error.clone(), cx))))
+        .children(saved_to.map(|saved_to| div().text_size(theme.sizes.settings.text_size.px()).text_color(rgb(theme.muted)).child(selectable("settings-saved-to", saved_to, cx))));
     div().flex().flex_1().min_h_0().child(render_nav(view.page, theme, cx)).child(body)
 }
 

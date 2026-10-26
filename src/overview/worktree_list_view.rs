@@ -1,19 +1,25 @@
 //! Draws the Worktrees list as the hub draws its list (`hub/view.rs`): the filter, sections of 24 px rows with the
 //! selected one highlighted, the key strip. The workspace prepares the rows (`workspace/worktree_list.rs`).
 
-use gpui::{ClickEvent, Context, Div, Entity, FontWeight, SharedString, Stateful, div, img, prelude::*, px, rgb};
+use std::ops::Range;
+use std::rc::Rc;
+
+use gpui::{App, ClickEvent, Context, Div, Entity, FontWeight, SharedString, Stateful, div, img, prelude::*, px, rgb, uniform_list};
 
 use super::git_ui::tag;
 use super::worktree_list::{HOOKS_NOTE, WorktreeList};
-use super::worktree_rows::{GroupKind, RowId};
+use super::worktree_rows::{Group, GroupKind, Line, RowId};
 use crate::click_targets::target;
+use crate::selectable::selectable;
 use crate::icons;
 use crate::paging::more_row;
 use crate::project::ProjectId;
+use crate::scrollbar::vertical_scrollbar;
 use crate::theme::Theme;
 use crate::tooltip::text_tooltip;
 use crate::workspace::Workspace;
 
+/// every line's: the list draws only the lines in view, so they share one height
 const ROW_HEIGHT: f32 = 24.;
 const FILTER_WIDTH: f32 = 420.;
 const BAR_WIDTH: f32 = 3.;
@@ -43,19 +49,23 @@ pub struct DrawnRow {
     pub action: Option<&'static str>,
 }
 
+/// A group's header and notes as drawn.
 pub struct DrawnGroup {
     pub kind: GroupKind,
     pub title: String,
     pub hint: String,
-    pub rows: Vec<DrawnRow>,
-    /// rows the filter matched, of which `rows` are shown
+    /// rows the filter matched, of which `shown` are shown
     pub total: usize,
+    pub shown: usize,
     pub empty: Option<&'static str>,
 }
 
 pub struct Drawn {
     pub project: ProjectId,
-    pub groups: Vec<DrawnGroup>,
+    /// the rows of each group, drawn as they come into view
+    pub groups: Vec<Group>,
+    pub headers: Vec<DrawnGroup>,
+    pub lines: Vec<Line>,
     pub selected: Option<RowId>,
     pub hidden_open: bool,
     /// a failed add or branch read, under the filter
@@ -64,47 +74,75 @@ pub struct Drawn {
     pub strip: Vec<(&'static str, &'static str)>,
 }
 
-/// The list; `list` is `None` for a plain folder, which has no filter.
+/// The list; `list` is `None` for a plain folder, which has no filter. It fills the page and scrolls itself.
 pub fn render_worktree_list(drawn: Drawn, list: Option<&Entity<WorktreeList>>, theme: Theme, cx: &mut Context<Workspace>) -> Div {
     let filter = list.map(|list| div().w(px(FILTER_WIDTH)).child(list.read(cx).input().clone()));
     let error = drawn.error.clone().map(|error| div().text_xs().text_color(rgb(theme.error)).child(error));
-    let mut body = div().flex().flex_col().pb_1();
-    for group in &drawn.groups {
-        body = body.child(group_header(group, &drawn, list, theme, cx));
-        let open = group.kind != GroupKind::Hidden || drawn.hidden_open;
-        if !open {
-            continue;
-        }
-        if group.rows.is_empty() {
-            body = body.children(group.empty.map(|empty| div().pl(px(30.)).py_0p5().text_xs().text_color(rgb(theme.muted)).child(empty)));
-        }
-        for row in &group.rows {
-            body = body.child(row_line(row, drawn.selected.as_ref() == Some(&row.id), &drawn.project, theme, cx));
-        }
-        if group.kind == GroupKind::Branches {
-            body = body.children(list.and_then(|list| branch_more(list, group, theme, cx)));
-        }
-    }
+    let strip = key_strip(&drawn.strip, theme);
+    let count = drawn.lines.len();
+    let (shown, entity) = (Rc::new(drawn), list.cloned());
+    let rows = uniform_list("worktree-lines", count, cx.processor(move |workspace: &mut Workspace, range, _window, cx| render_lines(workspace, &shown, entity.as_ref(), range, theme, cx)))
+        .size_full();
+    let scrolled = list.map(|list| list.read(cx));
+    let rows = match scrolled {
+        Some(list) => rows.track_scroll(&list.scroll().list_handle()),
+        None => rows,
+    };
+    let style = crate::theme::view_style(&theme);
+    let scrollbar = scrolled.map(|list| vertical_scrollbar(list.scrollbar(), &style));
     div()
         .key_context("WorktreeList")
         .flex()
         .flex_col()
+        .flex_1()
+        .min_h_0()
         .gap(px(6.))
         .text_sm()
         .children(filter)
         .children(error)
-        .child(body)
-        .child(key_strip(&drawn.strip, theme))
+        .child(div().relative().flex_1().min_h_0().child(rows).children(scrollbar))
+        .child(strip)
 }
 
-fn group_header(group: &DrawnGroup, drawn: &Drawn, list: Option<&Entity<WorktreeList>>, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+/// The lines in `range`: the rows among them are drawn now.
+fn render_lines(workspace: &Workspace, drawn: &Drawn, list: Option<&Entity<WorktreeList>>, range: Range<usize>, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
+    let lines = &drawn.lines[range.start.min(drawn.lines.len())..range.end.min(drawn.lines.len())];
+    let ids: Vec<&RowId> = lines.iter().filter_map(|line| match line {
+        Line::Row { group, at } => Some(&drawn.groups[*group].rows[*at]),
+        _ => None,
+    }).collect();
+    let mut rows = workspace.drawn_rows(&drawn.project, list.map(|list| list.read(cx)), &ids, theme).into_iter();
+    lines
+        .iter()
+        .enumerate()
+        .map(|(offset, line)| {
+            let at = range.start + offset;
+            let element = match line {
+                Line::Header(group) => group_header(&drawn.headers[*group], drawn.hidden_open, list, theme, cx),
+                Line::Empty(group) => empty_note(at, drawn.headers[*group].empty, theme),
+                Line::Row { .. } => match rows.next().flatten() {
+                    Some(row) => row_line(&row, drawn.selected.as_ref() == Some(&row.id), &drawn.project, theme, cx),
+                    None => div().id(("worktree-gone", at)),
+                },
+                Line::More(group) => branch_more(at, list, &drawn.headers[*group], theme, cx),
+            };
+            element.flex_none().w_full().h(px(ROW_HEIGHT))
+        })
+        .collect()
+}
+
+fn empty_note(at: usize, empty: Option<&'static str>, theme: Theme) -> Stateful<Div> {
+    div().id(("worktree-empty", at)).flex().items_center().pl(px(30.)).text_xs().text_color(rgb(theme.muted)).children(empty)
+}
+
+fn group_header(group: &DrawnGroup, hidden_open: bool, list: Option<&Entity<WorktreeList>>, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    // a row high, so the gap above a group is the row's room the text leaves
     let header = div()
         .id(SharedString::from(format!("worktree-group-{:?}", group.kind)))
         .flex()
-        .items_center()
+        .items_end()
         .gap_2()
         .px_1()
-        .pt_2()
         .pb_1()
         .text_xs()
         .font_weight(FontWeight::SEMIBOLD)
@@ -113,26 +151,39 @@ fn group_header(group: &DrawnGroup, drawn: &Drawn, list: Option<&Entity<Worktree
     let hint = div().font_weight(FontWeight::NORMAL).child(group.hint.clone());
     match (group.kind, list) {
         (GroupKind::Hidden, Some(list)) => {
-            let chevron = if drawn.hidden_open { icons::CHEVRON_DOWN } else { icons::CHEVRON_RIGHT };
+            let chevron = if hidden_open { icons::CHEVRON_DOWN } else { icons::CHEVRON_RIGHT };
             let list = list.clone();
             let toggle = target("worktree-hidden-group".to_owned(), move |_event: &ClickEvent, _window, cx| list.update(cx, |list, cx| list.toggle_hidden_group(cx)), cx);
             header.cursor_pointer().child(img(icons::embedded(theme.appearance, chevron)).flex_none().size(px(16.))).child(title).child(hint).on_click(toggle)
         }
-        (GroupKind::Branches, _) => header.child(title).child(hint).tooltip(text_tooltip(HOOKS_NOTE)),
-        _ => header.child(title).child(hint),
+        // a header nothing toggles: its hint (where new worktrees go) can be selected
+        (GroupKind::Branches, _) => header.child(title).child(selectable_hint(group, list, cx)).tooltip(text_tooltip(HOOKS_NOTE)),
+        _ => header.child(title).child(selectable_hint(group, list, cx)),
     }
 }
 
-fn row_line(row: &DrawnRow, selected: bool, project: &ProjectId, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let name = match &row.id {
+/// Named after its project's list, so a selection in one project's list shows only there.
+fn selectable_hint(group: &DrawnGroup, list: Option<&Entity<WorktreeList>>, cx: &App) -> Stateful<Div> {
+    let list = list.map_or(0, |list| list.entity_id().as_u64());
+    selectable(format!("worktree-hint-{list}-{:?}", group.kind), group.hint.clone(), cx).font_weight(FontWeight::NORMAL)
+}
+
+/// A row's click targets: the row, and its Hide, Show or + Worktree.
+pub fn row_targets(row: &RowId) -> [String; 2] {
+    let open = match row {
         RowId::Checkout(path) => format!("worktree-row:{}", path.display()),
         RowId::Branch(branch) => format!("branch-row:{branch}"),
     };
+    [open, format!("worktree-toggle:{}", row_name(row))]
+}
+
+fn row_line(row: &DrawnRow, selected: bool, project: &ProjectId, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let [name, toggle_name] = row_targets(&row.id);
     let group = SharedString::from(name.clone());
     let (opened, toggled) = ((project.clone(), row.id.clone()), (project.clone(), row.id.clone()));
-    let open = target(name.clone(), cx.listener(move |workspace, _event, window, cx| workspace.worktree_row_clicked(&opened.0, &opened.1, window, cx)), cx);
+    let open = target(name, cx.listener(move |workspace, _event, window, cx| workspace.worktree_row_clicked(&opened.0, &opened.1, window, cx)), cx);
     let action = row.action.map(|label| {
-        let toggle = target(format!("worktree-toggle:{}", row_name(&row.id)), cx.listener(move |workspace, _event, _window, cx| {
+        let toggle = target(toggle_name, cx.listener(move |workspace, _event, _window, cx| {
             workspace.worktree_row_toggled(&toggled.0, &toggled.1, cx);
         }), cx);
         let button = div().id("worktree-action").px_1().rounded(px(4.)).text_color(rgb(theme.accent)).hover(|style| style.bg(rgb(theme.hover))).child(label);
@@ -155,7 +206,7 @@ fn row_line(row: &DrawnRow, selected: bool, project: &ProjectId, theme: Theme, c
         .child(div().flex_1().min_w_0().overflow_hidden().whitespace_nowrap().text_xs().text_color(rgb(theme.muted)).child(row.detail.clone()))
         .children(row.tags.iter().map(|text| tag(text.clone(), theme.muted, theme)))
         .children(row.running.clone().map(|running| div().flex_none().text_xs().text_color(rgb(theme.mark_added)).child(running)))
-        .child(div().flex_none().w(px(AGE_WIDTH)).text_right().text_xs().text_color(rgb(theme.muted)).child(row.age.clone()));
+        .child(div().flex_none().w(px(AGE_WIDTH)).text_right().whitespace_nowrap().text_xs().text_color(rgb(theme.muted)).child(row.age.clone()));
     let content = if row.hidden && !selected { content.opacity(HIDDEN_OPACITY).group_hover(group.clone(), |style| style.opacity(1.)) } else { content };
     let line = div()
         .id(SharedString::from(format!("worktree-line-{}", row_name(&row.id))))
@@ -184,11 +235,16 @@ fn row_name(row: &RowId) -> String {
     }
 }
 
-fn branch_more(list: &Entity<WorktreeList>, group: &DrawnGroup, theme: Theme, cx: &mut Context<Workspace>) -> Option<Stateful<Div>> {
+/// Show 10 more, Show all; an empty line for a plain folder, which pages nothing.
+fn branch_more(at: usize, list: Option<&Entity<WorktreeList>>, group: &DrawnGroup, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let Some(list) = list else {
+        return div().id(("branch-more-none", at));
+    };
     let (more_list, all_list) = (list.clone(), list.clone());
     let more = target("branch-more".to_owned(), move |_event: &ClickEvent, _window, cx| more_list.update(cx, |list, cx| list.show_more(cx)), cx);
     let all = target("branch-all".to_owned(), move |_event: &ClickEvent, _window, cx| all_list.update(cx, |list, cx| list.show_all(cx)), cx);
-    more_row("branch-more", group.total, group.rows.len(), theme, more, all).map(|row| row.pl(px(30.)).py_1().text_xs())
+    let row = more_row("branch-more", group.total, group.shown, theme, more, all).map(|row| row.pl(px(30.)).text_xs());
+    row.unwrap_or_else(|| div().id(("branch-more-none", at)))
 }
 
 fn key_strip(strip: &[(&'static str, &'static str)], theme: Theme) -> Div {

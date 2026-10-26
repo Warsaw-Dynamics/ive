@@ -13,9 +13,14 @@ pub const CHEVRON_DOWN: &str = "chevron-down.svg";
 pub const SETTINGS: &str = "settings.svg";
 /// IntelliJ settings@20x20.svg, drawn for 20 px toolbars
 pub const SETTINGS_20: &str = "settings-20.svg";
+/// IntelliJ toolwindows/notifications@20x20.svg: the tab row's bell for processes that wait for the user
+pub const NOTIFICATIONS_20: &str = "notifications-20.svg";
 pub const CLOSE: &str = "close.svg";
 pub const ADD: &str = "add.svg";
 pub const BRANCH: &str = "branch.svg";
+/// modified IntelliJ icon: branch.svg with nodes/star.svg's favourite-branch star, small, in its empty lower right
+/// corner: the main checkout's row in the tree
+pub const BRANCH_MAIN: &str = "branch-main.svg";
 pub const HISTORY: &str = "history.svg";
 pub const FILE_TEXT: &str = "file-text.svg";
 pub const CHANGES: &str = "changes.svg";
@@ -158,7 +163,7 @@ mod tests {
         icons.extend([ADD, BRANCH, PROJECT_FOLDER, STOP, TERMINAL, AGENT, WARNING]);
         icons.extend([HISTORY, CHANGES, COMMIT]);
         icons.extend([RUN, SCRATCH_BADGE, DOCK, FOLDER_EXCLUDED]);
-        icons.extend([RESTART, RUN_CONFIG, FOLDER_RUN, FILE_HTML]);
+        icons.extend([RESTART, RUN_CONFIG, FOLDER_RUN, FILE_HTML, BRANCH_MAIN]);
 
         // when
         let missing: Vec<_> = [Appearance::Dark, Appearance::Light]

@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use gpui::{
-    App, ClickEvent, Context, CursorStyle, Div, ElementId, FocusHandle, ListHorizontalSizingBehavior, MouseButton, MouseDownEvent,
-    SharedString, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
+    AnyElement, App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, Entity, FocusHandle, KeyDownEvent, ListHorizontalSizingBehavior,
+    MouseButton, MouseDownEvent, SharedString, Subscription, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
 };
 
 mod folder_view;
@@ -16,8 +16,12 @@ use super::rows::{
     CheckoutRow, EntryRow, MoreRow, ProcessRow, ProjectRow, ProjectTag, RunBadge, RunRow, TreeItem, TreeKey, TreeRow,
     initials, target_name,
 };
-use super::selection::{Listed, Selection, is_multi_selectable};
-use crate::dragged_files::DraggedFiles;
+use super::drop_place::DropHint;
+use super::row_icons::{FolderIcon, RowMark, folder_icon, row_mark};
+use super::selection::{Listed, PickGroup, Selection, pick_group};
+use crate::attention_dot::with_dot;
+use crate::dragged_files::{DraggedFiles, DraggedProcesses, DraggedRoot};
+use crate::favicon_badge::favicon_or;
 use crate::file_tree::{EntryKind, HIDDEN_GROUP};
 use super::states::{EntryState, Highlight, row_look};
 use crate::click_targets::{Listener, target};
@@ -33,10 +37,11 @@ use crate::run::values_tab::ShowRun;
 use crate::state::RecentProject;
 use crate::theme::Theme;
 use crate::theme_config::RowStyle;
+use crate::text_input::TextInput;
 use crate::tooltip;
 use crate::window_controls::TRAFFIC_LIGHTS_WIDTH;
 use crate::window_drag::WindowDrag;
-use crate::workspace::{ProgramEnding, Workspace, icon};
+use crate::workspace::{Dragging, ProgramEnding, Workspace, icon};
 
 /// One chevron slot: a child's first icon lines up under its parent's icon.
 pub(crate) fn tree_indent(theme: Theme) -> f32 {
@@ -51,18 +56,59 @@ pub struct Tree {
     pub active: Option<TreeKey>,
     pub list: ListScroll,
     pub scroll: ScrollState,
+    /// what a drop on the row under the pointer would do, while something is dragged over the tree
+    pub drop_hint: Option<DropHint>,
+    /// the line under the tree saying how a copy or move goes
+    pub note: Option<TreeNote>,
+    /// the field Rename shows in place of a row's name
+    pub renaming: Option<Renaming>,
+}
+
+/// Rename's field on the row of `key`, for the file or folder at `path`; why a name was refused is the line under
+/// the tree, as a row has no room for it.
+pub struct Renaming {
+    pub key: TreeKey,
+    pub path: PathBuf,
+    pub input: Entity<TextInput>,
+    pub stage: RenameStage,
+    pub _subscriptions: Vec<Subscription>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenameStage {
+    Typing,
+    /// Enter was pressed: the rename is under way
+    Submitted,
+}
+
+/// The line under the tree: what a copy or move did, until `until` (`None`: until clicked).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeNote {
+    pub text: String,
+    pub until: Option<std::time::Instant>,
 }
 
 impl Tree {
     pub fn new() -> Self {
         let list = ListScroll::new();
         let scroll = ScrollState::for_list(&list);
-        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll }
+        Self { rows: Vec::new(), selection: Selection::default(), active: None, list, scroll, drop_hint: None, note: None, renaming: None }
     }
 
     /// Marks `shown`, the shown tab's row; the selection stays, as in IntelliJ, until the tree's own clicks change it.
     pub fn show_active(&mut self, shown: Option<TreeKey>) {
         self.active = shown;
+    }
+
+    /// Whether the row of `key` is drawn as where the drag would drop; a hint left from a drag that ended elsewhere
+    /// shows nothing.
+    pub fn is_drop_row(&self, key: &TreeKey, cx: &App) -> bool {
+        cx.has_active_drag() && self.drop_hint.as_ref().is_some_and(|hint| hint.allowed && hint.row == *key)
+    }
+
+    /// The hint of the drag going on, if it is over a row.
+    pub fn shown_hint(&self, cx: &App) -> Option<&DropHint> {
+        self.drop_hint.as_ref().filter(|_| cx.has_active_drag())
     }
 }
 
@@ -74,6 +120,8 @@ pub enum HeaderMenu {
     OpenProject,
     Folders,
     Projects,
+    /// the tab row's bell: the processes that wait for the user
+    Waiting,
 }
 
 /// What the sidebar draws besides the tree.
@@ -104,7 +152,7 @@ pub fn render(sidebar: Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace>) -
         tree.rows.len(),
         cx.processor(|workspace: &mut Workspace, range, window, cx| {
             let theme = crate::theme::for_panel(crate::theme::Panel::Sidebar, window, cx);
-            render_rows(workspace.tree(), range, theme, cx)
+            render_rows(workspace, range, theme, cx)
         }),
     )
     .with_horizontal_sizing_behavior(ListHorizontalSizingBehavior::Unconstrained)
@@ -118,7 +166,8 @@ pub fn render(sidebar: Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace>) -
         .min_h_0()
         .child(div().size_full().capture_any_mouse_down(take_keys(sidebar_focus.clone())).child(rows))
         .child(vertical_scrollbar(&tree.scroll, &crate::theme::view_style(&theme)))
-        .child(horizontal_scrollbar(&tree.scroll, &crate::theme::view_style(&theme)));
+        .child(horizontal_scrollbar(&tree.scroll, &crate::theme::view_style(&theme)))
+        .children(tree.note.as_ref().map(|note| render_note(note, theme, cx)));
     let header = render_header(&sidebar, theme, cx).capture_any_mouse_down(take_keys(sidebar_focus.clone()));
     let panel = div().relative().flex().flex_col().flex_none().w(px(sidebar.width)).h_full();
     let panel = match theme.panels.shown() {
@@ -146,10 +195,13 @@ fn take_keys(sidebar_focus: FocusHandle) -> impl Fn(&MouseDownEvent, &mut Window
 
 fn row_width(row: &TreeRow) -> usize {
     let (slots, text) = match &row.item {
-        TreeItem::Project(project) => (2, project.name.chars().count() + 12),
-        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count()),
-        TreeItem::Folder(folder) => (2, folder.kind.title().chars().count() + 4 + folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count())),
-        TreeItem::Process(process) => (2, process.title.chars().count()),
+        TreeItem::Project(project) => (2, project.name.chars().count() + 12 + said_width(&waiting_text(project.waiting))),
+        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count() + said_width(&waiting_text(checkout.waiting))),
+        TreeItem::Folder(folder) => {
+            let nothing = folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count());
+            (2, folder.kind.title().chars().count() + 4 + nothing + said_width(&waiting_text(folder.waiting)))
+        }
+        TreeItem::Process(process) => (2, process.title.chars().count() + said_width(&process.attention.as_ref().map(|text| format!("● {text}")))),
         TreeItem::LiveRun(run) => (2, run.name.chars().count() + run.label.chars().count() + 1),
         TreeItem::Change(change) => (2, change.change.path.file_name().chars().count() + 2 + change.folder.as_ref().map_or(0, |folder| folder.chars().count() + 1)),
         TreeItem::ChangeFolder(folder) => (2, folder.label.chars().count() + 4),
@@ -211,7 +263,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
 
 /// A header button's press: noted before the open menu's press-outside closes it (the capture phase comes first),
 /// and kept from moving the window.
-fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn header_button_press(button: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     button
         .capture_any_mouse_down(cx.listener(|workspace, _event, _window, _cx| workspace.note_menu_press()))
         .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
@@ -263,7 +315,7 @@ fn render_menu(recent: &[RecentProject], theme: Theme, cx: &mut Context<Workspac
 }
 
 /// A header menu's box under the header, before its side, width and [`closing_outside`] are set.
-fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
@@ -281,11 +333,11 @@ fn menu_panel(id: &'static str, theme: Theme) -> Stateful<Div> {
 }
 
 /// A header menu that a press outside closes.
-fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+pub(crate) fn closing_outside(menu: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
     menu.on_mouse_down_out(cx.listener(|workspace, _event, window, cx| workspace.close_menu(window, cx)))
 }
 
-fn menu_section(title: &'static str, theme: Theme) -> Div {
+pub(crate) fn menu_section(title: &'static str, theme: Theme) -> Div {
     let sizes = &theme.sizes.tree;
     div()
         .px(sizes.menu_section_padding_x.px())
@@ -296,7 +348,7 @@ fn menu_section(title: &'static str, theme: Theme) -> Div {
         .child(title)
 }
 
-fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
+pub(crate) fn menu_item(id: impl Into<ElementId>, theme: Theme) -> Stateful<Div> {
     let sizes = &theme.sizes.tree;
     div()
         .id(id)
@@ -328,22 +380,26 @@ pub fn badge(text: &str, background: u32, color: u32, theme: Theme) -> Div {
         .child(text.to_owned())
 }
 
-fn render_rows(tree: &Tree, range: Range<usize>, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
-    range.map(|index| render_row(tree, index, theme, cx)).collect()
+fn render_rows(workspace: &Workspace, range: Range<usize>, theme: Theme, cx: &mut Context<Workspace>) -> Vec<Stateful<Div>> {
+    range.map(|index| render_row(workspace, index, theme, cx)).collect()
 }
 
 /// Row `index` of the tree, drawn by its state, git mark, selection and whether it is the active tab's.
-fn render_row(tree: &Tree, index: usize, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+fn render_row(workspace: &Workspace, index: usize, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let tree = workspace.tree();
     let row = &tree.rows[index];
     let key = row.key();
     let entry = match &row.item {
         TreeItem::Entry(entry) => Some((entry.state, entry.mark)),
         _ => None,
     };
-    let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key) };
-    let select = RowSelect { key, multi: is_multi_selectable(row), workspace: cx.entity().downgrade() };
-    let line = RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select);
-    match &row.item {
+    let highlight = Highlight { entry, selected: tree.selection.contains(&key), active: tree.active.as_ref() == Some(&key), drop: tree.is_drop_row(&key, cx) };
+    let dragged = dragged_processes(row, &key, cx);
+    let drop_key = key.clone();
+    let rename = tree.renaming.as_ref().filter(|renaming| renaming.key == key).map(|renaming| RenameField { input: renaming.input.clone() });
+    let select = RowSelect { key, pick: pick_group(row), workspace: cx.entity().downgrade() };
+    let line = RowLine { mark: row_mark(row, workspace, theme), rename, ..RowLine::new(row, index, theme, row_look(highlight, &theme.tree_states, &theme.git), select) };
+    let drawn = match &row.item {
         TreeItem::Project(project) => project_row(line, project, cx),
         TreeItem::Checkout(checkout) => checkout_row(line, checkout, cx),
         TreeItem::Folder(folder) => folder_view::folder_row(line, folder, cx),
@@ -356,7 +412,86 @@ fn render_row(tree: &Tree, index: usize, theme: Theme, cx: &mut Context<Workspac
         TreeItem::Note(note) => folder_view::note_row(line, note),
         TreeItem::Entry(entry) => entry_row(line, entry, cx),
         TreeItem::More(more) => more_line(line, more, cx),
+    };
+    let drawn = match dragged {
+        Some(dragged) => drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))),
+        None => drawn,
+    };
+    drop_target(with_path_drag(drawn, row, workspace, cx), drop_key, cx)
+}
+
+/// A changed file's row drags its path (with the selection), a project's or worktree's its root folder.
+fn with_path_drag(drawn: Stateful<Div>, row: &TreeRow, workspace: &Workspace, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let root = match &row.item {
+        TreeItem::Change(_) if pick_group(row) == Some(PickGroup::Files) => {
+            let dragged = DraggedFiles { pressed: row.key(), workspace: cx.entity().downgrade() };
+            return drawn.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx)));
+        }
+        TreeItem::Checkout(checkout) => Some(checkout.checkout.path.clone()),
+        TreeItem::Project(project) => workspace.project(&project.id).map(|open| open.main_checkout().path.clone()),
+        _ => None,
+    };
+    match root {
+        Some(path) => drawn.on_drag(DraggedRoot { path, workspace: cx.entity().downgrade() }, |dragged, _offset, _window, cx| cx.new(|_| dragged.chip())),
+        None => drawn,
     }
+}
+
+/// What dragging a process or run row carries; `None` for other rows, and for a run still waiting for its `before`
+/// steps, which has no process yet.
+fn dragged_processes(row: &TreeRow, key: &TreeKey, cx: &Context<Workspace>) -> Option<DraggedProcesses> {
+    let title = match &row.item {
+        TreeItem::Process(process) => process.title.clone(),
+        TreeItem::LiveRun(run) if matches!(run.id, RunId::Process(_)) => run.name.clone(),
+        _ => return None,
+    };
+    Some(DraggedProcesses { pressed: key.clone(), title, workspace: cx.entity().downgrade() })
+}
+
+/// A row that tells the workspace what a drag over it would do, and takes the drop.
+fn drop_target(row: Stateful<Div>, key: TreeKey, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let (hovered, dropped, files_hovered, files_dropped) = (key.clone(), key.clone(), key.clone(), key);
+    row.on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<DraggedProcesses>, window, cx| {
+        if event.bounds.contains(&event.event.position) {
+            let pressed = event.drag(cx).pressed.clone();
+            workspace.hover_drop(Dragging::Processes(pressed), hovered.clone(), window, cx);
+        }
+    }))
+    .on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<DraggedFiles>, window, cx| {
+        if event.bounds.contains(&event.event.position) {
+            let pressed = event.drag(cx).pressed.clone();
+            workspace.hover_drop(Dragging::Files(pressed), files_hovered.clone(), window, cx);
+        }
+    }))
+    .on_drop(cx.listener(move |workspace, dragged: &DraggedProcesses, window, cx| {
+        workspace.drop_processes((&dragged.pressed, dropped.clone()), &window.modifiers(), window, cx);
+    }))
+    .on_drop(cx.listener(move |workspace, dragged: &DraggedFiles, window, cx| {
+        workspace.drop_files((&dragged.pressed, files_dropped.clone()), &window.modifiers(), window, cx);
+    }))
+}
+
+/// The line under the tree; a click on it lets it go.
+fn render_note(note: &TreeNote, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let dismiss = target("tree-note".to_owned(), cx.listener(|workspace, _event, _window, cx| workspace.dismiss_note(cx)), cx);
+    let sizes = &theme.sizes.tree;
+    div()
+        .id("tree-note")
+        .absolute()
+        .left(sizes.padding_left.px())
+        .right(sizes.padding_right.px())
+        .bottom(sizes.padding_right.px())
+        .px(sizes.padding_left.px())
+        .py(sizes.icon_gap.px())
+        .rounded(theme.sizes.tabs.tab_radius.px())
+        .border(theme.sizes.tree.border.px())
+        .border_color(rgb(theme.border))
+        .bg(rgb(theme.sidebar))
+        .text_size(sizes.text_size.px())
+        .text_color(rgb(theme.text))
+        .cursor_pointer()
+        .child(note.text.clone())
+        .on_click(dismiss)
 }
 
 /// `element` drawn with what `style` sets.
@@ -408,6 +543,43 @@ struct RowLine {
     theme: Theme,
     target: String,
     select: RowSelect,
+    /// its project's or module's favicon, a worktree's rail
+    mark: RowMark,
+    /// its content's distance from the row's left edge, by its depth
+    indent: f32,
+    /// Rename's field, when it is open on this row
+    rename: Option<RenameField>,
+}
+
+/// What a row draws of the open rename field.
+#[derive(Clone)]
+struct RenameField {
+    input: Entity<TextInput>,
+}
+
+impl RowLine {
+    /// The row's name, or Rename's field in its place; Escape in the field cancels, and its clicks stay in it.
+    fn name_or_field(&self, name: AnyElement, cx: &mut Context<Workspace>) -> AnyElement {
+        let Some(field) = &self.rename else {
+            return name;
+        };
+        div()
+            .id("tree-rename")
+            .flex_1()
+            .min_w_0()
+            .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    workspace.escape_rename(window, cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_down(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_up(MouseButton::Right, |_event, _window, cx| cx.stop_propagation())
+            .child(field.input.clone())
+            .into_any_element()
+    }
 }
 
 impl RowLine {
@@ -416,6 +588,7 @@ impl RowLine {
     fn new(row: &TreeRow, index: usize, theme: Theme, look: RowStyle, select: RowSelect) -> Self {
         let sizes = &theme.sizes.tree;
         let group = SharedString::from(format!("tree-row-{index}"));
+        let indent = sizes.padding_left.0 + row.depth as f32 * tree_indent(theme);
         let div = div()
             .id(("tree-row", index))
             .group(group.clone())
@@ -427,7 +600,7 @@ impl RowLine {
             .items_center()
             .gap(sizes.icon_gap.px())
             .h(sizes.row_height.px())
-            .pl(px(sizes.padding_left.0 + row.depth as f32 * tree_indent(theme)))
+            .pl(px(indent))
             .pr(sizes.padding_right.px())
             .text_size(sizes.text_size.px())
             .whitespace_nowrap()
@@ -441,13 +614,32 @@ impl RowLine {
                 styled(div.hover(move |style| hovered(style, row_hover)), foreground).child(highlight_box(look, group.clone(), theme))
             }
         };
-        Self { div, group, index, theme, target: row.target.clone(), select }
+        Self { div, group, index, theme, target: row.target.clone(), select, mark: RowMark::default(), indent, rename: None }
     }
 
     /// Click target `<verb>:<row's target>`, as `TreeRow::target_names` lists it.
     fn name(&self, verb: &str) -> String {
         target_name(verb, &self.target)
     }
+}
+
+/// A worktree's colour, as a bar left of its row's chevron.
+fn worktree_rail(colour: u32, indent: f32, theme: Theme) -> Div {
+    let sizes = &theme.sizes.tabs;
+    div().absolute().left(px(indent - 5.)).top(sizes.rail_inset.px()).bottom(sizes.rail_inset.px()).w(sizes.rail_width.px()).rounded(px(1.)).bg(rgb(colour))
+}
+
+/// A folder row's icon: its module's favicon, else `embedded`.
+fn folder_mark(embedded: &'static str, mark: &RowMark, theme: Theme) -> gpui::AnyElement {
+    match folder_icon(embedded, mark.favicon.clone()) {
+        FolderIcon::Favicon(path) => favicon_or(&path, theme.sizes.icon.px(), move || icon(theme, embedded).into_any_element()).into_any_element(),
+        FolderIcon::Embedded(name) => icon(theme, name).into_any_element(),
+    }
+}
+
+/// A worktree row's branch icon; the main checkout's carries the star.
+fn branch_icon(mark: &RowMark, theme: Theme) -> impl IntoElement {
+    icon(theme, if mark.star { icons::BRANCH_MAIN } else { icons::BRANCH })
 }
 
 fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -462,11 +654,14 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         let action = RowAction { id: "hide-worktree", icon: icons::HIDE, tip: "Hide worktree (the project page shows it again)".to_owned(), on_click: Box::new(on_click) };
         row_action(action, &line)
     });
+    let rail = line.mark.rail.map(|colour| worktree_rail(colour, line.indent, theme));
     let line = line
         .div
+        .children(rail)
         .child(chevron(row.expanded, theme, shared(&toggle)))
-        .child(icon(theme, icons::BRANCH))
+        .child(branch_icon(&line.mark, theme))
         .child(row.label.clone())
+        .children(waiting_tag(row.waiting, theme))
         .children(hide);
     bind_row(line, mouse, cx)
 }
@@ -479,8 +674,33 @@ fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> 
     let action = row_action(action, &line);
     let show: Listener = Rc::new(target(line.name("process"), cx.listener(move |workspace, _event, window, cx| workspace.show_process(id, window, cx)), cx));
     let mouse = RowMouse { select: line.select.clone(), name: line.name("process"), checkout: None, activate: show, keep: None, toggle: None };
-    let row_div = line.div.child(folder_view::slot(line.theme)).child(icon(line.theme, row.kind.icon())).children(progress_bar(row.progress, line.theme)).child(row.title.clone()).child(action);
+    let theme = line.theme;
+    let kind_icon = match &row.attention {
+        Some(_) => with_dot(icon(theme, row.kind.icon()), theme, theme.tree).into_any_element(),
+        None => icon(theme, row.kind.icon()).into_any_element(),
+    };
+    let said = row.attention.as_ref().map(|text| attention_text(format!("● {text}"), theme));
+    let row_div = line.div.child(folder_view::slot(theme)).child(kind_icon).children(progress_bar(row.progress, theme)).child(row.title.clone()).children(said).child(action);
     bind_row(row_div, mouse, cx)
+}
+
+/// What a process said when it called for the user, after its title, in the attention colour.
+fn attention_text(text: String, theme: Theme) -> Div {
+    div().flex_none().text_size(theme.sizes.tree.tag_text_size.px()).text_color(rgb(theme.attention)).child(text)
+}
+
+/// `● n waiting` on a row with processes below it that called for the user and that its open rows do not show.
+pub(super) fn waiting_tag(waiting: usize, theme: Theme) -> Option<Div> {
+    waiting_text(waiting).map(|text| attention_text(text, theme))
+}
+
+fn waiting_text(waiting: usize) -> Option<String> {
+    (waiting > 0).then(|| format!("● {waiting} waiting"))
+}
+
+/// The characters a row's attention text adds, with the gap before it, so the tree scrolls far enough to show it.
+fn said_width(text: &Option<String>) -> usize {
+    text.as_ref().map_or(0, |text| text.chars().count() + 1)
 }
 
 /// A file or folder row; dragged onto a terminal, it types its path, or the selection's when it is selected.
@@ -507,14 +727,16 @@ fn entry_row(line: RowLine, row: &EntryRow, cx: &mut Context<Workspace>) -> Stat
         false => div().flex_none().size(theme.sizes.icon.px()).into_any_element(),
     };
     let warning = row.warning.clone().map(|error| div().id("run-file-warning").flex_none().child(icon(theme, icons::WARNING)).tooltip(tooltip::text_tooltip(error)));
-    let multi = line.select.multi;
+    let pickable = line.select.pick == Some(PickGroup::Files);
     let name = match entry.kind {
         EntryKind::HiddenGroup => virtual_name(HIDDEN_GROUP, theme.virtual_folders.hidden, theme).into_any_element(),
         _ => entry.name.clone().into_any_element(),
     };
-    let line = line.div.child(disclosure).child(icon(theme, file_icon)).child(name).children(warning);
-    if multi {
-        let dragged = DraggedFiles { pressed: entry.path.clone(), workspace: cx.entity().downgrade() };
+    let file_icon = if entry.expands() { folder_mark(file_icon, &line.mark, theme) } else { icon(theme, file_icon).into_any_element() };
+    let name = line.name_or_field(name, cx);
+    let line = line.div.child(disclosure).child(file_icon).child(name).children(warning);
+    if pickable {
+        let dragged = DraggedFiles { pressed: TreeKey::Entry(entry.path.clone()), workspace: cx.entity().downgrade() };
         return bind_row(line.on_drag(dragged, |dragged, _offset, _window, cx| cx.new(|cx| dragged.chip(cx))), mouse, cx);
     }
     bind_row(line, mouse, cx)
@@ -646,13 +868,22 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
     let chevron = toggle.as_ref().map(|toggle| chevron(project.expanded, theme, shared(toggle)));
     let project_target = line.name("project");
     let (badge_fill, badge_text) = if present { (theme.accent, theme.on_accent) } else { (theme.hover, theme.muted) };
+    // its favicon, else its initials on a badge
+    let mark = match line.mark.favicon.clone() {
+        Some(path) => {
+            let initials = project.initials.clone();
+            favicon_or(&path, theme.sizes.icon.px(), move || badge(&initials, badge_fill, badge_text, theme).into_any_element()).into_any_element()
+        }
+        None => badge(&project.initials, badge_fill, badge_text, theme).into_any_element(),
+    };
     let line = line
         .div
         .children(chevron)
-        .child(badge(&project.initials, badge_fill, badge_text, theme))
+        .child(mark)
         .child(div().font_weight(sizes.project_name_weight.font_weight()).text_color(rgb(name_color)).child(project.name.clone()))
         .children(tag)
         .children(running)
+        .children(waiting_tag(project.waiting, theme))
         .children(warning)
         .child(close);
     if present {
@@ -691,10 +922,20 @@ fn bind_row(line: Stateful<Div>, row: RowMouse, cx: &App) -> Stateful<Div> {
     let (opened, opened_row) = (select.clone(), name.clone());
     drop(target(format!("tree-menu:{name}"), move |_event, window, cx| open_menu(&opened, &opened_row, crate::workspace::DEFAULT_MENU, window, cx), cx));
     let selected = select.clone();
-    let click = move |window: &mut Window, cx: &mut App| {
+    let click = Rc::new(move |window: &mut Window, cx: &mut App| {
         selected.update(cx, |selection, key, _listed| selection.select_only(key));
         activate(&ClickEvent::default(), window, cx);
-    };
+    });
+    // for MCP's click: a Ctrl+click and a Shift+click on the row, which MCP's click cannot hold keys for
+    if select.pick.is_some() {
+        let (toggled, extended, fallback) = (select.clone(), select.clone(), click.clone());
+        drop(target(format!("tree-pick:{name}"), move |_event, _window, cx| toggled.update(cx, |selection, key, listed| selection.toggle(key, listed)), cx));
+        drop(target(format!("tree-pick-range:{name}"), move |_event, window, cx| {
+            if !extended.update(cx, |selection, key, listed| selection.extend(&key, listed)) {
+                fallback(window, cx);
+            }
+        }, cx));
+    }
     mouse_binding::on_mouse_triggers(line, format!("tree:{name}"), move |trigger, window, cx| match bound_mouse(Scope::Tree, &trigger, cx) {
         Some(Action::Builtin(Builtin::ActivateRow)) => click(window, cx),
         Some(Action::Builtin(Builtin::ActivateRowToKeep)) => {
@@ -703,13 +944,13 @@ fn bind_row(line: Stateful<Div>, row: RowMouse, cx: &App) -> Stateful<Div> {
                 keep(&ClickEvent::default(), window, cx);
             }
         }
-        Some(Action::Builtin(Builtin::ToggleRowSelection)) if select.multi => select.update(cx, |selection, key, _listed| selection.toggle(key)),
-        Some(Action::Builtin(Builtin::ExtendRowSelection)) if select.multi => {
+        Some(Action::Builtin(Builtin::ToggleRowSelection)) if select.pick.is_some() => select.update(cx, |selection, key, listed| selection.toggle(key, listed)),
+        Some(Action::Builtin(Builtin::ExtendRowSelection)) if select.pick.is_some() => {
             if !select.update(cx, |selection, key, listed| selection.extend(&key, listed)) {
                 click(window, cx);
             }
         }
-        // a row that is not a file or folder takes a Ctrl+ or Shift+click as a click
+        // a row that cannot be picked with others takes a Ctrl+ or Shift+click as a click
         Some(Action::Builtin(Builtin::ToggleRowSelection | Builtin::ExtendRowSelection)) => click(window, cx),
         Some(Action::Builtin(Builtin::ToggleRow)) => {
             if let Some(toggle) = &toggle {
@@ -738,8 +979,8 @@ fn open_menu(select: &RowSelect, row: &str, menu: &str, window: &mut Window, cx:
 #[derive(Clone)]
 struct RowSelect {
     key: TreeKey,
-    /// a file or folder, which can be selected with others
-    multi: bool,
+    /// what it can be picked with; `None`: alone
+    pick: Option<PickGroup>,
     workspace: WeakEntity<Workspace>,
 }
 
@@ -905,6 +1146,28 @@ fn render_resize_handle(theme: Theme, cx: &mut Context<Workspace>) -> Stateful<D
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_widen_a_row_by_what_its_process_said() {
+        // given
+        let process = |attention: Option<&str>| TreeRow {
+            depth: 0,
+            item: TreeItem::Process(ProcessRow {
+                id: crate::process::ProcessId::for_tests(1),
+                kind: crate::process::ProcessKind::Terminal,
+                title: "zsh".to_owned(),
+                progress: crate::terminal::Progress::None,
+                attention: attention.map(str::to_owned),
+            }),
+            target: String::new(),
+        };
+
+        // when
+        let widths = [row_width(&process(None)), row_width(&process(Some("Claude needs you")))];
+
+        // then
+        assert_eq!(widths[1] - widths[0], "● Claude needs you".chars().count() + 1);
+    }
 
     #[test]
     fn should_keep_tree_selection_when_shown_tab_changes() {

@@ -4,11 +4,19 @@ use gpui::Keystroke;
 
 /// `ctrl-shift-w` as `Ctrl+Shift+W`; modifiers in IntelliJ's order.
 pub fn label(keystroke: &Keystroke) -> String {
-    let modifiers = &keystroke.modifiers;
-    let held = [(modifiers.control, "Ctrl"), (modifiers.alt, "Alt"), (modifiers.shift, "Shift"), (modifiers.platform, "Cmd")];
-    let mut parts: Vec<String> = held.iter().filter(|(on, _)| *on).map(|(_, name)| (*name).to_owned()).collect();
+    let mut parts = modifier_names(&keystroke.modifiers);
     parts.push(key_name(&keystroke.key));
     parts.join("+")
+}
+
+/// Modifiers alone, as `label` names them: `Ctrl+Alt`.
+pub fn modifiers_label(modifiers: &gpui::Modifiers) -> String {
+    modifier_names(modifiers).join("+")
+}
+
+fn modifier_names(modifiers: &gpui::Modifiers) -> Vec<String> {
+    let held = [(modifiers.control, "Ctrl"), (modifiers.alt, "Alt"), (modifiers.shift, "Shift"), (modifiers.platform, "Cmd")];
+    held.iter().filter(|(on, _)| *on).map(|(_, name)| (*name).to_owned()).collect()
 }
 
 fn key_name(key: &str) -> String {

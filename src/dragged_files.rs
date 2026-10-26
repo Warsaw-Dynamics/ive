@@ -1,9 +1,10 @@
 //! Files and folders dragged inside IVE (from the project tree); a terminal they are dropped on types their paths.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui::{App, Context, IntoElement, ParentElement, Render, SharedString, Styled, WeakEntity, Window, div, rgb};
 
+use crate::sidebar::rows::TreeKey;
 use crate::theme::Theme;
 use crate::workspace::Workspace;
 
@@ -11,7 +12,7 @@ use crate::workspace::Workspace;
 /// are worked out when the drag starts and when it is dropped, not while the tree is drawn.
 #[derive(Clone)]
 pub struct DraggedFiles {
-    pub pressed: PathBuf,
+    pub pressed: TreeKey,
     pub workspace: WeakEntity<Workspace>,
 }
 
@@ -20,7 +21,7 @@ impl DraggedFiles {
     pub fn paths(&self, cx: &App) -> Vec<PathBuf> {
         match self.workspace.upgrade() {
             Some(workspace) => workspace.read(cx).dragged_paths(&self.pressed),
-            None => vec![self.pressed.clone()],
+            None => Vec::new(),
         }
     }
 
@@ -35,7 +36,52 @@ impl DraggedFiles {
 
     /// The chip under the pointer.
     pub fn chip(&self, cx: &App) -> DragChip {
-        DragChip { label: label(&self.paths(cx)).into() }
+        DragChip { label: label(&self.paths(cx)).into(), workspace: self.workspace.clone() }
+    }
+}
+
+/// A drag of a project or worktree row: its root folder, which a terminal types absolute. Tree rows take no drop of
+/// it, so a checkout is never moved or copied.
+#[derive(Clone)]
+pub struct DraggedRoot {
+    pub path: PathBuf,
+    pub workspace: WeakEntity<Workspace>,
+}
+
+impl DraggedRoot {
+    pub fn typed(&self) -> String {
+        root_text(&self.path)
+    }
+
+    /// The chip under the pointer: the root folder's name.
+    pub fn chip(&self) -> DragChip {
+        DragChip { label: label(std::slice::from_ref(&self.path)).into(), workspace: self.workspace.clone() }
+    }
+}
+
+/// What a drop of root `path` types: the path absolute, even into a terminal working in it.
+fn root_text(path: &Path) -> String {
+    crate::path_text::typed_paths(&[path.to_path_buf()], crate::path_text::Base::Absolute)
+}
+
+/// A drag of process rows (terminals, Claude Code, runs) from the tree: the pressed row, and the workspace whose
+/// selection says what else goes with it.
+#[derive(Clone)]
+pub struct DraggedProcesses {
+    pub pressed: TreeKey,
+    pub title: String,
+    pub workspace: WeakEntity<Workspace>,
+}
+
+impl DraggedProcesses {
+    /// The chip under the pointer: the pressed row's title, `+N` for the others picked with it.
+    pub fn chip(&self, cx: &App) -> DragChip {
+        let count = self.workspace.upgrade().map_or(1, |workspace| workspace.read(cx).dragged_keys(&self.pressed).len());
+        let label = match count {
+            0 | 1 => self.title.clone(),
+            count => format!("{} +{}", self.title, count - 1),
+        };
+        DragChip { label: label.into(), workspace: self.workspace.clone() }
     }
 }
 
@@ -49,15 +95,18 @@ fn label(paths: &[PathBuf]) -> String {
     }
 }
 
-/// Drawn like a dragged tab.
+/// Drawn like a dragged tab; over a tree row it says what a drop there does.
 pub struct DragChip {
     label: SharedString,
+    workspace: WeakEntity<Workspace>,
 }
 
 impl Render for DragChip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
         let sizes = &theme.sizes.tabs;
+        let hint = self.workspace.upgrade().and_then(|workspace| workspace.read(cx).tree().shown_hint(cx).map(|hint| hint.text.clone()));
+        let text: SharedString = hint.map_or_else(|| self.label.clone(), SharedString::from);
         div()
             .flex()
             .items_center()
@@ -74,7 +123,7 @@ impl Render for DragChip {
             .overflow_hidden()
             .text_ellipsis()
             .whitespace_nowrap()
-            .child(self.label.clone())
+            .child(text)
     }
 }
 
@@ -98,6 +147,15 @@ mod tests {
 
         // then
         assert_eq!(label, "c.rs +2");
+    }
+
+    #[test]
+    fn should_type_a_root_absolute() {
+        // when
+        let typed = root_text(Path::new("/home/u/repo"));
+
+        // then
+        assert_eq!(typed, crate::path_text::typed_paths(&[PathBuf::from("/home/u/repo")], crate::path_text::Base::Absolute));
     }
 
     #[test]

@@ -30,8 +30,8 @@ getrandom = "0.4.3"
 git2 = { version = "0.21.0", default-features = false }
 # Zed's gpui with our fixes (Warsaw-Dynamics/pgui, branch zed-main: a snapshot of Zed plus one commit each).
 # gpui is Apache-2.0.
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "d7f990737904bee2124172e7362042cf964ece31" }
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "d7f990737904bee2124172e7362042cf964ece31", features = ["font-kit", "wayland", "x11"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "79b84fb5df81087f9d5115d2af41e5cedcc0ed96" }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "79b84fb5df81087f9d5115d2af41e5cedcc0ed96", features = ["font-kit", "wayland", "x11"] }
 # the code view: syntax highlighting and colour keys
 codeview = { path = "codeview" }
 # walks project folders without git, honouring .gitignore-style files (the hub's file list)
@@ -56,6 +56,9 @@ rune-modules = { version = "0.14.2", features = ["fs", "process", "json", "time"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.154"
 serde_path_to_error = "0.1"
+# Delete in the tree moves files to the system trash (freedesktop trash, the Finder's Trash, the Recycle Bin); chrono
+# is not needed
+trash = { version = "5.2.9", default-features = false }
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "net", "macros", "sync", "time", "process"] }
 toml = "1.1.8"
 # vars.toml is edited in place, keeping the user's comments
@@ -84,13 +87,15 @@ signal-hook = "0.4"
 keyring = { version = "3.6.3", features = ["apple-native"] }
 # Metal shaders compiled at startup: building them ahead needs the `metal` tool of a full Xcode, not just the Command
 # Line Tools
-gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "d7f990737904bee2124172e7362042cf964ece31", features = ["runtime_shaders"] }
+gpui_platform = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "79b84fb5df81087f9d5115d2af41e5cedcc0ed96", features = ["runtime_shaders"] }
 
 [target.'cfg(windows)'.dependencies]
 # Print Screen puts a bitmap on the clipboard, saved as PNG when pasted
 image = { version = "0.25.10", default-features = false, features = ["bmp", "png"] }
 # run configurations' secrets in the Credential Manager
 keyring = { version = "3.6.3", features = ["windows-native"] }
+# the Recycle Bin through COM, in the apartment gpui's OleInitialize already put the main thread in
+trash = { version = "5.2.9", default-features = false, features = ["coinit_apartmentthreaded"] }
 # other processes' children, command lines and working directories; the version gpui already locks
 sysinfo = { version = "0.31.4", default-features = false, features = ["system"] }
 # the version tokio and gpui already build
@@ -99,7 +104,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Stora
 [dev-dependencies]
 codeview = { path = "codeview", features = ["test-support"] }
 # gpui's test app, for driving a file tab's saves in unit tests
-gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "d7f990737904bee2124172e7362042cf964ece31", features = ["test-support"] }
+gpui = { git = "https://github.com/Warsaw-Dynamics/pgui.git", rev = "79b84fb5df81087f9d5115d2af41e5cedcc0ed96", features = ["test-support"] }
 tempfile = "3"
 
 # Dependencies (memchr, gpui's renderer) are unusably slow unoptimised: opening a 10M-line file took

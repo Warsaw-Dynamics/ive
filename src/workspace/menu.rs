@@ -21,7 +21,7 @@ use crate::script::state::{ScriptState, invoke};
 use crate::process::RunId;
 use crate::sidebar::folders::FolderKind;
 use crate::sidebar::rows::{TreeItem, TreeKey};
-use crate::sidebar::selection;
+use crate::sidebar::selection::{self, PickGroup};
 use crate::tabs::{Beside, TabId};
 
 /// The menu MCP's `tab-menu:<tab>` and `tree-menu:<row>` targets open.
@@ -164,11 +164,12 @@ pub fn subject_of(paths: Vec<(PathBuf, PathKind)>, checkouts: &[PathBuf]) -> Sub
     Subject { paths: placed.collect(), home }
 }
 
-/// The rows a tree menu opened on `pressed` applies to: the whole selection of files and folders when `pressed` is
-/// one of them, else `pressed` alone.
+/// The rows a tree menu opened on `pressed` applies to: the whole selection of files, folders and changed files when
+/// `pressed` is one of them, else `pressed` alone.
 pub fn menu_rows(pressed: &TreeKey, is_selected: impl Fn(&TreeKey) -> bool, listed: &[selection::Listed]) -> Vec<TreeKey> {
-    if matches!(pressed, TreeKey::Entry(_)) && is_selected(pressed) {
-        return listed.iter().filter(|row| row.multi && is_selected(&row.key)).map(|row| row.key.clone()).collect();
+    let picks_files = listed.iter().any(|row| row.key == *pressed && row.pick == Some(PickGroup::Files));
+    if picks_files && is_selected(pressed) {
+        return listed.iter().filter(|row| row.pick == Some(PickGroup::Files) && is_selected(&row.key)).map(|row| row.key.clone()).collect();
     }
     vec![pressed.clone()]
 }
@@ -217,7 +218,10 @@ impl Workspace {
     pub(super) fn tree_subject(&self, pressed: &TreeKey) -> Subject {
         let listed = selection::listed(&self.tree.rows);
         let rows = menu_rows(pressed, |key| self.tree.selection.contains(key), &listed);
-        subject_of(rows.iter().filter_map(|key| self.row_path(key)).collect(), &self.all_checkouts())
+        let mut seen = std::collections::HashSet::new();
+        // a file picked twice (its row under Files and its change) counts once
+        let paths = rows.iter().filter_map(|key| self.row_path(key)).filter(|(path, _)| seen.insert(path.clone()));
+        subject_of(paths.collect(), &self.all_checkouts())
     }
 
     /// Send to Terminal from a binding: its list of terminals alone, as a menu at the pointer.
@@ -226,6 +230,11 @@ impl Workspace {
             return;
         };
         let lines = resolve::choice_lines(Builtin::SendPathsToTerminal, choices, &[]);
+        self.open_lines(on, subject, lines, window, cx);
+    }
+
+    /// A tree menu of `lines` alone at the pointer, such as a list of choices.
+    pub(super) fn open_lines(&mut self, on: MenuOn, subject: Subject, lines: Vec<Line>, window: &mut Window, cx: &mut Context<Self>) {
         let position = window.mouse_position();
         self.menu = Some(OpenMenu { on, kind: MenuKind::Tree, name: String::new(), position, subject, lines, nav: Nav::new(), waiting: Vec::new(), changed_at: Instant::now() - MOVED_GUARD });
         window.focus(&self.focus_handle, cx);
@@ -268,6 +277,7 @@ impl Workspace {
     }
 
     fn open_menu(&mut self, kind: MenuKind, name: &str, on: MenuOn, subject: Subject, window: &mut Window, cx: &mut Context<Self>) {
+        self.read_clipboard_files(cx);
         let items = cx.try_global::<Menus>().and_then(|menus| menus.get(kind, name)).map(<[_]>::to_vec).unwrap_or_default();
         let resolved = resolve::resolve(&items, &subject, &|builtin| self.applies(builtin, &on, &subject));
         if resolved.lines.is_empty() {
@@ -381,12 +391,17 @@ impl Workspace {
         match (action, &menu.on) {
             (LineAction::Script(ItemAction::Invoke { generation, function }), on) => invoke(generation, function, Some(self.menu_context(&menu.name, on, &menu.subject)), cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tab(tab)) if builtin.is_tab_command() => self.run_tab_command(builtin, *tab, window, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::CopyFiles)), MenuOn::Tree { pressed, .. }) => self.copy_files(pressed, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::PasteFiles)), MenuOn::Tree { pressed, .. }) => self.paste_files(pressed, window, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::DeleteFiles)), MenuOn::Tree { pressed, .. }) => self.delete_files(pressed, window, cx),
+            (LineAction::Script(ItemAction::Builtin(Builtin::RenameFile)), MenuOn::Tree { pressed, .. }) => self.start_rename(pressed, window, cx),
             (LineAction::Script(ItemAction::Builtin(builtin)), MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| true).is_some() => {
                 self.run_row_command(builtin, pressed, window, cx)
             }
             (LineAction::Script(ItemAction::Builtin(builtin)), _) => self.run_menu_builtin(builtin, &menu.subject, window, cx),
             (LineAction::Choice { builtin: Builtin::SendPathsToTerminal, choice }, _) => self.send_paths_to(&choice, &menu.subject, window, cx),
             (LineAction::Choice { builtin: Builtin::RunFile, choice }, _) => self.run_from_menu(Some(&choice), &menu.subject, window, cx),
+            (LineAction::Choice { builtin: Builtin::PasteFiles, choice }, _) => self.choose_layout(&choice, window, cx),
             (LineAction::Choice { .. }, _) => {}
         }
     }
@@ -434,6 +449,10 @@ impl Workspace {
                 let facts = TabFacts { temporary: self.tabs.is_temporary(*tab), process };
                 tab_applies(tab_action, facts, |which| self.tabs.has_beside(*tab, which))
             }
+            (Builtin::CopyFiles | Builtin::PasteFiles, MenuOn::Tree { pressed, .. }) => self.clip_applies(builtin, pressed),
+            (Builtin::CopyFiles | Builtin::PasteFiles | Builtin::DeleteFiles | Builtin::RenameFile, MenuOn::Tab(_)) => Applies::Hidden,
+            (Builtin::DeleteFiles, MenuOn::Tree { .. }) => super::file_actions::delete_applies(&super::file_actions::in_work_tree(subject), &self.all_checkouts()),
+            (Builtin::RenameFile, MenuOn::Tree { .. }) => super::file_actions::rename_applies(&super::file_actions::in_work_tree(subject), &self.all_checkouts()),
             (_, MenuOn::Tree { pressed, .. }) if row_applies(builtin, pressed, |_| false).is_some() => {
                 row_applies(builtin, pressed, |run| self.is_live_run(run)).unwrap_or(Applies::Hidden)
             }
@@ -467,9 +486,7 @@ impl Workspace {
             },
             TreeItem::Checkout(checkout) => Some((checkout.checkout.path.clone(), PathKind::Folder)),
             TreeItem::Project(project) => self.project(&project.id).map(|project| (project.main_checkout().path.clone(), PathKind::Folder)),
-            TreeItem::Change(change) => {
-                Some((change.checkout.path.join(change.change.path.to_path()), PathKind::File))
-            }
+            TreeItem::Change(change) => Some((crate::sidebar::folders::change_path(change), PathKind::File)),
             _ => None,
         }
     }
@@ -548,7 +565,7 @@ mod tests {
     use crate::menu::resolve::resolve;
     use crate::script::menus::{Label, MenuItem, When};
     use crate::process::ProcessId;
-    use crate::sidebar::selection::Listed;
+    use crate::sidebar::selection::{Listed, PickGroup};
 
     fn item(builtin: Builtin) -> MenuItem {
         MenuItem::Action { label: Label::Default, action: ItemAction::Builtin(builtin), when: When::default() }
@@ -691,7 +708,25 @@ mod tests {
     }
 
     fn listed(keys: &[TreeKey]) -> Vec<Listed> {
-        keys.iter().map(|key| Listed { key: key.clone(), multi: matches!(key, TreeKey::Entry(_)) }).collect()
+        let path = |key: &TreeKey| match key {
+            TreeKey::Entry(path) => Some(path.clone()),
+            TreeKey::Change(checkout, _, file) => Some(checkout.join(file.display())),
+            _ => None,
+        };
+        keys.iter().map(|key| Listed { key: key.clone(), pick: path(key).map(|_| PickGroup::Files), path: path(key) }).collect()
+    }
+
+    #[test]
+    fn should_widen_a_menu_on_a_selected_change_to_the_selection() {
+        // given
+        let change = TreeKey::Change(PathBuf::from("/w"), crate::sidebar::folders::ChangeSource::Uncommitted, crate::git::types::GitPath::from_bytes(b"b"));
+        let rows = [entry("/w/a"), change.clone()];
+
+        // when
+        let applied = menu_rows(&change, |_| true, &listed(&rows));
+
+        // then
+        assert_eq!(applied, rows);
     }
 
     #[test]

@@ -70,6 +70,12 @@ pub fn login_shell() -> String {
     }
 }
 
+/// The PowerShell a terminal starts.
+#[cfg(windows)]
+pub fn login_shell() -> String {
+    interactive_shell().swap_remove(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

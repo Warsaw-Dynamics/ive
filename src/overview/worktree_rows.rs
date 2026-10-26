@@ -25,19 +25,25 @@ pub struct Group {
     pub total: usize,
 }
 
-/// A row that may be listed, with the text the filter matches.
+/// A row that may be listed, with the text the filter matches, lowercase.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Candidate {
     pub id: RowId,
     pub text: String,
 }
 
+impl Candidate {
+    pub fn new(id: RowId, text: &str) -> Self {
+        Self { id, text: text.to_lowercase() }
+    }
+}
+
 /// What the groups are made of: the shown checkouts in list order (the main one, then by last use), the hidden
 /// ones, the branches newest first.
 pub struct ListInput<'a> {
-    pub shown: Vec<Candidate>,
-    pub hidden: Vec<Candidate>,
-    pub branches: Vec<Candidate>,
+    pub shown: &'a [Candidate],
+    pub hidden: &'a [Candidate],
+    pub branches: &'a [Candidate],
     pub query: &'a str,
     /// how many matching branches the paging shows
     pub branches_visible: usize,
@@ -69,27 +75,67 @@ pub enum KeyEffect {
 
 /// Worktrees always; Hidden only when it has rows; Branches for a git project.
 pub fn groups(input: &ListInput) -> Vec<Group> {
+    let words = query_words(input.query);
     let matching = |candidates: &[Candidate]| -> Vec<RowId> {
-        candidates.iter().filter(|candidate| matches(&candidate.text, input.query)).map(|candidate| candidate.id.clone()).collect()
+        candidates.iter().filter(|candidate| matches(&candidate.text, &words)).map(|candidate| candidate.id.clone()).collect()
     };
     let whole = |kind: GroupKind, rows: Vec<RowId>| Group { kind, total: rows.len(), rows };
-    let mut groups = vec![whole(GroupKind::Worktrees, matching(&input.shown))];
-    let hidden = matching(&input.hidden);
+    let mut groups = vec![whole(GroupKind::Worktrees, matching(input.shown))];
+    let hidden = matching(input.hidden);
     if !hidden.is_empty() {
         groups.push(whole(GroupKind::Hidden, hidden));
     }
     if input.git {
-        let branches = matching(&input.branches);
+        let branches = matching(input.branches);
         let total = branches.len();
         groups.push(Group { kind: GroupKind::Branches, rows: branches.into_iter().take(input.branches_visible).collect(), total });
     }
     groups
 }
 
-/// Whether `text` holds every whitespace-separated word of `query`, ignoring case.
-pub fn matches(text: &str, query: &str) -> bool {
-    let text = text.to_lowercase();
-    query.to_lowercase().split_whitespace().all(|word| text.contains(word))
+/// The words of `query`, lowercase, as [`matches`] takes them.
+pub fn query_words(query: &str) -> Vec<String> {
+    query.to_lowercase().split_whitespace().map(str::to_owned).collect()
+}
+
+/// Whether the lowercase `text` holds every one of `words`.
+pub fn matches(text: &str, words: &[String]) -> bool {
+    words.iter().all(|word| text.contains(word.as_str()))
+}
+
+/// A line of the list as drawn, every one a row high; groups and rows by their index in the groups.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Line {
+    Header(usize),
+    /// "No worktree matches", under a group the filter emptied
+    Empty(usize),
+    Row { group: usize, at: usize },
+    /// Show 10 more, Show all: under the branches while some are not shown
+    More(usize),
+}
+
+/// The lines of `groups`, top to bottom: each group's header, then its rows unless it is the closed Hidden group.
+pub fn lines(groups: &[Group], hidden_open: bool) -> Vec<Line> {
+    let mut lines = Vec::new();
+    for (index, group) in groups.iter().enumerate() {
+        lines.push(Line::Header(index));
+        if group.kind == GroupKind::Hidden && !hidden_open {
+            continue;
+        }
+        if group.rows.is_empty() && group.kind != GroupKind::Hidden {
+            lines.push(Line::Empty(index));
+        }
+        lines.extend((0..group.rows.len()).map(|at| Line::Row { group: index, at }));
+        if group.kind == GroupKind::Branches && group.total > group.rows.len() {
+            lines.push(Line::More(index));
+        }
+    }
+    lines
+}
+
+/// The line of `row` among `lines`, for scrolling it into view.
+pub fn line_of(lines: &[Line], groups: &[Group], row: &RowId) -> Option<usize> {
+    lines.iter().position(|line| matches!(line, Line::Row { group, at } if &groups[*group].rows[*at] == row))
 }
 
 /// The rows ↑↓ walk, top to bottom: a closed Hidden group's are left out.
@@ -189,17 +235,26 @@ mod tests {
         RowId::Branch(name.to_owned())
     }
 
-    fn candidate(id: &RowId) -> Candidate {
-        let text = match id {
+    fn candidates(ids: &[RowId]) -> Vec<Candidate> {
+        let text = |id: &RowId| match id {
             RowId::Checkout(path) => path.display().to_string(),
             RowId::Branch(name) => name.clone(),
         };
-        Candidate { id: id.clone(), text }
+        ids.iter().map(|id| Candidate::new(id.clone(), &text(id))).collect()
     }
 
-    fn input<'a>(shown: &[RowId], hidden: &[RowId], branches: &[RowId], query: &'a str) -> ListInput<'a> {
-        let all = |ids: &[RowId]| ids.iter().map(candidate).collect();
-        ListInput { shown: all(shown), hidden: all(hidden), branches: all(branches), query, branches_visible: 10, git: true }
+    /// The candidates of the shown, hidden and branch rows.
+    struct Rows([Vec<Candidate>; 3]);
+
+    impl Rows {
+        fn of(shown: &[RowId], hidden: &[RowId], branches: &[RowId]) -> Self {
+            Self([candidates(shown), candidates(hidden), candidates(branches)])
+        }
+
+        fn input<'a>(&'a self, query: &'a str) -> ListInput<'a> {
+            let [shown, hidden, branches] = &self.0;
+            ListInput { shown, hidden, branches, query, branches_visible: 10, git: true }
+        }
     }
 
     fn group(kind: GroupKind, rows: &[RowId]) -> Group {
@@ -214,10 +269,10 @@ mod tests {
     #[test]
     fn should_group_worktrees_hidden_and_branches() {
         // given
-        let given = input(&[checkout("dev"), checkout("a")], &[checkout("h")], &[branch("x"), branch("y")], "");
+        let rows = Rows::of(&[checkout("dev"), checkout("a")], &[checkout("h")], &[branch("x"), branch("y")]);
 
         // when
-        let found = groups(&given);
+        let found = groups(&rows.input(""));
 
         // then
         assert_eq!(found, list(&[checkout("dev"), checkout("a")], &[checkout("h")], &[branch("x"), branch("y")]));
@@ -226,7 +281,8 @@ mod tests {
     #[test]
     fn should_leave_out_an_empty_hidden_group_and_the_branches_of_a_plain_folder() {
         // given
-        let given = ListInput { git: false, ..input(&[checkout("notes")], &[], &[], "") };
+        let rows = Rows::of(&[checkout("notes")], &[], &[]);
+        let given = ListInput { git: false, ..rows.input("") };
 
         // when
         let kinds: Vec<GroupKind> = groups(&given).iter().map(|group| group.kind).collect();
@@ -238,27 +294,41 @@ mod tests {
     #[test]
     fn should_filter_every_group_by_all_words() {
         // given
-        let given = input(&[checkout("dev"), checkout("GEN-817-ive")], &[checkout("GEN-811")], &[branch("gen-813-fix"), branch("main")], "gen 81");
+        let rows = Rows::of(&[checkout("dev"), checkout("GEN-817-ive")], &[checkout("GEN-811")], &[branch("gen-813-fix"), branch("main")]);
 
         // when
-        let found = groups(&given);
+        let found = groups(&rows.input("gen 81"));
 
         // then
         assert_eq!(found, list(&[checkout("GEN-817-ive")], &[checkout("GEN-811")], &[branch("gen-813-fix")]));
-        assert!(matches("GEN-817-ive", "ive  817"));
+        assert!(matches("gen-817-ive", &query_words("IVE  817")));
     }
 
     #[test]
     fn should_page_the_branches_but_count_them_all() {
         // given
         let branches: Vec<RowId> = (0..25).map(|n| branch(&format!("b{n}"))).collect();
-        let given = input(&[checkout("dev")], &[], &branches, "");
+        let rows = Rows::of(&[checkout("dev")], &[], &branches);
 
         // when
-        let found = groups(&given);
+        let found = groups(&rows.input(""));
 
         // then
         assert_eq!((found[1].rows.len(), found[1].total), (10, 25));
+    }
+
+    #[test]
+    fn should_draw_headers_rows_empty_notes_and_the_paging_line() {
+        // given
+        let groups = vec![group(GroupKind::Worktrees, &[]), group(GroupKind::Hidden, &[checkout("h")]), Group { kind: GroupKind::Branches, rows: vec![branch("x")], total: 3 }];
+
+        // when
+        let (open, closed) = (lines(&groups, true), lines(&groups, false));
+
+        // then
+        assert_eq!(open, [Line::Header(0), Line::Empty(0), Line::Header(1), Line::Row { group: 1, at: 0 }, Line::Header(2), Line::Row { group: 2, at: 0 }, Line::More(2)]);
+        assert_eq!(closed, [Line::Header(0), Line::Empty(0), Line::Header(1), Line::Header(2), Line::Row { group: 2, at: 0 }, Line::More(2)]);
+        assert_eq!(line_of(&open, &groups, &branch("x")), Some(5));
     }
 
     #[test]
