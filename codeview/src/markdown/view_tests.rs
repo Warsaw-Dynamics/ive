@@ -363,3 +363,15 @@ fn should_prefill_find_with_a_one_line_selection(cx: &mut TestAppContext) {
     // then
     assert_eq!(prefill, (Some(("second".to_owned(), 11)), 11..17));
 }
+
+#[test]
+fn should_not_hit_text_that_was_measured_but_never_drawn() {
+    // given
+    let measured_only = vec![super::view::Placed::new(0, gpui::TextLayout::default())];
+
+    // when
+    let hit = super::view::hit_in(&measured_only, point(px(10.), px(10.)));
+
+    // then
+    assert_eq!(hit, None);
+}

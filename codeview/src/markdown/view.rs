@@ -1,7 +1,7 @@
 //! Rendered: a Markdown document drawn as a page, one list item per block, read-only; it scrolls by block, answers the
 //! find box over its visible text, and copies a code block by its Copy button.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -10,7 +10,7 @@ use std::time::Duration;
 use gpui::{
     AnyElement, App, Context, CursorStyle, FocusHandle, Focusable, Font, FontWeight, InteractiveText, KeyDownEvent, ListAlignment, ListOffset,
     ListState, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString, StyledText, Task, TextLayout, WeakEntity,
-    Window, div, list, prelude::*, px, relative, rgb, rgba,
+    Window, canvas, div, list, prelude::*, px, relative, rgb, rgba,
 };
 
 use super::document::{Align, Block, BlockKind, Doc, Look, Marker, Piece, Run, Tick};
@@ -65,10 +65,18 @@ pub struct RenderedView {
     drag: Drag,
 }
 
-/// A piece drawn: where it starts in the document's text, and its laid out text.
-struct Placed {
+/// A piece rendered: where it starts in the document's text, its laid out text, and whether it was drawn. gpui's list
+/// also renders blocks just to measure them (past the view's edges); their text has no place on screen to hit.
+pub(super) struct Placed {
     start: usize,
     layout: TextLayout,
+    drawn: Rc<Cell<bool>>,
+}
+
+impl Placed {
+    pub(super) fn new(start: usize, layout: TextLayout) -> Self {
+        Self { start, layout, drawn: Rc::default() }
+    }
 }
 
 /// Whether a press in the text is extending the selection as the mouse moves.
@@ -199,7 +207,7 @@ impl RenderedView {
 
     #[cfg(test)]
     pub(crate) fn piece_bounds(&self, start: usize) -> Option<gpui::Bounds<gpui::Pixels>> {
-        self.placed.borrow().iter().find(|placed| placed.start == start).map(|placed| placed.layout.bounds())
+        self.placed.borrow().iter().find(|placed| placed.start == start && placed.drawn.get()).map(|placed| placed.layout.bounds())
     }
 
     /// The selection as copied: the visible text, blocks apart; none when nothing is selected.
@@ -276,22 +284,8 @@ impl RenderedView {
         cx.stop_propagation();
     }
 
-    /// The offset of the document's text under `point`: in the piece on that line nearest to it, else the start of
-    /// the first piece below, else the end of the last.
     fn hit(&self, point: Point<Pixels>) -> Option<usize> {
-        let placed = self.placed.borrow();
-        let on_line = placed.iter().filter(|placed| {
-            let bounds = placed.layout.bounds();
-            bounds.top() <= point.y && point.y <= bounds.bottom()
-        });
-        if let Some(nearest) = on_line.min_by(|one, other| across(one, point).total_cmp(&across(other, point))) {
-            return Some(nearest.start + nearest.layout.index_for_position(point).unwrap_or_else(|index| index));
-        }
-        let below = placed.iter().filter(|placed| placed.layout.bounds().top() > point.y);
-        if let Some(next) = below.min_by(|one, other| f32::from(one.layout.bounds().top()).total_cmp(&f32::from(other.layout.bounds().top()))) {
-            return Some(next.start);
-        }
-        placed.iter().max_by(|one, other| f32::from(one.layout.bounds().bottom()).total_cmp(&f32::from(other.layout.bounds().bottom()))).map(|last| last.start + last.layout.len())
+        hit_in(&self.placed.borrow(), point)
     }
 
     /// Code block `block`'s code to the clipboard; its button says "Copied" for a while.
@@ -336,6 +330,25 @@ impl RenderedView {
             selection: self.selection.map(|selection| selection.range()),
         }
     }
+}
+
+/// The offset of the document's text under `point`: in the piece on that line nearest to it, else the start of the
+/// first piece below, else the end of the last.
+pub(super) fn hit_in(placed: &[Placed], point: Point<Pixels>) -> Option<usize> {
+    let drawn: Vec<&Placed> = placed.iter().filter(|placed| placed.drawn.get()).collect();
+    let placed = drawn.as_slice();
+    let on_line = placed.iter().filter(|placed| {
+        let bounds = placed.layout.bounds();
+        bounds.top() <= point.y && point.y <= bounds.bottom()
+    });
+    if let Some(nearest) = on_line.min_by(|one, other| across(one, point).total_cmp(&across(other, point))) {
+        return Some(nearest.start + nearest.layout.index_for_position(point).unwrap_or_else(|index| index));
+    }
+    let below = placed.iter().filter(|placed| placed.layout.bounds().top() > point.y);
+    if let Some(next) = below.min_by(|one, other| f32::from(one.layout.bounds().top()).total_cmp(&f32::from(other.layout.bounds().top()))) {
+        return Some(next.start);
+    }
+    placed.iter().max_by(|one, other| f32::from(one.layout.bounds().bottom()).total_cmp(&f32::from(other.layout.bounds().bottom()))).map(|last| last.start + last.layout.len())
 }
 
 /// How far `point` is from `placed` sideways; 0 over it.
@@ -420,19 +433,22 @@ impl Frame {
         let start = piece.text.start;
         let runs: Vec<Run> = piece.runs.iter().map(|run| Run { bytes: run.bytes.start - start..run.bytes.end - start, look: run.look.clone() }).collect();
         let styled = StyledText::new(SharedString::from(shown.to_owned())).with_runs(text_runs(shown.len(), &runs, &self.overlays(piece), paint));
-        self.placed.borrow_mut().push(Placed { start, layout: styled.layout().clone() });
+        let placed = Placed::new(start, styled.layout().clone());
+        let drawn = placed.drawn.clone();
+        self.placed.borrow_mut().push(placed);
+        // runs only when the piece is prepainted, not when the list just measures it
+        let mark_drawn = canvas(move |_, _, _| drawn.set(true), |_, _, _, _| {}).absolute().size_0();
         let has_links = piece.runs.iter().any(|run| matches!(run.look, Look::Link(_)));
         if !has_links {
-            return styled.into_any_element();
+            return div().relative().child(styled).child(mark_drawn).into_any_element();
         }
         let doc = self.doc.clone();
-        InteractiveText::new(("md-piece", start), styled)
-            .tooltip(move |index, window, cx| {
-                let target = link_at(&doc, start + index)?;
-                let make = cx.try_global::<Host>()?.tooltip.clone();
-                Some(make(target, window, cx))
-            })
-            .into_any_element()
+        let text = InteractiveText::new(("md-piece", start), styled).tooltip(move |index, window, cx| {
+            let target = link_at(&doc, start + index)?;
+            let make = cx.try_global::<Host>()?.tooltip.clone();
+            Some(make(target, window, cx))
+        });
+        div().relative().child(text).child(mark_drawn).into_any_element()
     }
 
     fn block(&self, index: usize, cx: &App) -> AnyElement {
