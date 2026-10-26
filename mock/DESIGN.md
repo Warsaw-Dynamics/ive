@@ -653,8 +653,8 @@ the `.md` styles in `checkouts.css`.
   greyed checkboxes), quotes, rules, pipe tables, fenced code coloured like the editor, inline code, bold, italic,
   links. UI font, 14 px, at most 760 px wide. All of it selects like a web page, across blocks; Ctrl+C copies the
   visible text.
-- **Copy on code blocks.** Each code block has a Copy button in its top right corner: it copies the block's code as
-  written, and says "Copied" for 1.5 s.
+- **Copy on code blocks.** Each code block has a Copy button in its top right corner, shown while the mouse is over
+  the block (as on GitHub): it copies the block's code as written, and says "Copied" for 1.5 s, shown meanwhile.
 - **Per tab, remembered.** The view is per tab; a Markdown tab opened later starts with the view last picked
   (`markdownView`, hash `md=rendered`), as diff tabs do with their layout. Ctrl+Shift+M
   (Cmd+Shift+M; `ive.rn`: `#{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" }`)

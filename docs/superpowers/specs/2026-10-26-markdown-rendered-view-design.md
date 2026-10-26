@@ -84,7 +84,8 @@ Rendered", commit `0c40698`): open a README.md tab there and press Ctrl+Shift+M.
 - Double-click no longer switches views (it selects a word); the pill and the key do.
 - **Copy on code blocks** *(the user's call)*: every code block (fenced or indented) has a **Copy** button in its top
   right corner, inside the block's tinted box: 12 px, muted text on the page background with a border and 6 px
-  radius, brighter on hover; always shown, not only on hover. A click copies the block's code **as written** (its
+  radius, brighter on hover; **shown only while the mouse is over the block** *(the user's call, after the first
+  build: always shown, it covered the end of the first line)*, and while it says Copied. A click copies the block's code **as written** (its
   lines, without the fence or the language name, ending without an extra line break) to the clipboard, the
   primary selection too on Linux as the editor's Copy does, and the label says **Copied** for 1.5 s. Click targets
   for MCP: `markdown-copy:<n>`, the block's number from 1 in document order. Find does not match the label, and a

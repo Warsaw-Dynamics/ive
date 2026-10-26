@@ -631,6 +631,9 @@ button.card:hover { border-color: var(--accent); }
   background: var(--background); color: var(--muted); font-size: 12px;
 }
 .md__copy::after { content: attr(data-label); }
+/* shown while the block is hovered, and while it says Copied */
+.md__copy { visibility: hidden; }
+.md__block:hover .md__copy, .md__copy[data-label="Copied"] { visibility: visible; }
 .md__copy:hover { color: var(--text); background: var(--hover); }
 .md blockquote { padding: 0 12px; border-left: 3px solid var(--border); color: var(--muted); }
 .md hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
