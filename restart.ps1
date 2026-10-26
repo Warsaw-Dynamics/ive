@@ -10,6 +10,11 @@ if (-not $IveLauncher) {
 $flags = @("--restart=$IveLauncher") + @($IveFlags | Where-Object { $_ })
 Set-Location $PSScriptRoot
 $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
+# without it there is nothing to build or start, and the IVE to replace must keep running
+if (-not $target) {
+    Write-Error 'restart.ps1: cannot find the build folder with cargo metadata; is cargo on PATH?'
+    exit 1
+}
 $exe = Join-Path $target 'release\ive.exe'
 
 if (-not $args) {
