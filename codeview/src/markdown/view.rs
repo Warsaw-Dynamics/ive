@@ -8,8 +8,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    AnyElement, App, Context, FocusHandle, Focusable, Font, FontWeight, InteractiveText, ListAlignment, ListOffset, ListState,
-    MouseButton, SharedString, StyledText, Task, WeakEntity, Window, div, list, prelude::*, px, relative, rgb, rgba,
+    AnyElement, App, Context, CursorStyle, FocusHandle, Focusable, Font, FontWeight, InteractiveText, KeyDownEvent, ListAlignment, ListOffset,
+    ListState, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString, StyledText, Task, TextLayout, WeakEntity,
+    Window, div, list, prelude::*, px, relative, rgb, rgba,
 };
 
 use super::document::{Align, Block, BlockKind, Doc, Look, Marker, Piece, Run, Tick};
@@ -17,9 +18,10 @@ use super::paint::{Overlay, Paint, text_runs};
 use crate::colors::ResolvedScheme;
 use crate::find::FindText;
 use crate::find::marks::{FindMarks, Mark};
-use crate::host::{ClipboardTarget, Host};
+use crate::host::{ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::scrollbar::{BlockScroll, ScrollState, Tick as ScrollTick, vertical_scrollbar_with_ticks};
 use crate::style::ViewStyle;
+use crate::text_selection::TextSelection;
 
 /// Left and right of the page.
 const PAGE_MARGIN: f32 = 32.;
@@ -36,6 +38,8 @@ const BLOCK_GAP: f32 = 12.;
 const ITEM_GAP: f32 = 2.;
 /// How long a Copy button says "Copied".
 const COPIED_FOR: Duration = Duration::from_millis(1500);
+/// How far a drag past the top or bottom scrolls per mouse move.
+const DRAG_SCROLL: f32 = 20.;
 /// Laid out beyond the view, so a scroll shows blocks already measured.
 const OVERDRAW: f32 = 400.;
 
@@ -55,6 +59,23 @@ pub struct RenderedView {
     copied_reset: Task<()>,
     /// the blocks drawn in the last frame
     shown: Rc<RefCell<Vec<usize>>>,
+    /// the pieces drawn in the last frame, where the mouse finds the text under it
+    placed: Rc<RefCell<Vec<Placed>>>,
+    selection: Option<TextSelection>,
+    drag: Drag,
+}
+
+/// A piece drawn: where it starts in the document's text, and its laid out text.
+struct Placed {
+    start: usize,
+    layout: TextLayout,
+}
+
+/// Whether a press in the text is extending the selection as the mouse moves.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Drag {
+    Idle,
+    Selecting,
 }
 
 impl RenderedView {
@@ -73,6 +94,9 @@ impl RenderedView {
             copied: None,
             copied_reset: Task::ready(()),
             shown: Rc::default(),
+            placed: Rc::default(),
+            selection: None,
+            drag: Drag::Idle,
         }
     }
 
@@ -90,6 +114,7 @@ impl RenderedView {
         self.found = found_text(&doc);
         self.code_blocks = code_blocks(&doc);
         self.doc = doc;
+        self.selection = None;
         self.revision += 1;
         cx.notify();
     }
@@ -124,8 +149,11 @@ impl RenderedView {
         FindText::Parts { bytes: self.found.0.clone(), starts: self.found.1.clone() }
     }
 
-    /// Where typing in the find box searches from: the block at the top.
+    /// Where typing in the find box searches from: the selection, else the block at the top.
     pub fn find_anchor(&self) -> Range<usize> {
+        if let Some(selection) = self.selection {
+            return selection.range();
+        }
         let start = self.doc.blocks.get(self.top_block()).and_then(|block| block.pieces.first()).map_or(0, |piece| piece.text.start);
         start..start
     }
@@ -162,6 +190,103 @@ impl RenderedView {
             Some(block) if self.copied == Some(block) => "Copied",
             _ => "Copy",
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn piece_bounds(&self, start: usize) -> Option<gpui::Bounds<gpui::Pixels>> {
+        self.placed.borrow().iter().find(|placed| placed.start == start).map(|placed| placed.layout.bounds())
+    }
+
+    /// The selection as copied: the visible text, blocks apart; none when nothing is selected.
+    pub fn selected_text(&self) -> Option<String> {
+        self.selection.map(|selection| selection.range()).filter(|range| !range.is_empty()).map(|range| self.doc.copy_text(range))
+    }
+
+    /// The selection when it is one line, and where it starts: what Ctrl+F opens with.
+    pub fn find_prefill(&self) -> Option<(String, usize)> {
+        let range = self.selection?.range();
+        let text = self.selected_text().filter(|text| !text.contains('\n'))?;
+        Some((text, range.start))
+    }
+
+    pub fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.selection = Some(TextSelection::of(0..self.doc.text.len()));
+        cx.notify();
+    }
+
+    pub fn copy(&self, target: ClipboardTarget, cx: &mut App) {
+        if let Some(text) = self.selected_text() {
+            Host::write_clipboard(target, text, cx);
+        }
+    }
+
+    /// A press selects: a click places the start, a double click a word, a triple click the piece, Shift+click
+    /// extends; the view takes the keyboard.
+    fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus(&self.focus_handle, cx);
+        let Some(at) = self.hit(event.position) else {
+            return;
+        };
+        self.selection = Some(match (event.click_count, self.selection) {
+            (2, _) => TextSelection::of(self.doc.word_at(at)),
+            (count, _) if count >= 3 => TextSelection::of(self.doc.piece_range(at)),
+            (_, Some(selection)) if event.modifiers.shift => selection.extended_to(at),
+            _ => TextSelection::at(at),
+        });
+        self.drag = Drag::Selecting;
+        cx.notify();
+    }
+
+    /// A drag extends the selection; past the top or the bottom it scrolls.
+    fn on_mouse_move(&mut self, event: &MouseMoveEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.drag == Drag::Idle || event.pressed_button != Some(MouseButton::Left) {
+            return;
+        }
+        let view = self.list.viewport_bounds();
+        if event.position.y < view.top() {
+            self.list.scroll_by(-px(DRAG_SCROLL));
+        }
+        if event.position.y > view.bottom() {
+            self.list.scroll_by(px(DRAG_SCROLL));
+        }
+        let (Some(at), Some(selection)) = (self.hit(event.position), self.selection) else {
+            return;
+        };
+        self.selection = Some(selection.extended_to(at));
+        cx.notify();
+    }
+
+    fn on_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, _cx: &mut Context<Self>) {
+        self.drag = Drag::Idle;
+    }
+
+    /// The host's Copy and Select All; other keys go on to the panel (find) and the window's bindings.
+    fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        match Host::key_outcome(event, KeyScope::Viewer, cx) {
+            KeyOutcome::Command(Command::Copy(target)) => self.copy(target, cx),
+            KeyOutcome::Command(Command::SelectAll) => self.select_all(cx),
+            KeyOutcome::Handled => {}
+            KeyOutcome::Command(_) | KeyOutcome::Foreign | KeyOutcome::Unbound => return,
+        }
+        cx.stop_propagation();
+    }
+
+    /// The offset of the document's text under `point`: in the piece on that line nearest to it, else the start of
+    /// the first piece below, else the end of the last.
+    fn hit(&self, point: Point<Pixels>) -> Option<usize> {
+        let placed = self.placed.borrow();
+        let on_line = placed.iter().filter(|placed| {
+            let bounds = placed.layout.bounds();
+            bounds.top() <= point.y && point.y <= bounds.bottom()
+        });
+        if let Some(nearest) = on_line.min_by(|one, other| across(one, point).total_cmp(&across(other, point))) {
+            return Some(nearest.start + nearest.layout.index_for_position(point).unwrap_or_else(|index| index));
+        }
+        let below = placed.iter().filter(|placed| placed.layout.bounds().top() > point.y);
+        if let Some(next) = below.min_by(|one, other| f32::from(one.layout.bounds().top()).total_cmp(&f32::from(other.layout.bounds().top()))) {
+            return Some(next.start);
+        }
+        placed.iter().max_by(|one, other| f32::from(one.layout.bounds().bottom()).total_cmp(&f32::from(other.layout.bounds().bottom()))).map(|last| last.start + last.layout.len())
     }
 
     /// Code block `block`'s code to the clipboard; its button says "Copied" for a while.
@@ -202,8 +327,16 @@ impl RenderedView {
             code_blocks: self.code_blocks.clone(),
             view: cx.weak_entity(),
             shown: self.shown.clone(),
+            placed: self.placed.clone(),
+            selection: self.selection.map(|selection| selection.range()),
         }
     }
+}
+
+/// How far `point` is from `placed` sideways; 0 over it.
+fn across(placed: &Placed, point: Point<Pixels>) -> f32 {
+    let bounds = placed.layout.bounds();
+    f32::from((bounds.left() - point.x).max(point.x - bounds.right()).max(px(0.)))
 }
 
 /// The Copy button's clipboard: the editor's Copy writes the primary selection too on Linux.
@@ -260,17 +393,19 @@ struct Frame {
     code_blocks: Arc<Vec<usize>>,
     view: WeakEntity<RenderedView>,
     shown: Rc<RefCell<Vec<usize>>>,
+    placed: Rc<RefCell<Vec<Placed>>>,
+    selection: Option<Range<usize>>,
 }
 
 impl Frame {
-    /// What lies over `piece`, by bytes of the piece.
+    /// What lies over `piece`, by bytes of the piece: find's matches and the selection.
     fn overlays(&self, piece: &Piece) -> Vec<(Range<usize>, Overlay)> {
-        let Some(marks) = &self.marks else {
-            return Vec::new();
-        };
         let start = piece.text.start;
+        let local = |bytes: Range<usize>| bytes.start - start..bytes.end - start;
         let overlay = |mark| if mark == Mark::Current { Overlay::Current } else { Overlay::Match };
-        marks.on_bytes(piece.text.clone()).into_iter().map(|(bytes, mark)| (bytes.start - start..bytes.end - start, overlay(mark))).collect()
+        let found = self.marks.iter().flat_map(|marks| marks.on_bytes(piece.text.clone())).map(|(bytes, mark)| (local(bytes), overlay(mark)));
+        let selected = self.selection.clone().map(|range| range.start.max(start)..range.end.min(piece.text.end)).filter(|range| range.start < range.end);
+        found.chain(selected.map(|range| (local(range), Overlay::Selected))).collect()
     }
 
     /// `piece` as text, its links' targets as tooltips.
@@ -280,6 +415,7 @@ impl Frame {
         let start = piece.text.start;
         let runs: Vec<Run> = piece.runs.iter().map(|run| Run { bytes: run.bytes.start - start..run.bytes.end - start, look: run.look.clone() }).collect();
         let styled = StyledText::new(SharedString::from(shown.to_owned())).with_runs(text_runs(shown.len(), &runs, &self.overlays(piece), paint));
+        self.placed.borrow_mut().push(Placed { start, layout: styled.layout().clone() });
         let has_links = piece.runs.iter().any(|run| matches!(run.look, Look::Link(_)));
         if !has_links {
             return styled.into_any_element();
@@ -390,6 +526,7 @@ impl Frame {
         let (text, hover) = (rgb(self.style.text), rgb(self.style.hover));
         let button = div()
             .id(("md-copy", index))
+            .debug_selector(move || format!("markdown-copy-{number}"))
             .absolute()
             .top(px(6.))
             .right(px(6.))
@@ -458,6 +595,7 @@ impl Focusable for RenderedView {
 impl Render for RenderedView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.shown.borrow_mut().clear();
+        self.placed.borrow_mut().clear();
         let frame = self.frame(window, cx);
         let style = frame.style.clone();
         let blocks = list(self.list.clone(), move |index, _window, cx| frame.block(index, cx)).size_full();
@@ -470,6 +608,12 @@ impl Render for RenderedView {
             .flex_1()
             .min_h_0()
             .size_full()
+            .cursor(CursorStyle::IBeam)
+            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
+            .on_mouse_move(cx.listener(Self::on_mouse_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
+            .on_key_down(cx.listener(Self::on_key_down))
             .child(blocks)
             .child(vertical_scrollbar_with_ticks(&self.scroll, &style, self.find_ticks()))
     }

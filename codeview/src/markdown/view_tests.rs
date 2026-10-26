@@ -6,13 +6,16 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gpui::{AppContext, ClickEvent, Entity, IntoElement, ParentElement, Styled, TestAppContext, VisualTestContext, div, point, px, size};
+use gpui::{
+    AppContext, Bounds, ClickEvent, Entity, IntoElement, KeyDownEvent, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    ParentElement, Pixels, Point, Render, Styled, TestAppContext, VisualTestContext, Window, div, point, px, size,
+};
 
 use super::view::RenderedView;
 use super::{Doc, parse};
 use crate::colors::{Overrides, ResolvedScheme, Scheme};
 use crate::find::{Compiled, FindOptions, FindQuery, FindText};
-use crate::host::{ClickListener, Host, KeyOutcome};
+use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome};
 use crate::style::{Appearance, ViewStyle};
 
 /// What the view asked of its host.
@@ -22,10 +25,20 @@ pub(super) struct Seen {
     pub targets: HashMap<String, ClickListener>,
 }
 
+/// Ctrl+C copies and Ctrl+A selects all, as `ive.rn` binds them; no other key is bound.
+fn keys_of(event: &KeyDownEvent) -> KeyOutcome {
+    let keystroke = &event.keystroke;
+    match (keystroke.modifiers.control, keystroke.key.as_str()) {
+        (true, "c") => KeyOutcome::Command(Command::Copy(ClipboardTarget::Clipboard)),
+        (true, "a") => KeyOutcome::Command(Command::SelectAll),
+        _ => KeyOutcome::Unbound,
+    }
+}
+
 pub(super) fn host(seen: &Rc<RefCell<Seen>>) -> Host {
     let (targets, copied) = (seen.clone(), seen.clone());
     Host {
-        keys: Rc::new(|_, _, _| KeyOutcome::Unbound),
+        keys: Rc::new(|event, _, _| keys_of(event)),
         clipboard: Rc::new(move |_, text, _| copied.borrow_mut().copied.push(text)),
         paste: Rc::new(|_, _| None),
         diff_mark: Rc::new(|_, _| div().into_any_element()),
@@ -43,16 +56,27 @@ pub(super) fn shown<'a>(source: &str, cx: &'a mut TestAppContext) -> (Entity<Ren
         cx.set_global(ResolvedScheme::resolve(Scheme::builtin(Appearance::Dark), &Overrides::new()));
         cx.set_global(host);
     });
-    let cx = cx.add_empty_window();
     let doc = Arc::new(parse(source));
-    let view = cx.new(|cx| RenderedView::new(doc, cx));
-    draw(&view, cx);
+    let (root, cx) = cx.add_window_view(|_window, cx| Page { view: cx.new(|cx| RenderedView::new(doc, cx)) });
+    cx.simulate_resize(size(px(800.), px(400.)));
+    let view = root.read_with(cx, |root, _| root.view.clone());
+    draw(cx);
     (view, seen, cx)
 }
 
-pub(super) fn draw(view: &Entity<RenderedView>, cx: &mut VisualTestContext) {
-    let view = view.clone();
-    cx.draw(point(px(0.), px(0.)), size(px(800.), px(400.)), |_, _| div().size_full().flex().flex_col().child(view));
+/// The window's root: the view filling it.
+struct Page {
+    view: Entity<RenderedView>,
+}
+
+impl Render for Page {
+    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        div().size_full().flex().flex_col().child(self.view.clone())
+    }
+}
+
+pub(super) fn draw(cx: &mut VisualTestContext) {
+    cx.update(|window, _| window.refresh());
     cx.run_until_parked();
 }
 
@@ -105,7 +129,7 @@ fn should_scroll_a_match_into_view(cx: &mut TestAppContext) {
 
     // when
     view.update(cx, |view, cx| view.show_match(at, cx));
-    draw(&view, cx);
+    draw(cx);
 
     // then
     let shown = view.read_with(cx, |view, _| view.shown_blocks());
@@ -120,7 +144,7 @@ fn should_reveal_a_source_line_at_the_top(cx: &mut TestAppContext) {
 
     // when
     view.update(cx, |view, cx| view.reveal_source_line(101, cx));
-    draw(&view, cx);
+    draw(cx);
 
     // then
     assert_eq!(top_block(&view, cx), 50);
@@ -133,12 +157,12 @@ fn should_keep_the_top_block_on_a_new_doc(cx: &mut TestAppContext) {
     let source = paragraphs(200);
     let (view, _, cx) = shown(&source, cx);
     view.update(cx, |view, cx| view.reveal_source_line(100, cx));
-    draw(&view, cx);
+    draw(cx);
 
     // when
     let longer = Arc::new(parse(&format!("{source}one more\n")));
     view.update(cx, |view, cx| view.set_doc(longer, cx));
-    draw(&view, cx);
+    draw(cx);
 
     // then
     assert_eq!(top_block(&view, cx), 50);
@@ -150,11 +174,11 @@ fn should_keep_the_top_block_inside_a_shorter_doc(cx: &mut TestAppContext) {
     // given
     let (view, _, cx) = shown(&paragraphs(200), cx);
     view.update(cx, |view, cx| view.reveal_source_line(300, cx));
-    draw(&view, cx);
+    draw(cx);
 
     // when
     view.update(cx, |view, cx| view.set_doc(Arc::new(parse(&paragraphs(3))), cx));
-    draw(&view, cx);
+    draw(cx);
 
     // then
     assert!(top_block(&view, cx) <= 2);
@@ -180,10 +204,10 @@ fn should_copy_a_code_block_and_say_copied(cx: &mut TestAppContext) {
 
     // when
     cx.update(|window, cx| listener(&ClickEvent::default(), window, cx));
-    draw(&view, cx);
+    draw(cx);
     let label = view.read_with(cx, |view, _| view.copy_label(1));
     cx.executor().advance_clock(Duration::from_millis(1500));
-    draw(&view, cx);
+    draw(cx);
 
     // then
     assert_eq!(seen.borrow().copied, vec!["x\n  y".to_owned()]);
@@ -202,4 +226,140 @@ fn should_draw_every_kind_of_block(cx: &mut TestAppContext) {
     let doc: Arc<Doc> = view.read_with(cx, |view, _| view.doc().clone());
     assert_eq!(doc.blocks.len(), 8);
     assert_eq!(view.read_with(cx, |view, _| view.shown_blocks()), (0..8).collect::<Vec<_>>());
+}
+
+fn bounds_of(view: &Entity<RenderedView>, piece_start: usize, cx: &mut VisualTestContext) -> Bounds<Pixels> {
+    view.read_with(cx, |view, _| view.piece_bounds(piece_start)).unwrap_or_else(|| panic!("no piece drawn at {piece_start}"))
+}
+
+/// Just inside the left end of a piece's first line.
+fn left_of(bounds: Bounds<Pixels>) -> Point<Pixels> {
+    point(bounds.left() + px(1.), bounds.top() + px(4.))
+}
+
+/// Past the end of a piece's first line.
+fn right_of(bounds: Bounds<Pixels>) -> Point<Pixels> {
+    point(bounds.right() - px(1.), bounds.top() + px(4.))
+}
+
+/// A left press and release at `at`; the view is drawn again after each, as the window would.
+fn press(at: Point<Pixels>, clicks: (usize, Modifiers), cx: &mut VisualTestContext) {
+    let (click_count, modifiers) = clicks;
+    cx.simulate_event(MouseDownEvent { button: MouseButton::Left, position: at, modifiers, click_count, first_mouse: false });
+    draw(cx);
+    cx.simulate_event(MouseUpEvent { button: MouseButton::Left, position: at, modifiers, click_count });
+    draw(cx);
+}
+
+fn drag(from: Point<Pixels>, to: Point<Pixels>, cx: &mut VisualTestContext) {
+    let modifiers = Modifiers::none();
+    cx.simulate_event(MouseDownEvent { button: MouseButton::Left, position: from, modifiers, click_count: 1, first_mouse: false });
+    draw(cx);
+    cx.simulate_event(MouseMoveEvent { position: to, pressed_button: Some(MouseButton::Left), modifiers });
+    draw(cx);
+    cx.simulate_event(MouseUpEvent { button: MouseButton::Left, position: to, modifiers, click_count: 1 });
+    draw(cx);
+}
+
+fn selected(view: &Entity<RenderedView>, cx: &mut VisualTestContext) -> Option<String> {
+    view.read_with(cx, |view, _| view.selected_text())
+}
+
+const THREE: &str = "first para\n\nsecond\n\nthird para\n";
+
+#[gpui::test]
+fn should_select_across_blocks_by_dragging(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(THREE, cx);
+    let (first, third) = (bounds_of(&view, 0, cx), bounds_of(&view, 18, cx));
+
+    // when
+    drag(left_of(first), right_of(third), cx);
+
+    // then
+    assert_eq!(selected(&view, cx).as_deref(), Some("first para\n\nsecond\n\nthird para"));
+}
+
+#[gpui::test]
+fn should_select_a_word_on_double_click(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(THREE, cx);
+    let second = bounds_of(&view, 11, cx);
+
+    // when
+    press(left_of(second), (2, Modifiers::none()), cx);
+
+    // then
+    assert_eq!(selected(&view, cx).as_deref(), Some("second"));
+}
+
+#[gpui::test]
+fn should_select_the_piece_on_triple_click(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(THREE, cx);
+    let first = bounds_of(&view, 0, cx);
+
+    // when
+    press(left_of(first), (3, Modifiers::none()), cx);
+
+    // then
+    assert_eq!(selected(&view, cx).as_deref(), Some("first para"));
+}
+
+#[gpui::test]
+fn should_extend_with_shift_click(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(THREE, cx);
+    let (first, second) = (bounds_of(&view, 0, cx), bounds_of(&view, 11, cx));
+    press(left_of(first), (1, Modifiers::none()), cx);
+
+    // when
+    press(right_of(second), (1, Modifiers::shift()), cx);
+
+    // then
+    assert_eq!(selected(&view, cx).as_deref(), Some("first para\n\nsecond"));
+}
+
+#[gpui::test]
+fn should_select_all_and_copy(cx: &mut TestAppContext) {
+    // given
+    let (view, seen, cx) = shown("- a\n- b\n\n| x | y |\n|---|---|\n", cx);
+    let first = bounds_of(&view, 0, cx);
+    press(left_of(first), (1, Modifiers::none()), cx);
+
+    // when
+    cx.simulate_keystrokes("ctrl-a");
+    draw(cx);
+    cx.simulate_keystrokes("ctrl-c");
+
+    // then
+    assert_eq!(seen.borrow().copied, vec!["- a\n- b\n\nx\ty".to_owned()]);
+}
+
+#[gpui::test]
+fn should_not_select_the_copy_label(cx: &mut TestAppContext) {
+    // given
+    let (view, seen, cx) = shown("```\ncode\n```\n", cx);
+    let button = cx.debug_bounds("markdown-copy-1").expect("the Copy button is drawn");
+
+    // when
+    press(button.center(), (1, Modifiers::none()), cx);
+
+    // then
+    assert_eq!(selected(&view, cx), None);
+    assert_eq!(seen.borrow().copied, vec!["code".to_owned()], "the press reached the button");
+}
+
+#[gpui::test]
+fn should_prefill_find_with_a_one_line_selection(cx: &mut TestAppContext) {
+    // given
+    let (view, _, cx) = shown(THREE, cx);
+    let second = bounds_of(&view, 11, cx);
+    press(left_of(second), (2, Modifiers::none()), cx);
+
+    // when
+    let prefill = view.read_with(cx, |view, _| (view.find_prefill(), view.find_anchor()));
+
+    // then
+    assert_eq!(prefill, (Some(("second".to_owned(), 11)), 11..17));
 }
