@@ -31,6 +31,8 @@ const TEXT_SIZE: f32 = 14.;
 const LINE_HEIGHT: f32 = 1.6;
 const CODE_TEXT_SIZE: f32 = 13.;
 const CODE_LINE_HEIGHT: f32 = 20.;
+/// Above and below a code block's lines, inside its box.
+const CODE_PADDING_Y: f32 = 10.;
 /// A nested list's step to the right, and the column its markers stand in.
 const LIST_INDENT: f32 = 24.;
 const MARKER_WIDTH: f32 = 20.;
@@ -166,17 +168,40 @@ impl RenderedView {
         start..start
     }
 
-    /// Scrolls the match's block into view: a block not wholly in view goes near the top, one block above it. By index,
-    /// as blocks below the view are not measured yet.
+    /// Scrolls the match into view, a third of the way down: by the drawn text where it is drawn, else by the lines
+    /// above it in a code block (they do not wrap); a block not measured yet is placed by its index.
     pub fn show_match(&mut self, bytes: Range<usize>, cx: &mut Context<Self>) {
         let (block, _) = self.doc.piece_at(bytes.start);
         let view = self.list.viewport_bounds();
-        let in_view = self.list.bounds_for_item(block).is_some_and(|shown| shown.top() >= view.top() && shown.bottom() <= view.bottom());
+        let depth = self.depth_in_block(block, bytes.start);
+        let in_view = self.list.bounds_for_item(block).is_some_and(|shown| {
+            let top = shown.top() + depth;
+            top >= view.top() && top + px(CODE_LINE_HEIGHT) <= view.bottom()
+        });
         if in_view {
             return;
         }
-        self.list.scroll_to(ListOffset { item_ix: block.saturating_sub(1), offset_in_item: px(0.) });
+        let third = view.size.height / 3.;
+        let offset = match depth > third {
+            true => ListOffset { item_ix: block, offset_in_item: depth - third },
+            false => ListOffset { item_ix: block.saturating_sub(1), offset_in_item: px(0.) },
+        };
+        self.list.scroll_to(offset);
         cx.notify();
+    }
+
+    /// How far below its block's top the text at `offset` is.
+    fn depth_in_block(&self, block: usize, offset: usize) -> Pixels {
+        let drawn = self.placed.borrow().iter().filter(|placed| placed.drawn.get() && placed.start <= offset).max_by_key(|placed| placed.start).and_then(|placed| placed.layout.position_for_index(offset - placed.start));
+        if let (Some(at), Some(shown)) = (drawn, self.list.bounds_for_item(block)) {
+            return at.y - shown.top();
+        }
+        let Some(Block { kind: BlockKind::Code { .. }, pieces, .. }) = self.doc.blocks.get(block) else {
+            return px(0.);
+        };
+        let start = pieces.first().map_or(offset, |piece| piece.text.start);
+        let lines_above = self.doc.text[start..offset.max(start)].matches('\n').count();
+        px(CODE_PADDING_Y + CODE_LINE_HEIGHT * lines_above as f32)
     }
 
     pub fn set_find_marks(&mut self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
@@ -208,6 +233,14 @@ impl RenderedView {
     #[cfg(test)]
     pub(crate) fn piece_bounds(&self, start: usize) -> Option<gpui::Bounds<gpui::Pixels>> {
         self.placed.borrow().iter().find(|placed| placed.start == start && placed.drawn.get()).map(|placed| placed.layout.bounds())
+    }
+
+    /// Where the text at `offset` is drawn, from the window's top; none when it is not drawn.
+    #[cfg(test)]
+    pub(crate) fn position_of(&self, offset: usize) -> Option<Pixels> {
+        let placed = self.placed.borrow();
+        let piece = placed.iter().filter(|placed| placed.drawn.get() && placed.start <= offset).max_by_key(|placed| placed.start)?;
+        piece.layout.position_for_index(offset - piece.start).map(|point| point.y)
     }
 
     /// The selection as copied: the visible text, blocks apart; none when nothing is selected.
@@ -531,7 +564,7 @@ impl Frame {
             .id(("md-code", index))
             .overflow_x_scroll()
             .px(px(12.))
-            .py(px(10.))
+            .py(px(CODE_PADDING_Y))
             .text_size(px(CODE_TEXT_SIZE))
             .line_height(px(CODE_LINE_HEIGHT))
             .whitespace_nowrap()

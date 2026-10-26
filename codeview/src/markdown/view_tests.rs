@@ -375,3 +375,20 @@ fn should_not_hit_text_that_was_measured_but_never_drawn() {
     // then
     assert_eq!(hit, None);
 }
+
+#[gpui::test]
+fn should_scroll_to_a_match_deep_in_a_tall_block(cx: &mut TestAppContext) {
+    // given
+    let code: String = (0..120).map(|line| if line == 100 { "needle\n".to_owned() } else { format!("line {line}\n") }).collect();
+    let (view, _, cx) = shown(&format!("intro\n\n```\n{code}```\n"), cx);
+    let at = view.read_with(cx, |view, _| view.doc().text.find("needle").expect("the code holds it"));
+
+    // when
+    view.update(cx, |view, cx| view.show_match(at..at + 6, cx));
+    draw(cx);
+    draw(cx);
+
+    // then
+    let y = view.read_with(cx, |view, _| view.position_of(at)).expect("the match is drawn");
+    assert!(y > px(0.) && y < px(400.), "the match is at {y:?}, out of the 400 px view");
+}
