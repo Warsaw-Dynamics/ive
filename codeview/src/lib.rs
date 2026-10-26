@@ -9,6 +9,7 @@ pub mod host;
 pub mod icons;
 pub mod line_view;
 pub(crate) mod line_field;
+pub mod markdown;
 pub mod changes;
 pub mod panel;
 pub mod parallel;
