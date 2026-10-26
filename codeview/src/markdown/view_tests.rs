@@ -49,6 +49,11 @@ pub(super) fn host(seen: &Rc<RefCell<Seen>>) -> Host {
 
 /// A window showing `source` rendered, 800 by 400 px, drawn once.
 pub(super) fn shown<'a>(source: &str, cx: &'a mut TestAppContext) -> (Entity<RenderedView>, Rc<RefCell<Seen>>, &'a mut VisualTestContext) {
+    shown_doc(parse(source), cx)
+}
+
+/// A window showing `doc`, 800 by 400 px, drawn once.
+pub(super) fn shown_doc<'a>(doc: Doc, cx: &'a mut TestAppContext) -> (Entity<RenderedView>, Rc<RefCell<Seen>>, &'a mut VisualTestContext) {
     let seen: Rc<RefCell<Seen>> = Rc::default();
     let host = host(&seen);
     cx.update(|cx| {
@@ -56,7 +61,7 @@ pub(super) fn shown<'a>(source: &str, cx: &'a mut TestAppContext) -> (Entity<Ren
         cx.set_global(ResolvedScheme::resolve(Scheme::builtin(Appearance::Dark), &Overrides::new()));
         cx.set_global(host);
     });
-    let doc = Arc::new(parse(source));
+    let doc = Arc::new(doc);
     let (root, cx) = cx.add_window_view(|_window, cx| Page { view: cx.new(|cx| RenderedView::new(doc, cx)) });
     cx.simulate_resize(size(px(800.), px(400.)));
     let view = root.read_with(cx, |root, _| root.view.clone());
@@ -337,16 +342,21 @@ fn should_select_all_and_copy(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn should_not_select_the_copy_label(cx: &mut TestAppContext) {
+fn should_show_the_copy_button_on_hover_and_not_select_its_label(cx: &mut TestAppContext) {
     // given
     let (view, seen, cx) = shown("```\ncode\n```\n", cx);
     let button = cx.debug_bounds("markdown-copy-1").expect("the Copy button is drawn");
+    press(button.center(), (1, Modifiers::none()), cx);
+    let hidden = seen.borrow().copied.is_empty();
 
     // when
+    cx.simulate_event(MouseMoveEvent { position: button.center(), pressed_button: None, modifiers: Modifiers::none() });
+    draw(cx);
     press(button.center(), (1, Modifiers::none()), cx);
 
     // then
     assert_eq!(selected(&view, cx), None);
+    assert!(hidden, "the button takes no click before the mouse is over the block");
     assert_eq!(seen.borrow().copied, vec!["code".to_owned()], "the press reached the button");
 }
 
@@ -411,4 +421,25 @@ fn should_mark_many_matches_without_slowing_frames(cx: &mut TestAppContext) {
 
     // then
     assert!(started.elapsed() < Duration::from_secs(1), "took {:?}", started.elapsed());
+}
+
+#[gpui::test]
+fn should_copy_a_long_code_block_whole_by_its_one_button(cx: &mut TestAppContext) {
+    // given
+    let code: String = (0..250).map(|line| format!("line {line}\n")).collect();
+    let doc = super::build(format!("```\n{code}```\n").as_bytes(), &crate::syntax::Cancel::default());
+    let (view, seen, cx) = shown_doc(doc, cx);
+    view.update(cx, |view, cx| view.reveal_source_line(230, cx));
+    seen.borrow_mut().targets.clear();
+    draw(cx);
+    let listener = seen.borrow().targets.get("markdown-copy:1").cloned().expect("the last part's Copy button, named for its block");
+
+    // when
+    cx.update(|window, cx| listener(&ClickEvent::default(), window, cx));
+    draw(cx);
+
+    // then
+    assert_eq!(seen.borrow().copied, vec![code.trim_end().to_owned()]);
+    let names: Vec<String> = seen.borrow().targets.keys().filter(|name| name.starts_with("markdown-copy")).cloned().collect();
+    assert_eq!(names, vec!["markdown-copy:1".to_owned()], "one target for the block, not one per part");
 }

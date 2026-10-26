@@ -27,6 +27,30 @@ pub struct Block {
     pub lines: Range<usize>,
     /// one piece, or a table's cells row by row (the header first)
     pub pieces: Vec<Piece>,
+    /// a long code block or table drawn in parts, each a block of its own
+    pub part: Part,
+}
+
+/// Which part of a long code block or table a block is; [`Part::Whole`] for any other block.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Part {
+    #[default]
+    Whole,
+    First,
+    Middle,
+    Last,
+}
+
+impl Part {
+    /// Whether the block continues one drawn above it.
+    pub fn continues(self) -> bool {
+        matches!(self, Self::Middle | Self::Last)
+    }
+
+    /// Whether the block goes on in one drawn below it.
+    pub fn goes_on(self) -> bool {
+        matches!(self, Self::First | Self::Middle)
+    }
 }
 
 /// How deep a block sits in block quotes and lists.
@@ -324,7 +348,7 @@ impl Builder {
         };
         let end = self.reached.max(open.start + 1);
         let lines = self.line_of(open.start)..self.line_of(end - 1) + 1;
-        self.doc.blocks.push(Block { kind: open.kind, nesting: open.nesting, lines, pieces: open.pieces });
+        self.doc.blocks.push(Block { kind: open.kind, nesting: open.nesting, lines, pieces: open.pieces, part: Part::Whole });
     }
 
     /// Raw HTML is its source, without the line break that ends it.

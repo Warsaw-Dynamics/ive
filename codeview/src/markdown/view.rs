@@ -208,7 +208,8 @@ impl RenderedView {
         };
         let start = pieces.first().map_or(offset, |piece| piece.text.start);
         let lines_above = self.doc.text[start..offset.max(start)].matches('\n').count();
-        px(CODE_PADDING_Y + CODE_LINE_HEIGHT * lines_above as f32)
+        let padding = self.doc.blocks.get(block).map_or(CODE_PADDING_Y, |block| pad_unless(block.part.continues()));
+        px(padding + CODE_LINE_HEIGHT * lines_above as f32)
     }
 
     pub fn set_find_marks(&mut self, marks: Option<FindMarks>, cx: &mut Context<Self>) {
@@ -335,7 +336,7 @@ impl RenderedView {
             return;
         };
         Host::write_clipboard(copy_target(), code, cx);
-        self.copied = Some(block);
+        self.copied = Some(self.doc.parts_around(block).start);
         self.copied_reset = cx.spawn(async move |view, cx| {
             cx.background_executor().timer(COPIED_FOR).await;
             view.update(cx, |view, cx| {
@@ -415,8 +416,10 @@ fn piece_blocks(doc: &Doc) -> Arc<Vec<usize>> {
     Arc::new(doc.blocks.iter().enumerate().flat_map(|(index, block)| std::iter::repeat_n(index, block.pieces.len())).collect())
 }
 
+/// The code blocks, by the index of their first part.
 fn code_blocks(doc: &Doc) -> Arc<Vec<usize>> {
-    Arc::new(doc.blocks.iter().enumerate().filter(|(_, block)| matches!(block.kind, BlockKind::Code { .. })).map(|(index, _)| index).collect())
+    let firsts = doc.blocks.iter().enumerate().filter(|(_, block)| matches!(block.kind, BlockKind::Code { .. }) && !block.part.continues());
+    Arc::new(firsts.map(|(index, _)| index).collect())
 }
 
 fn link_at(doc: &Doc, offset: usize) -> Option<SharedString> {
@@ -507,7 +510,11 @@ impl Frame {
         let body = self.body(block, index, &paint, cx);
         let quoted = (0..block.nesting.quotes).fold(body, |inner, _| div().border_l(px(3.)).border_color(rgb(self.style.border)).pl(px(12.)).child(inner).into_any_element());
         let lists = f32::from(block.nesting.lists.saturating_sub(1));
-        let gap = if matches!(block.kind, BlockKind::ListItem(_)) { ITEM_GAP } else { BLOCK_GAP };
+        let gap = match (&block.kind, block.part.goes_on()) {
+            (_, true) => 0.,
+            (BlockKind::ListItem(_), false) => ITEM_GAP,
+            _ => BLOCK_GAP,
+        };
         div()
             .w_full()
             .pl(px(PAGE_MARGIN + LIST_INDENT * lists))
@@ -570,26 +577,37 @@ impl Frame {
             .into_any_element()
     }
 
-    /// A code block: its lines unwrapped in a tinted box that scrolls sideways, a Copy button in its corner.
+    /// A code block, or a part of one: its lines unwrapped in a tinted box that scrolls sideways, rounded and padded
+    /// only at the block's ends, and a Copy button in its corner while the mouse is over it.
     fn code(&self, block: &Block, index: usize, cx: &App) -> AnyElement {
         let paint = Paint { font: self.paint.mono.clone(), ..self.paint.clone() };
+        let (above, below) = (pad_unless(block.part.continues()), pad_unless(block.part.goes_on()));
         let lines = div()
             .id(("md-code", index))
             .overflow_x_scroll()
             .px(px(12.))
-            .py(px(CODE_PADDING_Y))
+            .pt(px(above))
+            .pb(px(below))
             .text_size(px(CODE_TEXT_SIZE))
             .line_height(px(CODE_LINE_HEIGHT))
             .whitespace_nowrap()
             .child(self.pieces(block, &paint));
-        div().relative().rounded(px(6.)).bg(self.paint.code_background).child(lines).child(self.copy_button(index, cx)).into_any_element()
+        let group = SharedString::from(format!("md-code-{index}"));
+        let boxed = div().group(group.clone()).relative().bg(self.paint.code_background).child(lines).child(self.copy_button(index, group, cx));
+        let boxed = if block.part.continues() { boxed } else { boxed.rounded_t(px(6.)) };
+        let boxed = if block.part.goes_on() { boxed } else { boxed.rounded_b(px(6.)) };
+        boxed.into_any_element()
     }
 
-    fn copy_button(&self, index: usize, cx: &App) -> AnyElement {
-        let number = self.code_blocks.iter().position(|block| *block == index).map_or(0, |at| at + 1);
-        let label = if self.copied == Some(index) { "Copied" } else { "Copy" };
+    /// The Copy button of the code block part `index` is of: named and copying for the whole block, shown while the
+    /// mouse is over `group` (the part) and while it says Copied.
+    fn copy_button(&self, index: usize, group: SharedString, cx: &App) -> AnyElement {
+        let first = self.doc.parts_around(index).start;
+        let number = self.code_blocks.iter().position(|block| *block == first).map_or(0, |at| at + 1);
+        let copied = self.copied == Some(first);
+        let label = if copied { "Copied" } else { "Copy" };
         let view = self.view.clone();
-        let click = Host::click_target(format!("markdown-copy:{number}"), move |_, _, cx| drop(view.update(cx, |view, cx| view.copy_code(index, cx))), cx);
+        let click = Host::click_target(format!("markdown-copy:{number}"), move |_, _, cx| drop(view.update(cx, |view, cx| view.copy_code(first, cx))), cx);
         let (text, hover) = (rgb(self.style.text), rgb(self.style.hover));
         let button = div()
             .id(("md-copy", index))
@@ -608,6 +626,7 @@ impl Frame {
             .text_color(rgb(self.style.muted))
             .cursor_pointer()
             .hover(move |style| style.text_color(text).bg(hover))
+            .when(!copied, |button| button.invisible().group_hover(group, |style| style.visible()))
             // a press on it starts no selection in the code under it
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_click(click)
@@ -618,13 +637,15 @@ impl Frame {
         }
     }
 
-    /// A table: its cells in equal columns, bordered, the header row bold on a tint.
+    /// A table, or a part of one: its cells in equal columns, bordered, the header row bold on a tint.
     fn table(&self, block: &Block, columns: &[Align], paint: &Paint) -> AnyElement {
         let bold = Paint { font: Font { weight: FontWeight::SEMIBOLD, ..paint.font.clone() }, ..paint.clone() };
         let border = rgb(self.style.border);
+        let continues = block.part.continues();
         let rows = block.pieces.chunks(columns.len().max(1)).enumerate().map(|(row, cells)| {
+            let header = row == 0 && !continues;
             let cells = cells.iter().zip(columns).enumerate().map(|(column, (cell, align))| {
-                let text = self.piece(cell, if row == 0 { &bold } else { paint });
+                let text = self.piece(cell, if header { &bold } else { paint });
                 let cell = div().flex_1().min_w_0().px(px(12.)).py(px(4.)).border_color(border).when(column > 0, |cell| cell.border_l_1()).child(text);
                 match align {
                     Align::Left => cell,
@@ -633,10 +654,25 @@ impl Frame {
                 }
             });
             let line = div().flex().border_color(border).children(cells);
-            if row > 0 { line.border_t_1() } else { line.bg(self.paint.code_background) }
+            match (header, row > 0 || continues) {
+                (true, _) => line.bg(self.paint.code_background),
+                (false, true) => line.border_t_1(),
+                (false, false) => line,
+            }
         });
-        div().flex().flex_col().border_1().border_color(border).children(rows).into_any_element()
+        let table = div().flex().flex_col().border_x_1().border_color(border).children(rows);
+        let table = if continues { table } else { table.border_t_1() };
+        let table = if block.part.goes_on() { table } else { table.border_b_1() };
+        table.into_any_element()
     }
+}
+
+/// A code box's padding above or below its lines: none where the block goes on in another part.
+fn pad_unless(continued: bool) -> f32 {
+    if continued {
+        return 0.;
+    }
+    CODE_PADDING_Y
 }
 
 /// A task item's box, ticked when filled.
@@ -647,6 +683,7 @@ fn tick_box(colour: gpui::Rgba) -> gpui::Div {
 /// Room above a block: the page's top above the first, more above a heading.
 fn space_above(block: &Block, index: usize) -> f32 {
     match (index, &block.kind) {
+        _ if block.part.continues() => 0.,
         (0, _) => 16.,
         (_, BlockKind::Heading(_)) => 8.,
         _ => 0.,

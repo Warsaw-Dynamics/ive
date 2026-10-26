@@ -7,6 +7,7 @@ mod document;
 #[cfg(test)]
 mod document_tests;
 mod paint;
+mod split;
 pub(crate) mod pill;
 mod view;
 #[cfg(test)]
@@ -14,4 +15,4 @@ mod view_tests;
 
 pub use build::build;
 pub use view::RenderedView;
-pub use document::{Align, Block, BlockKind, Doc, Look, Marker, Nesting, Piece, Run, Tick, parse};
+pub use document::{Align, Block, BlockKind, Doc, Look, Marker, Nesting, Part, Piece, Run, Tick, parse};

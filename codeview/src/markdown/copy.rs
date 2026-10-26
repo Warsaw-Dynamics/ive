@@ -20,12 +20,21 @@ impl Doc {
         copied
     }
 
-    /// Block `block`'s code as written, without the line break that ends it; `None` for a block that is not code.
+    /// The code of the code block `block` is (a part of) as written, all its parts, without the line break that ends
+    /// it; `None` for a block that is not code.
     pub fn code_of(&self, block: usize) -> Option<String> {
-        let block = self.blocks.get(block).filter(|block| matches!(block.kind, BlockKind::Code { .. }))?;
-        let piece = block.pieces.first()?;
-        let code = &self.text[piece.text.clone()];
-        Some(code.strip_suffix('\n').unwrap_or(code).to_owned())
+        self.blocks.get(block).filter(|found| matches!(found.kind, BlockKind::Code { .. }))?;
+        let parts = self.parts_around(block);
+        let pieces = self.blocks[parts].iter().flat_map(|part| part.pieces.first());
+        let code = pieces.map(|piece| &self.text[piece.text.clone()]).collect::<Vec<_>>().join("\n");
+        Some(code.strip_suffix('\n').map(str::to_owned).unwrap_or(code))
+    }
+
+    /// The blocks of the parts `block` is one of; `block` alone when it is whole.
+    pub fn parts_around(&self, block: usize) -> Range<usize> {
+        let first = (0..=block).rev().find(|at| !self.blocks[*at].part.continues()).unwrap_or(block);
+        let last = (block..self.blocks.len()).find(|at| !self.blocks[*at].part.goes_on()).unwrap_or(block);
+        first..last + 1
     }
 
     /// The word around `offset`, inside the piece holding it; the character at it when that is no word character.
@@ -76,8 +85,12 @@ impl Doc {
     }
 }
 
-/// Between two copied blocks: a line break between list items of one list, a blank line otherwise.
+/// Between two copied blocks: a line break between list items of one list and between parts of one block, a blank
+/// line otherwise.
 fn separator(before: &Block, after: &Block) -> &'static str {
+    if after.part.continues() {
+        return "\n";
+    }
     let listed = matches!(before.kind, BlockKind::ListItem(_)) && matches!(after.kind, BlockKind::ListItem(_));
     if listed && after.lines.start <= before.lines.end {
         return "\n";
