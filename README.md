@@ -7,7 +7,19 @@ coloured code; scratches; terminals that know when they run Claude Code; and an 
 IVE is source-available, not open source: free for personal and noncommercial use, a paid licence per user for
 commercial use (an employee using it for work included), and no redistribution. See [Licences](#licences).
 
-## Run
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Warsaw-Dynamics/ive/release/desktop/install-release.sh | bash
+```
+
+This installs the latest [release](#releases) for your user, Linux x86_64 or macOS on Apple Silicon. On Linux it puts
+IVE in `~/.local/share/ive`, links the command `~/.local/bin/ive` to it and adds an "IVE" entry, with IVE's icon, to the
+application launcher of GNOME, KDE Plasma and other freedesktop desktops; on macOS it installs `~/Applications/IVE.app`
+and the command `~/.local/bin/ive`. IVE then updates itself; running the command again also brings it to the latest
+release. It replaces a `~/.local/bin/ive` and desktop entry that `./install.sh` wrote for a build from source.
+
+## Run from source
 
 ```sh
 ./run.sh .                                   # open the current folder
@@ -321,8 +333,9 @@ as IVE; `restart.sh` starts it directly.
 
 ### Desktop icon
 
-On Linux the task bar shows IVE's icon (`desktop/icons/`) once it is installed for your user:
-`desktop/install.sh` installs the icon, `desktop/install.sh COMMAND` also adds an "IVE" desktop entry that runs
+On Linux the task bar shows IVE's icon (`desktop/icons/`) once it is installed for your user, as
+[Install](#install) does for a release: IVE's window cannot carry its icon on Wayland, the desktop looks it up in the
+desktop entry. `desktop/install.sh` installs the icon, `desktop/install.sh COMMAND` also adds an "IVE" desktop entry that runs
 COMMAND, e.g. `desktop/install.sh "$PWD/restart.sh"`. IVE's window has the app id `ive`, which is how the desktop
 matches it to the icon. KDE Plasma keeps showing an icon it already loaded until `plasmashell` restarts.
 
@@ -1032,4 +1045,4 @@ The script needs `cargo install --locked cargo-deny` and `cargo install --locked
 | `.github/workflows/` | the release build |
 | `src/update/`, `src/workspace/updates.rs` | updating a release build: the latest release, download and checksum, staging beside the install, the swap, when to restart; the workspace's timers, the button and quit |
 | `deny.toml`, `about.toml`, `tools/third-party-*`, `tools/third_party_json.py` | licence and source checks; the generators of `THIRD-PARTY-NOTICES.md` and of `assets/licenses/third-party.json`, which `src/third_party.rs` reads for Settings → Third-Party Software |
-| `desktop/` | the app icon in task bar sizes and `install.sh`, which installs it (and a desktop entry) on Linux |
+| `desktop/` | the app icon in task bar sizes; `install.sh`, which installs it (and a desktop entry) on Linux; `install-release.sh`, which installs the latest release (see [Install](#install)) |
