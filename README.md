@@ -204,9 +204,10 @@ branches without one (Enter: the Worktrees list with the branch typed and select
 nested), `:42` line 42 of the file shown before the hub.
 
 New terminal anywhere: Ctrl+Shift+T (`act::OpenTerminalIn`) opens the hub as a **New terminal** tab that only asks
-where. Before typing, a section per open project lists its main checkout, its other worktrees (most recently used
-first) and its 5 newest branches without a worktree (`local`, or only on a remote such as `origin`, with a faded
-icon); typing ranks them all as the hub does and shows the 20 best. Enter on a checkout opens a terminal there; on a
+where. Before typing, a section per open project lists its main checkout and its other worktrees (most recently
+used first); typing ranks them and every branch without a worktree (`local`, or only on a remote such as `origin`,
+with a faded icon) as the hub does, each as `project.name` (`ive.main`, `ive.` for all of IVE's), and shows the 20
+best. Enter on a checkout opens a terminal there; on a
 branch, New worktree adds its worktree (in the folder `.ive.toml` names, default `.worktree`) and the terminal opens
 in it, its worktree expanded in the tree. Ctrl+Shift+E switches to the full hub; Escape clears, then goes back. Over MCP:
 `open_hub` with `{"new_terminal": true}`.

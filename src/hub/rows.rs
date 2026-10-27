@@ -25,8 +25,7 @@ pub const LINE_NEEDS_TEXT: &str = "Line numbers go to a file shown before the hu
 pub const CONTENT_NEEDS_TEXT: &str = "Type 2 characters or more to search the files' contents";
 pub const SEARCHING_CONTENTS: &str = "Searching…";
 pub const NO_CONTENT_MATCHES: &str = "No line matches";
-/// New terminal mode: a project's newest branches without a worktree before typing, the best matches while typing.
-pub const NEW_TERMINAL_BRANCHES: usize = 5;
+/// New terminal mode: the best matches while typing.
 pub const NEW_TERMINAL_MATCHES: usize = 20;
 const NUMBERED: usize = 9;
 
@@ -257,20 +256,20 @@ impl<'a> Builder<'a> {
         self.sections.push(Section { title: title.to_owned(), rows: start..self.rows.len(), note, more });
     }
 
-    /// Ctrl+Shift+T: before typing, a section per project with its places and newest branches; typing ranks every
-    /// place of every project, the best first.
+    /// Ctrl+Shift+T: before typing, a section per project with its checkouts; typing ranks every checkout and branch
+    /// of every project, the best first, as `project.name` so that typing the project finds them all.
     fn new_terminal(&mut self, query: &str, sources: &Sources) {
+        let places = new_terminal_places(sources);
         if Query::parse(query).is_empty() {
-            for (place, hidden) in new_terminal_firsts(sources) {
-                let more = (hidden > 0).then(|| format!("… {hidden} more branches; type to search them"));
-                let rows = place.checkouts.into_iter().chain(place.branches).map(plain).collect();
-                self.push_with_more(&place.name, rows, None, more);
+            for place in places {
+                let branches = place.branches.len();
+                let more = (branches > 0).then(|| format!("… {branches} branches; type to search them"));
+                self.push_with_more(&place.name, place.checkouts.into_iter().map(plain).collect(), None, more);
             }
             return;
         }
-        let places = new_terminal_places(sources);
-        let items: Vec<Item> = places.into_iter().flat_map(|place| place.checkouts.into_iter().chain(place.branches)).collect();
-        let found = matched(items.iter().map(|item| (item, 0)), query, Order::Ranked, NEW_TERMINAL_MATCHES);
+        let items: Vec<(String, Item)> = places.into_iter().flat_map(|place| place.checkouts.into_iter().chain(place.branches).map(move |item| (place.name.clone(), item))).collect();
+        let found = matched_in_projects(&items, query, NEW_TERMINAL_MATCHES);
         self.counter = Some(format!("{}/{}", found.total, items.len()));
         self.more = found.total.saturating_sub(NEW_TERMINAL_MATCHES);
         self.push("New terminal in", found.rows, None);
@@ -344,6 +343,26 @@ fn matched<'a>(items: impl Iterator<Item = (&'a Item, u8)>, text: &str, order: O
     }
     let total = hits.len();
     let rows = hits.into_iter().take(limit).map(|(_, item, depth, positions)| hit_row_of(item, depth, &positions)).collect();
+    Matched { rows, total }
+}
+
+/// [`matched`] for items of named projects, best first: each is matched as "project.title detail", and the project's
+/// part highlights nothing.
+fn matched_in_projects(items: &[(String, Item)], text: &str, limit: usize) -> Matched {
+    let query = Query::parse(text);
+    let mut hits: Vec<(i32, &Item, Vec<usize>)> = items
+        .iter()
+        .filter_map(|(project, item)| {
+            let hay = format!("{project}.{} {}", item.title, item.detail);
+            let hit = query.matches(&hay, &lowered(&hay), None)?;
+            let prefix = project.chars().count() + 1;
+            let positions = hit.positions.iter().filter_map(|at| at.checked_sub(prefix)).collect();
+            Some((hit.score, item, positions))
+        })
+        .collect();
+    hits.sort_by_key(|(score, ..)| std::cmp::Reverse(*score));
+    let total = hits.len();
+    let rows = hits.into_iter().take(limit).map(|(_, item, positions)| hit_row_of(item, 0, &positions)).collect();
     Matched { rows, total }
 }
 
@@ -439,20 +458,7 @@ struct TerminalPlaces {
 }
 
 fn new_terminal_places(sources: &Sources) -> Vec<TerminalPlaces> {
-    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources, usize::MAX) }).collect()
-}
-
-/// [`new_terminal_places`] before typing: a project's newest branches only, and how many more it has.
-fn new_terminal_firsts(sources: &Sources) -> Vec<(TerminalPlaces, usize)> {
-    let mine = |project: &ProjectInfo| sources.branches.iter().filter(|branch| branch.project == project.id).count();
-    sources
-        .shown_projects()
-        .map(|project| {
-            let branches = branch_places(project, sources, NEW_TERMINAL_BRANCHES);
-            let hidden = mine(project).saturating_sub(branches.len());
-            (TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches }, hidden)
-        })
-        .collect()
+    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources) }).collect()
 }
 
 fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
@@ -478,8 +484,8 @@ fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
     std::iter::once(main_item).chain(others).collect()
 }
 
-fn branch_places(project: &ProjectInfo, sources: &Sources, limit: usize) -> Vec<Item> {
-    let mine = sources.branches.iter().filter(|branch| branch.project == project.id).take(limit);
+fn branch_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
+    let mine = sources.branches.iter().filter(|branch| branch.project == project.id);
     mine.map(|branch| {
         let target = Target::NewWorktreeTerminal { project: project.id.clone(), branch: branch.local.clone(), remote: branch.remote.clone() };
         Item {

@@ -1398,7 +1398,7 @@ mod tests {
     }
 
     #[test]
-    fn should_list_projects_worktrees_and_five_newest_branches() {
+    fn should_list_only_projects_checkouts_before_typing() {
         // given
         let sources = with_branches(7);
 
@@ -1407,8 +1407,22 @@ mod tests {
 
         // then
         assert_eq!(sections(&list), ["atlassian", "notes"]);
-        assert_eq!(titles(&list), ["dev", "GEN-817-ive", "old", "b1", "b2", "b3", "b4", "b5", "notes"]);
-        assert_eq!(more_lines(&list), [Some("… 2 more branches; type to search them"), None]);
+        assert_eq!(titles(&list), ["dev", "GEN-817-ive", "old", "notes"]);
+        assert_eq!(more_lines(&list), [Some("… 7 branches; type to search them"), None]);
+    }
+
+    #[test]
+    fn should_find_a_projects_checkouts_and_branches_by_project_dot_name() {
+        // given
+        let mut state = new_terminal();
+        typed(&mut state, "atlassian.b");
+
+        // when
+        let list = shown(&state, &with_branches(2));
+
+        // then
+        assert_eq!(titles(&list), ["b1", "b2"]);
+        assert_eq!(list.rows[0].title_hits, [0]);
     }
 
     #[test]
@@ -1425,12 +1439,15 @@ mod tests {
     fn should_mark_remote_only_branches() {
         // given
         let sources = Sources { branches: vec![branch("mine", None, 2), branch("theirs", Some("origin"), 1)], ..sources() };
+        let mut state = new_terminal();
+        typed(&mut state, "atlassian.");
 
         // when
-        let list = shown(&new_terminal(), &sources);
+        let list = shown(&state, &sources);
 
         // then
-        let rows: Vec<(&str, &str, bool)> = list.rows[3..5].iter().map(|row| (row.item.title.as_str(), row.item.detail.as_str(), row.item.faded)).collect();
+        let branches = list.rows.iter().filter(|row| matches!(row.item.target, Target::NewWorktreeTerminal { .. }));
+        let rows: Vec<(&str, &str, bool)> = branches.map(|row| (row.item.title.as_str(), row.item.detail.as_str(), row.item.faded)).collect();
         assert_eq!(rows, [("mine", "local · atlassian", false), ("theirs", "origin · atlassian", true)]);
     }
 
@@ -1531,7 +1548,7 @@ mod tests {
         // given
         let sources = Sources { branches: vec![branch("theirs", Some("origin"), 1)], ..sources() };
         let mut state = new_terminal();
-        state.selected = 3;
+        typed(&mut state, "theirs");
 
         // when
         let effect = act(&mut state, Builtin::HubOpen, &sources);
