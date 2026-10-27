@@ -2998,6 +2998,8 @@ dependencies = [
  "base64 0.23.1",
  "codeview",
  "dirs",
+ "dunce",
+ "embed-resource",
  "futures",
  "getrandom 0.4.3",
  "git2",
@@ -3025,6 +3027,7 @@ dependencies = [
  "serde_path_to_error",
  "sha2",
  "signal-hook",
+ "sysinfo",
  "tempfile",
  "tokio",
  "toml 1.1.8+spec-1.1.0",
@@ -3033,6 +3036,7 @@ dependencies = [
  "tracing-subscriber",
  "trash",
  "unicode-segmentation",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3090,9 +3094,11 @@ version = "3.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eebcc3aff044e5944a8fbaf69eb277d11986064cba30c468730e8b9909fb551c"
 dependencies = [
+ "byteorder",
  "log",
  "security-framework 2.11.1",
  "security-framework 3.7.0",
+ "windows-sys 0.60.2",
  "zeroize",
 ]
 
@@ -4554,8 +4560,12 @@ dependencies = [
 name = "ptyhost"
 version = "0.1.0"
 dependencies = [
+ "alacritty_terminal",
  "libc",
+ "polling",
  "tempfile",
+ "uds_windows",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

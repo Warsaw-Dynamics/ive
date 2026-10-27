@@ -1,7 +1,7 @@
 //! Which file answers a request path: rewrites, the file (`index.html` for a folder), the fallback; never a file
 //! outside the served folder.
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use regex::Regex;
 
@@ -24,7 +24,7 @@ pub enum Resolution {
 impl Site {
     /// Fails when the root is not a readable folder or a rewrite is not a regex.
     pub fn new(setup: &ServeSetup) -> Result<Self, String> {
-        let root = setup.root.canonicalize().map_err(|error| format!("cannot serve {}: {error}", setup.root.display()))?;
+        let root = dunce::canonicalize(&setup.root).map_err(|error| format!("cannot serve {}: {error}", setup.root.display()))?;
         if !root.is_dir() {
             return Err(format!("cannot serve {}: not a folder", root.display()));
         }
@@ -60,8 +60,14 @@ impl Site {
 
     /// The file `path` names under the root, or its `index.html` for a folder; never one outside the root.
     pub fn file(&self, path: &str) -> Option<PathBuf> {
-        let found = self.root.join(path.trim_start_matches('/')).canonicalize().ok()?;
-        let found = if found.is_dir() { found.join("index.html").canonicalize().ok()? } else { found };
+        let relative = Path::new(path.trim_start_matches('/'));
+        // on Windows `\\host\share` or `C:\x` would replace the root, and opening it, before the check below, would
+        // already sign in to that host
+        if relative.components().any(|part| matches!(part, Component::Prefix(_) | Component::RootDir)) {
+            return None;
+        }
+        let found = dunce::canonicalize(self.root.join(relative)).ok()?;
+        let found = if found.is_dir() { dunce::canonicalize(found.join("index.html")).ok()? } else { found };
         (found.starts_with(&self.root) && found.is_file()).then_some(found)
     }
 }
@@ -180,6 +186,22 @@ mod tests {
         assert_eq!(pages, [None, None, None]);
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn should_refuse_a_path_that_names_a_drive_or_a_host() {
+        // given
+        let (_dir, site) = site(None, &[]);
+        let inside_root_by_its_full_path = site.root.join("index.html").display().to_string();
+
+        // when
+        let page = served(&site, &format!("/{inside_root_by_its_full_path}"));
+
+        // then
+        assert_eq!(page, None);
+    }
+
+    // creating a symlink needs privileges on Windows
+    #[cfg(unix)]
     #[test]
     fn should_refuse_symlink_out_of_root() {
         // given

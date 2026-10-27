@@ -334,7 +334,7 @@ mod tests {
         let error = walk(&[source(dir.path(), "top", SourceKind::Folder)], Verb::Move, &[dir.path().join("top/worktrees/x")]).unwrap_err();
 
         // then
-        assert!(error.starts_with("Move refused: ") && error.contains("worktrees/x"), "{error}");
+        assert!(error.starts_with("Move refused: ") && error.contains(&Path::new("worktrees").join("x").display().to_string()), "{error}");
     }
 
     #[test]

@@ -30,8 +30,9 @@ impl Profile {
     }
 
     /// `<OS config>/ive/<name>`, e.g. `~/.config/ive/default` on Linux; `None` when the OS reports no config folder.
+    /// On Windows the local AppData, not the roaming one: the state holds this machine's paths, and `mcp.toml` a token.
     pub fn config_dir(&self) -> Option<PathBuf> {
-        dirs::config_dir().map(|dir| dir.join("ive").join(&self.name))
+        dirs::config_local_dir().map(|dir| dir.join("ive").join(&self.name))
     }
 
     pub fn state_path(&self) -> Option<PathBuf> {

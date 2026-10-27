@@ -53,6 +53,7 @@ pub struct Found {
 /// Matches `query` over the entries `filter` lets through, in chunks of [`CHUNK`]; after each chunk `partial` gets
 /// the best rows so far. `None` once a newer search took `ticket`'s place.
 pub fn search(corpus: &Corpus, query: &Query, filter: &Filter, ticket: &Ticket, mut partial: impl FnMut(&Found)) -> Option<Found> {
+    let _span = tracing::debug_span!("hub_search", entries = corpus.entries.len()).entered();
     let started = Instant::now();
     let mut best = BinaryHeap::with_capacity(RENDERED + 1);
     let (mut matched, mut total) = (0, 0);

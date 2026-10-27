@@ -411,7 +411,6 @@ impl<F: Future + Unpin> Future for PerPoll<F> {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::os::unix::fs::PermissionsExt;
     use std::path::Path;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
@@ -489,6 +488,17 @@ mod tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         panic!("no log line with {needle:?}: {:?}", log.tail(100));
+    }
+
+    /// IVE writes `ive.rn` read-only; a user who edits it makes it writable first.
+    fn make_writable(path: &Path) {
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        #[cfg(unix)]
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o644);
+        #[cfg(windows)]
+        #[allow(clippy::permissions_set_readonly_false)]
+        permissions.set_readonly(false);
+        fs::set_permissions(path, permissions).unwrap();
     }
 
     fn log_in(dir: &Path) -> ScriptLog {
@@ -1045,7 +1055,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (mut scripts, _, _) = start_with(dir.path(), "pub fn init(config) {}", answer_terminal);
         let ive_rn = dir.path().join("ive.rn");
-        fs::set_permissions(&ive_rn, fs::Permissions::from_mode(0o644)).unwrap();
+        make_writable(&ive_rn);
         fs::write(&ive_rn, "// the user's edit").unwrap();
 
         // when

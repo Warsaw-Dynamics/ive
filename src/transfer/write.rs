@@ -173,9 +173,14 @@ fn same_file_system(operation: &Operation) -> bool {
     target.is_some() && operation.sources.iter().all(|source| device(&source.path) == target)
 }
 
-#[cfg(not(unix))]
-fn same_file_system(_operation: &Operation) -> bool {
-    false
+/// ponytail: same drive or share by path prefix; a volume mounted in a folder fails the rename, reported as failed
+#[cfg(windows)]
+fn same_file_system(operation: &Operation) -> bool {
+    fn prefix(path: &Path) -> Option<std::path::Component<'_>> {
+        path.components().next()
+    }
+    let target = prefix(&operation.target.folder);
+    operation.sources.iter().all(|source| prefix(&source.path) == target)
 }
 
 impl Report {

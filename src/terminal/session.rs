@@ -15,20 +15,17 @@ use alacritty_terminal::term::{Config, Term, TermMode};
 use alacritty_terminal::tty;
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 
-#[cfg(unix)]
 use super::foreground::ForegroundProbe;
 use super::directory::DirectoryReport;
 use super::launch::Launch;
 use super::attention::CallReport;
 use super::progress::Progress;
 use super::theme_reports::theme_report;
-#[cfg(unix)]
 use super::hosted::{Connection, HostedTerminals};
-#[cfg(all(test, unix))]
+#[cfg(test)]
 use ptyhost::client::Client;
-#[cfg(unix)]
 use ptyhost::registry::SessionInfo;
-#[cfg(all(test, unix))]
+#[cfg(test)]
 use ptyhost::registry::Registry;
 
 use crate::theme::Appearance;
@@ -102,20 +99,22 @@ impl Dimensions for GridSize {
 }
 
 /// A shell and the terminal state it draws into. The shell runs in a PTY of IVE's own, which dropping the session
-/// hangs up, or in a host (Unix), which dropping the session leaves running; [`Session::hang_up`] ends either.
+/// hangs up, or in a host, which dropping the session leaves running; [`Session::hang_up`] ends either.
 pub struct Session {
     term: Arc<FairMutex<Term<Listener>>>,
     transport: Transport,
     size: Cell<GridSize>,
     focus_reports: Cell<FocusReports>,
     program_pid: Option<u32>,
-    #[cfg(unix)]
     foreground: Option<ForegroundProbe>,
+    /// the job holding the program and what it started: IVE's own, or the host's
+    #[cfg(windows)]
+    job: Option<Arc<crate::job::Job>>,
 }
 
 enum Transport {
-    InProcess(EventLoopSender),
-    #[cfg(unix)]
+    /// Windows: the PTY reports nothing once it is shut down, so a hang-up reports the exit through the listener
+    InProcess(EventLoopSender, #[cfg(windows)] Listener),
     Hosted(Connection),
 }
 
@@ -125,7 +124,7 @@ struct FocusReports(Option<bool>);
 
 impl FocusReports {
     fn next(&mut self, mode: TermMode, visible: bool) -> Option<&'static [u8]> {
-        if !mode.contains(TermMode::FOCUS_IN_OUT) {
+        if !wants_focus_reports(mode) {
             self.0 = None;
             return None;
         }
@@ -137,28 +136,45 @@ impl FocusReports {
     }
 }
 
+/// ConPTY keeps a program's DECSET 1004 to itself and turns every report into a console focus event, which programs
+/// that did not ask for one ignore: on Windows every terminal gets them.
+fn wants_focus_reports(mode: TermMode) -> bool {
+    cfg!(windows) || mode.contains(TermMode::FOCUS_IN_OUT)
+}
+
 impl Session {
     /// Starts `launch` (the user's login shell when it names no program) in `working_directory`; its events arrive
     /// on the returned receiver.
     pub fn spawn(working_directory: &Path, launch: &Launch) -> io::Result<(Self, UnboundedReceiver<Event>)> {
         let (term, listener, events) = new_term();
-        let shell = launch.program.split_first().map(|(program, args)| tty::Shell::new(program.clone(), args.to_vec()));
+        let shell = launch.program.split_first().map(|(program, args)| tty::Shell::new(quoted(program), args.to_vec()));
         let options = tty::Options {
             shell,
             working_directory: Some(working_directory.to_path_buf()),
             env: super::env::variables().into_iter().chain(launch.env.iter().cloned()).collect(),
             ..tty::Options::default()
         };
-        let pty = tty::new(&options, INITIAL_SIZE.window_size(), 0)?;
+        let pty = open_pty(&options)?;
         // taken before the event loop owns the PTY
         #[cfg(unix)]
         let foreground = ForegroundProbe::of(&pty);
         #[cfg(unix)]
         let program_pid = Some(pty.child().id());
-        #[cfg(not(unix))]
-        let program_pid = None;
+        #[cfg(windows)]
+        let program_pid = pty.child_watcher().pid().map(std::num::NonZeroU32::get);
+        #[cfg(windows)]
+        let foreground = program_pid.and_then(ForegroundProbe::of_shell);
+        #[cfg(windows)]
+        let reporter = listener.clone();
+        // what the shell starts before this escapes the job; without a job, Kill is a hang-up
+        #[cfg(windows)]
+        let job = crate::job::Job::holding(pty.child_watcher().raw_handle()).ok().map(Arc::new);
         let event_loop = EventLoop::new(term.clone(), listener, pty, false, false)?;
-        let transport = Transport::InProcess(event_loop.channel());
+        let transport = Transport::InProcess(
+            event_loop.channel(),
+            #[cfg(windows)]
+            reporter,
+        );
         event_loop.spawn();
         let session = Self {
             term,
@@ -166,14 +182,14 @@ impl Session {
             size: Cell::new(INITIAL_SIZE),
             focus_reports: Cell::new(FocusReports::default()),
             program_pid,
-            #[cfg(unix)]
             foreground,
+            #[cfg(windows)]
+            job,
         };
         Ok((session, events))
     }
 
     /// Starts `launch` in a new host, labelled with `labels`.
-    #[cfg(unix)]
     pub fn spawn_hosted(
         terminals: &HostedTerminals,
         working_directory: &Path,
@@ -185,28 +201,42 @@ impl Session {
     }
 
     /// Attaches to a session already running in a host.
-    #[cfg(unix)]
     pub fn attach(terminals: &HostedTerminals, session: &SessionInfo) -> io::Result<(Self, UnboundedReceiver<Event>)> {
         let (term, listener, events) = new_term();
         let connection = terminals.connect(&session.id, term.clone(), listener)?;
-        Ok((Self::hosted(term, connection), events))
+        #[cfg_attr(unix, allow(unused_mut))]
+        let mut hosted = Self::hosted(term, connection);
+        // Windows: Stop and Kill reach what the program started through the host's job
+        #[cfg(windows)]
+        {
+            hosted.job = crate::job::Job::open(&crate::job::Job::host_job_name(session.host_pid)).ok().map(Arc::new);
+        }
+        Ok((hosted, events))
     }
 
     /// A hosted session over an already attached client, for tests that play the host.
-    #[cfg(all(test, unix))]
+    #[cfg(test)]
     pub fn over_client(id: String, client: Client, registry: Option<Registry>) -> (Self, UnboundedReceiver<Event>) {
         let (term, listener, events) = new_term();
         let connection = Connection::start(id, client, registry, term.clone(), listener);
         (Self::hosted(term, connection), events)
     }
 
-    #[cfg(unix)]
     fn hosted(term: Arc<FairMutex<Term<Listener>>>, connection: Connection) -> Self {
         let program_pid = Some(connection.program_pid());
         let foreground = Some(ForegroundProbe::of_program(connection.program_pid()));
         // the host replays only after a first resize; sent now, so a tab never shown still gets its output and title
         connection.resize(INITIAL_SIZE);
-        Self { term, transport: Transport::Hosted(connection), size: Cell::new(INITIAL_SIZE), focus_reports: Cell::new(FocusReports::default()), program_pid, foreground }
+        Self {
+            term,
+            transport: Transport::Hosted(connection),
+            size: Cell::new(INITIAL_SIZE),
+            focus_reports: Cell::new(FocusReports::default()),
+            program_pid,
+            foreground,
+            #[cfg(windows)]
+            job: None,
+        }
     }
 
     /// The program the terminal started, its process group's leader: the shell, or a run's command.
@@ -214,16 +244,28 @@ impl Session {
         self.program_pid
     }
 
+    /// The job holding the program and what it started.
+    #[cfg(windows)]
+    pub fn job(&self) -> Option<Arc<crate::job::Job>> {
+        self.job.clone()
+    }
+
     /// Ends the shell, as closing its terminal does.
     pub fn hang_up(&self) {
         self.send(Msg::Shutdown);
+        // alacritty's loop ends at the shutdown, before the closed pseudoconsole has ended the program, so the exit
+        // a Unix PTY would report comes from here; a host reports its program's exit itself
+        #[cfg(windows)]
+        if let Transport::InProcess(_, listener) = &self.transport {
+            listener.send_event(Event::ChildExit(std::os::windows::process::ExitStatusExt::from_raw(1)));
+            listener.send_event(Event::Exit);
+        }
     }
 
     /// The host session's id, for hosted sessions.
     pub fn hosted_id(&self) -> Option<&str> {
         match &self.transport {
-            Transport::InProcess(_) => None,
-            #[cfg(unix)]
+            Transport::InProcess(..) => None,
             Transport::Hosted(connection) => Some(connection.id()),
         }
     }
@@ -231,8 +273,7 @@ impl Session {
     /// Why a hosted session's connection broke for good, once it has; its program may still run.
     pub fn lost_reason(&self) -> Option<String> {
         match &self.transport {
-            Transport::InProcess(_) => None,
-            #[cfg(unix)]
+            Transport::InProcess(..) => None,
             Transport::Hosted(connection) => connection.lost_reason(),
         }
     }
@@ -240,8 +281,7 @@ impl Session {
     /// What the program last reported with `OSC 9;4`; only hosted sessions read it.
     pub fn progress(&self) -> Progress {
         match &self.transport {
-            Transport::InProcess(_) => Progress::None,
-            #[cfg(unix)]
+            Transport::InProcess(..) => Progress::None,
             Transport::Hosted(connection) => connection.progress(),
         }
     }
@@ -249,8 +289,7 @@ impl Session {
     /// The program's last call for the user's attention in live output; only hosted sessions read it.
     pub fn call(&self) -> Option<CallReport> {
         match &self.transport {
-            Transport::InProcess(_) => None,
-            #[cfg(unix)]
+            Transport::InProcess(..) => None,
             Transport::Hosted(connection) => connection.call(),
         }
     }
@@ -258,8 +297,7 @@ impl Session {
     /// What the program last reported with `OSC 7`; only hosted sessions read it.
     pub fn directory(&self) -> Option<DirectoryReport> {
         match &self.transport {
-            Transport::InProcess(_) => None,
-            #[cfg(unix)]
+            Transport::InProcess(..) => None,
             Transport::Hosted(connection) => connection.directory(),
         }
     }
@@ -273,8 +311,7 @@ impl Session {
 
     fn wants_theme_reports(&self) -> bool {
         match &self.transport {
-            Transport::InProcess(_) => false,
-            #[cfg(unix)]
+            Transport::InProcess(..) => false,
             Transport::Hosted(connection) => connection.wants_theme_reports(),
         }
     }
@@ -298,8 +335,7 @@ impl Session {
         }
     }
 
-    /// Which program has the terminal; `None` where IVE cannot tell (not Unix, or no spare descriptor).
-    #[cfg(unix)]
+    /// Which program has the terminal; `None` where IVE cannot tell (no spare descriptor).
     pub fn foreground(&self) -> Option<&ForegroundProbe> {
         self.foreground.as_ref()
     }
@@ -364,8 +400,7 @@ impl Session {
     fn send(&self, message: Msg) {
         match &self.transport {
             // fails only after the shell exited and the PTY thread ended; the tab is closing then anyway
-            Transport::InProcess(pty) => drop(pty.send(message)),
-            #[cfg(unix)]
+            Transport::InProcess(pty, ..) => drop(pty.send(message)),
             Transport::Hosted(connection) => match message {
                 Msg::Input(bytes) => connection.input(&bytes),
                 Msg::Resize(_) => connection.resize(self.size.get()),
@@ -378,10 +413,37 @@ impl Session {
 impl Drop for Session {
     fn drop(&mut self) {
         // the PTY thread then drops the PTY, which sends SIGHUP to the shell; a hosted shell keeps running
-        if let Transport::InProcess(_) = self.transport {
+        if let Transport::InProcess(..) = self.transport {
             self.send(Msg::Shutdown);
         }
     }
+}
+
+#[cfg(unix)]
+fn quoted(program: &str) -> String {
+    program.to_owned()
+}
+
+/// On Windows alacritty joins the program and its arguments into one command line as they are, so a program path
+/// with a space in it needs quotes.
+#[cfg(windows)]
+fn quoted(program: &str) -> String {
+    if program.contains(' ') {
+        return format!("\"{program}\"");
+    }
+    program.to_owned()
+}
+
+#[cfg(unix)]
+fn open_pty(options: &tty::Options) -> io::Result<tty::Pty> {
+    tty::new(options, INITIAL_SIZE.window_size(), 0)
+}
+
+/// alacritty panics, rather than failing, when Windows refuses a pseudoconsole.
+#[cfg(windows)]
+fn open_pty(options: &tty::Options) -> io::Result<tty::Pty> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| tty::new(options, INITIAL_SIZE.window_size(), 0)))
+        .unwrap_or_else(|_| Err(io::Error::other("Windows refused to create a pseudoconsole")))
 }
 
 /// A terminal at the initial size, the listener feeding it and the events it raises.
@@ -393,16 +455,29 @@ fn new_term() -> (Arc<FairMutex<Term<Listener>>>, Listener, UnboundedReceiver<Ev
     (term, listener, events)
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
-    use std::os::unix::net::UnixStream;
-
     use ptyhost::client::Client;
+    use ptyhost::net::UnixStream;
     use ptyhost::protocol::{Frame, PROTOCOL};
 
     use super::*;
 
     #[test]
+    #[cfg(windows)]
+    fn should_report_visibility_changes_without_focus_mode_on_windows() {
+        // given
+        let mut reports = FocusReports::default();
+
+        // when
+        let sent = [reports.next(TermMode::empty(), false), reports.next(TermMode::empty(), false), reports.next(TermMode::empty(), true)];
+
+        // then
+        assert_eq!(sent, [Some(b"\x1b[O".as_slice()), None, Some(b"\x1b[I".as_slice())]);
+    }
+
+    #[test]
+    #[cfg(unix)]
     fn should_report_visibility_changes_when_a_program_requests_focus_events() {
         // given
         let mut reports = FocusReports::default();

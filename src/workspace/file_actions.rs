@@ -2,7 +2,6 @@
 //! saved first (one whose edits cannot be saved stops it), the operation off the UI thread, then the tabs of what
 //! went closed or moved to the new path.
 
-use std::os::unix::ffi::OsStrExt as _;
 use std::path::{Path, PathBuf};
 
 use gpui::{AppContext as _, Context, Focusable as _, PromptLevel, Window};
@@ -66,7 +65,7 @@ pub fn renamed_key(key: &TreeKey, to: &Path) -> Option<TreeKey> {
         TreeKey::Entry(_) => Some(TreeKey::Entry(to.to_path_buf())),
         TreeKey::Change(checkout, source, _) => {
             let inside = to.strip_prefix(checkout).ok()?;
-            Some(TreeKey::Change(checkout.clone(), source.clone(), GitPath::from_bytes(inside.as_os_str().as_bytes())))
+            Some(TreeKey::Change(checkout.clone(), source.clone(), GitPath::of_path(inside)))
         }
         _ => None,
     }
@@ -102,7 +101,7 @@ pub fn moved_path(path: &Path, (from, to): (&Path, &Path)) -> PathBuf {
 pub fn saved_file(saved: &SavedTab) -> Option<PathBuf> {
     match saved {
         SavedTab::File { path, .. } => Some(path.clone()),
-        SavedTab::Diff { checkout, request, .. } => Some(checkout.join(std::ffi::OsStr::from_bytes(&request.path))),
+        SavedTab::Diff { checkout, request, .. } => Some(checkout.join(GitPath::from_bytes(&request.path).to_path())),
         _ => None,
     }
 }
@@ -128,7 +127,7 @@ impl Workspace {
     pub(super) fn tab_files(&self) -> Vec<(TabId, PathBuf)> {
         let file = |tab: &Tab| match tab {
             Tab::Document(document) => Some(document.path().to_path_buf()),
-            Tab::Diff(diff) => Some(diff.checkout.path.join(std::ffi::OsStr::from_bytes(diff.request.file.path.as_bytes()))),
+            Tab::Diff(diff) => Some(diff.checkout.path.join(diff.request.file.path.to_path())),
             Tab::Unloaded(saved) => saved_file(saved),
             _ => None,
         };
@@ -547,6 +546,7 @@ mod tests {
 
         // then
         // as text: `PathBuf` equality ignores a trailing `/`, which a file's path must not have
-        assert_eq!(moved.map(|path| path.display().to_string()), ["/r/lib/a.rs", "/r/lib"]);
+        let file = Path::new("/r/lib").join("a.rs");
+        assert_eq!(moved.map(|path| path.display().to_string()), [file.display().to_string(), "/r/lib".to_owned()]);
     }
 }

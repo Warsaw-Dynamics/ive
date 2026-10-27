@@ -5,7 +5,8 @@ Read [README.md](README.md) first: how to run IVE, use it, and drive it over MCP
 - Build and test from this folder: `cargo test`, `cargo clippy --all-targets`, `cargo build --release`.
   Dependencies are optimised even in debug builds (`Cargo.toml`), so `cargo run` is representative.
 - Check a change in the running app through IVE's MCP server, not xdotool:
-  `./run.sh -- --profile agent-<something> --background --stop-processes-on-quit .`, then the tools in the README;
+  `./run.sh -- --profile agent-<something> --background --stop-processes-on-quit .` (Windows: `.\run.ps1 --profile
+  agent-<something> --background --stop-processes-on-quit .`), then the tools in the README;
   the URL and token are in the startup output and in `~/.config/ive/agent-<something>/mcp.toml` (the `ive` MCP tools
   of your own session reach the IVE you run in, through `IVE_MCP_URL` and `IVE_MCP_KEY`). `--background` keeps the
   window from taking focus, so the user can keep working meanwhile.

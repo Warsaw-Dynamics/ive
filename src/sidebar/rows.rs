@@ -866,7 +866,7 @@ mod tests {
     fn should_tell_apart_a_worktree_file_shown_in_both_trees() {
         // given
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         fs::create_dir_all(root.join("wt")).unwrap();
         fs::write(root.join("wt/a.txt"), "").unwrap();
         let mut project = git_project("r", &root, 0);
@@ -882,7 +882,7 @@ mod tests {
         let names: Vec<String> = build(&[project], &Processes::<()>::default(), &FakeRuns::default(), &no_look()).iter().flat_map(TreeRow::target_names).collect();
 
         // then
-        let file = root.join("wt/a.txt").display().to_string();
+        let file = root.join("wt").join("a.txt").display().to_string();
         assert!(names.contains(&format!("entry:{file}@dev")), "{names:?}");
         assert!(names.contains(&format!("entry:{file}")), "{names:?}");
     }
@@ -915,7 +915,7 @@ mod tests {
     /// to `misc/`.
     fn run_project(run_file: &str) -> (tempfile::TempDir, PathBuf, OpenProject) {
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         fs::create_dir_all(root.join("misc")).unwrap();
         fs::write(root.join("misc/.run.toml"), run_file).unwrap();
         fs::write(root.join("misc/pom.xml"), "").unwrap();

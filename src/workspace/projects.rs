@@ -56,10 +56,10 @@ impl Opened {
     #[tracing::instrument(level = "debug", name = "open_project", skip_all, fields(folder = %folder.display()))]
     fn read(folder: PathBuf, after: AfterOpen) -> Self {
         let scan = project::scan_opened(&folder);
-        let folder = folder.canonicalize().unwrap_or(folder);
+        let folder = dunce::canonicalize(&folder).unwrap_or(folder);
         // tree rows and tabs hold canonical paths
         let after = match after {
-            AfterOpen::OpenFile(file) => AfterOpen::OpenFile(file.canonicalize().unwrap_or(file)),
+            AfterOpen::OpenFile(file) => AfterOpen::OpenFile(dunce::canonicalize(&file).unwrap_or(file)),
             overview => overview,
         };
         Self { folder, scan, after, ids_on_disk: state::ids_with_data() }

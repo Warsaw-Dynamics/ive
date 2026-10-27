@@ -68,9 +68,11 @@ pub fn free_port(hint: u16) -> Result<u16, String> {
 }
 
 /// The port a listener could bind on `127.0.0.1:port`. Address reuse matches the server's own listener, so a
-/// port left in TIME_WAIT by a stopped run counts as free.
+/// port left in TIME_WAIT by a stopped run counts as free. On Windows the listener sets none, and the socket option
+/// would let the probe bind a port another program listens on.
 fn bindable(port: u16) -> std::io::Result<u16> {
     let socket = tokio::net::TcpSocket::new_v4()?;
+    #[cfg(unix)]
     socket.set_reuseaddr(true)?;
     socket.bind(std::net::SocketAddr::from(([127, 0, 0, 1], port)))?;
     Ok(socket.local_addr()?.port())
@@ -97,9 +99,17 @@ fn own_program() -> Result<String, String> {
     Ok("/proc/self/exe".to_owned())
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
 fn own_program() -> Result<String, String> {
     std::env::current_exe().map(|exe| exe.display().to_string()).map_err(|error| format!("cannot find IVE's own program: {error}"))
+}
+
+/// `ive-cli.exe` next to `ive.exe`: the GUI program has no console to print the server's output into.
+#[cfg(windows)]
+fn own_program() -> Result<String, String> {
+    std::env::current_exe()
+        .map(|exe| exe.with_file_name("ive-cli.exe").display().to_string())
+        .map_err(|error| format!("cannot find IVE's own program: {error}"))
 }
 
 /// `ive --serve`: serves until stopped; the exit code says why it could not.
@@ -325,11 +335,9 @@ fn content_type(file: &Path) -> &'static str {
 
 /// The local time as `HH:MM:SS`, for log lines.
 fn clock() -> String {
-    let now = libc::time_t::try_from(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_secs())).unwrap_or(0);
-    // SAFETY: localtime_r writes only into `tm`, which outlives the call
-    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
-    unsafe { libc::localtime_r(&now, &mut tm) };
-    format!("{:02}:{:02}:{:02}", tm.tm_hour, tm.tm_min, tm.tm_sec)
+    let now = crate::age::Clock::system().when();
+    let seconds = now.seconds.saturating_add(i64::from(now.offset_minutes) * 60).rem_euclid(24 * 60 * 60);
+    format!("{:02}:{:02}:{:02}", seconds / 3600, seconds % 3600 / 60, seconds % 60)
 }
 
 #[cfg(test)]

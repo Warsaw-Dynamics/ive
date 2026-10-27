@@ -1455,7 +1455,7 @@ mod tests {
     fn should_tell_config_dir_to_scripts() {
         // given
         let init = r#"pub fn init(config) {
-            let dir = ive::config_dir().unwrap_or("none");
+            let dir = ive::config_dir().unwrap_or("none").replace("\\", "/");
             if !dir.ends_with("/ive/default") { config.keys = [#{ key: "Banana", action: act::Nop }]; }
         }"#;
 

@@ -170,7 +170,7 @@ impl Settings {
             .map_err(|error| SettingsError::Invalid { path: path.to_path_buf(), reason: error.to_string() })?;
         let staging = path.with_extension("toml.tmp");
         fs::write(&staging, text).map_err(|source| SettingsError::io(&staging, source))?;
-        fs::rename(&staging, path).map_err(|source| SettingsError::io(path, source))
+        crate::retry::replace_file(&staging, path).map_err(|source| SettingsError::io(path, source))
     }
 }
 

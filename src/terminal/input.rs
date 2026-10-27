@@ -26,6 +26,10 @@ fn encode(keystroke: &Keystroke, mode: TermMode) -> Option<Vec<u8>> {
         return Some(sequence);
     }
     if modifiers.control {
+        // Windows reports AltGr as Ctrl+Alt: a character typed with it (ą, €) goes as it is
+        if modifiers.alt && let Some(text) = keystroke.key_char.as_deref() {
+            return Some(text.as_bytes().to_vec());
+        }
         return control_byte(key).map(|byte| alt_prefixed(modifiers.alt, &[byte]));
     }
     // with Alt held some platforms report no typed character; the bare key is the closest one
@@ -196,6 +200,20 @@ mod tests {
 
         // then
         assert_eq!(sequences, ["ą", "\x1bb"]);
+    }
+
+    #[test]
+    fn should_send_the_character_altgr_typed_instead_of_a_control_byte() {
+        // given
+        let altgr = Modifiers { control: true, alt: true, ..Modifiers::default() };
+        let polish = Keystroke { modifiers: altgr, key: "a".to_owned(), key_char: Some("ą".to_owned()) };
+        let plain_chord = Keystroke { modifiers: altgr, key: "a".to_owned(), key_char: None };
+
+        // when
+        let sequences = [sent(&polish, TermMode::empty()), sent(&plain_chord, TermMode::empty())];
+
+        // then
+        assert_eq!(sequences, ["ą", "\x1b\x01"]);
     }
 
     #[test]

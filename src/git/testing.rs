@@ -22,10 +22,12 @@ pub struct TestRepo {
 impl TestRepo {
     pub fn init() -> Self {
         let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().canonicalize().unwrap().join("repo");
+        let root = dunce::canonicalize(dir.path()).unwrap().join("repo");
         let mut options = RepositoryInitOptions::new();
         options.initial_head("main");
         let repo = Repository::init_opts(&root, &options).unwrap();
+        // a user's global `core.autocrlf=true` (common on Windows) would make HEAD's checked-out text CRLF
+        repo.config().unwrap().set_bool("core.autocrlf", false).unwrap();
         Self { _dir: dir, root, repo, clock: Cell::new(FIRST_COMMIT_TIME) }
     }
 
@@ -107,6 +109,8 @@ impl TestRepo {
 
     /// Merges local branch `name` into the work tree and index without committing, as `git merge --no-commit`
     /// does; clashing changes leave conflicts.
+    // its one test needs a symlink, so it runs on Unix only
+    #[cfg_attr(windows, allow(dead_code))]
     pub fn merge_into_work_tree(&self, name: &str) {
         let tip = self.repo.find_branch(name, BranchType::Local).unwrap().into_reference();
         let annotated = self.repo.reference_to_annotated_commit(&tip).unwrap();

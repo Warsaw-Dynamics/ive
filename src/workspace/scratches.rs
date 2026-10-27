@@ -98,8 +98,8 @@ impl Workspace {
     /// Opens a terminal in `checkout` (the home folder for `None`) and types `<shell> '<path>'` into it, the shell
     /// that `path`'s extension names.
     pub fn run_shell_file(&mut self, path: &Path, checkout: Option<CheckoutRef>, window: &mut Window, cx: &mut Context<Self>) -> Result<TabId, String> {
-        let shell = run::shell_for(&path.to_string_lossy()).ok_or_else(|| format!("{} is not a shell file (.sh, .bash, .zsh)", path.display()))?;
-        let typed = run::command(shell, path)?;
+        let shell = run::shell_for(&path.to_string_lossy()).ok_or_else(|| format!("{} is not a shell file IVE can run", path.display()))?;
+        let typed = run::command(&shell, path)?;
         let terminal = self.open_terminal_in(checkout, window, cx);
         self.send_text_to_process(terminal, &typed)?;
         Ok(terminal)

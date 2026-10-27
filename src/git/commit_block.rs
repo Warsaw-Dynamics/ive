@@ -265,8 +265,8 @@ impl Git {
         let folder = path.parent().unwrap_or(path);
         let top = self.text(folder, Call::of(&["rev-parse", "--show-toplevel"]), "find the work tree").map_err(not_in_repository)?;
         let not_inside = |reason: String| Refusal::NotInRepository(format!("{}: {reason}", path.display()));
-        let top = fs::canonicalize(top.trim_end_matches('\n')).map_err(|error| not_inside(error.to_string()))?;
-        let file = fs::canonicalize(folder).map_err(|error| not_inside(error.to_string()))?.join(path.file_name().unwrap_or_default());
+        let top = dunce::canonicalize(top.trim_end_matches('\n')).map_err(|error| not_inside(error.to_string()))?;
+        let file = dunce::canonicalize(folder).map_err(|error| not_inside(error.to_string()))?.join(path.file_name().unwrap_or_default());
         let relative = file.strip_prefix(&top).map_err(|_| not_inside(format!("outside {}", top.display())))?;
         let name = relative.components().map(|part| part.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
         Ok(Place { top, name })

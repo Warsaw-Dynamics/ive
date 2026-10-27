@@ -72,6 +72,11 @@ mod tests {
         list.iter().map(PathBuf::from).collect()
     }
 
+    /// `text` with `/` as this OS joins relative paths.
+    fn native(text: &str) -> String {
+        text.replace('/', std::path::MAIN_SEPARATOR_STR)
+    }
+
     fn typed(list: &[&str], checkout: Option<&str>, terminal_checkout: Option<&str>, directory: Option<&str>) -> String {
         let base = base_for(checkout.map(Path::new), terminal_checkout.map(Path::new), directory.map(Path::new));
         typed_paths(&paths(list), base)
@@ -83,7 +88,7 @@ mod tests {
         let text = typed(&["/w/src/a.rs", "/w/README.md"], Some("/w"), Some("/w"), Some("/w/src"));
 
         // then
-        assert_eq!(text, "a.rs ../README.md ");
+        assert_eq!(text, native("a.rs ../README.md "));
     }
 
     #[test]
@@ -92,7 +97,7 @@ mod tests {
         let text = typed(&["/w/src/a.rs", "/w/README.md"], Some("/w"), Some("/w"), None);
 
         // then
-        assert_eq!(text, "src/a.rs README.md ");
+        assert_eq!(text, native("src/a.rs README.md "));
     }
 
     #[test]
@@ -128,7 +133,10 @@ mod tests {
         let text = typed(&["/w/my notes/it's.md"], Some("/w"), Some("/w"), Some("/w"));
 
         // then
+        #[cfg(unix)]
         assert_eq!(text, r"'my notes/it'\''s.md' ");
+        #[cfg(windows)]
+        assert_eq!(text, r"'my notes\it''s.md' ");
     }
 
     #[test]
@@ -172,7 +180,7 @@ mod tests {
         let text = typed_into(&dropped, &checkouts, (Some(Path::new("/w")), Some(Path::new("/w/src"))));
 
         // then
-        assert_eq!(text, "a.rs ../docs ");
+        assert_eq!(text, native("a.rs ../docs "));
     }
 
     #[test]

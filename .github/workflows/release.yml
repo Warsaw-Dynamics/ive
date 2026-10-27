@@ -1,4 +1,4 @@
-# A push to the release branch builds IVE for Linux and macOS and publishes both as one GitHub Release,
+# A push to the release branch builds IVE for Linux, macOS and Windows and publishes them as one GitHub Release,
 # ive-<version>-<commit>, with SHA256SUMS. Each build knows its tag (IVE_RELEASE_TAG), which makes it update itself.
 name: release
 
@@ -76,8 +76,41 @@ jobs:
           name: macos
           path: dist/*.zip
 
+  windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - name: Rust toolchain
+        run: |
+          version="$(awk '$1 == "rust" { print $2 }' .tool-versions)"
+          rustup toolchain install "$version" --profile minimal
+          rustup default "$version"
+      - uses: Swatinem/rust-cache@v2
+      - name: Release tag
+        # the build compares it with the latest release's to find updates
+        run: echo "IVE_RELEASE_TAG=ive-$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)-${GITHUB_SHA:0:10}" >> "$GITHUB_ENV"
+      - name: Build
+        run: cargo build --release --locked
+      - name: Package
+        # ive-cli.exe runs terminal hosts and static servers; conpty.dll and OpenConsole.exe (build.rs copies them
+        # from vendor/conpty) are the ConPTY the terminals run in
+        run: |
+          name="ive-windows-x86_64-${GITHUB_SHA:0:10}"
+          mkdir -p "dist/$name/licenses"
+          cp target/release/{ive.exe,ive-cli.exe,conpty.dll,OpenConsole.exe} LICENSE NOTICE THIRD-PARTY-NOTICES.md "dist/$name/"
+          cp licenses/* "dist/$name/licenses/"
+          cp vendor/conpty/LICENSE "dist/$name/licenses/conpty-LICENSE"
+          (cd dist && 7z a -tzip "$name.zip" "$name")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
+
   release:
-    needs: [linux, macos]
+    needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

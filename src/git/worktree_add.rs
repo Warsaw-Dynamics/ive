@@ -39,7 +39,7 @@ pub fn add_worktree(main_dir: &Path, branch: &BranchName) -> Result<PathBuf, Git
     let created = local_branch(&repo, branch).map_err(&fail)?;
     let place = Place { name, dir };
     match add(&repo, &place, branch.local_name()) {
-        Ok(()) => place.dir.canonicalize().map_err(|error| refused(main_dir, format!("cannot read {}: {error}", place.dir.display()))),
+        Ok(()) => dunce::canonicalize(&place.dir).map_err(|error| refused(main_dir, format!("cannot read {}: {error}", place.dir.display()))),
         Err(error) => {
             undo(&repo, &place, created);
             Err(fail(error))
@@ -112,8 +112,8 @@ fn links_to(dir: &Path, entry: &Path) -> bool {
     let Ok(text) = fs::read_to_string(dir.join(".git")) else {
         return false;
     };
-    let linked = text.trim_end().strip_prefix("gitdir: ").map(|path| Path::new(path).canonicalize());
-    matches!((linked, entry.canonicalize()), (Some(Ok(linked)), Ok(entry)) if linked == entry)
+    let linked = text.trim_end().strip_prefix("gitdir: ").map(dunce::canonicalize);
+    matches!((linked, dunce::canonicalize(entry)), (Some(Ok(linked)), Ok(entry)) if linked == entry)
 }
 
 fn remove(leftover: &Path) {
@@ -269,7 +269,7 @@ mod tests {
 
         // then
         let worktree = repo.repo.find_worktree("topic-2").expect("named topic-2");
-        assert_eq!(worktree.path().canonicalize().expect("canonical"), dir);
+        assert_eq!(dunce::canonicalize(worktree.path()).expect("canonical"), dir);
     }
 
     #[cfg(target_os = "linux")]

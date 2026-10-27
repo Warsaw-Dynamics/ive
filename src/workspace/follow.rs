@@ -11,7 +11,6 @@ use crate::project::CheckoutRef;
 
 impl Workspace {
     /// What the foreground poll found: the processes whose directory changed, and where they are now.
-    #[cfg(unix)]
     pub(super) fn apply_directories(&mut self, directories: Vec<(ProcessId, PathBuf)>, cx: &mut Context<Self>) {
         let ids = directories.iter().map(|(id, _)| *id).collect();
         for (id, directory) in directories {

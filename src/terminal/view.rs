@@ -27,15 +27,14 @@ use super::colors::{ColorResolver, unpack};
 use super::exit::{ExitFacts, Lost, Start, Started, run_exit, shell_exit};
 use super::input::{KeyAction, key_action};
 use super::launch::Launch;
-use super::layout::{CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
+use super::blocks::block_parts;
+use super::layout::{Block, CursorMark, Frame, LineAt, Run, Segment, Shown, Underline, Window as GridWindow, bottom_window, columns_shift, layout, layout_window, match_window};
 use super::mouse::{self, Action, Button, Gesture, GestureKind, MouseEvent, ScreenCell};
 use super::attention::CallReport;
 use super::progress::Progress;
 use super::session::{GridSize, Session};
 use super::text::{OutputRow, ScreenText, output_rows, output_text, screen_text};
-#[cfg(unix)]
 use super::hosted::HostedTerminals;
-#[cfg(unix)]
 use ptyhost::registry::SessionInfo;
 use crate::script::keymap::Place;
 use crate::clipboard;
@@ -67,26 +66,17 @@ pub enum Source<'a> {
     /// a PTY of IVE's own; the program ends with IVE
     InProcess(Launch),
     /// a new host, labelled with `labels`; the program outlives IVE
-    #[cfg(unix)]
     Hosted { terminals: &'a HostedTerminals, launch: Launch, labels: Vec<(String, String)> },
     /// a host an earlier IVE started
-    #[cfg(unix)]
     Adopt { terminals: &'a HostedTerminals, session: &'a SessionInfo },
-    #[cfg(not(unix))]
-    #[allow(dead_code)]
-    Never(std::marker::PhantomData<&'a ()>),
 }
 
 /// The command line `source` runs: its program, else the user's shell; a session adopted from an earlier IVE says so.
 fn started_command(source: &Source) -> String {
     let launch = match source {
         Source::InProcess(launch) => launch,
-        #[cfg(unix)]
         Source::Hosted { launch, .. } => launch,
-        #[cfg(unix)]
         Source::Adopt { .. } => return "(started by an earlier IVE)".to_owned(),
-        #[cfg(not(unix))]
-        Source::Never(_) => unreachable!("no hosted terminals outside Unix"),
     };
     match launch.program.is_empty() {
         true => super::launch::login_shell(),
@@ -117,12 +107,8 @@ impl TerminalView {
         let started_with = Started { command: started_command(&source), folder: working_directory.display().to_string() };
         let (start, (session, events)) = match source {
             Source::InProcess(launch) => (Start::New, Session::spawn(working_directory, &launch)?),
-            #[cfg(unix)]
             Source::Hosted { terminals, launch, labels } => (Start::New, Session::spawn_hosted(terminals, working_directory, &launch, labels)?),
-            #[cfg(unix)]
             Source::Adopt { terminals, session } => (Start::Adopted, Session::attach(terminals, session)?),
-            #[cfg(not(unix))]
-            Source::Never(_) => unreachable!("no hosted terminals outside Unix"),
         };
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
@@ -151,6 +137,11 @@ impl TerminalView {
         self.session.program_pid()
     }
 
+    #[cfg(windows)]
+    pub fn job(&self) -> Option<std::sync::Arc<crate::job::Job>> {
+        self.session.job()
+    }
+
     /// Ends the shell, hosted or not, as closing its terminal does.
     pub fn hang_up(&self) {
         self.session.hang_up();
@@ -168,7 +159,7 @@ impl TerminalView {
 
     /// The title the shell set, as IntelliJ shows it on terminal tabs.
     pub fn title(&self) -> String {
-        self.title.clone().unwrap_or_else(|| "Terminal".to_owned())
+        self.title.clone().unwrap_or_else(|| crate::process::DEFAULT_TITLE.to_owned())
     }
 
     pub fn progress(&self) -> Progress {
@@ -186,7 +177,6 @@ impl TerminalView {
     }
 
     /// Which program has the terminal, for Claude Code detection.
-    #[cfg(unix)]
     pub fn foreground(&self) -> Option<super::ForegroundProbe> {
         self.session.foreground().cloned()
     }
@@ -855,6 +845,9 @@ fn paint_frame(frame: &Frame, origin: Point<Pixels>, metrics: CellMetrics, curso
         for background in &line.fills {
             window.paint_quad(fill(metrics.cell_bounds(origin, line_index, background.column, background.width), rgb(background.color)));
         }
+        for block in &line.blocks {
+            paint_block(block, metrics.cell_bounds(origin, line_index, block.column, 1), window);
+        }
         for segment in &line.segments {
             paint_segment(segment, metrics.cell_bounds(origin, line_index, segment.column, segment.cells).origin, metrics, window, cx);
         }
@@ -862,6 +855,14 @@ fn paint_frame(frame: &Frame, origin: Point<Pixels>, metrics: CellMetrics, curso
     if let Some(cursor) = frame.cursor {
         let cell = metrics.cell_bounds(origin, cursor.line, cursor.column, cursor.cells);
         paint_cursor(cursor, cell, cursor_color, metrics.sizes.cursor_thickness.px(), window);
+    }
+}
+
+fn paint_block(block: &Block, cell: Bounds<Pixels>, window: &mut Window) {
+    for [left, top, right, bottom] in block_parts(block.character).unwrap_or_default() {
+        let top_left = point(cell.origin.x + cell.size.width * *left, cell.origin.y + cell.size.height * *top);
+        let size = size(cell.size.width * (right - left), cell.size.height * (bottom - top));
+        window.paint_quad(fill(Bounds::new(top_left, size), rgb(block.color)));
     }
 }
 

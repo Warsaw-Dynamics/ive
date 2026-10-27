@@ -1,4 +1,5 @@
 //! Real hosts started through the `ptyhost` binary, each test in its own registry directory.
+#![cfg(unix)]
 
 use std::path::Path;
 use std::time::{Duration, Instant};

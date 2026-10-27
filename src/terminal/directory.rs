@@ -137,9 +137,12 @@ fn path_from_bytes(bytes: Vec<u8>) -> Option<PathBuf> {
     Some(PathBuf::from(std::ffi::OsString::from_vec(bytes))).filter(|path| path.is_absolute())
 }
 
+/// Windows: the URL's path holds a `/` before the drive, as in `file:///C:/Users`.
 #[cfg(not(unix))]
 fn path_from_bytes(bytes: Vec<u8>) -> Option<PathBuf> {
-    String::from_utf8(bytes).ok().map(PathBuf::from).filter(|path| path.is_absolute())
+    let path = String::from_utf8(bytes).ok()?;
+    let path = path.strip_prefix('/').unwrap_or(&path).replace('/', "\\");
+    Some(PathBuf::from(path)).filter(|path| path.is_absolute())
 }
 
 /// This machine's name, as programs put it in their reports.
@@ -156,7 +159,7 @@ pub fn host_name() -> Option<String> {
 
 #[cfg(not(unix))]
 pub fn host_name() -> Option<String> {
-    None
+    std::env::var("COMPUTERNAME").ok()
 }
 
 #[cfg(test)]
@@ -254,6 +257,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn should_read_report_with_bel_and_st() {
         // given
         let mut scanner = scanner();
@@ -266,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn should_read_report_split_across_reads() {
         // given
         let mut scanner = scanner();
@@ -279,6 +284,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn should_decode_percent_and_keep_semicolons() {
         // given
         let mut scanner = scanner();
@@ -291,6 +297,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn should_accept_localhost_and_ignore_foreign_host() {
         // given
         let mut scanner = scanner();
@@ -318,5 +325,18 @@ mod tests {
 
         // then
         assert_eq!(reports, [None, None, None, None]);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn should_read_a_drive_path_and_ignore_one_without_a_drive() {
+        // given
+        let mut scanner = scanner();
+
+        // when
+        let reports = [scanner.scan(b"\x1b]7;file:///C:/Users/a%20b\x07"), scanner.scan(b"\x1b]7;file://localhost/tmp/a\x07")];
+
+        // then
+        assert_eq!(reports, [Some(PathBuf::from(r"C:\Users\a b")), None]);
     }
 }

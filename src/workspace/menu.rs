@@ -1,8 +1,7 @@
 //! The menus of tabs and tree rows: what `config.tab_menus` and `config.tree_menus` declare, opened by
 //! `act::ShowTabMenu(name)` and `act::ShowTreeMenu(name)` on what was clicked, and what their items do.
 
-use std::os::unix::ffi::OsStrExt as _;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use gpui::{Context, KeyDownEvent, Pixels, Point, Window};
@@ -470,7 +469,7 @@ impl Workspace {
         let path = match self.tabs.get(tab) {
             Some(Tab::Document(editor)) => Some(editor.path().to_path_buf()),
             Some(Tab::Scratch(scratch)) => Some(scratch.path().to_path_buf()),
-            Some(Tab::Diff(diff)) => Some(diff.checkout.path.join(Path::new(std::ffi::OsStr::from_bytes(diff.request.file.path.as_bytes())))),
+            Some(Tab::Diff(diff)) => Some(diff.checkout.path.join(diff.request.file.path.to_path())),
             _ => None,
         };
         subject_of(path.map(|path| (path, PathKind::File)).into_iter().collect(), &self.all_checkouts())

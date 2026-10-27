@@ -24,7 +24,12 @@ enum DragState {
 }
 
 impl WindowDrag {
+    /// On Windows the row's `WindowControlArea::Drag` does all of it natively, and a double click here would fight
+    /// the native one.
     pub fn apply(&self, area: Stateful<Div>) -> Stateful<Div> {
+        if cfg!(windows) {
+            return area;
+        }
         let (on_down, on_up, on_up_out, on_out, on_move) =
             (self.state.clone(), self.state.clone(), self.state.clone(), self.state.clone(), self.state.clone());
         area.on_mouse_down(MouseButton::Left, move |event, window, _cx| {

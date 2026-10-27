@@ -334,7 +334,8 @@ mod tests {
         let args = relaunch_args(&original, Path::new("/home/me"), 42, Focus::Take);
 
         // then
-        assert_eq!(args, os(&["--profile", "work", "/home/me/code", "--mcp", "7461", "--replacing", "42"]));
+        let code = Path::new("/home/me").join("code").into_os_string();
+        assert_eq!(args, [os(&["--profile", "work"]), vec![code], os(&["--mcp", "7461", "--replacing", "42"])].concat());
     }
 
     #[test]

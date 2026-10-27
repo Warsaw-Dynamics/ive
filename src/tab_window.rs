@@ -74,6 +74,7 @@ fn close_tab(workspace: &WeakEntity<Workspace>, tab: TabId, window: &mut Window,
 
 impl Render for TabWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _span = tracing::debug_span!("render_tab_window").entered();
         self.place.observe(window);
         self.drag.follow(&self.place, window);
         let theme = crate::theme::set_tabs(window, cx);

@@ -1,11 +1,10 @@
 mod attention;
+mod blocks;
 mod colors;
 mod directory;
 pub mod exit;
 pub mod env;
-#[cfg(unix)]
 pub mod hosted;
-#[cfg(unix)]
 mod foreground;
 mod input;
 mod launch;
@@ -17,7 +16,6 @@ mod text;
 mod theme_reports;
 mod view;
 
-#[cfg(unix)]
 pub use foreground::ForegroundProbe;
 #[cfg(test)]
 pub use attention::Call;

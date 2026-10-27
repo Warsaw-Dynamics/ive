@@ -1,0 +1,3 @@
+Repository: https://github.com/microsoft/terminal
+Package: NuGet Microsoft.Windows.Console.ConPTY 1.25.260930003 (sha256 02b07b349af66d801159bdf9e440d4a1ce78bb951f37fc8609731665afdae7ee)
+Copied from: runtimes/win-x64/native/conpty.dll and build/native/runtimes/x64/OpenConsole.exe, unchanged, signed by Microsoft

@@ -30,7 +30,8 @@ impl VarsDoc {
 
     /// `name`'s value for the project whose main checkout is `project`: its `[repo]` table first, then the top level.
     pub fn lookup(&self, project: &Path, name: &str) -> Option<Stored> {
-        let repo = self.0.get("repo").and_then(toml::Value::as_table).and_then(|repos| repos.get(&project.display().to_string()));
+        let repos = self.0.get("repo").and_then(toml::Value::as_table);
+        let repo = repos.and_then(|repos| repos.iter().find(|(path, _)| crate::paths::same(Path::new(path), project))).map(|(_, table)| table);
         let value = repo.and_then(toml::Value::as_table).and_then(|table| table.get(name)).or_else(|| self.0.get(name))?;
         match value {
             toml::Value::String(text) => Some(Stored::Plain(text.clone())),

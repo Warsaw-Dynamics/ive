@@ -2,7 +2,6 @@
 //! starting hosts, and a connection that feeds a host's output into IVE's terminal state.
 
 use std::io;
-use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -21,7 +20,7 @@ use ptyhost::registry::{Owner, Registry, SessionInfo};
 use super::attention::{Call, CallReport, CallScanner, finished};
 use super::directory::{DirectoryReport, DirectoryScanner, host_name};
 use super::foreground::ForegroundProbe;
-use super::launch::{Launch, login_shell};
+use super::launch::Launch;
 use super::progress::{Progress, ProgressScanner};
 use super::session::{GridSize, Listener};
 use super::theme_reports::ThemeReportScanner;
@@ -470,19 +469,34 @@ impl Output {
 }
 
 /// The user's shell as IVE's own terminals start it: on macOS a login shell, as alacritty's `login -flp` makes it.
+#[cfg(unix)]
 fn shell_command() -> Vec<String> {
+    let shell = super::launch::login_shell();
     if cfg!(target_os = "macos") {
-        return vec![login_shell(), "-l".to_owned()];
+        return vec![shell, "-l".to_owned()];
     }
-    vec![login_shell()]
+    vec![shell]
+}
+
+#[cfg(windows)]
+fn shell_command() -> Vec<String> {
+    Launch::shell().program
 }
 
 /// The host reports 128 + signal for programs killed by a signal, as shells do.
+#[cfg(unix)]
 fn exit_status(code: i32) -> ExitStatus {
+    use std::os::unix::process::ExitStatusExt;
     match code {
         129..=192 => ExitStatus::from_raw(code - 128),
         code => ExitStatus::from_raw((code & 0xff) << 8),
     }
+}
+
+/// The host reports the program's exit code as it is, an NTSTATUS such as Ctrl+C's included.
+#[cfg(windows)]
+fn exit_status(code: i32) -> ExitStatus {
+    std::os::windows::process::ExitStatusExt::from_raw(code as u32)
 }
 
 fn new_id() -> io::Result<String> {
@@ -493,7 +507,6 @@ fn new_id() -> io::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::net::UnixStream;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 
@@ -502,6 +515,7 @@ mod tests {
     use alacritty_terminal::term::{Config, Term};
     use futures::channel::mpsc::{UnboundedReceiver, unbounded};
     use ptyhost::client::Client;
+    use ptyhost::net::{UnixListener, UnixStream};
     use ptyhost::protocol::{Frame, PROTOCOL, Size};
     use ptyhost::registry::Registry;
 
@@ -604,19 +618,26 @@ mod tests {
         fixture.events_until(|event| matches!(event, Event::PtyWrite(_)));
     }
 
+    /// An `OSC 7` report of folder `name` and the path it names on this OS.
+    fn report_of(name: &str) -> (Vec<u8>, std::path::PathBuf) {
+        let (url_path, path) = if cfg!(windows) { (format!("/C:/tmp/{name}"), format!("C:\\tmp\\{name}")) } else { (format!("/tmp/{name}"), format!("/tmp/{name}")) };
+        (format!("\x1b]7;file://{url_path}\x07").into_bytes(), path.into())
+    }
+
     #[test]
     fn should_keep_last_directory_report() {
         // given
         let mut fixture = fixture();
+        let ((one, _), (two, two_path)) = (report_of("one"), report_of("two"));
 
         // when
-        fixture.send(Frame::Output(b"\x1b]7;file:///tmp/one\x07".to_vec()));
-        fixture.send(Frame::Output(b"\x1b]7;file:///tmp/two\x07shown".to_vec()));
+        fixture.send(Frame::Output(one));
+        fixture.send(Frame::Output([two, b"shown".to_vec()].concat()));
         fixture.wait_for_line("shown");
 
         // then
         let report = fixture.connection.directory().unwrap();
-        assert_eq!((report.number, report.path, report.leader.is_some()), (2, std::path::PathBuf::from("/tmp/two"), true));
+        assert_eq!((report.number, report.path, report.leader.is_some()), (2, two_path, true));
     }
 
     #[test]
@@ -668,14 +689,15 @@ mod tests {
     fn should_keep_replayed_directory_report_without_its_leader() {
         // given
         let mut fixture = fixture();
+        let (old, old_path) = report_of("old");
 
         // when
-        fixture.send(Frame::Replay(b"\x1b]7;file:///tmp/old\x07replayed".to_vec()));
+        fixture.send(Frame::Replay([old, b"replayed".to_vec()].concat()));
         fixture.wait_for_line("replayed");
 
         // then
         let report = fixture.connection.directory().unwrap();
-        assert_eq!((report.path, report.leader), (std::path::PathBuf::from("/tmp/old"), None));
+        assert_eq!((report.path, report.leader), (old_path, None));
     }
 
     #[test]
@@ -735,6 +757,7 @@ mod tests {
         assert_eq!(Frame::read_from(&mut host).unwrap(), Frame::HangUp);
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_have_sent_hang_up_when_hang_up_returns() {
         for attempt in 0..200 {
@@ -810,7 +833,7 @@ mod tests {
         // given
         let dir = tempfile::tempdir().unwrap();
         let registry = Registry::at(dir.path());
-        let host = std::os::unix::net::UnixListener::bind(registry.socket("t1")).unwrap();
+        let host = UnixListener::bind(registry.socket("t1")).unwrap();
         let client_end = UnixStream::connect(registry.socket("t1")).unwrap();
         let (mut first, _) = host.accept().unwrap();
         Frame::Attached { protocol: PROTOCOL, program_pid: 7 }.write_to(&mut first).unwrap();

@@ -1,6 +1,5 @@
 //! Handing a path to the OS: its file manager with the path selected, its default application, its browser.
 
-use std::os::unix::ffi::OsStrExt as _;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -21,6 +20,9 @@ impl Launch {
 /// interface, else the folder it is in.
 pub fn reveal(path: &Path) -> Vec<Launch> {
     let text = path.to_string_lossy();
+    if cfg!(windows) {
+        return vec![Launch::new("explorer", &[&format!("/select,{text}")])];
+    }
     if cfg!(target_os = "macos") {
         return vec![Launch::new("open", &["-R", &text])];
     }
@@ -32,23 +34,46 @@ pub fn reveal(path: &Path) -> Vec<Launch> {
 
 /// `path` in the application the OS opens it with.
 pub fn default_app(path: &Path) -> Launch {
-    let program = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
-    Launch::new(program, &[&path.to_string_lossy()])
+    Launch::new(OPENER, &[&path.to_string_lossy()])
 }
+
+/// What hands a path or URL to its default application.
+const OPENER: &str = if cfg!(windows) {
+    "explorer"
+} else if cfg!(target_os = "macos") {
+    "open"
+} else {
+    "xdg-open"
+};
 
 /// `path`'s `file://` URL in the default browser.
 pub fn browser(path: &Path) -> Launch {
-    let program = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
-    Launch::new(program, &[&file_url(path)])
+    Launch::new(OPENER, &[&file_url(path)])
 }
 
 /// `file://` and `path`, its bytes outside the unreserved characters and `/` percent-encoded.
 pub fn file_url(path: &Path) -> String {
-    let encoded: String = path.as_os_str().as_bytes().iter().map(|&byte| match byte {
+    let encoded: String = url_path(path).iter().map(|&byte| match byte {
         b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => char::from(byte).to_string(),
+        // a drive's colon, as in `file:///C:/Users`
+        b':' if cfg!(windows) => ":".to_owned(),
         other => format!("%{other:02X}"),
     }).collect();
     format!("file://{encoded}")
+}
+
+#[cfg(unix)]
+fn url_path(path: &Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt as _;
+    path.as_os_str().as_bytes().to_vec()
+}
+
+/// `C:\a` as `/C:/a`.
+#[cfg(windows)]
+fn url_path(path: &Path) -> Vec<u8> {
+    let slashed = path.to_string_lossy().replace('\\', "/");
+    let rooted = if slashed.starts_with('/') { slashed } else { format!("/{slashed}") };
+    rooted.into_bytes()
 }
 
 /// Starts the first of `launches` that succeeds, off the calling thread; when none does, stderr says why.
@@ -81,7 +106,9 @@ mod tests {
         let launches = reveal(Path::new("/w/a b.rs"));
 
         // then
-        if cfg!(target_os = "macos") {
+        if cfg!(windows) {
+            assert_eq!(launches, [Launch::new("explorer", &["/select,/w/a b.rs"])]);
+        } else if cfg!(target_os = "macos") {
             assert_eq!(launches, [Launch::new("open", &["-R", "/w/a b.rs"])]);
         } else {
             assert_eq!(launches[0].program, "dbus-send");
@@ -96,8 +123,7 @@ mod tests {
         let launch = default_app(Path::new("/w/a.png"));
 
         // then
-        let program = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
-        assert_eq!(launch, Launch::new(program, &["/w/a.png"]));
+        assert_eq!(launch, Launch::new(OPENER, &["/w/a.png"]));
     }
 
     #[test]

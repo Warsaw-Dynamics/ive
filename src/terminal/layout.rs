@@ -9,6 +9,7 @@ use alacritty_terminal::term::RenderableContent;
 use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor};
 
+use super::blocks::block_parts;
 use super::colors::{ColorResolver, dim};
 use super::text::{OutputRow, last_output_line, output_point};
 use crate::theme::TerminalPalette;
@@ -25,7 +26,16 @@ pub struct Frame {
 pub struct FrameLine {
     /// only where the background differs from the terminal's own
     pub fills: Vec<Fill>,
+    pub blocks: Vec<Block>,
     pub segments: Vec<Segment>,
+}
+
+/// A block element, drawn as rectangles instead of text (see [`block_parts`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Block {
+    pub column: usize,
+    pub character: char,
+    pub color: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,6 +266,10 @@ impl FrameLine {
     fn push(&mut self, column: usize, look: CellLook, default_background: u32) {
         if look.background != default_background {
             self.push_fill(column, look.cells, look.background);
+        }
+        if block_parts(look.character).is_some() {
+            self.blocks.push(Block { column, character: look.character, color: look.style.color });
+            return;
         }
         self.push_text(column, &look);
     }

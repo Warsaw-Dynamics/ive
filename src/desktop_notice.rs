@@ -71,6 +71,7 @@ impl Shown {
     }
 
     /// The server's id came; a notification taken back meanwhile closes now.
+    #[cfg_attr(not(all(unix, not(target_os = "macos"))), allow(dead_code))]
     fn learn(&self, id: u32) {
         let _ = self.id.set(id);
         if self.withdrawn.load(Ordering::SeqCst) {

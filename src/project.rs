@@ -256,7 +256,7 @@ impl Statuses {
 /// executor.
 #[tracing::instrument(level = "debug", name = "scan_project", skip_all, fields(folder = %folder.display()))]
 pub fn scan(folder: &Path, statuses: &Statuses, since: Instant) -> Result<ProjectScan, ProjectError> {
-    let folder = folder.canonicalize().map_err(|source| ProjectError::Unreadable { path: folder.to_path_buf(), source })?;
+    let folder = dunce::canonicalize(folder).map_err(|source| ProjectError::Unreadable { path: folder.to_path_buf(), source })?;
     if folder.is_file() {
         return Err(ProjectError::NotADirectory(folder));
     }
@@ -275,7 +275,7 @@ pub fn scan(folder: &Path, statuses: &Statuses, since: Instant) -> Result<Projec
 pub fn scan_opened(folder: &Path) -> Result<ProjectScan, ProjectError> {
     match scan(folder, &Statuses::All, Instant::now()) {
         Err(ProjectError::Git(error)) => {
-            let folder = folder.canonicalize().map_err(|source| ProjectError::Unreadable { path: folder.to_path_buf(), source })?;
+            let folder = dunce::canonicalize(folder).map_err(|source| ProjectError::Unreadable { path: folder.to_path_buf(), source })?;
             Ok(ProjectScan { error: Some(error.to_string()), ..ProjectScan::plain(folder) })
         }
         scanned => scanned,

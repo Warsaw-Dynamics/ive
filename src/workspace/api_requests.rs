@@ -403,7 +403,7 @@ impl Workspace {
     /// Shows `path` in its tab, opening one when needed.
     pub(super) fn open_file(&mut self, path: &Path, window: &mut Window, cx: &mut Context<Self>) -> Result<TabId, String> {
         let path = self.resolve(path);
-        let path = path.canonicalize().map_err(|error| format!("cannot open {}: {error}", path.display()))?;
+        let path = dunce::canonicalize(&path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
         if let Some(open) = self.tabs.find(|tab| tab.shows(&path)) {
             self.activate_tab(open, window, cx);
             return Ok(open);
@@ -424,7 +424,7 @@ impl Workspace {
         let checkout = match directory {
             Some(directory) => {
                 let directory = self.resolve(&directory);
-                let directory = directory.canonicalize().map_err(|error| format!("cannot use {}: {error}", directory.display()))?;
+                let directory = dunce::canonicalize(&directory).map_err(|error| format!("cannot use {}: {error}", directory.display()))?;
                 let checkout = self.checkout_of_path(&directory);
                 Some(checkout.ok_or_else(|| format!("no open project contains {}", directory.display()))?)
             }

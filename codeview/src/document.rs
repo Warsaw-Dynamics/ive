@@ -78,6 +78,7 @@ impl Bytes {
     /// Indexing touches every page, which would show the whole file in the process's resident memory
     /// (876 MB for a 10M-line log) although the kernel can reclaim it; unmap `range` from this process.
     /// The pages stay in the page cache, so later reads are still fast.
+    #[cfg_attr(not(unix), allow(unused_variables))]
     fn release_pages(&self, range: Range<usize>) {
         #[cfg(unix)]
         if let Self::Mapped(map) = self {

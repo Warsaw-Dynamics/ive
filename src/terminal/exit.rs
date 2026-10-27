@@ -70,8 +70,11 @@ pub fn start_failure(started: Started, runs_in: &str, error: &std::io::Error) ->
     Failure::new(format!("Cannot start a shell: {error}")).with("Command", started.command).with("Folder", started.folder).with("Runs in", runs_in.to_owned())
 }
 
+/// How to attach to a lost terminal from a console: on Windows the console twin, since `ive.exe` has none.
+const ATTACH_COMMAND: &str = if cfg!(windows) { "ive-cli --pty-host attach" } else { "ive --pty-host attach" };
+
 fn lost_failure(summary: &str, lost: Lost) -> Failure {
-    Failure::new(summary).with("Cause", lost.reason).with("Attach", format!("ive --pty-host attach {}", lost.id))
+    Failure::new(summary).with("Cause", lost.reason).with("Attach", format!("{ATTACH_COMMAND} {}", lost.id))
 }
 
 fn ended(summary: &str, exit: String, started: Started, output: Vec<String>) -> Failure {
@@ -128,9 +131,20 @@ pub fn signal_short_name(signal: i32) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::process::ExitStatusExt;
-
     use super::*;
+
+    /// A program's exit with `code`, as the OS reports it.
+    fn exited(code: u32) -> ExitStatus {
+        #[cfg(unix)]
+        return std::os::unix::process::ExitStatusExt::from_raw((code << 8) as i32);
+        #[cfg(windows)]
+        std::os::windows::process::ExitStatusExt::from_raw(code)
+    }
+
+    #[cfg(unix)]
+    fn killed(signal: i32) -> ExitStatus {
+        std::os::unix::process::ExitStatusExt::from_raw(signal)
+    }
 
     fn facts(status: Option<ExitStatus>, elapsed: Duration, start: Start) -> ExitFacts {
         let started = Started { command: "/bin/zsh".to_owned(), folder: "/p".to_owned() };
@@ -151,7 +165,7 @@ mod tests {
     #[test]
     fn should_not_read_output_when_shell_closes() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(0)), Duration::from_secs(3), Start::New);
+        let facts = facts(Some(exited(0)), Duration::from_secs(3), Start::New);
 
         // when
         let state = shell_exit(facts, &|| panic!("the output was read for a shell that closed"));
@@ -160,10 +174,11 @@ mod tests {
         assert!(matches!(state, TerminalState::Closed));
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_give_the_exit_code_or_128_plus_the_signal() {
         // given
-        let statuses = [Some(ExitStatus::from_raw(1 << 8)), Some(ExitStatus::from_raw(libc::SIGTERM)), None];
+        let statuses = [Some(exited(1)), Some(killed(libc::SIGTERM)), None];
 
         // when
         let codes = statuses.map(exit_code_of);
@@ -175,7 +190,7 @@ mod tests {
     #[test]
     fn should_keep_last_output_when_shell_fails_at_start() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_millis(100), Start::New);
+        let facts = facts(Some(exited(1)), Duration::from_millis(100), Start::New);
 
         // when
         let report = report(shell_exit(facts, &printed)).expect("a failure");
@@ -186,10 +201,11 @@ mod tests {
         assert!(report.contains("zsh: bad option"), "{report}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_name_signal_of_crashed_shell() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(libc::SIGSEGV)), Duration::from_secs(600), Start::Adopted);
+        let facts = facts(Some(killed(libc::SIGSEGV)), Duration::from_secs(600), Start::Adopted);
 
         // when
         let report = report(shell_exit(facts, &printed)).expect("a failure");
@@ -201,7 +217,7 @@ mod tests {
     #[test]
     fn should_close_on_exit_code_after_start() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_secs(3), Start::New);
+        let facts = facts(Some(exited(1)), Duration::from_secs(3), Start::New);
 
         // when
         let state = shell_exit(facts, &printed);
@@ -213,7 +229,7 @@ mod tests {
     #[test]
     fn should_close_adopted_session_that_exits_quickly() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(1 << 8)), Duration::from_millis(100), Start::Adopted);
+        let facts = facts(Some(exited(1)), Duration::from_millis(100), Start::Adopted);
 
         // when
         let state = shell_exit(facts, &printed);
@@ -233,13 +249,13 @@ mod tests {
 
         // then
         assert!(report.contains("Cause: Connection reset by peer (os error 104)\n"), "{report}");
-        assert!(report.contains("Attach: ive --pty-host attach t1a2b3\n"), "{report}");
+        assert!(report.contains(&format!("Attach: {ATTACH_COMMAND} t1a2b3\n")), "{report}");
     }
 
     #[test]
     fn should_keep_a_run_that_fails_right_after_start() {
         // given
-        let facts = facts(Some(ExitStatus::from_raw(127 << 8)), Duration::from_millis(100), Start::New);
+        let facts = facts(Some(exited(127)), Duration::from_millis(100), Start::New);
 
         // when
         let state = run_exit(facts);
@@ -261,6 +277,7 @@ mod tests {
         assert!(report.starts_with("Terminal: Cannot start a shell: entity not found\n\nCommand: /bin/zsh\nFolder: /p\nRuns in: a terminal host, so it outlives IVE\n"), "{report}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_name_known_signals() {
         // given

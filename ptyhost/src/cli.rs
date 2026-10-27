@@ -1,7 +1,7 @@
 //! tmux-style sessions from the command line, for the `ptyhost` binary and programs embedding it.
 //!
 //! ```text
-//! ptyhost new [--id ID] [--cwd DIR] [--attach] [-- COMMAND...]   start a session (default: $SHELL -l)
+//! ptyhost new [--id ID] [--cwd DIR] [--attach] [-- COMMAND...]   start a session (default: $SHELL -l, or PowerShell)
 //! ptyhost attach ID                                              attach this terminal; Ctrl-] detaches
 //! ptyhost ls                                                     list live sessions
 //! ptyhost kill ID                                                hang up the session's program, kill it after 2 s
@@ -137,8 +137,7 @@ impl Options {
     }
 
     fn into_config(self, default_id: String) -> io::Result<HostConfig> {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-        let command = if self.command.is_empty() { vec![shell, "-l".into()] } else { self.command };
+        let command = if self.command.is_empty() { default_shell() } else { self.command };
         Ok(HostConfig {
             id: self.id.unwrap_or(default_id),
             command,
@@ -151,6 +150,16 @@ impl Options {
             labels: self.labels,
         })
     }
+}
+
+#[cfg(unix)]
+fn default_shell() -> Vec<String> {
+    vec![std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into()), "-l".into()]
+}
+
+#[cfg(windows)]
+fn default_shell() -> Vec<String> {
+    vec!["powershell.exe".into(), "-NoLogo".into()]
 }
 
 fn key_value(text: &str) -> io::Result<(String, String)> {

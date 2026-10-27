@@ -1,5 +1,6 @@
 //! Renames that never replace what is at the target.
 
+#[cfg(unix)]
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -37,12 +38,26 @@ pub fn rename_new(source: &Path, target: &Path) -> io::Result<()> {
     }
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+/// `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` fails when `target` exists, but onto another hard link of the
+/// same file it succeeds and takes `source` away: such a target is refused first, unless it differs only in case.
+#[cfg(windows)]
 pub fn rename_new(source: &Path, target: &Path) -> io::Result<()> {
-    checked_rename(source, target)
+    use std::os::windows::ffi::OsStrExt;
+    let case_only = source.as_os_str().eq_ignore_ascii_case(target.as_os_str());
+    if !case_only && std::fs::symlink_metadata(target).is_ok() {
+        return Err(io::ErrorKind::AlreadyExists.into());
+    }
+    let wide = |path: &Path| path.as_os_str().encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+    let (from, to) = (wide(source), wide(target));
+    // SAFETY: both pointers are NUL-terminated paths that outlive the call
+    if unsafe { windows_sys::Win32::Storage::FileSystem::MoveFileExW(from.as_ptr(), to.as_ptr(), 0) } != 0 {
+        return Ok(());
+    }
+    Err(io::Error::last_os_error())
 }
 
 /// Checks, then renames: another program can still create `target` in between.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn checked_rename(source: &Path, target: &Path) -> io::Result<()> {
     if fs::symlink_metadata(target).is_ok() {
         return Err(io::ErrorKind::AlreadyExists.into());

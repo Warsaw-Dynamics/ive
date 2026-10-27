@@ -6,9 +6,17 @@ license = "LicenseRef-WarsawDynamics-Proprietary"
 edition = "2024"
 description = "Keeps terminal programs running while IVE is closed, tmux-style"
 
-[dependencies]
+[target.'cfg(unix)'.dependencies]
 # same pin as IVE (see its Cargo.toml), so the crate can join it as a path dependency
 libc = "=0.2.189"
+
+[target.'cfg(windows)'.dependencies]
+# its ConPTY, as IVE's in-process terminals use it, conpty.dll next to the exe included; the versions IVE builds
+alacritty_terminal = "0.26.0"
+polling = "3.11.0"
+# AF_UNIX sockets (Windows 10 1803 and later), so sessions keep their `<id>.sock` and frames
+uds_windows = "1.2.1"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_SystemServices", "Win32_System_Threading"] }
 
 [dev-dependencies]
 tempfile = "3"

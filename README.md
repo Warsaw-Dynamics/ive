@@ -39,11 +39,25 @@ On macOS the Xcode Command Line Tools are enough (`xcode-select --install`): gpu
 startup, so the `metal` tool of a full Xcode is not needed. Settings, state and scratches live in
 `~/Library/Application Support/ive/<profile>` there.
 
+On Windows, `run.ps1` does the same from PowerShell; its arguments all go to IVE, and `-Release` builds the
+release (PowerShell drops a `--`, so there is none to split cargo's flags from IVE's):
+
+```powershell
+.\run.ps1 -Release --no-mcp --background C:\code
+```
+
+It needs Rust through rustup (MSVC toolchain) and Visual Studio 2022 Build Tools with "Desktop development with
+C++" and a Windows SDK, whose `fxc.exe` compiles gpui's shaders. The build makes `ive.exe`, which opens no console
+window, and `ive-cli.exe`, which runs the static servers of run configurations. Settings, state and scratches live
+in `%LOCALAPPDATA%\ive\<profile>`.
+
 To install IVE for yourself, run `./install.sh` once from this checkout. It builds IVE, writes the launcher
 `~/.local/bin/ive`, adds IVE to the desktop (Linux: an "IVE" entry in the application launcher of GNOME, KDE Plasma
 and other freedesktop desktops; macOS: `~/Applications/IVE.app`, for Finder, Launchpad, Spotlight and the Dock) and
 starts IVE as a profile named after your user, with the [Restart](#restart) button, which rebuilds this checkout.
-Run it again to rebuild and reinstall.
+Run it again to rebuild and reinstall. On Windows run `.\install.ps1` from PowerShell: it writes the launcher
+`%LOCALAPPDATA%\ive\ive.ps1` (with the Rust toolchain variables the install saw) and an "IVE" Start menu shortcut,
+under which the task bar groups IVE's windows, so pinning one pins the shortcut.
 
 | Flag | Meaning |
 |---|---|
@@ -52,7 +66,7 @@ Run it again to rebuild and reinstall.
 | `--no-mcp` | do not serve MCP |
 | `--background` | open the window without taking focus |
 | `--stop-processes-on-quit` | quit without the quit prompt, stopping the running terminals and processes instead of leaving them running; being replaced by a [restart](#restart) still keeps them |
-| `--restart SCRIPT` | show a Restart button left of Settings that rebuilds and restarts IVE with SCRIPT, see [Restart](#restart); Linux and macOS |
+| `--restart SCRIPT` | show a Restart button left of Settings that rebuilds and restarts IVE with SCRIPT, see [Restart](#restart) |
 | `--profile NAME` | run as profile NAME (default `default`): its own projects, tabs, settings, scratches and terminals, see [Profiles](#profiles) |
 
 ## Use
@@ -69,7 +83,7 @@ Run it again to rebuild and reinstall.
 | Hide a worktree | the eye on its tree row (hover), or Space / Hide on its row in the Worktrees list: it leaves the tree, the hub and New terminal until Show (or Space) on its row under Hidden; its tabs and processes stay; the main checkout cannot be hidden; kept in `state.toml` |
 | Scratches | project overview → Scratches: search names and contents, New scratch, hover a row to Rename or Delete; a scratch is a file in `~/.config/ive/<profile>/scratches/<project id>/`, kept when worktrees go |
 | Edit a scratch | type in its tab; it saves itself half a second after you stop, and when the tab closes or IVE quits; a change made outside IVE reloads it, or asks (Reload / Overwrite) when you have unsaved edits |
-| Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh` |
+| Run a shell scratch | Run in the header of a `.sh`, `.bash` or `.zsh` scratch: a new terminal in the project's last used worktree runs it with `sh`, `bash` or `zsh`. On Windows `.ps1` runs with PowerShell, `.cmd` and `.bat` with cmd, `.sh` and `.bash` with Git Bash when it is installed (`CLAUDE_CODE_GIT_BASH_PATH`, else the one next to `git.exe` on `PATH`) |
 | Project and module icons | put a `.favicon.svg` (or `.png`, `.jpg`, `.jpeg`, `.ico`; the first of these wins) at the root of a project's main checkout: its tree row, tab group and hub rows show it; any folder with a `.favicon.*` of its own is a module of a monorepo, and its files' tabs and hub rows carry its icon as a small badge |
 | Tabs of several projects | grouped by project, each group framed (the group of the tab you are on in the tab's outline colour): the chevron on a group's head folds it to the head, its tab count and the tab you used last (with its worktree's name); a click on the project's name lists the group's tabs by worktree, where tabs drag within their worktree and worktrees among each other; tabs of a worktree other than the main checkout are tinted in its colour |
 | Open a file | click it in the tree; an open file shows its existing tab; or Ctrl+Shift+E (see [Hub](#hub-ctrlshifte)) |
@@ -249,7 +263,7 @@ worktree or Processes row says `● n waiting`, and a bell left of Settings list
 front clears it. MCP's `list_projects` gives each process's `attention` (`text`, and `since` in Unix seconds).
 
 With no IVE window active, a call also sends a desktop notification (`notify-send` on Linux, a click shows the
-process; `osascript` on macOS). IVE takes them back when it comes to the front. The first time sending one fails, it
+process; `osascript` on macOS; none on Windows yet). IVE takes them back when it comes to the front. The first time sending one fails, it
 says so in `ive.log`. A call made while IVE was closed is not kept.
 
 ### Drag and drop, copy and paste
@@ -330,6 +344,12 @@ program still runs in that tab only shows it. The script decides how to build an
 
 On macOS the launcher `install.sh` writes starts the new IVE through `IVE.app`, so the Dock shows it
 as IVE; `restart.sh` starts it directly.
+
+On Windows the script is `restart.ps1` (run `.\restart.ps1` from PowerShell; for other flags dot-source it from a
+launcher that sets `$IveLauncher` and `$IveFlags`, as the one `install.ps1` writes). Instead of SIGUSR1 it sets the
+event `Local\ive-replace-PID`; a hidden PowerShell waits for IVE to quit and starts the new one from
+`target\release` through `ive-cli --detach`. A running `ive.exe` or `ive-cli.exe` (terminal hosts run it) cannot be
+overwritten, so the script renames each to `NAME.STAMP.old` before the build.
 
 ### Desktop icon
 
@@ -443,7 +463,7 @@ Start there start the run without leaving the list; a click on a row with a run 
 folds last while the tab is open.
 
 **Runs** are terminals running one program, and outlive IVE like terminals (Linux, macOS). One row per configuration:
-starting one again removes its exited run. Stop sends SIGTERM to the program's process group, SIGKILL 5 s later.
+starting one again removes its exited run. Stop sends SIGTERM to the program's process group, SIGKILL 5 s later (Windows: a hang-up, then the run's job object is ended 5 s later).
 Restart ends the run and starts it again, `before` steps first; a server waits up to 2 s for its old port, so it
 keeps its link. A run keeps its output after it exits, until removed; quit and Close project count only live runs.
 Removing a worktree ends its runs (its terminals move to the main checkout).
@@ -948,8 +968,8 @@ browser `Origin`, so web pages cannot reach it. Anyone holding the token can run
 
 ## Releases
 
-A push to the `release` branch builds IVE for Linux (x86_64) and macOS (Apple Silicon) and publishes both as one
-[GitHub Release](https://github.com/Warsaw-Dynamics/ive/releases) (`.github/workflows/release.yml`); a failed build
+A push to the `release` branch builds IVE for Linux (x86_64), macOS (Apple Silicon) and Windows (x86_64) and
+publishes them as one [GitHub Release](https://github.com/Warsaw-Dynamics/ive/releases) (`.github/workflows/release.yml`); a failed build
 publishes nothing.
 
 - `ive-linux-x86_64-<commit>.tar.gz`: the `ive` binary, the licence files and the icons. It needs glibc 2.35 or newer
@@ -957,6 +977,9 @@ publishes nothing.
 - `ive-macos-arm64-<commit>.zip`: `IVE.app` (written by `desktop/macos-bundle.sh`) and the licence files. The app is
   signed ad hoc, not by an Apple developer, nor notarized: at its first start macOS refuses it; System Settings →
   Privacy & Security → Open Anyway lets it run.
+- `ive-windows-x86_64-<commit>.zip`: `ive.exe`, `ive-cli.exe`, ConPTY's `conpty.dll` and `OpenConsole.exe`, and the
+  licence files. Unpack it into a folder you can write to (not Program Files, or it cannot update itself) and start
+  `ive.exe`. It is not signed: SmartScreen asks before its first start.
 
 ```sh
 git push origin HEAD:release
@@ -976,6 +999,10 @@ it into `.ive-update/` beside the install (the `ive` binary, or `IVE.app`). Noth
   their programs keep running. It waits while a file has unsaved edits, while another IVE runs from the same
   install, and while running processes would end (another IVE of the profile keeps its terminals).
 - **Restart to update** in the tab row restarts at once, after saving edits.
+
+On Windows a running program cannot be replaced, only renamed: the swap renames `ive.exe`, `ive-cli.exe`,
+`conpty.dll` and `OpenConsole.exe` to `NAME.PID.old` (terminal hosts keep running theirs) and moves the new ones in;
+IVE deletes those no process runs any more when it starts.
 
 An update whose terminals cannot carry over (the terminal host's protocol changed) is applied on quit only.
 Settings → Updates shows the version and the state, and turns updates off (`auto_update = "off"` in

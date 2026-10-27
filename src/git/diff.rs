@@ -79,8 +79,7 @@ pub fn two_files(left: &Path, right: &Path) -> Result<FileDiff, GitError> {
     let unreadable = |path: &Path, error: std::io::Error| GitError { operation: "compare two files".to_owned(), dir: path.to_path_buf(), message: error.to_string() };
     let old = read(left).map_err(|error| unreadable(left, error))?;
     let new = read(right).map_err(|error| unreadable(right, error))?;
-    use std::os::unix::ffi::OsStrExt as _;
-    let (path, old_path) = (GitPath::from_bytes(right.as_os_str().as_bytes()), Some(GitPath::from_bytes(left.as_os_str().as_bytes())));
+    let (path, old_path) = (GitPath::of_path(right), Some(GitPath::of_path(left)));
     let (Some(old), Some(new)) = (old, new) else {
         return Ok(FileDiff { path, old_path, mark: Mark::Modified, body: DiffBody::TooLarge });
     };

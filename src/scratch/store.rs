@@ -215,7 +215,7 @@ fn replace(staging: &Path, path: &Path, bytes: &[u8]) -> io::Result<()> {
     }
     file.write_all(bytes)?;
     file.sync_all()?;
-    fs::rename(staging, path)?;
+    crate::retry::replace_file(staging, path)?;
     // the new content is in place; a folder that cannot be synced only leaves the rename less durable
     if let Some(dir) = path.parent() {
         let _ = File::open(dir).and_then(|dir| dir.sync_all());

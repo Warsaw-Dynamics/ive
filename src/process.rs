@@ -121,8 +121,16 @@ pub struct Process<V = TerminalView> {
     pub view: V,
 }
 
+/// The title of a terminal whose program set none.
+pub const DEFAULT_TITLE: &str = "Terminal";
+
 impl<V> Process<V> {
+    /// What the program set, else the default; a Claude Code terminal without one is named after it, since Claude
+    /// Code (built with Bun) sets no console title on Windows.
     pub fn title(&self) -> String {
+        if self.kind == ProcessKind::ClaudeCode && self.title == DEFAULT_TITLE {
+            return "Claude Code".to_owned();
+        }
         self.title.clone()
     }
 
@@ -188,7 +196,7 @@ impl<V> Processes<V> {
         let id = ProcessId(self.next_id);
         self.next_id += 1;
         let view = start(id)?;
-        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: "Terminal".to_owned(), progress: Progress::None, directory: None, pin: Pin::Free, attention: None, seen_call: 0, view });
+        self.entries.push(Process { id, checkout, kind: ProcessKind::Terminal, run: None, title: DEFAULT_TITLE.to_owned(), progress: Progress::None, directory: None, pin: Pin::Free, attention: None, seen_call: 0, view });
         Ok(id)
     }
 
@@ -503,6 +511,20 @@ mod tests {
 
         // then
         assert_eq!((renamed, renamed_again, processes.get(id).unwrap().title()), (true, false, "✳ Claude Code".to_owned()));
+    }
+
+    #[test]
+    fn should_name_a_claude_code_terminal_without_a_title_after_claude_code() {
+        // given
+        let mut processes: Processes<()> = Processes::default();
+        let id = processes.start(None, |_| Ok::<_, ()>(())).unwrap();
+        let before = processes.get(id).unwrap().title();
+
+        // when
+        processes.set_kind(id, ProcessKind::ClaudeCode);
+
+        // then
+        assert_eq!((before, processes.get(id).unwrap().title()), ("Terminal".to_owned(), "Claude Code".to_owned()));
     }
 
     fn report(number: u64) -> CallReport {

@@ -165,7 +165,11 @@ impl Workspace {
                 match pid {
                     #[cfg(unix)]
                     Some(pid) => crate::run::signal::stop_group(pid),
-                    _ => self.processes.get(process).iter().for_each(|process| process.view.hang_up()),
+                    _ => self.processes.get(process).iter().for_each(|process| {
+                        process.view.hang_up();
+                        #[cfg(windows)]
+                        process.view.job().into_iter().for_each(crate::run::signal::stop_job);
+                    }),
                 }
             }
             RunId::Pending(pending) => {
@@ -430,13 +434,10 @@ impl Workspace {
         let origin = RunOrigin { folder: start.request.folder.clone(), key: start.key.to_owned(), name: config.name.clone(), url, life: RunLife::Running };
         let checkout = start.request.checkout.clone();
         self.worktree_use.used(&checkout.path, crate::age::Clock::system().now());
-        #[cfg(unix)]
         let source = match &self.hosted {
             Some(terminals) => Source::Hosted { terminals, launch, labels: [session_labels(Some(&checkout)), run_labels(&origin)].concat() },
             None => Source::InProcess(launch),
         };
-        #[cfg(not(unix))]
-        let source = Source::InProcess(launch);
         let cwd = prepared.cwd;
         let id = self
             .processes
@@ -560,7 +561,7 @@ fn builtins(request: &RunRequest) -> Builtins {
 
 fn builtins_at(checkout: &Path, folder: &Path) -> Builtins {
     Builtins {
-        user: std::env::var("USER").or_else(|_| std::env::var("LOGNAME")).unwrap_or_default(),
+        user: std::env::var("USER").or_else(|_| std::env::var("LOGNAME")).or_else(|_| std::env::var("USERNAME")).unwrap_or_default(),
         home: dirs::home_dir().unwrap_or_else(|| PathBuf::from("/")),
         repo: checkout.to_path_buf(),
         dir: folder.to_path_buf(),
@@ -681,6 +682,7 @@ mod tests {
         assert!(report.contains("Configuration: web in .run.toml\n"), "{report}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn should_name_signal_of_run_exit() {
         // given

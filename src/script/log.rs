@@ -13,7 +13,7 @@ pub const MAX_LOG_BYTES: u64 = 1024 * 1024;
 /// `scripts.log` in the profile's folder of the OS state directory (`~/.local/state/ive/<profile>/` on Linux),
 /// else of its config directory (macOS has no state directory), else of the temp directory.
 pub fn default_path() -> PathBuf {
-    let base = dirs::state_dir().or_else(dirs::config_dir).unwrap_or_else(std::env::temp_dir);
+    let base = dirs::state_dir().or_else(dirs::config_local_dir).unwrap_or_else(std::env::temp_dir);
     base.join("ive").join(crate::profile::current().name()).join("scripts.log")
 }
 

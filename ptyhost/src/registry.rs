@@ -1,12 +1,14 @@
 //! Which sessions are running: one directory, per session `<id>.sock` to attach to, `<id>.meta` describing it and
 //! `<id>.log` with the host's errors.
 //!
-//! A host holds an exclusive lock on its meta file while alive, so a session whose host died, even by SIGKILL,
-//! shows as stale and is cleaned up by the next listing. No PID files, so no PID reuse.
+//! A host holds an exclusive lock on its meta file while alive (on Windows on `<id>.lock`, as a locked file cannot
+//! be read there), so a session whose host died, even by SIGKILL, shows as stale and is cleaned up by the next
+//! listing. No PID files, so no PID reuse.
 
 use std::ffi::OsString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
+#[cfg(unix)]
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
@@ -94,14 +96,30 @@ impl Registry {
         self.dir.join(format!("{id}.meta"))
     }
 
+    /// The file a live host holds locked: the meta file itself on Unix, which hosts of older builds lock too.
+    #[cfg(unix)]
+    fn lock(&self, id: &str) -> PathBuf {
+        self.meta(id)
+    }
+
+    #[cfg(windows)]
+    fn lock(&self, id: &str) -> PathBuf {
+        self.dir.join(format!("{id}.lock"))
+    }
+
     pub fn create_dir(&self) -> io::Result<()> {
-        fs::DirBuilder::new().recursive(true).mode(0o700).create(&self.dir)
+        let mut builder = fs::DirBuilder::new();
+        builder.recursive(true);
+        // Windows: the folder under the user's profile is the user's alone already
+        #[cfg(unix)]
+        builder.mode(0o700);
+        builder.create(&self.dir)
     }
 
     /// Becomes the registry's owner unless another process is; `None` then.
     pub fn try_own(&self) -> io::Result<Option<Owner>> {
         self.create_dir()?;
-        let file = OpenOptions::new().write(true).create(true).truncate(false).mode(0o600).open(self.dir.join("owner.lock"))?;
+        let file = private_file().truncate(false).open(self.dir.join("owner.lock"))?;
         match file.try_lock() {
             Ok(()) => Ok(Some(Owner { _locked: file })),
             Err(fs::TryLockError::WouldBlock) => Ok(None),
@@ -128,17 +146,19 @@ impl Registry {
             validate_label(key, value)?;
         }
         self.create_dir()?;
-        // locked before it appears under its final name, so a listing never sees it unlocked
+        // locked before the meta file appears under its final name, so a listing never sees it unlocked
         let draft = self.dir.join(format!("{}.meta.draft", session.id));
-        let mut file = OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(&draft)?;
-        file.try_lock().map_err(|error| io::Error::other(format!("cannot lock {}: {error}", draft.display())))?;
+        let mut file = private_file().truncate(true).open(&draft)?;
+        let locked = if cfg!(windows) { private_file().truncate(false).open(self.lock(&session.id))? } else { file.try_clone()? };
+        locked.try_lock().map_err(|error| io::Error::other(format!("cannot lock {}: {error}", self.lock(&session.id).display())))?;
         file.write_all(encode(session).as_bytes())?;
+        drop(file);
         fs::rename(&draft, self.meta(&session.id))?;
-        Ok(Lease { _locked: file })
+        Ok(Lease { _locked: locked })
     }
 
     pub fn forget(&self, id: &str) {
-        for path in [self.socket(id), self.meta(id), self.log(id)] {
+        for path in [self.socket(id), self.meta(id), self.lock(id), self.log(id)] {
             // already gone is fine: a listing may have cleaned up first
             let _ = fs::remove_file(path);
         }
@@ -173,8 +193,14 @@ impl Registry {
         self.probe(id)
     }
 
+    /// The meta file first: it gets its name only once its host holds the lock, so the probe's own brief lock never
+    /// races a host still taking it.
     fn probe(&self, id: &str) -> io::Result<Option<SessionInfo>> {
-        let file = match File::open(self.meta(id)) {
+        let text = match fs::read_to_string(self.meta(id)) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+            text => text?,
+        };
+        let file = match File::open(self.lock(id)) {
             Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
             file => file?,
         };
@@ -182,7 +208,7 @@ impl Registry {
         if file.try_lock().is_ok() {
             return Ok(None);
         }
-        decode(id, &fs::read_to_string(self.meta(id))?).map(Some)
+        decode(id, &text).map(Some)
     }
 }
 
@@ -198,15 +224,31 @@ fn fallback_dir() -> PathBuf {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn fallback_dir() -> PathBuf {
     temp_fallback_dir()
 }
 
+/// Windows has no runtime dir; sessions end at logoff, and listing cleans up after them.
+#[cfg(windows)]
+fn fallback_dir() -> PathBuf {
+    std::env::var_os("LOCALAPPDATA").map_or_else(|| std::env::temp_dir().join("ive-pty"), |local| Path::new(&local).join("ive-pty"))
+}
+
+#[cfg(unix)]
 fn temp_fallback_dir() -> PathBuf {
     // SAFETY: getuid cannot fail
     let uid = unsafe { libc::getuid() };
     std::env::temp_dir().join(format!("ive-pty-{uid}"))
+}
+
+/// Opens a file for writing, created readable by the user alone.
+fn private_file() -> OpenOptions {
+    let mut options = OpenOptions::new();
+    options.write(true).create(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    options
 }
 
 /// Ids name files, so they are kept to `[A-Za-z0-9_-]{1,64}`.

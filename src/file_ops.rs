@@ -3,7 +3,6 @@
 
 use std::fs;
 use std::io;
-use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 
 use crate::menu::PathKind;
@@ -16,7 +15,8 @@ pub fn checked_name(old: &Path, name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || name == "." || name == ".." {
         return Err(format!("Rename refused: {name:?} is not a name"));
     }
-    if name.contains('/') || name.contains('\0') {
+    // Windows takes `\` between folders too
+    if name.contains('/') || name.contains('\0') || (cfg!(windows) && name.contains('\\')) {
         return Err(format!("Rename refused: {name} has a /; drag the file to move it"));
     }
     if old.file_name().is_some_and(|current| current == name) {
@@ -85,16 +85,42 @@ pub fn delete(path: &Path, mode: DeleteMode) -> Result<(), String> {
 }
 
 fn remove(path: &Path) -> io::Result<()> {
-    match fs::symlink_metadata(path)?.is_dir() {
-        true => fs::remove_dir_all(path),
-        false => fs::remove_file(path),
+    let kind = fs::symlink_metadata(path)?.file_type();
+    if kind.is_dir() {
+        return fs::remove_dir_all(path);
     }
+    if is_folder_link(kind) {
+        return fs::remove_dir(path);
+    }
+    fs::remove_file(path)
+}
+
+/// A link to a folder, which Windows removes as a folder; Unix removes any link as a file.
+#[cfg(windows)]
+fn is_folder_link(kind: fs::FileType) -> bool {
+    std::os::windows::fs::FileTypeExt::is_symlink_dir(&kind)
+}
+
+#[cfg(unix)]
+fn is_folder_link(_kind: fs::FileType) -> bool {
+    false
 }
 
 /// Whether `a` and `b` name one file: the same device and inode.
+#[cfg(unix)]
 fn is_same_file(a: &Path, b: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt as _;
     match (fs::symlink_metadata(a), fs::symlink_metadata(b)) {
         (Ok(a), Ok(b)) => (a.dev(), a.ino()) == (b.dev(), b.ino()),
+        _ => false,
+    }
+}
+
+/// Whether `a` and `b` name one file: the same final path, which Windows spells in the case on disk.
+#[cfg(windows)]
+fn is_same_file(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
         _ => false,
     }
 }
@@ -274,7 +300,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join("kept")).unwrap();
         fs::write(dir.path().join("kept/f"), "f").unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(dir.path().join("kept"), dir.path().join("link")).unwrap();
+        // a junction: a folder symlink needs Developer Mode or an administrator
+        #[cfg(windows)]
+        assert!(std::process::Command::new("cmd").arg("/C").arg("mklink").arg("/J").arg(dir.path().join("link")).arg(dir.path().join("kept")).output().unwrap().status.success());
 
         // when
         let deleted = delete(&dir.path().join("link"), DeleteMode::Permanent);
