@@ -165,10 +165,12 @@ impl Workspace {
                     folders.insert(dir);
                 }
                 Change::File(path) => {
+                    self.tabs.iter().for_each(|(_, tab)| tab.file_changed(&path, cx));
                     self.scratch_changed_on_disk(&path, cx);
                     documents.insert(path);
                 }
                 Change::FileRemoved(path) => {
+                    self.tabs.iter().for_each(|(_, tab)| tab.file_changed(&path, cx));
                     self.take_removed(&path, cx);
                     self.scratch_changed_on_disk(&path, cx);
                 }

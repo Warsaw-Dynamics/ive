@@ -187,6 +187,9 @@ impl TabOwnership {
 }
 
 fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
+    if crate::image_tab::is_image(path) {
+        return Tab::of_file(path, cx).unwrap_or_else(|error| Tab::Failed { title: project::folder_name(path), failure: crate::failure::Failure::new(error) });
+    }
     match Document::open_stamped(path) {
         Ok(opened) => {
             let file = FileTab::new(opened, cx);

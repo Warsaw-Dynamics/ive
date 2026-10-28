@@ -29,6 +29,7 @@ mod git;
 mod http_server;
 mod hub;
 mod icons;
+mod image_tab;
 mod ive_toml;
 #[cfg(target_os = "linux")]
 mod memory_watch;

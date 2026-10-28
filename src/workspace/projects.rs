@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 use gpui::{App, Context, ExternalPaths, PathPromptOptions, PromptLevel, Task, Window};
 
 use super::Workspace;
-use crate::document::Document;
-use crate::editor::{FileTab, Tab};
+use crate::editor::Tab;
 use crate::file_tree::{Entry, EntryKind, FileTreeError, Listing, read_folder};
 use crate::open_project::{OpenProject, PagedList};
 use crate::overview::ProjectOverview;
@@ -567,10 +566,7 @@ impl Workspace {
             return self.activate_tab(open, window, cx);
         }
         let name = project::folder_name(path);
-        let tab = match Document::open_stamped(path) {
-            Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
-            Err(error) => Tab::Failed { title: name, failure: crate::failure::Failure::new(error.to_string()) },
-        };
+        let tab = Tab::of_file(path, cx).unwrap_or_else(|error| Tab::Failed { title: name, failure: crate::failure::Failure::new(error) });
         self.open_tab(tab, window, cx);
     }
 

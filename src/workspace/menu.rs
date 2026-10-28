@@ -468,6 +468,7 @@ impl Workspace {
     pub(super) fn tab_subject(&self, tab: TabId) -> Subject {
         let path = match self.tabs.get(tab) {
             Some(Tab::Document(editor)) => Some(editor.path().to_path_buf()),
+            Some(Tab::Image(image)) => Some(image.path().to_path_buf()),
             Some(Tab::Scratch(scratch)) => Some(scratch.path().to_path_buf()),
             Some(Tab::Diff(diff)) => Some(diff.checkout.path.join(diff.request.file.path.to_path())),
             _ => None,

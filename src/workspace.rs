@@ -672,6 +672,7 @@ impl Workspace {
     fn tree_key_of(&self, tab: &Tab) -> Option<TreeKey> {
         match tab {
             Tab::Document(file) => Some(TreeKey::Entry(file.path().to_path_buf())),
+            Tab::Image(image) => Some(TreeKey::Entry(image.path().to_path_buf())),
             Tab::Process(id) => match self.processes.get(*id).and_then(|process| process.run.as_ref()) {
                 Some(_) => Some(TreeKey::LiveRun(RunId::Process(*id))),
                 None => Some(TreeKey::Process(*id)),

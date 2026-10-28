@@ -13,8 +13,7 @@ use serde_json::json;
 use super::runs::{RunInputs, RunValues, read_run_values};
 use super::{AfterOpen, Workspace};
 use crate::run::wallet::OsWallet;
-use crate::document::Document;
-use crate::editor::{FileTab, Tab};
+use crate::editor::Tab;
 use crate::click_targets::ClickTargets;
 use crate::api::{Call, Reply, Request, WindowInput};
 use crate::window_capture;
@@ -408,8 +407,8 @@ impl Workspace {
             self.activate_tab(open, window, cx);
             return Ok(open);
         }
-        let opened = Document::open_stamped(&path).map_err(|error| error.to_string())?;
-        Ok(self.open_tab(Tab::Document(FileTab::new(opened, cx)), window, cx))
+        let tab = Tab::of_file(&path, cx)?;
+        Ok(self.open_tab(tab, window, cx))
     }
 
     /// Starts a terminal in the checkout holding `directory` (the current checkout without one) and types

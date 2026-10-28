@@ -8,10 +8,8 @@ use gpui::{AppContext as _, Context, Focusable as _, PromptLevel, Window};
 
 use super::Workspace;
 use super::transfers::NoteKind;
-use crate::document::Document;
 use crate::editor::Tab;
 use crate::file_ops;
-use crate::file_tab::FileTab;
 use crate::git::types::GitPath;
 use crate::menu::Subject;
 use crate::menu::resolve::Applies;
@@ -127,6 +125,7 @@ impl Workspace {
     pub(super) fn tab_files(&self) -> Vec<(TabId, PathBuf)> {
         let file = |tab: &Tab| match tab {
             Tab::Document(document) => Some(document.path().to_path_buf()),
+            Tab::Image(image) => Some(image.path().to_path_buf()),
             Tab::Diff(diff) => Some(diff.checkout.path.join(diff.request.file.path.to_path())),
             Tab::Unloaded(saved) => saved_file(saved),
             _ => None,
@@ -314,7 +313,7 @@ impl Workspace {
         let moved = affected(self.tab_files(), std::slice::from_ref(&renamed.from));
         // a tab edited while the rename ran keeps its edits (its save writes the old path again), never replaced on them
         let moved: Vec<TabId> = moved.into_iter().filter(|id| !self.is_unsettled(*id, cx)).collect();
-        let is_file_tab = |id: &TabId| matches!(self.tabs.get(*id), Some(Tab::Document(_) | Tab::Unloaded(SavedTab::File { .. })));
+        let is_file_tab = |id: &TabId| matches!(self.tabs.get(*id), Some(Tab::Document(_) | Tab::Image(_) | Tab::Unloaded(SavedTab::File { .. })));
         let (documents, diffs): (Vec<TabId>, Vec<TabId>) = moved.into_iter().partition(is_file_tab);
         for id in documents {
             self.reopen_moved(id, (&renamed.from, &renamed.to), window, cx);
@@ -331,8 +330,9 @@ impl Workspace {
 
     /// File tab `id`, its file moved by renaming `from` to `to`, replaced in its place by a tab of the file there.
     fn reopen_moved(&mut self, id: TabId, (from, to): (&Path, &Path), window: &mut Window, cx: &mut Context<Self>) {
-        let document = match self.tabs.get(id) {
-            Some(Tab::Document(document)) => document,
+        let shown = match self.tabs.get(id) {
+            Some(Tab::Document(document)) => document.path(),
+            Some(Tab::Image(image)) => image.path(),
             Some(Tab::Unloaded(saved)) => {
                 // a restored tab not shown yet loads from its new path when it is shown
                 if let Some(moved) = moved_saved(saved, (from, to)) {
@@ -342,11 +342,8 @@ impl Workspace {
             }
             _ => return,
         };
-        let path = moved_path(document.path(), (from, to));
-        let tab = match Document::open_stamped(&path) {
-            Ok(opened) => Tab::Document(FileTab::new(opened, cx)),
-            Err(error) => Tab::Failed { title: crate::project::folder_name(&path), failure: crate::failure::Failure::new(error.to_string()) },
-        };
+        let path = moved_path(shown, (from, to));
+        let tab = Tab::of_file(&path, cx).unwrap_or_else(|error| Tab::Failed { title: crate::project::folder_name(&path), failure: crate::failure::Failure::new(error) });
         self.tabs.replace(id, tab);
         self.save_on_state_change(id, cx);
         self.tab_shown(window, cx);

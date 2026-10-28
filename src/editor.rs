@@ -18,6 +18,7 @@ use crate::colors::checkout_colour;
 use crate::failure::Failure;
 use crate::favicon_badge::{Badge, badged, favicon_or};
 pub use crate::file_tab::FileTab;
+use crate::image_tab::ImageTab;
 use crate::hub::history::TabIdentity;
 use crate::hub::view::HubTab;
 use crate::icons;
@@ -53,6 +54,8 @@ const WORKTREES_POLL: Duration = Duration::from_secs(5);
 /// What a tab in the editor pane shows. Parts 2 and 3 add variants with their arms in each method below.
 pub enum Tab {
     Document(FileTab),
+    /// an image file, shown, not edited
+    Image(ImageTab),
     /// a process owned by the workspace's process list; closing the tab keeps the process
     Process(ProcessId),
     ProjectOverview(ProjectOverview),
@@ -78,6 +81,16 @@ pub enum Tab {
 }
 
 impl Tab {
+    /// A tab of the file at `path`: an image tab for an image, else a file tab of its text; why it cannot be read.
+    pub fn of_file(path: &Path, cx: &mut App) -> Result<Self, String> {
+        if crate::image_tab::is_image(path) {
+            std::fs::metadata(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+            return Ok(Self::Image(ImageTab::new(path.to_path_buf())));
+        }
+        let opened = crate::document::Document::open_stamped(path).map_err(|error| error.to_string())?;
+        Ok(Self::Document(FileTab::new(opened, cx)))
+    }
+
     // The finders below match a restored tab not loaded yet too, so opening what it shows reuses it.
 
     pub fn is_hub(&self) -> bool {
@@ -92,6 +105,7 @@ impl Tab {
     pub fn shows(&self, path: &Path) -> bool {
         match self {
             Self::Document(file) => file.path() == path,
+            Self::Image(image) => image.path() == path,
             Self::Unloaded(SavedTab::File { path: saved, .. }) => saved == path,
             _ => false,
         }
@@ -148,6 +162,7 @@ impl Tab {
     pub fn kind(&self) -> &'static str {
         match self {
             Self::Document(_) => "document",
+            Self::Image(_) => "image",
             Self::Process(_) => "process",
             Self::ProjectOverview(_) => "project-overview",
             Self::Diff(_) => "diff",
@@ -167,6 +182,7 @@ impl Tab {
     pub fn title(&self, workspace: &Workspace) -> String {
         match self {
             Self::Document(file) => file.file_name(),
+            Self::Image(image) => image.file_name(),
             Self::Process(id) => workspace.processes().get(*id).map_or_else(|| "Terminal".to_owned(), |process| process.title()),
             Self::ProjectOverview(overview) => {
                 workspace.project(&overview.project).map_or_else(|| overview.project.to_string(), |project| project.name.clone())
@@ -224,6 +240,7 @@ impl Tab {
     fn icon_name(&self, workspace: &Workspace) -> &'static str {
         match self {
             Self::Document(file) => icons::file_icon(&file.file_name()),
+            Self::Image(image) => icons::file_icon(&image.file_name()),
             Self::Process(id) => workspace.processes().get(*id).map_or(ProcessKind::Terminal.icon(), |process| process.icon()),
             Self::ProjectOverview(_) => icons::PROJECT_FOLDER,
             Self::Diff(_) => icons::CHANGES,
@@ -255,6 +272,7 @@ impl Tab {
     pub fn saved(&self, workspace: &Workspace, cx: &App) -> Option<SavedTab> {
         let tab = match self {
             Self::Document(file) => SavedTab::File { path: file.path().to_path_buf(), panel: file.panel.read(cx).state() },
+            Self::Image(image) => SavedTab::File { path: image.path().to_path_buf(), panel: Default::default() },
             Self::Scratch(scratch) => {
                 SavedTab::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned(), panel: scratch.panel_state(cx) }
             }
@@ -282,6 +300,7 @@ impl Tab {
     pub fn identity(&self, workspace: &Workspace) -> Option<TabIdentity> {
         let identity = match self {
             Self::Document(file) => TabIdentity::File(file.path().to_path_buf()),
+            Self::Image(image) => TabIdentity::File(image.path().to_path_buf()),
             Self::Process(id) => match workspace.processes().get(*id).and_then(|process| process.view.hosted_id()) {
                 Some(session) => TabIdentity::Terminal { session: session.to_owned() },
                 None => TabIdentity::Process(id.value()),
@@ -310,6 +329,7 @@ impl Tab {
     pub fn checkout(&self, workspace: &Workspace) -> Option<CheckoutRef> {
         match self {
             Self::Document(file) => workspace.checkout_of_path(file.path()),
+            Self::Image(image) => workspace.checkout_of_path(image.path()),
             Self::Process(id) => workspace.processes().get(*id).and_then(|process| process.checkout.clone()),
             Self::ProjectOverview(overview) => project_checkout(workspace, &overview.project),
             Self::Diff(tab) => Some(tab.checkout.clone()),
@@ -333,6 +353,7 @@ impl Tab {
                 .map(|project| project.checkouts.iter().map(|checkout| project.checkout_ref(checkout)).collect())
                 .unwrap_or_default(),
             Self::Document(_)
+            | Self::Image(_)
             | Self::Process(_)
             | Self::ProjectOverview(_)
             | Self::Diff(_)
@@ -354,6 +375,7 @@ impl Tab {
         match self {
             Self::ProjectOverview(overview) if overview.section == ProjectSection::Worktrees => Some(WORKTREES_POLL),
             Self::Document(_)
+            | Self::Image(_)
             | Self::Process(_)
             | Self::ProjectOverview(_)
             | Self::Diff(_)
@@ -374,6 +396,7 @@ impl Tab {
     pub fn watched(&self) -> Option<Watched> {
         match self {
             Self::Document(file) => Some(Watched::File(file.path().to_path_buf())),
+            Self::Image(image) => Some(Watched::File(image.path().to_path_buf())),
             Self::Scratch(scratch) => Some(Watched::File(scratch.path().to_path_buf())),
             Self::ProjectOverview(overview) if overview.section == ProjectSection::Scratches => {
                 scratch::store_of(&overview.project).ok().map(|store| Watched::Folder(store.dir().to_path_buf()))
@@ -410,12 +433,22 @@ impl Tab {
         }
     }
 
+    /// The file at `path` changed or went: an image tab of it reads it again.
+    pub fn file_changed(&self, path: &Path, cx: &mut App) {
+        if let Self::Image(image) = self
+            && image.path() == path
+        {
+            image.reload(cx);
+        }
+    }
+
     /// What re-reading the file this tab edits found.
     pub fn take_reread(&mut self, reread: Reread, cx: &mut App) {
         match self {
             Self::Document(file) => file.take_reread(reread, cx),
             Self::Diff(diff) => diff.take_reread(reread, cx),
-            Self::Process(_)
+            Self::Image(_)
+            | Self::Process(_)
             | Self::ProjectOverview(_)
             | Self::Commit(_)
             | Self::GitLog(_)
@@ -443,6 +476,7 @@ impl Tab {
     pub fn owner_path(&self, workspace: &Workspace) -> Option<PathBuf> {
         match self {
             Self::Document(file) => Some(file.path().to_path_buf()),
+            Self::Image(image) => Some(image.path().to_path_buf()),
             Self::Diff(tab) => Some(PathBuf::from(tab.request.file.path.display())),
             Self::Process(id) => {
                 let process = workspace.processes().get(*id)?;
@@ -461,11 +495,12 @@ impl Tab {
         }
         let title = match self {
             Self::Document(file) => file.path().display().to_string(),
+            Self::Image(image) => image.path().display().to_string(),
             _ => self.title(workspace),
         };
         let owner = match self {
             Self::ProjectOverview(_) | Self::Diff(_) | Self::Settings(_) | Self::Failed { .. } | Self::Unloaded(_) | Self::Hub(_) => None,
-            Self::Document(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => {
+            Self::Document(_) | Self::Image(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => {
                 self.checkout(workspace).map(|checkout| workspace.checkout_label(&checkout))
             }
             Self::Commit(CommitTab { project, .. }) | Self::GitLog(GitLogTab { project, .. }) => {
@@ -495,7 +530,8 @@ impl Tab {
             Self::Hub(hub) => Some(hub.focus_handle(cx)),
             // the Worktrees list's filter keeps the keyboard
             Self::ProjectOverview(ProjectOverview { section: ProjectSection::Worktrees, git: Some(views), .. }) => Some(views.list.focus_handle(cx)),
-            Self::ProjectOverview(_)
+            Self::Image(_)
+            | Self::ProjectOverview(_)
             | Self::Commit(_)
             | Self::GitLog(_)
             | Self::Settings(_)
@@ -511,6 +547,7 @@ impl Tab {
         let theme = crate::theme::tabs(cx);
         match self {
             Self::Document(file) => file.render(theme, cx),
+            Self::Image(image) => image.render(theme),
             Self::Process(process) => match workspace.processes().get(*process) {
                 Some(process) => match process.link() {
                     Some(url) => div()
