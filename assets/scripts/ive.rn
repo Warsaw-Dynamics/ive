@@ -14,6 +14,9 @@ pub fn init(config) {
     // folders whose content counts as excluded besides gitignored ones, by name: the tree draws them as excluded
     config.excluded = ["target", "node_modules"];
 
+    // files and folders the tree shows under @hidden besides those starting with ".", by name
+    config.hidden = ["target"];
+
     // project, Settings and Run configurations tabs opened by a click, and the hub, close when another tab is shown;
     // middle click in the tree or double click on the tab keeps them. marker: "Italic" or #{ Prefix: "*" }
     config.temporary_tabs = #{

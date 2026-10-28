@@ -527,7 +527,7 @@ mod tests {
         project.toggle();
         project.read_files_now();
         let expanded = project.toggle_folder(dir.path(), &dir.path().join("target"));
-        project.apply_listings(&expanded.iter().map(|folder| crate::file_tree::read_folder(folder)).collect::<Vec<_>>());
+        project.apply_listings(&expanded.iter().map(|folder| crate::file_tree::read_folder(folder)).collect::<Vec<_>>(), &Default::default());
         let modified = TreeStatus { ignored: HashSet::new(), marks: HashMap::from([(PathBuf::from("target/x.txt"), Mark::Modified)]), ..TreeStatus::default() };
         let statuses = HashMap::from([(dir.path().to_path_buf(), modified)]);
         let excluded = ["target".to_owned()];
@@ -876,7 +876,7 @@ mod tests {
         project.reveal(&root.join("wt"));
         project.read_files_now();
         project.toggle_folder(&root, &root.join("wt"));
-        project.apply_listings(&[crate::file_tree::read_folder(&root.join("wt"))]);
+        project.apply_listings(&[crate::file_tree::read_folder(&root.join("wt"))], &Default::default());
 
         // when
         let names: Vec<String> = build(&[project], &Processes::<()>::default(), &FakeRuns::default(), &no_look()).iter().flat_map(TreeRow::target_names).collect();
@@ -923,7 +923,7 @@ mod tests {
         project.toggle();
         project.read_files_now();
         project.toggle_folder(&root, &root.join("misc"));
-        project.apply_listings(&[crate::file_tree::read_folder(&root.join("misc"))]);
+        project.apply_listings(&[crate::file_tree::read_folder(&root.join("misc"))], &Default::default());
         (dir, root, project)
     }
 
@@ -985,7 +985,7 @@ mod tests {
         // given
         let (_dir, root, mut project) = run_project(MISC);
         fs::write(root.join(".run.toml"), "broken = [").unwrap();
-        project.apply_listings(&[crate::file_tree::read_folder(&root)]);
+        project.apply_listings(&[crate::file_tree::read_folder(&root)], &Default::default());
 
         // when
         let rows = run_outline(&[project], &FakeRuns::default());

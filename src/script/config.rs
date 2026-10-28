@@ -19,7 +19,7 @@ const UNIT_ACTIONS: [&str; 76] = [
 
 /// `config` in `pub fn init(config)`: the lists of bindings, as WezTerm's `config.keys` and `config.mouse_bindings`,
 /// the font families: `config.font` for code and terminals, as WezTerm's, and `config.ui_font` for the rest, and
-/// `config.theme`, `config.excluded`, `config.temporary_tabs`, `config.tab_menus`, `config.tree_menus`, `config.quit_countdown`,
+/// `config.theme`, `config.excluded`, `config.hidden`, `config.temporary_tabs`, `config.tab_menus`, `config.tree_menus`, `config.quit_countdown`,
 /// `config.open_folders`, `config.drop_modifiers` and `config.delete`, which start as the script before left them.
 #[derive(Any)]
 #[rune(item = ::ive)]
@@ -36,6 +36,8 @@ pub struct Config {
     theme: Value,
     #[rune(get, set)]
     excluded: Value,
+    #[rune(get, set)]
+    hidden: Value,
     #[rune(get, set)]
     temporary_tabs: Value,
     #[rune(get, set)]
@@ -65,6 +67,7 @@ pub struct Parts {
 pub struct Carried {
     pub theme: Value,
     pub excluded: Value,
+    pub hidden: Value,
     pub temporary_tabs: Value,
     pub tab_menus: Value,
     pub tree_menus: Value,
@@ -77,13 +80,13 @@ pub struct Carried {
 impl Config {
     /// A `config` with nothing declared yet but what the script before left in `carried`.
     pub fn new(carried: Carried) -> Self {
-        let Carried { theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers, delete } = carried;
+        let Carried { theme, excluded, hidden, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers, delete } = carried;
         let unset = || Value::from(());
-        Self { keys: unset(), mouse_bindings: unset(), font: unset(), ui_font: unset(), theme, excluded, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers, delete }
+        Self { keys: unset(), mouse_bindings: unset(), font: unset(), ui_font: unset(), theme, excluded, hidden, temporary_tabs, tab_menus, tree_menus, quit_countdown, open_folders, drop_modifiers, delete }
     }
 
     pub fn into_parts(self) -> Parts {
-        let carried = Carried { theme: self.theme, excluded: self.excluded, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, tree_menus: self.tree_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders, drop_modifiers: self.drop_modifiers, delete: self.delete };
+        let carried = Carried { theme: self.theme, excluded: self.excluded, hidden: self.hidden, temporary_tabs: self.temporary_tabs, tab_menus: self.tab_menus, tree_menus: self.tree_menus, quit_countdown: self.quit_countdown, open_folders: self.open_folders, drop_modifiers: self.drop_modifiers, delete: self.delete };
         Parts { keys: self.keys, mouse_bindings: self.mouse_bindings, font: self.font, ui_font: self.ui_font, carried }
     }
 }

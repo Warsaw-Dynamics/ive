@@ -22,30 +22,36 @@ impl Excluded {
 
 /// `value` as `config.excluded` left it; the error names the offending value.
 pub fn parse(value: &rune::Value) -> Result<Excluded, String> {
-    let json = serde_json::to_value(value).map_err(|error| format!("excluded: {error}"))?;
+    parse_names(value, "excluded", "folder names").map(Excluded)
+}
+
+/// `value` as `config.<key>` left it: a list of distinct `what`, each an entry's own name; the error names `key`
+/// and the offending value.
+pub(super) fn parse_names(value: &rune::Value, key: &str, what: &str) -> Result<Vec<String>, String> {
+    let json = serde_json::to_value(value).map_err(|error| format!("{key}: {error}"))?;
     let Value::Array(items) = json else {
-        return Err(format!("excluded must be a list of folder names such as [\"target\"], not {json}"));
+        return Err(format!("{key} must be a list of {what} such as [\"target\"], not {json}"));
     };
     if items.len() > MAX_NAMES {
-        return Err(format!("excluded: {} names, at most {MAX_NAMES}", items.len()));
+        return Err(format!("{key}: {} names, at most {MAX_NAMES}", items.len()));
     }
     let mut names = Vec::new();
     for item in items {
-        let name = folder_name(&item)?;
+        let name = entry_name(&item, key)?;
         if names.contains(&name) {
-            return Err(format!("excluded: {item} is listed twice"));
+            return Err(format!("{key}: {item} is listed twice"));
         }
         names.push(name);
     }
-    Ok(Excluded(names))
+    Ok(names)
 }
 
-/// A folder's own name: not empty, without a path separator, not `.` or `..`.
-fn folder_name(item: &Value) -> Result<String, String> {
-    let name = item.as_str().ok_or_else(|| format!("excluded: {item} is not a folder name in quotes"))?;
+/// An entry's own name: not empty, without a path separator, not `.` or `..`.
+fn entry_name(item: &Value, key: &str) -> Result<String, String> {
+    let name = item.as_str().ok_or_else(|| format!("{key}: {item} is not a name in quotes"))?;
     let fits = !name.is_empty() && name.len() <= MAX_NAME_BYTES;
     if !fits || name.contains(['/', '\\']) || name == "." || name == ".." {
-        return Err(format!("excluded: {item} is not a folder name: 1 to {MAX_NAME_BYTES} bytes, no / or \\, not . or .."));
+        return Err(format!("{key}: {item} is not a name: 1 to {MAX_NAME_BYTES} bytes, no / or \\, not . or .."));
     }
     Ok(name.to_owned())
 }
@@ -91,7 +97,7 @@ mod tests {
         let error = parse(&list).unwrap_err();
 
         // then
-        assert_eq!(error, r#"excluded: "target/debug" is not a folder name: 1 to 255 bytes, no / or \, not . or .."#);
+        assert_eq!(error, r#"excluded: "target/debug" is not a name: 1 to 255 bytes, no / or \, not . or .."#);
     }
 
     #[test]
@@ -103,7 +109,7 @@ mod tests {
         let errors: Vec<String> = lists.into_iter().map(|list| parse(&value(list)).unwrap_err()).collect();
 
         // then
-        assert!(errors.iter().all(|error| error.contains("is not a folder name")), "{errors:?}");
+        assert!(errors.iter().all(|error| error.contains("is not a name")), "{errors:?}");
     }
 
     #[test]

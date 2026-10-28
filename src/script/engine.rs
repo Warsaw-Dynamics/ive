@@ -17,6 +17,7 @@ use super::declare::{self, FontChoice, Functions};
 use super::keymap::Keymap;
 use super::menus::{self, MenuKind, Menus};
 use super::excluded::{self, Excluded};
+use super::hidden::{self, Hidden};
 use super::open_folders::{self, OpenFolders};
 use super::delete_mode::{self, DeleteMode};
 use super::drop_modifiers;
@@ -42,6 +43,7 @@ pub struct Loaded {
     pub fonts: Fonts,
     pub theme: ThemeSpec,
     pub excluded: Excluded,
+    pub hidden: Hidden,
     pub temporary_tabs: TemporaryTabs,
     pub menus: Menus,
     pub quit_countdown: QuitCountdown,
@@ -91,6 +93,7 @@ impl Engine {
         let start = Carried {
             theme,
             excluded: rune::Value::from(()),
+            hidden: rune::Value::from(()),
             temporary_tabs: rune::Value::from(()),
             tab_menus: rune::Value::from(()),
             tree_menus: rune::Value::from(()),
@@ -104,6 +107,7 @@ impl Engine {
         let carried_defaults = Carried {
             theme: rune::Value::from(()),
             excluded: rune::Value::from(()),
+            hidden: rune::Value::from(()),
             temporary_tabs: default_carried.temporary_tabs.clone(),
             tab_menus: default_carried.tab_menus.clone(),
             tree_menus: default_carried.tree_menus.clone(),
@@ -120,6 +124,7 @@ impl Engine {
                 fonts: default_fonts,
                 theme: checked.theme,
                 excluded: checked.excluded,
+                hidden: checked.hidden,
                 temporary_tabs: checked.temporary_tabs,
                 menus: checked.menus,
                 quit_countdown: checked.quit_countdown,
@@ -139,6 +144,7 @@ impl Engine {
             fonts: fonts.over(default_fonts),
             theme: checked.theme,
             excluded: checked.excluded,
+            hidden: checked.hidden,
             temporary_tabs: checked.temporary_tabs,
             menus: checked.menus,
             quit_countdown: checked.quit_countdown,
@@ -193,6 +199,7 @@ impl Engine {
 struct Checked {
     theme: ThemeSpec,
     excluded: Excluded,
+    hidden: Hidden,
     temporary_tabs: TemporaryTabs,
     menus: Menus,
     quit_countdown: QuitCountdown,
@@ -201,12 +208,13 @@ struct Checked {
     delete: DeleteMode,
 }
 
-/// The theme, excluded folders, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
+/// The theme, excluded folders, hidden names, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
 /// it left out taken from `defaults`, and every menu `keymap` opens declared; the error names `file`.
 fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &mut Functions, file: &str) -> Result<Checked, String> {
     let named = |problem: String| format!("{file}: {problem}");
     let theme = theme_config::parse(&carried.theme).map_err(named)?;
     let excluded = excluded::parse(&carried.excluded).map_err(named)?;
+    let hidden = hidden::parse(&carried.hidden).map_err(named)?;
     let temporary_tabs = temporary_tabs::parse(&defaults.temporary_tabs, &carried.temporary_tabs).map_err(named)?;
     let tab = menus::parse(MenuKind::Tab, &defaults.tab_menus, &carried.tab_menus, functions).map_err(named)?;
     let tree = menus::parse(MenuKind::Tree, &defaults.tree_menus, &carried.tree_menus, functions).map_err(named)?;
@@ -218,7 +226,7 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &m
     let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
     let drop_modifiers = drop_modifiers::parse(&carried.drop_modifiers).map_err(named)?;
     let delete = delete_mode::parse(&carried.delete).map_err(named)?;
-    Ok(Checked { theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete })
+    Ok(Checked { theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -620,6 +628,42 @@ mod tests {
     }
 
     #[test]
+    fn should_hide_target_by_default() {
+        // when
+        let hidden = defaults().hidden;
+
+        // then
+        assert!(hidden.hides("target"));
+    }
+
+    #[test]
+    fn should_let_init_add_hidden_names() {
+        // given
+        let init = r#"pub fn init(config) { config.hidden.push("node_modules"); }"#;
+
+        // when
+        let hidden = load(init).1.unwrap().hidden;
+
+        // then
+        assert_eq!(hidden, crate::script::hidden::of(&["target", "node_modules"]));
+    }
+
+    #[test]
+    fn should_load_the_readme_hidden_example() {
+        // given
+        let readme = include_str!("../../README.md");
+        let section = &readme[readme.find("### Hidden files and folders").unwrap()..];
+        let start = section.find("```rune\n").unwrap() + "```rune\n".len();
+        let example = &section[start..start + section[start..].find("```").unwrap()];
+
+        // when
+        let hidden = load(example).1.unwrap().hidden;
+
+        // then
+        assert_eq!(hidden, crate::script::hidden::of(&["node_modules"]));
+    }
+
+    #[test]
     fn should_reject_excluded_path_from_init() {
         // given
         let init = r#"pub fn init(config) { config.excluded.push("target/debug"); }"#;
@@ -628,7 +672,7 @@ mod tests {
         let error = load(init).1.err().unwrap();
 
         // then
-        assert!(error.starts_with(r#"init.rn: excluded: "target/debug" is not a folder name"#), "{error}");
+        assert!(error.starts_with(r#"init.rn: excluded: "target/debug" is not a name"#), "{error}");
     }
 
     #[test]

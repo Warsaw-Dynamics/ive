@@ -7,6 +7,7 @@ mod declare;
 pub mod defaults_file;
 pub mod engine;
 pub mod excluded;
+pub mod hidden;
 pub mod open_folders;
 mod fingerprint;
 mod http_module;

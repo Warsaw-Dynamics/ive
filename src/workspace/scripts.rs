@@ -142,7 +142,7 @@ impl Workspace {
             return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
@@ -151,6 +151,7 @@ impl Workspace {
                 if apply_excluded(excluded.clone(), cx) || open_changed {
                     self.tree_changed(cx);
                 }
+                self.apply_hidden(hidden.clone(), cx);
                 self.apply_temporary_tabs(temporary_tabs.clone(), cx);
                 cx.set_global(menus.as_ref().clone());
                 cx.set_global(*quit_countdown);
@@ -397,6 +398,7 @@ mod tests {
             fonts: Fonts::default(),
             theme: Box::new(crate::theme_config::defaults()),
             excluded: Default::default(),
+            hidden: Default::default(),
             temporary_tabs: TemporaryTabs { enabled: true, kinds: Vec::new(), marker: crate::script::temporary_tabs::TabMarker::Italic },
             menus: Default::default(),
             quit_countdown: crate::script::quit_countdown::parse(&serde_json::from_value(serde_json::json!(10)).unwrap()).unwrap(),

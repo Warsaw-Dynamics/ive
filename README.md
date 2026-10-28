@@ -752,6 +752,21 @@ pub fn init(config) {
 
 Names are folder names, not paths: no `/`, at most 64 of them.
 
+### Hidden files and folders
+
+A folder with two or more hidden entries shows them under one `@hidden` row. Entries whose names start with `.` are
+always hidden; `config.hidden` lists more, by name, files or folders. `init` gets IVE's default, `target`, so
+`init.rn` can add to it or take it out:
+
+```rune
+pub fn init(config) {
+    config.hidden.push("node_modules");
+    config.hidden = config.hidden.iter().filter(|name| name != "target").collect::<Vec>();
+}
+```
+
+Names are entry names, not paths: no `/`, at most 64 of them.
+
 ### Theme
 
 Every colour and size IVE draws with is in `config.theme`. `init` gets it already filled in with IVE's defaults,

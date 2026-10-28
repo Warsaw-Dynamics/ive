@@ -8,6 +8,7 @@ use gpui::{App, Context, ExternalPaths, PathPromptOptions, PromptLevel, Task, Wi
 use super::Workspace;
 use crate::editor::Tab;
 use crate::file_tree::{Entry, EntryKind, FileTreeError, Listing, read_folder};
+use crate::script::hidden::Hidden;
 use crate::open_project::{OpenProject, PagedList};
 use crate::overview::ProjectOverview;
 use crate::project::{self, CheckoutRef, ProjectError, ProjectId, ProjectScan, Statuses};
@@ -335,6 +336,17 @@ impl Workspace {
         self.read_folders(folders, cx);
     }
 
+    /// Groups what `hidden` names under the file trees' hidden groups from now on, reading the folders that shows.
+    pub(super) fn apply_hidden(&mut self, hidden: Hidden, cx: &mut Context<Self>) {
+        if cx.try_global::<Hidden>() == Some(&hidden) {
+            return;
+        }
+        let folders: Vec<PathBuf> = self.projects.iter_mut().flat_map(|open| open.set_hidden(&hidden)).collect();
+        cx.set_global(hidden);
+        self.read_folders(folders, cx);
+        self.tree_changed(cx);
+    }
+
     /// Reads `folders` on the background executor, then hands the listings to every file tree in one update.
     pub(super) fn read_folders(&mut self, folders: Vec<PathBuf>, cx: &mut Context<Self>) {
         if folders.is_empty() {
@@ -350,9 +362,10 @@ impl Workspace {
 
     /// Takes what reading folders found, in every project at once, and rebuilds the rows once.
     pub(super) fn apply_listings(&mut self, listings: &[Listing], cx: &mut Context<Self>) {
+        let hidden = cx.try_global::<Hidden>().cloned().unwrap_or_default();
         let mut errors = Vec::new();
         for open in &mut self.projects {
-            errors.extend(open.apply_listings(listings));
+            errors.extend(open.apply_listings(listings, &hidden));
         }
         // a folder that cannot be read collapses again, so locating would ask for it forever
         if !errors.is_empty() {

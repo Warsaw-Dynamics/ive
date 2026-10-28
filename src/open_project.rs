@@ -8,6 +8,7 @@ use crate::file_tree::{Expansion, FileTree, FileTreeError, Listing};
 use crate::git::types::Sha;
 use crate::paging::Paging;
 use crate::sidebar::folders::{COMMITS_SHOWN, ChangeSource, CheckoutFolders, CheckoutGit, FolderKind};
+use crate::script::hidden::Hidden;
 use crate::project::{Checkout, Project, ProjectError, ProjectId, ProjectScan, Statuses};
 use crate::state::{MAX_COMMITS_SHOWN, MAX_SAVED_OPEN, SavedChangeFolder, SavedFolders, SavedProject};
 use crate::watch::Watched;
@@ -383,15 +384,18 @@ impl OpenProject {
         shown.filter(|path| !self.files.contains_key(path)).collect()
     }
 
-    /// Takes what reading folders found: new file trees for shown checkouts, new entries for the folders the
-    /// trees show. Returns the folders that could not be read.
-    pub fn apply_listings(&mut self, listings: &[Listing]) -> Vec<FileTreeError> {
+    /// Takes what reading folders found: new file trees for shown checkouts, grouping what `hidden` names, new
+    /// entries for the folders the trees show. Returns the folders that could not be read.
+    pub fn apply_listings(&mut self, listings: &[Listing], hidden: &Hidden) -> Vec<FileTreeError> {
         let mut errors = Vec::new();
         for root in self.shown_without_files() {
             match listings.iter().find(|listing| listing.dir == root).map(|listing| &listing.entries) {
                 Some(Ok(entries)) => {
                     let expansion = self.restored_files.remove(&root).unwrap_or_default();
-                    self.files.insert(root.clone(), FileTree::restored(root, entries.clone(), &expansion));
+                    let mut files = FileTree::restored(root.clone(), entries.clone(), &expansion);
+                    // its shown folders not read yet are read as [`Self::folders_to_read`] names them
+                    files.set_hidden(hidden);
+                    self.files.insert(root, files);
                 }
                 Some(Err(error)) => errors.push(error.clone()),
                 None => {}
@@ -401,6 +405,11 @@ impl OpenProject {
             errors.extend(files.apply(listings));
         }
         errors
+    }
+
+    /// Groups what `hidden` names under each file tree's hidden groups from now on; returns the folders to read now.
+    pub fn set_hidden(&mut self, hidden: &Hidden) -> Vec<PathBuf> {
+        self.files.values_mut().flat_map(|files| files.set_hidden(hidden)).collect()
     }
 
     /// What the tree shows of this project, for the watch registry: the shown folders of its file trees and the
@@ -423,7 +432,7 @@ impl OpenProject {
     #[cfg(test)]
     pub fn read_files_now(&mut self) -> Vec<FileTreeError> {
         let listings: Vec<Listing> = self.folders_to_read().iter().map(|dir| crate::file_tree::read_folder(dir)).collect();
-        self.apply_listings(&listings)
+        self.apply_listings(&listings, &Hidden::default())
     }
 
     pub fn paging(&self, list: &PagedList) -> Paging {

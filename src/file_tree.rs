@@ -7,11 +7,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::run;
+use crate::script::hidden::Hidden;
 use crate::run::file::{RUN_FILE, RunFile, RunFileError};
 
 /// Caps one folder's listing so opening a huge directory (e.g. `/`) cannot stall the UI.
 const MAX_ENTRIES: usize = 10_000;
-/// The name of the row a folder's hidden entries are shown under, once it has at least [`MIN_HIDDEN_GROUP`].
+/// The name of the row a folder's hidden entries (dot files and [`Hidden`]'s names) are shown under, once it has at least [`MIN_HIDDEN_GROUP`].
 pub const HIDDEN_GROUP: &str = "@hidden";
 const MIN_HIDDEN_GROUP: usize = 2;
 
@@ -23,6 +24,7 @@ pub struct FileTree {
     expanded: HashSet<PathBuf>,
     /// folders whose hidden group is expanded
     expanded_hidden: HashSet<PathBuf>,
+    hidden: Hidden,
     rows: Vec<Row>,
 }
 
@@ -56,10 +58,6 @@ impl Entry {
     /// Folders and hidden groups expand; files open.
     pub fn expands(&self) -> bool {
         self.kind != EntryKind::File
-    }
-
-    fn is_hidden(&self) -> bool {
-        self.name.starts_with('.')
     }
 }
 
@@ -112,13 +110,15 @@ pub fn read_folder(dir: &Path) -> Listing {
 }
 
 impl FileTree {
-    /// The tree of folder `root` (canonical), showing `entries`, its listing.
+    /// The tree of folder `root` (canonical), showing `entries`, its listing; only dot files go under [`HIDDEN_GROUP`]
+    /// until [`Self::set_hidden`].
     pub fn new(root: PathBuf, entries: Vec<Entry>) -> Self {
         let mut tree = Self {
             children: HashMap::from([(root.clone(), entries)]),
             root,
             expanded: HashSet::new(),
             expanded_hidden: HashSet::new(),
+            hidden: Hidden::default(),
             rows: Vec::new(),
         };
         tree.rebuild_rows();
@@ -151,6 +151,17 @@ impl FileTree {
     /// Shown folders never read: those expanded again by [`Self::restored`].
     pub fn unread_folders(&self) -> Vec<PathBuf> {
         self.shown_folders().into_iter().filter(|folder| !self.children.contains_key(folder)).collect()
+    }
+
+    /// Shows the entries `hidden` names under [`HIDDEN_GROUP`] from now on; returns the folders to read now, those
+    /// it shows that were never read.
+    pub fn set_hidden(&mut self, hidden: &Hidden) -> Vec<PathBuf> {
+        if self.hidden == *hidden {
+            return Vec::new();
+        }
+        self.hidden = hidden.clone();
+        self.rebuild_rows();
+        self.unread_folders()
     }
 
     pub fn rows(&self) -> &[Row] {
@@ -187,7 +198,7 @@ impl FileTree {
         }
         self.expanded_hidden.insert(dir.to_path_buf());
         self.rebuild_rows();
-        self.shown_folders().into_iter().filter(|folder| is_hidden_below(folder, dir)).collect()
+        self.shown_folders().into_iter().filter(|folder| self.is_hidden_below(folder, dir)).collect()
     }
 
     /// Expands every folder, and every hidden group, between the root and `path`; returns the shown folders not read yet, which the caller
@@ -196,7 +207,7 @@ impl FileTree {
         let below_root: Vec<&Path> = path.ancestors().take_while(|dir| *dir != self.root && dir.starts_with(&self.root)).collect();
         self.expanded.extend(below_root.iter().skip(1).map(|dir| dir.to_path_buf()));
         // a group appears only with two hidden entries, so its folder can be marked whether it has one or not
-        let hidden = below_root.iter().filter(|path| path.file_name().is_some_and(|name| name.to_string_lossy().starts_with('.')));
+        let hidden = below_root.iter().filter(|path| path.file_name().is_some_and(|name| self.hidden.hides(&name.to_string_lossy())));
         self.expanded_hidden.extend(hidden.filter_map(|path| path.parent()).map(Path::to_path_buf));
         self.rebuild_rows();
         self.unread_folders()
@@ -253,6 +264,12 @@ impl FileTree {
         self.children.retain(|path, _| !below(path));
     }
 
+    /// Whether `path` is in `dir`'s hidden group: a hidden entry of `dir` or below one.
+    fn is_hidden_below(&self, path: &Path, dir: &Path) -> bool {
+        let first = path.strip_prefix(dir).ok().and_then(|rest| rest.components().next());
+        first.is_some_and(|name| self.hidden.hides(&name.as_os_str().to_string_lossy()))
+    }
+
     fn rebuild_rows(&mut self) {
         let mut rows = Vec::new();
         self.collect_rows(&self.root, 0, &mut rows);
@@ -261,7 +278,7 @@ impl FileTree {
 
     fn collect_rows(&self, dir: &Path, depth: usize, rows: &mut Vec<Row>) {
         let entries = self.children.get(dir).map(Vec::as_slice).unwrap_or_default();
-        let (hidden, shown): (Vec<&Entry>, Vec<&Entry>) = entries.iter().partition(|entry| entry.is_hidden());
+        let (hidden, shown): (Vec<&Entry>, Vec<&Entry>) = entries.iter().partition(|entry| self.hidden.hides(&entry.name));
         if hidden.len() < MIN_HIDDEN_GROUP {
             return self.push_entries(entries.iter(), depth, rows);
         }
@@ -295,12 +312,6 @@ fn run_state(folder: &Path) -> RunState {
         Some(Ok(file)) => RunState::Loaded(Arc::new(file)),
         Some(Err(error)) => RunState::Broken(error),
     }
-}
-
-/// Whether `path` is in `dir`'s hidden group: a hidden entry of `dir` or below one.
-fn is_hidden_below(path: &Path, dir: &Path) -> bool {
-    let first = path.strip_prefix(dir).ok().and_then(|rest| rest.components().next());
-    first.is_some_and(|name| name.as_os_str().to_string_lossy().starts_with('.'))
 }
 
 fn unreadable(path: &Path, source: &io::Error) -> FileTreeError {
@@ -689,6 +700,40 @@ mod tests {
 
         // then
         assert_eq!(tree(&project), ["@hidden", "  .git", "    refs", "    HEAD", "  .gitignore", "src", "a.txt", "b.txt"]);
+    }
+
+    #[test]
+    fn should_put_named_entries_under_the_hidden_group() {
+        // given
+        let (_dir, root) = sample_project();
+        fs::create_dir(root.join("target")).unwrap();
+        fs::write(root.join(".gitignore"), "").unwrap();
+        let mut project = open(&root);
+
+        // when
+        let reads = project.set_hidden(&crate::script::hidden::of(&["target"]));
+        project.toggle_hidden(&hidden_group(&root));
+
+        // then
+        assert!(reads.is_empty());
+        assert_eq!(tree(&project), ["@hidden", "  target", "  .gitignore", "src", "a.txt", "b.txt"]);
+    }
+
+    #[test]
+    fn should_read_an_expanded_folder_shown_again_once_no_longer_hidden() {
+        // given
+        let (_dir, root) = dotfiles_project();
+        fs::create_dir_all(root.join("target/debug")).unwrap();
+        let hidden = crate::script::hidden::of(&["target"]);
+        let restored = Expansion { folders: vec![root.join("target")], hidden: Vec::new() };
+        let mut project = FileTree::restored(root.clone(), read_folder(&root).entries.unwrap(), &restored);
+        project.set_hidden(&hidden);
+
+        // when
+        let reads = project.set_hidden(&crate::script::hidden::Hidden::default());
+
+        // then
+        assert_eq!(reads, [root.join("target")]);
     }
 
     #[test]
