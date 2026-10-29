@@ -46,20 +46,24 @@ impl ImageTab {
     /// The picture centred, at its own size or scaled down to fit; why it cannot be shown in its place.
     pub fn render(&self, theme: Theme) -> AnyElement {
         let path = self.path.display().to_string();
-        let failure = format!("Cannot show {path}: it is not an image IVE can read");
-        let error = theme.error;
-        // an id keeps the frame of an animated GIF or WebP across frames
-        let picture = img(self.source())
-            .object_fit(ObjectFit::ScaleDown)
-            .with_fallback(move || div().text_color(rgb(error)).child(failure.clone()).into_any_element())
-            .size_full()
-            .id(path);
-        div().flex().flex_1().min_h_0().size_full().p_4().bg(rgb(theme.background)).child(picture).into_any_element()
+        div().flex().flex_1().min_h_0().size_full().p_4().bg(rgb(theme.background)).child(picture(self.source(), path, theme)).into_any_element()
     }
 
     fn source(&self) -> ImageSource {
         ImageSource::Resource(Resource::Path(Arc::from(self.path.as_path())))
     }
+}
+
+/// `source` filling its parent, at its own size or scaled down to fit; why it cannot be shown in its place. `name`
+/// identifies it across frames (an animated GIF or WebP keeps its frame) and names it in the failure.
+pub fn picture(source: ImageSource, name: String, theme: Theme) -> impl IntoElement {
+    let failure = format!("Cannot show {name}: it is not an image IVE can read");
+    let error = theme.error;
+    img(source)
+        .object_fit(ObjectFit::ScaleDown)
+        .with_fallback(move || div().text_color(rgb(error)).child(failure.clone()).into_any_element())
+        .size_full()
+        .id(name)
 }
 
 #[cfg(test)]

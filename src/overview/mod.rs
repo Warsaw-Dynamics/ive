@@ -7,6 +7,7 @@ pub mod file_list;
 pub mod git_event;
 pub mod git_log_tab;
 pub mod git_ui;
+mod image_diff;
 mod project;
 pub use project::card_tags as project_card_tags;
 pub mod project_git;

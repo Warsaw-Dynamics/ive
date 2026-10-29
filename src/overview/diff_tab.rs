@@ -9,6 +9,7 @@ use std::sync::Arc;
 use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Subscription, Task, Window, div, prelude::*, rgb};
 
 use super::git_ui::{layout_switch, mark_label, muted, toggle_button};
+use super::image_diff::ImageSides;
 use crate::click_targets::target;
 use crate::selectable::selectable;
 use crate::codeview_host::{DiffOrigin, WantedTexts, diff_panel, send_texts, serve};
@@ -82,6 +83,11 @@ impl DiffRequest {
             old_path: self.file.old_path.as_ref().map(|path| path.as_bytes().to_vec()),
             source,
         }
+    }
+
+    /// Whether the diff shows pictures rather than text.
+    pub fn is_image(&self) -> bool {
+        crate::image_tab::is_image(&self.file.path.to_path())
     }
 
     /// `None` when the file has no changes any more.
@@ -221,6 +227,13 @@ impl DiffTab {
         file.update(cx, |file, cx| file.take_reread(reread, cx));
     }
 
+    /// The file at `path` changed on disk: an uncommitted diff of an image shows it again.
+    pub fn file_changed(&self, path: &Path, cx: &mut App) {
+        if self.request.is_image() && self.edited_path().as_deref() == Some(path) {
+            self.body.update(cx, |body, cx| body.reload_diff(cx));
+        }
+    }
+
     /// Scrolls the diff back to where a saved tab had it.
     pub fn restore(&self, state: PanelState, cx: &mut App) {
         let panel = self.body.read(cx).panel.clone();
@@ -251,6 +264,13 @@ enum NewSide {
     Edited { file: Entity<EditedFile>, _changes: Subscription },
 }
 
+/// What an image's diff shows in place of the rows: nothing for a text file.
+enum Pictures {
+    Text,
+    Reading,
+    Shown(ImageSides),
+}
+
 /// The key that undoes an edit, as the note of an edited diff with no changes left names it.
 #[cfg(target_os = "macos")]
 const UNDO_KEY: &str = "Cmd+Z";
@@ -274,7 +294,9 @@ pub struct DiffTabBody {
     panel: Entity<Panel>,
     state: BodyState,
     new_side: NewSide,
+    pictures: Pictures,
     _reload: Option<Task<()>>,
+    _pictures: Option<Task<()>>,
 }
 
 impl DiffTabBody {
@@ -287,12 +309,41 @@ impl DiffTabBody {
             }
         })
         .detach();
-        let new_side = new_side_of(&spec.request.source);
+        let new_side = new_side_of(&spec.request);
         if let NewSide::Unread = new_side {
             panel.update(cx, |panel, cx| panel.handle(Cast::SetEditable(Editable::NewSide { policy: FIRST_POLICY }), cx));
         }
         let source = source_text(&spec.request.source, &spec.label);
-        Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, new_side, _reload: None }
+        let pictures = Pictures::Text;
+        let mut body = Self { request: spec.request.clone(), source, mark: spec.file.mark, panel, state: BodyState::Shown, new_side, pictures, _reload: None, _pictures: None };
+        if body.request.is_image() {
+            body.read_pictures(cx);
+        }
+        body
+    }
+
+    /// Reads the pictures of an image's diff again, as the request stands now.
+    fn read_pictures(&mut self, cx: &mut Context<Self>) {
+        if let Pictures::Shown(pictures) = &self.pictures {
+            pictures.forget(cx);
+        }
+        self.pictures = Pictures::Reading;
+        let request = self.request.clone();
+        self._pictures = Some(cx.spawn(async move |this, cx| {
+            let read = cx.background_executor().spawn(async move { ImageSides::read(&request) }).await;
+            this.update(cx, |body, cx| body.take_pictures(read, cx)).ok();
+        }));
+    }
+
+    fn take_pictures(&mut self, read: Result<ImageSides, String>, cx: &mut Context<Self>) {
+        match read {
+            Ok(pictures) => self.pictures = Pictures::Shown(pictures),
+            Err(message) => {
+                eprintln!("ive: {message}");
+                self.state = BodyState::Failed(message);
+            }
+        }
+        cx.notify();
     }
 
     /// Answers an ask for the texts, as the request stands now (a reload may move a Since diff's fork point); the
@@ -446,6 +497,9 @@ impl DiffTabBody {
                 self.request = request;
                 self.mark = file.mark;
                 self.state = BodyState::Shown;
+                if self.request.is_image() {
+                    self.read_pictures(cx);
+                }
                 vec![file]
             }
             Ok((request, None)) => {
@@ -496,7 +550,12 @@ impl Render for DiffTabBody {
             let padding = (theme.sizes.git.diff_header_padding_x.px(), theme.sizes.git.diff_header_padding_y.px());
             div().flex_none().px(padding.0).py(padding.1).child(muted(note, theme))
         });
-        div().flex().flex_col().flex_1().min_h_0().child(header).children(no_changes).child(self.panel.clone())
+        let body = match &self.pictures {
+            Pictures::Text => self.panel.clone().into_any_element(),
+            Pictures::Reading => div().flex_1().into_any_element(),
+            Pictures::Shown(pictures) => pictures.render(&path, theme),
+        };
+        div().flex().flex_col().flex_1().min_h_0().child(header).children(no_changes).child(body)
     }
 }
 
@@ -536,9 +595,13 @@ fn state_of(diff: &FileDiff) -> BodyState {
     }
 }
 
-/// Only a diff of uncommitted changes edits its new side: every other one shows commits, which stay as they are.
-fn new_side_of(source: &DiffSource) -> NewSide {
-    match source {
+/// Only a diff of uncommitted changes edits its new side: every other one shows commits, which stay as they are; an
+/// image is never edited.
+fn new_side_of(request: &DiffRequest) -> NewSide {
+    if request.is_image() {
+        return NewSide::ReadOnly;
+    }
+    match &request.source {
         DiffSource::Uncommitted => NewSide::Unread,
         DiffSource::Since { .. } | DiffSource::Commit { .. } | DiffSource::Files { .. } => NewSide::ReadOnly,
     }

@@ -433,12 +433,12 @@ impl Tab {
         }
     }
 
-    /// The file at `path` changed or went: an image tab of it reads it again.
+    /// The file at `path` changed or went: an image tab of it, or an uncommitted diff of the image, shows it again.
     pub fn file_changed(&self, path: &Path, cx: &mut App) {
-        if let Self::Image(image) = self
-            && image.path() == path
-        {
-            image.reload(cx);
+        match self {
+            Self::Image(image) if image.path() == path => image.reload(cx),
+            Self::Diff(diff) => diff.file_changed(path, cx),
+            _ => {}
         }
     }
 

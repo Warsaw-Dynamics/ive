@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree};
+use git2::{Commit, Diff, DiffDelta, DiffFindOptions, DiffOptions, ErrorCode, FileMode, Patch, Repository, Tree, TreeEntry};
 
 use super::blob_filter;
 use super::repo::{self, GitError};
@@ -19,6 +19,8 @@ const CONTEXT_LINES: u32 = 3;
 const TAB: &str = "    ";
 /// Like git, a NUL byte in the first 8000 bytes marks a file as binary.
 const BINARY_SNIFF_BYTES: usize = 8000;
+/// The largest blob an image diff reads into memory.
+const MAX_IMAGE_BYTES: usize = 64 * 1024 * 1024;
 
 /// Whether a diff from a tree reaches into the work tree (staged, unstaged and untracked changes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -171,6 +173,47 @@ pub fn texts(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<Sour
         NewSide::WorkTree => work_tree_text(&repo, &file.path),
     };
     Ok((old, new))
+}
+
+/// One side of an image's diff: its blob's bytes, or the file on disk.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImageSide {
+    Blob(Vec<u8>),
+    File(PathBuf),
+}
+
+/// The old and new picture of `file` between `sides`; a side is `None` when the file is missing there or is not a
+/// regular file. A blob over 64 MiB is an error.
+pub fn image_sides(dir: &Path, sides: &Sides, file: &FilePaths) -> Result<(Option<ImageSide>, Option<ImageSide>), GitError> {
+    if let Sides::Files { left, right } = sides {
+        return Ok((disk_image(left), disk_image(right)));
+    }
+    let fail = failed("read the pictures of a diff", dir);
+    let repo = repo::open(dir)?;
+    let (old_tree, new_side) = side_trees(&repo, sides).map_err(&fail)?;
+    let old = blob_image(&repo, old_tree.as_ref(), file.old_path.as_ref().unwrap_or(&file.path)).map_err(&fail)?;
+    let new = match new_side {
+        NewSide::Tree(tree) => blob_image(&repo, tree.as_ref(), &file.path).map_err(&fail)?,
+        NewSide::WorkTree => repo.workdir().and_then(|workdir| disk_image(&workdir.join(relative_path(file.path.as_bytes())))),
+    };
+    Ok((old, new))
+}
+
+/// The bytes of the image at `path` in `tree`.
+fn blob_image(repo: &Repository, tree: Option<&Tree<'_>>, path: &GitPath) -> Result<Option<ImageSide>, git2::Error> {
+    let Some(entry) = blob_entry(tree, path)? else {
+        return Ok(None);
+    };
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size > MAX_IMAGE_BYTES {
+        let message = format!("{} is {size} bytes in git, more than the {MAX_IMAGE_BYTES} an image diff shows", path.display());
+        return Err(git2::Error::from_str(&message));
+    }
+    Ok(Some(ImageSide::Blob(repo.find_blob(entry.id())?.content().to_vec())))
+}
+
+fn disk_image(path: &Path) -> Option<ImageSide> {
+    fs::metadata(path).ok().filter(fs::Metadata::is_file).map(|_| ImageSide::File(path.to_path_buf()))
 }
 
 /// An uncommitted diff of a file as IVE edits it: HEAD's text of it against the text IVE read or saved.
@@ -369,6 +412,21 @@ fn side_trees<'r>(repo: &'r Repository, sides: &Sides) -> Result<(Option<Tree<'r
 
 /// The text of the file at `path` in `tree`, when it is one to colour: a regular file, not binary, small enough.
 fn blob_text(repo: &Repository, tree: Option<&Tree<'_>>, path: &GitPath) -> Result<Option<Source>, git2::Error> {
+    let Some(entry) = blob_entry(tree, path)? else {
+        return Ok(None);
+    };
+    // the size first: a blob too large to colour is not read at all
+    let (size, _) = repo.odb()?.read_header(entry.id())?;
+    if size > MAX_HIGHLIGHT_BYTES {
+        return Ok(None);
+    }
+    let blob = repo.find_blob(entry.id())?;
+    Ok((!blob.is_binary()).then(|| Source::from_vec(blob.content().to_vec())))
+}
+
+/// The entry of the regular file at `path` in `tree`; `None` when there is no tree, no such file, or it is another
+/// kind of entry.
+fn blob_entry<'t>(tree: Option<&'t Tree<'_>>, path: &GitPath) -> Result<Option<TreeEntry<'t>>, git2::Error> {
     let Some(tree) = tree else {
         return Ok(None);
     };
@@ -378,16 +436,8 @@ fn blob_text(repo: &Repository, tree: Option<&Tree<'_>>, path: &GitPath) -> Resu
         Err(error) => return Err(error),
     };
     // a symbolic link's blob is its target, a submodule's entry a commit
-    if entry.filemode() != i32::from(FileMode::Blob) && entry.filemode() != i32::from(FileMode::BlobExecutable) {
-        return Ok(None);
-    }
-    // the size first: a blob too large to colour is not read at all
-    let (size, _) = repo.odb()?.read_header(entry.id())?;
-    if size > MAX_HIGHLIGHT_BYTES {
-        return Ok(None);
-    }
-    let blob = repo.find_blob(entry.id())?;
-    Ok((!blob.is_binary()).then(|| Source::from_vec(blob.content().to_vec())))
+    let regular = entry.filemode() == i32::from(FileMode::Blob) || entry.filemode() == i32::from(FileMode::BlobExecutable);
+    Ok(regular.then_some(entry))
 }
 
 /// The work tree's file at `path`, when it is one to colour; `None` also when it cannot be read (it went away).
@@ -1172,5 +1222,25 @@ mod tests {
 
         // then
         assert_eq!(found, [(None, None), (None, None)]);
+    }
+
+    #[test]
+    fn should_read_an_image_from_head_and_from_the_work_tree() {
+        // given
+        let repo = TestRepo::init();
+        repo.write_bytes(Path::new("logo.png"), b"\x89PNG old\0");
+        repo.commit("logo");
+        repo.write_bytes(Path::new("logo.png"), b"\x89PNG new\0");
+        repo.write_bytes(Path::new("added.png"), b"\x89PNG added\0");
+        let file = |path: &str| FilePaths { path: GitPath::from_bytes(path.as_bytes()), old_path: None };
+
+        // when
+        let changed = image_sides(repo.path(), &Sides::Uncommitted, &file("logo.png")).expect("sides");
+        let added = image_sides(repo.path(), &Sides::Uncommitted, &file("added.png")).expect("sides");
+
+        // then
+        let on_disk = |path: &str| Some(ImageSide::File(repo.path().join(path)));
+        assert_eq!(changed, (Some(ImageSide::Blob(b"\x89PNG old\0".to_vec())), on_disk("logo.png")));
+        assert_eq!(added, (None, on_disk("added.png")));
     }
 }
