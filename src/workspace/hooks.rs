@@ -31,6 +31,8 @@ impl Workspace {
     /// A refresh result replaced project `id`'s checkouts (not called after a failed refresh).
     pub fn project_refreshed(&mut self, id: &ProjectId, cx: &mut Context<Self>) {
         self.refresh_git_views(id, cx);
+        // a worktree removed outside IVE leaves the index with the refresh that drops it
+        self.forget_closed_checkouts(cx);
         self.index_project(id, cx);
     }
 

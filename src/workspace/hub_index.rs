@@ -102,11 +102,12 @@ impl Workspace {
         }
     }
 
-    /// A project closed or a worktree was hidden: its files leave the index.
+    /// A project closed, or a worktree was hidden or removed: its files leave the index.
     pub(super) fn forget_closed_checkouts(&mut self, cx: &mut Context<Self>) {
         let open: Vec<PathBuf> = self.projects.iter().flat_map(indexed_paths).collect();
-        self.hub_index.retain(&open);
-        self.rebuild_corpus(cx);
+        if self.hub_index.retain(&open) > 0 {
+            self.rebuild_corpus(cx);
+        }
     }
 
     fn read_hub_checkouts(&mut self, project: &ProjectId, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
@@ -144,7 +145,7 @@ impl Workspace {
                 // a shown Run configurations tab lists the run files just read
                 cx.notify();
             }
-            Err(error) => {
+            Err(error) if checkout.is_dir() => {
                 let notice = format!("the hub cannot list the files of {}: {error}", checkout.display());
                 // read again on every hub open and change: told once, until it fails otherwise
                 if self.hub_index.failed(checkout, error) == crate::hub::index::Failed::New {
@@ -153,8 +154,18 @@ impl Workspace {
                 // a shown Run configurations tab says why it lists nothing
                 cx.notify();
             }
+            // a worktree removed meanwhile is no failure: the refresh drops it from the project and the index
+            Err(_) => self.checkout_removed(checkout, cx),
         }
         self.rebuild_corpus(cx);
+    }
+
+    fn checkout_removed(&mut self, checkout: &Path, cx: &mut Context<Self>) {
+        self.hub_index.failed(checkout, format!("{} is gone", checkout.display()));
+        let project = self.projects.iter().find(|open| open.listed_checkouts().any(|listed| listed.path == checkout));
+        if let Some(id) = project.map(|open| open.project.id.clone()) {
+            self.refresh_project(&id, cx);
+        }
     }
 
     /// Merges every open checkout's listing into a new corpus on the background executor; the hub searches again

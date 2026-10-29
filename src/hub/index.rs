@@ -154,8 +154,11 @@ impl HubIndex {
         self.ignored
     }
 
-    pub fn retain(&mut self, open: &[PathBuf]) {
+    /// Forgets every checkout but those in `open`; how many were forgotten.
+    pub fn retain(&mut self, open: &[PathBuf]) -> usize {
+        let before = self.checkouts.len();
         self.checkouts.retain(|path, _| open.contains(path));
+        before - self.checkouts.len()
     }
 
     pub fn files(&self, checkout: &Path) -> Option<&Read> {
@@ -233,10 +236,10 @@ mod tests {
         }
 
         // when
-        index.retain(&[path("b")]);
+        let forgotten = index.retain(&[path("b")]);
 
         // then
-        assert_eq!((index.files(&path("a")).is_none(), index.files(&path("b")).is_some()), (true, true));
+        assert_eq!((forgotten, index.files(&path("a")).is_none(), index.files(&path("b")).is_some()), (1, true, true));
     }
 
     #[test]
