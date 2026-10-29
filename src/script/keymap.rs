@@ -22,6 +22,8 @@ pub enum Scope {
     Hub,
     /// keys while a reading view (a Markdown file or scratch shown Rendered) has the keyboard; the editor's keys too
     Reader,
+    /// keys while a project group's menu of tabs is open
+    GroupMenu,
 }
 
 impl Scope {
@@ -34,6 +36,7 @@ impl Scope {
             Self::Tree => "tree",
             Self::Hub => "hub",
             Self::Reader => "reader",
+            Self::GroupMenu => "group-menu",
         }
     }
 }
@@ -50,6 +53,8 @@ pub enum Place {
     Hub,
     /// the sidebar has the keyboard
     Tree,
+    /// a project group's menu of tabs is open
+    GroupMenu,
     Elsewhere,
 }
 
@@ -275,6 +280,7 @@ impl Builtin {
         match self {
             Self::Nop => true,
             Self::OpenSettings | Self::OpenTerminal | Self::OpenTerminalIn | Self::ToggleChangesLayout | Self::ToggleFolderEverywhere(_) => scope == Scope::Window,
+            Self::CloseTab | Self::StopProgram | Self::KillProgram if scope == Scope::GroupMenu => true,
             Self::CloseTab | Self::KeepTab => matches!(scope, Scope::Window | Scope::Tab),
             Self::StopProgram | Self::KillProgram | Self::CloseOtherTabs | Self::CloseTabsToTheLeft | Self::CloseTabsToTheRight => {
                 matches!(scope, Scope::Window | Scope::Tab)
@@ -476,6 +482,7 @@ impl Keymap {
             Place::Reader => in_scope(Scope::Reader).or_else(|| in_scope(Scope::Editor)),
             Place::Hub => in_scope(Scope::Hub),
             Place::Tree => in_scope(Scope::Tree),
+            Place::GroupMenu => in_scope(Scope::GroupMenu),
             Place::Elsewhere => None,
         };
         enabled(local.or_else(|| in_scope(Scope::Window)))

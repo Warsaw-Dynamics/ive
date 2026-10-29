@@ -515,7 +515,7 @@ impl Workspace {
 
     /// Stop and Kill: a process tab's process ends for good (its tab closes with it); any other tab just closes, so
     /// one key stops or closes whatever is shown.
-    fn stop_tab(&mut self, tab: TabId, ending: ProgramEnding, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn stop_tab(&mut self, tab: TabId, ending: ProgramEnding, window: &mut Window, cx: &mut Context<Self>) {
         match self.tabs.get(tab) {
             Some(Tab::Process(id)) => {
                 let id = *id;

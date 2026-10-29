@@ -176,6 +176,8 @@ pub struct Workspace {
     /// the open project group menu, and where a drag in it would land
     group_menu: Option<crate::tab_group_menu::GroupMenu>,
     group_menu_drop: Option<tab_grouping::MenuDrop>,
+    /// the group head under the pointer, whose X shows Stop while Shift is down
+    hovered_group_head: Option<ProjectId>,
     /// every open project's files, as the hub searches them
     corpus: std::sync::Arc<Corpus>,
     /// the projects `corpus` was built from, in its order
@@ -342,6 +344,7 @@ impl Workspace {
             group_current: std::collections::HashMap::new(),
             group_menu: None,
             group_menu_drop: None,
+            hovered_group_head: None,
             corpus: std::sync::Arc::default(),
             corpus_projects: Vec::new(),
             corpus_build: hub_index::CorpusBuild::default(),
@@ -820,7 +823,7 @@ impl Workspace {
 
     /// The open context menu's keys, else Escape closing the sidebar's menu.
     fn close_menu_on_escape(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_key(event, window, cx) {
+        if self.group_menu_key(event, window, cx) || self.menu_key(event, window, cx) {
             cx.stop_propagation();
             return;
         }
@@ -999,6 +1002,7 @@ impl Render for Workspace {
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.close_menu_on_escape(event, window, cx)))
             .on_key_down(cx.listener(|workspace, event: &KeyDownEvent, window, cx| workspace.run_window_binding(event, window, cx)))
+            .on_modifiers_changed(cx.listener(|workspace, _event: &gpui::ModifiersChangedEvent, _window, cx| workspace.redraw_held_ending(cx)))
             .on_drop(cx.listener(|workspace, dropped: &ExternalPaths, window, cx| workspace.open_dropped(dropped, window, cx)))
             .on_mouse_move(cx.listener(|workspace, event: &MouseMoveEvent, window, cx| workspace.drag_sidebar_edge(event, window, cx)))
             .on_mouse_up(MouseButton::Left, cx.listener(|workspace, _event, _window, cx| workspace.finish_sidebar_resize(cx)))

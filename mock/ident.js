@@ -44,8 +44,12 @@
     // identGroupMenu: the group whose menu is open, and where ({ key, x, y }), while menu is 'tabGroup'
     // identMenuDrag: a drag in that menu (pressGroupMenu); identWorktreeOrder: per project, its worktrees' order as
     // dragged in the menu
+    // identPicked: the menu's selected tabs (keys), identAnchor the one a Shift+click ranges from; identFrozen: the
+    // menu's sections as they were when a row closed, so the rows under the pointer stay put until it leaves the menu;
+    // identHover: the menu row under the pointer; identShift: Shift is down (X shows Stop)
     state: function () {
-      return { identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {} };
+      return { identFolded: [], identGroupMenu: null, identMenuDrag: null, identMenuDragged: false, identWorktreeOrder: {},
+        identPicked: [], identAnchor: null, identFrozen: null, identHover: null, identShift: false };
     },
 
     methods: {
@@ -165,6 +169,9 @@
       openTabGroupMenu: function (key, event) {
         var box = event.currentTarget.getBoundingClientRect();
         this.identGroupMenu = { key: key, x: box.left, y: box.bottom + 4 };
+        this.identPicked = [];
+        this.identAnchor = null;
+        this.identFrozen = null;
         this.menu = 'tabGroup';
       },
       tabGroupMenu: function () {
@@ -250,6 +257,105 @@
       groupMenuDropSide: function (key) {
         var drag = this.identMenuDrag;
         return drag !== null && drag.target === key ? drag.side : null;
+      },
+
+      // ---- closing and stopping (a proposal, DESIGN.md "Closing a group's tabs") ----
+      // how: 'close' (Ctrl+Shift+W; a terminal goes on in Processes) or 'stop' (Ctrl+Shift+Q; its process ends for good)
+      endTabs: function (tabs, how) {
+        var self = this;
+        tabs.forEach(function (tab) { if (how === 'stop') self.stopTab(tab); else self.closeTab(tab); });
+      },
+      // Stop: a process tab's process ends and its tab closes (a run stays in Processes, exited); another tab just closes.
+      stopTab: function (tab) {
+        var c = tab.kind === 'console' ? this.consoleOf(tab) : null;
+        if (c === null) { this.closeTab(tab); return; }
+        if (c.kind === 'run') { this.stopRun(c, 'TERM'); this.closeTab(tab); return; }
+        this.closeConsole(c);
+      },
+      endHow: function (event) { return event.shiftKey ? 'stop' : 'close'; },
+      // The head's X, or a middle click on the head: every tab of the group; with Shift, stopped.
+      endGroup: function (group, event) {
+        this.endTabs(group.tabs.slice(), this.endHow(event));
+      },
+      endGroupTitle: function (group) {
+        var count = group.tabs.length === 1 ? 'the tab' : 'all ' + group.tabs.length + ' tabs';
+        return (this.identShift ? 'Stop ' : 'Close ') + count + ' of ' + group.head.label + ' (middle click too; Shift: stop)';
+      },
+      isOpenTab: function (tab) { return this.tabs.includes(tab); },
+      // The menu's sections: frozen while rows closed under the pointer, else the group's.
+      menuSections: function (group) {
+        return this.identFrozen || this.tabGroupSections(group);
+      },
+      menuTabs: function (group) {
+        return this.menuSections(group).flatMap(function (s) { return s.tabs; }).filter(this.isOpenTab, this);
+      },
+      pickedTabs: function () {
+        var picked = this.identPicked;
+        return this.tabs.filter(function (t) { return picked.includes(t.key); });
+      },
+      isPicked: function (tab) { return this.identPicked.includes(tab.key); },
+      // A click on a row shows its tab; Ctrl+click picks it or drops it, Shift+click picks the rows from the anchor.
+      clickMenuTab: function (group, tab, event) {
+        if (this.identMenuDragged) return;
+        if (event.ctrlKey || event.metaKey) { this.toggleMenuPick([tab]); this.identAnchor = tab.key; return; }
+        if (event.shiftKey) { this.pickMenuRange(group, tab); return; }
+        this.menu = null;
+        this.showTab(tab);
+      },
+      // The rows from the anchor to `tab`; with no anchor yet (or its tab gone), `tab` alone, which becomes the anchor.
+      pickMenuRange: function (group, tab) {
+        var keys = this.menuTabs(group).map(function (t) { return t.key; });
+        var from = keys.indexOf(this.identAnchor);
+        var to = keys.indexOf(tab.key);
+        if (from === -1) { this.identPicked = [tab.key]; this.identAnchor = tab.key; return; }
+        this.identPicked = keys.slice(Math.min(from, to), Math.max(from, to) + 1);
+      },
+      // Ctrl+click on a worktree's head: its tabs picked, or dropped when all were.
+      clickMenuSection: function (section, event) {
+        if (event.ctrlKey || event.metaKey) this.toggleMenuPick(section.tabs.filter(this.isOpenTab, this));
+      },
+      toggleMenuPick: function (tabs) {
+        var keys = tabs.map(function (t) { return t.key; });
+        var picked = this.identPicked;
+        var all = keys.every(function (k) { return picked.includes(k); });
+        this.identPicked = all ? picked.filter(function (k) { return keys.includes(k) === false; }) : picked.concat(keys.filter(function (k) { return picked.includes(k) === false; }));
+      },
+      // A row's X, or a middle click on it: the picked tabs when it is one of them, else that tab; with Shift, stopped.
+      // The menu stays open, and its rows stay put until the pointer leaves it.
+      endFromMenu: function (group, tab, event) {
+        this.endMenuTabs(group, this.isPicked(tab) ? this.pickedTabs() : [tab], this.endHow(event));
+      },
+      endMenuTabs: function (group, tabs, how) {
+        if (this.identFrozen === null) this.identFrozen = this.tabGroupSections(group);
+        this.endTabs(tabs, how);
+        var open = this.tabs.map(function (t) { return t.key; });
+        this.identPicked = this.identPicked.filter(function (k) { return open.includes(k); });
+      },
+      endRowTitle: function (tab) {
+        var many = this.isPicked(tab) && this.identPicked.length > 1 ? ' ' + this.identPicked.length + ' selected tabs' : '';
+        return (this.identShift ? 'Stop' : 'Close') + many + ' (middle click too; Shift: stop)';
+      },
+      leaveGroupMenu: function () {
+        this.identFrozen = null;
+        this.identHover = null;
+      },
+      // Keys while the menu is open: Ctrl+Shift+W closes, Ctrl+Shift+Q stops the picked tabs, else the row under the
+      // pointer (Alt+Shift+W / Q too: a browser keeps Ctrl+Shift+W and Q for itself). Shift shows Stop on the X.
+      tabGroupKey: function (event) {
+        this.identShift = event.shiftKey;
+        var m = this.tabGroupMenu();
+        var chord = event.shiftKey && (event.ctrlKey || event.metaKey || event.altKey);
+        var how = { KeyW: 'close', KeyQ: 'stop' }[event.code];
+        if (m === null || chord === false || how === undefined) return;
+        event.preventDefault();
+        var hovered = this.tabs.filter(function (t) { return t.key === this.identHover; }, this);
+        this.endMenuTabs(m.group, this.identPicked.length ? this.pickedTabs() : hovered, how);
+      },
+      tabGroupKeyUp: function (event) { this.identShift = event.shiftKey; },
+      // Escape: the menu's selection goes first, then the menu.
+      escapeMenu: function () {
+        if (this.menu === 'tabGroup' && this.identPicked.length) { this.identPicked = []; return; }
+        this.menu = null;
       },
 
       // ---- the URL hash (route.js): fold and gc (a folded group's current tab), wto (a project's worktree order) ----

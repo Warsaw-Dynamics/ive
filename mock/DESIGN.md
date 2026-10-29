@@ -584,6 +584,25 @@ projects, worktrees and modules.
   place of the folder icon (its run badge goes), a worktree row a 2 px rail in its colour left of its chevron.
 - **Hub.** As before, plus the badge on each row's icon: its module's favicon, else its project's.
 
+## Closing a group's tabs (in the app since 2026-10-28)
+
+Close is Ctrl+Shift+W (a terminal goes on in Processes), Stop is Ctrl+Shift+Q (a process tab's process ends for good;
+another tab just closes). Neither asks first.
+
+- **Head.** The count of a folded group turns into an X while hovered; an open group's head shows the X in that slot
+  while the head is hovered. X closes every tab of the group, Shift+X stops them (the X shows the Stop icon while Shift
+  is down). A middle click on the head does the same, Shift+middle click stops.
+- **Menu rows.** Every row has an X (faint, solid on the row's hover); a middle click closes the row too, Shift stops.
+  The menu stays open, and a closed row stays in place, struck through, until the pointer leaves the menu, so the
+  next click does not land on the row that moved up.
+- **Picking several.** As the tree: Ctrl+click picks or drops a row, Shift+click picks the range from the last
+  Ctrl+clicked row (with none, that row alone, and the range starts there next), Ctrl+click on a worktree's head picks its tabs. A plain click still shows the tab and closes the
+  menu. X or a middle click on a picked row ends every picked one; on another row, that row alone. Ctrl+Shift+W / Q
+  end the picked tabs, else the row under the pointer: `ive.rn` binds them in the `"group-menu"` key scope (the mock
+  takes Alt+Shift+W / Q too: a browser keeps the Ctrl ones). A bar at the bottom shows "n selected · Close · Stop". Escape drops the pick, then closes the menu.
+- **Not done.** Dragging to pick (Ctrl+middle drag): the rows already drag to reorder, and Shift+click covers ranges.
+  Picking on the tab row itself.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon

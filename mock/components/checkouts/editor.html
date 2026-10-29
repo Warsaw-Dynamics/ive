@@ -10,9 +10,13 @@
     <template x-for="g in tabGroups()" :key="g.key">
     <div class="tabs__group" :class="{ 'tabs__group--on': g.head !== null, 'tabs__group--folded': g.folded, 'tabs__group--active': g.tabs.some(t => t.key === focus) }">
     <template x-if="g.head">
-      <span class="tabs__head">
+      <!-- a proposal: the count (folded), else a slot, turns into X on hover: it closes every tab of the group; Shift+click
+           stops them (Ctrl+Shift+Q each); a middle click on the head does the same, with Shift too -->
+      <span class="tabs__head" @mousedown="$event.button === 1 && $event.preventDefault()" @auxclick="$event.button === 1 && endGroup(g, $event)">
       <button class="tabs__head-fold" type="button" @click="toggleTabGroup(g.key)" :title="(g.folded ? 'Unfold ' : 'Fold ') + g.head.label"><img class="icon tabs__head-chevron" :src="icon(g.folded ? 'chevron-right.svg' : 'chevron-down.svg')" alt="" /></button>
-      <button class="tabs__head-name" type="button" @click.stop="openTabGroupMenu(g.key, $event)" :title="g.head.label + ': its tabs'"><template x-if="g.head.owner"><span class="owner" :title="g.head.owner.module ? g.head.owner.project + ' › ' + g.head.owner.module : g.head.owner.project"><template x-if="g.head.owner.icon"><img class="owner__icon" :src="g.head.owner.icon" alt="" /></template><template x-if="g.head.owner.icon === null"><span class="owner__initials" x-text="g.head.owner.initials"></span></template></span></template><span class="tabs__head-label" x-text="g.head.label"></span><template x-if="g.folded"><span class="tabs__head-count" x-text="g.tabs.length"></span></template></button>
+      <button class="tabs__head-name" type="button" @click.stop="openTabGroupMenu(g.key, $event)" :title="g.head.label + ': its tabs'"><template x-if="g.head.owner"><span class="owner" :title="g.head.owner.module ? g.head.owner.project + ' › ' + g.head.owner.module : g.head.owner.project"><template x-if="g.head.owner.icon"><img class="owner__icon" :src="g.head.owner.icon" alt="" /></template><template x-if="g.head.owner.icon === null"><span class="owner__initials" x-text="g.head.owner.initials"></span></template></span></template><span class="tabs__head-label" x-text="g.head.label"></span></button>
+      <button class="tabs__head-end" type="button" :class="{ 'tabs__head-end--count': g.folded }" @click.stop="endGroup(g, $event)" :title="endGroupTitle(g)"
+              @mouseenter="identShift = $event.shiftKey"><template x-if="g.folded"><span class="tabs__head-count" x-text="g.tabs.length"></span></template><img class="icon tabs__head-x" :src="icon(identShift ? 'stop.svg' : 'close.svg')" alt="" /></button>
       </span>
     </template>
     <template x-for="tab in g.shown" :key="tab.key">
@@ -39,25 +43,41 @@
        project's own under Whole project; the group's current tab ticked -->
   <template x-for="m in (tabGroupMenu() ? [tabGroupMenu()] : [])" :key="m.key">
     <!-- a tab drags within its worktree, a worktree's head among the project's; a line marks where it lands -->
-    <div class="menu menu--at" :style="{ left: m.x + 'px', top: m.y + 'px' }" role="menu" @mousedown.outside="menu = null" @dragstart.prevent>
-      <template x-for="s in tabGroupSections(m.group)" :key="s.key">
+    <!-- a proposal: every row has an X (a middle click too; Shift: Stop) and the menu stays open; closed rows stay, struck
+         through, until the pointer leaves it. Ctrl+click picks rows, Shift+click a range, Ctrl+click a worktree's head
+         its tabs; X on a picked row, or Ctrl+Shift+W / Q, ends every picked one. Escape drops the pick, then the menu. -->
+    <div class="menu menu--at" :style="{ left: m.x + 'px', top: m.y + 'px' }" role="menu" @mousedown.outside="menu = null" @dragstart.prevent
+         @mouseleave="leaveGroupMenu()" @mousemove="identShift = $event.shiftKey">
+      <template x-for="s in menuSections(m.group)" :key="s.key">
         <div class="menu__wt" :data-menu-section="s.key" :data-drop="identMenuDrag && identMenuDrag.kind === 'section' ? groupMenuDropSide(s.key) : null">
           <template x-if="s.label">
             <div class="menu__section menu__section--wt" :class="{ 'menu__section--rail': s.colour, 'menu__section--grab': s.key !== 'project' }" :style="s.colour ? { '--wt': s.colour } : {}"
-                 @mousedown="$event.button === 0 && s.key !== 'project' && pressGroupMenu({ kind: 'section', key: s.key, section: s.key }, $event)">
+                 @mousedown="$event.button === 0 && s.key !== 'project' && ($event.ctrlKey || $event.metaKey) === false && pressGroupMenu({ kind: 'section', key: s.key, section: s.key }, $event)"
+                 @click="clickMenuSection(s, $event)">
               <img class="icon" :src="icon(s.key === 'project' ? 'project-folder.svg' : 'branch.svg')" alt="" /><span x-text="s.label"></span>
             </div>
           </template>
           <template x-for="tab in s.tabs" :key="tab.key">
             <button class="menu__item" type="button" role="menuitem" :data-menu-tab="tab.key" :data-section="s.key"
+                    :class="{ 'menu__item--picked': isPicked(tab), 'menu__item--gone': isOpenTab(tab) === false }"
                     :data-drop="identMenuDrag && identMenuDrag.kind === 'tab' ? groupMenuDropSide(tab.key) : null"
-                    @mousedown="$event.button === 0 && pressGroupMenu({ kind: 'tab', key: tab.key, section: s.key }, $event)"
-                    @click="if (identMenuDragged === false) { menu = null; showTab(tab); }">
+                    @mouseenter="identHover = tab.key"
+                    @mousedown="if ($event.button === 1) $event.preventDefault(); if ($event.button === 0 && ($event.ctrlKey || $event.metaKey || $event.shiftKey) === false) pressGroupMenu({ kind: 'tab', key: tab.key, section: s.key }, $event)"
+                    @click="clickMenuTab(m.group, tab, $event)"
+                    @auxclick="$event.button === 1 && endFromMenu(m.group, tab, $event)">
               <span class="menu__tick" x-text="tab.key === m.group.current.key ? '✓' : ''"></span>
               <span class="icon-stack" x-data="{ get badge() { return tabModuleBadge(tab); } }"><img class="icon" :src="icon(tabIcon(tab))" alt="" /><template x-if="badge"><img class="icon-stack__owner" :src="badge.icon" alt="" :title="badge.project + ' › ' + badge.module" /></template></span>
               <span class="menu__grow" x-text="tabTitle(tab)"></span>
+              <span class="menu__end" role="button" :title="endRowTitle(tab)" @mousedown.stop @click.stop="endFromMenu(m.group, tab, $event)"><img class="icon" :src="icon(identShift ? 'stop.svg' : 'close.svg')" alt="" /></span>
             </button>
           </template>
+        </div>
+      </template>
+      <template x-if="pickedTabs().length">
+        <div class="menu__picked">
+          <span class="menu__grow" x-text="pickedTabs().length + ' selected'"></span>
+          <button class="menu__picked-action" type="button" title="Ctrl+Shift+W" @click="endMenuTabs(m.group, pickedTabs(), 'close')"><img class="icon" :src="icon('close.svg')" alt="" />Close</button>
+          <button class="menu__picked-action" type="button" title="Ctrl+Shift+Q" @click="endMenuTabs(m.group, pickedTabs(), 'stop')"><img class="icon" :src="icon('stop.svg')" alt="" />Stop</button>
         </div>
       </template>
     </div>

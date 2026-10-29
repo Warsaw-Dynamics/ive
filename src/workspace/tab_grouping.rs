@@ -4,14 +4,15 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use gpui::{Context, Pixels, Point};
+use gpui::{App, Context, KeyDownEvent, Modifiers, Pixels, Point, SharedString, Window};
 
-use super::Workspace;
+use super::{ProgramEnding, Workspace};
 use crate::editor::Tab;
 use crate::open_project::TabsFolded;
 use crate::project::ProjectId;
 use crate::saved_tabs::SavedTab;
-use crate::tab_group_menu::GroupMenu;
+use crate::script::keymap::{Action, Place};
+use crate::tab_group_menu::{Ending, Frozen, GroupMenu, Picks, Section};
 use crate::tab_groups::{self, GroupState, Side, TabFacts, TabGroup};
 use crate::tabs::TabId;
 
@@ -87,10 +88,12 @@ impl Workspace {
         self.group_menu.as_ref()
     }
 
-    /// Opens project `project`'s group menu at `at`, under its head.
-    pub fn open_group_menu(&mut self, project: ProjectId, at: Point<Pixels>, cx: &mut Context<Self>) {
-        self.group_menu = Some(GroupMenu { project, at });
+    /// Opens project `project`'s group menu at `at`, under its head; it has the keyboard while open (as the context
+    /// menu).
+    pub fn open_group_menu(&mut self, project: ProjectId, at: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+        self.group_menu = Some(GroupMenu::new(project, at));
         self.group_menu_drop = None;
+        window.focus(&self.focus_handle, cx);
         cx.notify();
     }
 
@@ -99,6 +102,186 @@ impl Workspace {
             self.group_menu_drop = None;
             cx.notify();
         }
+    }
+
+    /// Closes the group menu (Escape, a press outside it), giving the keyboard back to the shown tab.
+    pub fn dismiss_group_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.group_menu.is_some() {
+            self.close_group_menu(cx);
+            self.focus_active_tab(window, cx);
+        }
+    }
+
+    /// The pointer on project `project`'s group head (`hovering`), or off it.
+    pub fn hover_group_head(&mut self, project: &ProjectId, hovering: bool, cx: &mut Context<Self>) {
+        let now = match hovering {
+            true => Some(project.clone()),
+            false => self.hovered_group_head.clone().filter(|was| was != project),
+        };
+        if self.hovered_group_head != now {
+            self.hovered_group_head = now;
+            cx.notify();
+        }
+    }
+
+    /// Shift went down or up: a hovered head's X and the open menu's show Stop or Close.
+    pub(super) fn redraw_held_ending(&mut self, cx: &mut Context<Self>) {
+        if self.hovered_group_head.is_some() || self.group_menu.is_some() {
+            cx.notify();
+        }
+    }
+
+    /// Ends tabs `ids` as `ending` says.
+    pub fn end_tabs(&mut self, ids: Vec<TabId>, ending: Ending, window: &mut Window, cx: &mut Context<Self>) {
+        let program = match ending {
+            Ending::Close => {
+                self.close_tabs(ids, window, cx);
+                return;
+            }
+            Ending::Stop => ProgramEnding::Stop,
+            Ending::Kill => ProgramEnding::Kill,
+        };
+        for id in ids {
+            self.stop_tab(id, program, window, cx);
+        }
+    }
+
+    /// The head's X, or a middle click on the head: every tab of project `project`'s group.
+    pub fn end_group(&mut self, project: &ProjectId, ending: Ending, window: &mut Window, cx: &mut Context<Self>) {
+        let ids = self.project_facts(project).into_iter().map(|fact| fact.id).collect();
+        self.end_tabs(ids, ending, window, cx);
+    }
+
+    /// A row's X, or a middle click on it: every picked row when it is one, else that row. The menu stays open, its
+    /// rows put until the pointer leaves it.
+    pub fn end_from_menu(&mut self, on: TabId, ending: Ending, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(menu) = &self.group_menu else { return };
+        let targets = menu.picks.targets(on);
+        self.end_menu_tabs(targets, ending, window, cx);
+    }
+
+    /// The picked rows, from the bar's Close and Stop.
+    pub fn end_picked(&mut self, ending: Ending, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(menu) = &self.group_menu else { return };
+        let targets = menu.picks.picked().to_vec();
+        self.end_menu_tabs(targets, ending, window, cx);
+    }
+
+    fn end_menu_tabs(&mut self, ids: Vec<TabId>, ending: Ending, window: &mut Window, cx: &mut Context<Self>) {
+        let frozen = self.group_menu.as_ref().map(|menu| menu.frozen.clone().unwrap_or_else(|| self.menu_rows_now(&menu.project)));
+        self.end_tabs(ids, ending, window, cx);
+        let picks = self.group_menu.as_ref().map(|menu| menu.picks.retained(|id| self.tabs.get(id).is_some()));
+        // ending the tabs closed the menu with the project's last tab
+        if let Some((menu, (frozen, picks))) = self.group_menu.as_mut().zip(frozen.zip(picks)) {
+            menu.frozen = Some(frozen);
+            menu.picks = picks;
+        }
+        cx.notify();
+    }
+
+    fn project_facts(&self, project: &ProjectId) -> Vec<TabFacts> {
+        self.tab_group_facts().into_iter().filter(|fact| fact.project.as_ref() == Some(project)).collect()
+    }
+
+    /// Project `project`'s menu rows as they are, with their titles.
+    fn menu_rows_now(&self, project: &ProjectId) -> Frozen {
+        let facts = self.project_facts(project);
+        let titles = facts.iter().filter_map(|fact| self.tabs.get(fact.id).map(|tab| (fact.id, SharedString::from(tab.title(self))))).collect();
+        Frozen { sections: crate::tab_group_menu::sections(&facts, &self.worktree_order(project)), titles }
+    }
+
+    /// The menu's sections as drawn: frozen while closed rows stay put, else the group's.
+    pub fn group_menu_sections(&self, project: &ProjectId) -> Vec<Section> {
+        match self.group_menu.as_ref().and_then(|menu| menu.frozen.as_ref()) {
+            Some(frozen) => frozen.sections.clone(),
+            None => crate::tab_group_menu::sections(&self.project_facts(project), &self.worktree_order(project)),
+        }
+    }
+
+    /// A closed row's title, as it was when the menu froze.
+    pub fn group_menu_title(&self, id: TabId) -> Option<SharedString> {
+        self.group_menu.as_ref()?.frozen.as_ref()?.titles.get(&id).cloned()
+    }
+
+    /// The menu's open rows in menu order, which a Shift+click ranges over.
+    fn open_menu_rows(&self, project: &ProjectId) -> Vec<TabId> {
+        self.group_menu_sections(project).into_iter().flat_map(|section| section.tabs).filter(|id| self.tabs.get(*id).is_some()).collect()
+    }
+
+    /// A click on a row: Ctrl (Cmd) picks it or drops it, Shift picks the range to it; a plain click shows the tab.
+    pub fn click_menu_tab(&mut self, id: TabId, modifiers: &Modifiers, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(menu) = &self.group_menu else { return };
+        let picks = match (modifiers.secondary(), modifiers.shift) {
+            (true, _) => menu.picks.toggled(id),
+            (false, true) => menu.picks.extended(&self.open_menu_rows(&menu.project), id),
+            (false, false) => {
+                self.close_group_menu(cx);
+                return self.activate_tab(id, window, cx);
+            }
+        };
+        self.set_menu_picks(picks, cx);
+    }
+
+    /// Ctrl+click on worktree `checkout`'s head (none: the project's own tabs): its open rows picked, or dropped.
+    pub fn pick_menu_worktree(&mut self, checkout: Option<&Path>, cx: &mut Context<Self>) {
+        let Some(menu) = &self.group_menu else { return };
+        let section = self.group_menu_sections(&menu.project).into_iter().find(|section| section.checkout.as_deref() == checkout);
+        let ids: Vec<TabId> = section.map(|section| section.tabs).unwrap_or_default().into_iter().filter(|id| self.tabs.get(*id).is_some()).collect();
+        let picks = menu.picks.toggled_all(&ids);
+        self.set_menu_picks(picks, cx);
+    }
+
+    fn set_menu_picks(&mut self, picks: Picks, cx: &mut Context<Self>) {
+        if let Some(menu) = self.group_menu.as_mut() {
+            menu.picks = picks;
+            cx.notify();
+        }
+    }
+
+    /// The pointer on menu row `id` (`hovered`), or off it.
+    pub fn hover_menu_tab(&mut self, id: TabId, hovered: bool, cx: &mut Context<Self>) {
+        let Some(menu) = self.group_menu.as_mut() else { return };
+        let now = match hovered {
+            true => Some(id),
+            false => menu.hovered.filter(|was| *was != id),
+        };
+        if menu.hovered != now {
+            menu.hovered = now;
+            cx.notify();
+        }
+    }
+
+    /// The pointer left the menu: the rows closed meanwhile go.
+    pub fn leave_group_menu(&mut self, cx: &mut Context<Self>) {
+        let Some(menu) = self.group_menu.as_mut() else { return };
+        let (frozen, hovered) = (menu.frozen.take(), menu.hovered.take());
+        if frozen.is_some() || hovered.is_some() {
+            cx.notify();
+        }
+    }
+
+    /// The open group menu's keys: Escape drops the picks, else closes it; the `"group-menu"` scope's Close, Stop and
+    /// Kill end the picked rows, else the row under the pointer. Whether the key was the menu's.
+    pub(super) fn group_menu_key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        let Some(menu) = &self.group_menu else { return false };
+        if event.keystroke.key == "escape" {
+            match menu.picks.is_empty() {
+                true => self.dismiss_group_menu(window, cx),
+                false => self.set_menu_picks(Picks::default(), cx),
+            }
+            return true;
+        }
+        let Some(ending) = bound_ending(event, cx) else { return false };
+        // a held key ends nothing more
+        if event.is_held {
+            return true;
+        }
+        let targets = match menu.picks.is_empty() {
+            true => menu.hovered.into_iter().collect(),
+            false => menu.picks.picked().to_vec(),
+        };
+        self.end_menu_tabs(targets, ending, window, cx);
+        true
     }
 
     /// Where a drag in the group menu would land, for the menu to mark.
@@ -195,6 +378,14 @@ impl Workspace {
             self.schedule_save(cx);
             cx.notify();
         }
+    }
+}
+
+/// What a key bound in the `"group-menu"` scope does to tabs, if anything.
+fn bound_ending(event: &KeyDownEvent, cx: &App) -> Option<Ending> {
+    match crate::script::state::bound_action(event, Place::GroupMenu, cx)? {
+        Action::Builtin(builtin) => Ending::bound(builtin),
+        _ => None,
     }
 }
 

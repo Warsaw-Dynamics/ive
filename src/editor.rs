@@ -39,6 +39,7 @@ use crate::scratch::{self, ScratchRef, ScratchTab};
 use crate::scratch::icon::scratch_icon;
 use crate::script::temporary_tabs::{TabKind, TabMarker, TemporaryTabs};
 use crate::settings_page::{self, SettingsView};
+use crate::tab_group_menu::Ending;
 use crate::tab_groups::{self, CueKind, FramePart, RowItem, Spread, TabFacts, TabGroup};
 use crate::tabs::TabId;
 use crate::theme::Theme;
@@ -668,6 +669,7 @@ fn render_tab_row(workspace: &Workspace, theme: Theme, window: &Window, cx: &mut
         groups,
         facts: facts.iter().map(|fact| (fact.id, fact)).collect(),
         theme,
+        held: Ending::held(&window.modifiers()),
     };
     // past the last tab: a dragged tab goes last
     let sizes = &theme.sizes.tabs;
@@ -818,6 +820,8 @@ struct GroupView<'a> {
     groups: Vec<TabGroup>,
     facts: HashMap<TabId, &'a TabFacts>,
     theme: Theme,
+    /// what the heads' X does: Stop while Shift is down
+    held: Ending,
 }
 
 /// The gap a dragged tab would land in, and the last tab's place.
@@ -872,7 +876,7 @@ fn framed(element: AnyElement, framing: Framing, theme: Theme) -> AnyElement {
 /// One item of the tab row, drawn: a group's head or a tab; the row scrolls to a tab by its item's index.
 fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<AnyElement> {
     match item {
-        RowItem::Head(group) => group_head(&view.groups[group], workspace, cx).map(IntoElement::into_any_element),
+        RowItem::Head(group) => group_head(&view.groups[group], view.held, workspace, cx).map(IntoElement::into_any_element),
         RowItem::Tab(group, id) => {
             let tabs = workspace.tabs();
             let (tab, place, fact) = (tabs.get(id)?, *view.places.get(&id)?, *view.facts.get(&id)?);
@@ -888,8 +892,9 @@ fn render_row_item(item: RowItem, view: &GroupView<'_>, workspace: &Workspace, c
     }
 }
 
-/// A group's head: the chevron folds it; then the project's favicon (or initials), name and, folded, its count.
-fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<Stateful<Div>> {
+/// A group's head: the chevron folds it; then the project's favicon (or initials) and name, which open its menu; then
+/// its end (see [`group_end`]). A middle click on it ends every tab of the group, as its X.
+fn group_head(group: &TabGroup, held: Ending, workspace: &Workspace, cx: &mut Context<Workspace>) -> Option<Stateful<Div>> {
     let theme = crate::theme::tabs(cx);
     let sizes = &theme.sizes.tabs;
     let project = group.project.clone()?;
@@ -911,12 +916,11 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
         Some(path) => favicon_or(&path, px(14.), initials).into_any_element(),
         None => initials(),
     };
-    let count = group.is_folded().then(|| div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string()));
     let label = div().max_w(px(140.)).overflow_hidden().text_ellipsis().whitespace_nowrap().child(name);
     let opened = project.clone();
     let row_height = sizes.row_height.px();
-    let open = cx.listener(move |workspace, event: &gpui::ClickEvent, _window, cx| {
-        workspace.open_group_menu(opened.clone(), gpui::point(event.position().x, row_height), cx);
+    let open = cx.listener(move |workspace, event: &gpui::ClickEvent, window, cx| {
+        workspace.open_group_menu(opened.clone(), gpui::point(event.position().x, row_height), window, cx);
     });
     let named = div()
         .id(SharedString::from(format!("tab-group-name-{}", project.as_str())))
@@ -931,11 +935,13 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
         .hover(|style| style.bg(rgb(theme.hover)).text_color(rgb(theme.text)))
         .child(icon)
         .child(label)
-        .children(count)
         .on_click(target(format!("tab-group-menu:{}", project.as_str()), open, cx));
+    let head = SharedString::from(format!("tab-group-{}", project.as_str()));
+    let (hovered, ended) = (project.clone(), project.clone());
     Some(
         div()
-            .id(SharedString::from(format!("tab-group-{}", project.as_str())))
+            .id(head.clone())
+            .group(head.clone())
             .flex()
             .flex_none()
             .items_center()
@@ -943,9 +949,66 @@ fn group_head(group: &TabGroup, workspace: &Workspace, cx: &mut Context<Workspac
             .text_color(rgb(theme.muted))
             // a press on the head must not start a window drag
             .on_mouse_down(MouseButton::Left, |_event, _window, cx| cx.stop_propagation())
+            .on_mouse_down(MouseButton::Middle, |_event, _window, cx| cx.stop_propagation())
+            .on_hover(cx.listener(move |workspace, hovering: &bool, _window, cx| workspace.hover_group_head(&hovered, *hovering, cx)))
+            .on_aux_click(cx.listener(move |workspace, event: &gpui::ClickEvent, window, cx| {
+                if event.is_middle_click() {
+                    workspace.end_group(&ended, Ending::held(&event.modifiers()), window, cx);
+                }
+            }))
             .child(fold)
-            .child(named),
+            .child(named)
+            .child(group_end(group, &project, (head, held), cx)),
     )
+}
+
+/// The end of a group's head: a folded group's count, an open group's empty slot whose X shows while the head is
+/// hovered; on its own hover the count gives way to the X, the Stop icon while Shift (`held`) is down. A click ends
+/// every tab of the group, closing them, with Shift stopping them.
+fn group_end(group: &TabGroup, project: &ProjectId, (head, held): (SharedString, Ending), cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let theme = crate::theme::tabs(cx);
+    let sizes = &theme.sizes.tabs;
+    let slot = SharedString::from(format!("tab-group-end-{}", project.as_str()));
+    let (icon, verb) = match held {
+        Ending::Close => (icons::CLOSE, "Close"),
+        Ending::Stop | Ending::Kill => (icons::STOP, "Stop"),
+    };
+    let x = div().absolute().inset_0().flex().items_center().justify_center().invisible().child(img(icons::embedded(theme.appearance, icon)).size(px(12.)));
+    let x = match group.is_folded() {
+        true => x.group_hover(slot.clone(), |style| style.visible()),
+        false => x.group_hover(head, |style| style.visible()),
+    };
+    let count = group.is_folded().then(|| {
+        let count = div().px(px(5.)).rounded(sizes.group_count_radius.px()).bg(rgb(theme.hover)).text_size(px(11.)).child(group.tabs.len().to_string());
+        count.group_hover(slot.clone(), |style| style.invisible())
+    });
+    let tabs = match group.tabs.len() {
+        1 => "the tab".to_owned(),
+        count => format!("all {count} tabs"),
+    };
+    let (ended, closed, stopped) = (project.clone(), project.clone(), project.clone());
+    // for MCP's click, which cannot hold Shift
+    drop(target(format!("tab-group-close:{}", project.as_str()), cx.listener(move |workspace, _event, window, cx| workspace.end_group(&closed, Ending::Close, window, cx)), cx));
+    drop(target(format!("tab-group-stop:{}", project.as_str()), cx.listener(move |workspace, _event, window, cx| workspace.end_group(&stopped, Ending::Stop, window, cx)), cx));
+    div()
+        .id(slot.clone())
+        .group(slot)
+        .relative()
+        .flex()
+        .items_center()
+        .justify_center()
+        .min_w(px(18.))
+        .h(sizes.group_head_height.px())
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(theme.hover)).text_color(rgb(theme.text)))
+        .children(count)
+        .child(x)
+        .tooltip(tooltip::text_tooltip(format!("{verb} {tabs} of {} (middle click on the head too; Shift: Stop)", project.as_str())))
+        .on_click(cx.listener(move |workspace, event: &gpui::ClickEvent, window, cx| {
+            cx.stop_propagation();
+            workspace.end_group(&ended, Ending::held(&event.modifiers()), window, cx);
+        }))
 }
 
 impl GroupView<'_> {

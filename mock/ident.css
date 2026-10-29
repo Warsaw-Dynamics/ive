@@ -31,6 +31,13 @@
 .tabs__head-fold:hover, .tabs__head-name:hover { background: var(--hover); color: var(--text); }
 .tabs__head-chevron { width: 12px; height: 12px; opacity: 0.7; }
 .tabs__head-count { padding: 0 5px; border-radius: 8px; background: var(--hover); font-size: 11px; }
+/* a proposal: the count (folded), else an empty slot shown on the head's hover, turns into X on its own hover */
+.tabs__head-end { display: grid; place-items: center; min-width: 18px; height: 21px; border-radius: 6px; color: inherit; font: inherit; }
+.tabs__head-end > * { grid-area: 1 / 1; }
+.tabs__head-end:hover { background: var(--hover); }
+.tabs__head-x { width: 12px; height: 12px; visibility: hidden; }
+.tabs__head-end:hover .tabs__head-x, .tabs__head:hover .tabs__head-end:not(.tabs__head-end--count) .tabs__head-x { visibility: visible; }
+.tabs__head-end--count:hover .tabs__head-count { visibility: hidden; }
 
 /* a project's group in a 1 px frame, 2 px round its 27 px tabs: 31 px, centred on whole pixels in the row's 35 px as
    the tabs are. The active group's (it holds the shown tab) in the shown tab's outline colour. */
@@ -56,6 +63,20 @@
   border-radius: 1px; background: var(--accent); }
 .menu__wt[data-drop="before"]::after, .menu__wt .menu__item[data-drop="before"]::after { top: -1px; }
 .menu__wt[data-drop="after"]::after, .menu__wt .menu__item[data-drop="after"]::after { bottom: -1px; }
+/* a proposal: each row's X, faint until the row is hovered; a picked row; a row closed while the menu is open, until
+   the pointer leaves it; the pick's bar at the bottom */
+.menu__end { display: grid; place-items: center; width: 18px; height: 18px; margin-left: 8px; border-radius: 4px; opacity: 0.5; }
+.menu__item:hover .menu__end { opacity: 1; }
+.menu__end:hover { background: var(--hover); }
+.menu__end .icon { width: 12px; height: 12px; }
+.menu__item--picked, .menu__item--picked:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.menu__item--gone { opacity: 0.4; pointer-events: none; }
+.menu__item--gone .menu__grow { text-decoration: line-through; }
+.menu__item--gone .menu__end { visibility: hidden; }
+.menu__picked { display: flex; align-items: center; gap: 4px; margin-top: 4px; padding: 4px 4px 0 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.menu__picked-action { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 4px; color: var(--text); font: inherit; }
+.menu__picked-action:hover { background: var(--hover); }
+.menu__picked-action .icon { width: 12px; height: 12px; }
 .menu__section--rail::before { content: ''; position: absolute; left: 18px; top: 9px; bottom: 3px; width: 2px; border-radius: 1px; background: var(--wt); }
 
 /* tint: a worktree's tabs washed with its colour, a little more on the shown one */

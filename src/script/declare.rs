@@ -169,7 +169,8 @@ fn key_binding(entry: Value, functions: &mut Functions) -> Result<Binding, Strin
         Some("hub") => Scope::Hub,
         Some("tree") => Scope::Tree,
         Some("reader") => Scope::Reader,
-        Some(other) => return Err(format!("scope {other:?} is not a key scope (window, terminal, editor, reader, hub, tree)")),
+        Some("group-menu") => Scope::GroupMenu,
+        Some(other) => return Err(format!("scope {other:?} is not a key scope (window, terminal, editor, reader, hub, tree, group-menu)")),
     };
     let action = action(required(&entry, "action")?.clone(), scope, functions)?;
     if matches!(&action, Action::Builtin(builtin) if builtin.is_mouse_only()) {

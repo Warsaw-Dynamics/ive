@@ -92,6 +92,9 @@ pub fn init(config) {
         // the mouse and the tab menu close plainly
         #{ key: close_tab.key, mods: close_tab.mods, action: close_back_to_hub },
         #{ key: stop_tab.key, mods: stop_tab.mods, action: stop_back_to_hub },
+        // in a project group's menu of tabs: the picked tabs (Ctrl+click, Shift+click), else the row under the pointer
+        #{ key: close_tab.key, mods: close_tab.mods, action: act::CloseTab, scope: "group-menu" },
+        #{ key: stop_tab.key, mods: stop_tab.mods, action: act::StopProgram, scope: "group-menu" },
         // changed files flat or grouped by folder: the tree's git folders and the Git sections
         #{ key: "g", mods: "ALT|SHIFT", action: act::ToggleChangesLayout },
         // a worktree folder in every worktree, or in none (the tree header's folders menu shows these keys)

@@ -1847,4 +1847,17 @@ mod tests {
         // then
         assert_eq!(action, builtin(Builtin::HubStop));
     }
+
+    #[test]
+    fn should_bind_the_close_and_stop_keys_to_close_tab_and_stop_program_in_the_group_menu() {
+        // given
+        let keymap = defaults().keymap;
+        let (close, stop) = if cfg!(target_os = "macos") { ("cmd-w", "cmd-alt-w") } else { ("ctrl-shift-w", "ctrl-shift-q") };
+
+        // when
+        let keys = [close, stop].map(|key| keymap.find_key(&pressed(key), Place::GroupMenu).cloned());
+
+        // then
+        assert_eq!(keys, [builtin(Builtin::CloseTab), builtin(Builtin::StopProgram)]);
+    }
 }
