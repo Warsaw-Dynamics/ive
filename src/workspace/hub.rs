@@ -178,7 +178,7 @@ impl Workspace {
             self.tabs.activate(back);
         }
         let back = self.tabs.active_id();
-        let fresh = || HubState { scope: self.hub_scope.clone(), ..HubState::default() };
+        let fresh = || HubState::fresh(self.hub_scope.clone());
         let state = state.unwrap_or_else(fresh).fitted(&self.hub_sources(back, cx));
         let hub = self.new_hub(state, back, window, cx);
         let id = self.open_tab(Tab::Hub(Box::new(hub)), window, cx);

@@ -21,6 +21,9 @@ use crate::tabs::TabId;
 /// Rows PgUp and PgDn move by.
 pub const PAGE: usize = 10;
 
+/// The row Ctrl+Shift+E selects: the second, as the first is mostly the tab it came from.
+const FRESH_SELECTED: usize = 1;
+
 /// Everything the hub remembers between keys; also what `ive::open_hub` restores, as JSON.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -275,10 +278,15 @@ impl HubState {
         }
     }
 
+    /// Ctrl+Shift+E: a new hub in `scope`, its second row selected.
+    pub fn fresh(scope: HubScope) -> HubState {
+        HubState { scope, selected: FRESH_SELECTED, ..HubState::default() }
+    }
+
     /// Ctrl+Shift+E on a hub tab that holds the new terminal picker: the hub itself, fresh; a hub stays as it is.
     pub fn show_as_hub(&mut self) {
         if self.new_terminal {
-            *self = HubState { scope: self.scope.clone(), extra_scope: self.extra_scope.clone(), ..HubState::default() };
+            *self = HubState { extra_scope: self.extra_scope.clone(), ..HubState::fresh(self.scope.clone()) };
         }
     }
 
@@ -1203,6 +1211,19 @@ mod tests {
     }
 
     #[test]
+    fn should_select_the_second_row_of_a_fresh_hub() {
+        // given
+        let mut state = HubState::fresh(HubScope::All);
+
+        // when
+        let list = shown(&state, &sources());
+        state.fit_selection(&list);
+
+        // then
+        assert_eq!(state.selected, 1);
+    }
+
+    #[test]
     fn should_note_loading_files() {
         // given
         let sources = Sources { loading: true, ..sources() };
@@ -1514,7 +1535,7 @@ mod tests {
         state.show_as_hub();
 
         // then
-        assert_eq!((state.new_terminal, state.query.as_str(), state.selected), (false, "", 0));
+        assert_eq!((state.new_terminal, state.query.as_str(), state.selected), (false, "", 1));
     }
 
     #[test]
