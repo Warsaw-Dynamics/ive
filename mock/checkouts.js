@@ -763,7 +763,7 @@
             runconfigs1k: function (self) { self.openRunConfigs(self.project('platform').checkouts[0]); },
             // a proposal (dnd.js): a flat copy into dev with three conflicts
             conflicts: function (self) { self.mockConflicts(); },
-            newterminal: function (self) { self.openNewTerminalHub(); self.hub.query = p.get('q') || ''; },
+            newterminal: function (self) { self.openNewTerminalHub(); self.hub.query = p.get('q') || ''; self.hub.withBranches = p.get('br') === '1'; },
             hub: function (self) { self.openHub(); self.hub.query = p.get('q') || ''; self.hub.changedOnly = p.get('changed') === '1'; self.hub.scope = p.get('scope') || 'all'; }
           };
           if (screens[p.get('tab')]) screens[p.get('tab')](this);

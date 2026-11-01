@@ -72,6 +72,11 @@ pub fn outer_size(inner: Size<Pixels>, window: &Window) -> Size<Pixels> {
     }
 }
 
+/// The bounds of a window free to resize on every side whose content has `inner` bounds.
+pub fn untiled_outer_bounds(inner: Bounds<Pixels>) -> Bounds<Pixels> {
+    Bounds::new(inner.origin - point(px(RESIZE_BORDER), px(RESIZE_BORDER)), framed_size(inner.size, Tiling::default()))
+}
+
 fn framed_size(inner: Size<Pixels>, tiling: Tiling) -> Size<Pixels> {
     let bands = |sides: [bool; 2]| px(RESIZE_BORDER) * sides.iter().filter(|tiled| !**tiled).count() as f32;
     size(inner.width + bands([tiling.left, tiling.right]), inner.height + bands([tiling.top, tiling.bottom]))

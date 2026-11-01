@@ -25,7 +25,8 @@ pub const LINE_NEEDS_TEXT: &str = "Line numbers go to a file shown before the hu
 pub const CONTENT_NEEDS_TEXT: &str = "Type 2 characters or more to search the files' contents";
 pub const SEARCHING_CONTENTS: &str = "Searching…";
 pub const NO_CONTENT_MATCHES: &str = "No line matches";
-/// New terminal mode: the best matches while typing.
+/// New terminal mode: a project's newest branches before typing, its best ones while typing.
+pub const NEW_TERMINAL_BRANCHES: usize = 5;
 pub const NEW_TERMINAL_MATCHES: usize = 20;
 const NUMBERED: usize = 9;
 
@@ -40,6 +41,14 @@ pub struct List {
     pub counter: Option<String>,
     /// said instead of rows
     pub message: Option<String>,
+    pub ages: Ages,
+}
+
+/// How rows write their age: as the hub's other lists (`5 min`, `yesterday`, a date), or short in a fixed column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ages {
+    Calendar,
+    Short,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +58,25 @@ pub struct Section {
     pub note: Option<String>,
     /// a muted line under the rows: what is not listed
     pub more: Option<String>,
+    pub level: Level,
+    /// at the header's right: what matched of all, `2 / 4`
+    pub count: Option<String>,
+    /// said under the header when it has no rows
+    pub empty: Option<String>,
+}
+
+/// A section's place in the list: one of the hub's, a project's head (New terminal), or a group under that head.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+    Top,
+    Project,
+    Group,
+}
+
+impl Section {
+    pub fn new(title: &str, level: Level) -> Section {
+        Section { title: title.to_owned(), rows: 0..0, note: None, more: None, level, count: None, empty: None }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +99,8 @@ pub enum Tag {
     Worktree(CheckoutRef),
     /// `N worktrees`
     Several(usize),
+    /// a branch only this remote has
+    Remote(String),
 }
 
 /// The list for `state`; `files` is the search's result for a files query.
@@ -212,11 +242,12 @@ struct Builder<'a> {
     more: usize,
     counter: Option<String>,
     message: Option<String>,
+    ages: Ages,
 }
 
 impl<'a> Builder<'a> {
     fn new(scope: &'a HubScope) -> Self {
-        Self { scope, sections: Vec::new(), rows: Vec::new(), more: 0, counter: None, message: None }
+        Self { scope, sections: Vec::new(), rows: Vec::new(), more: 0, counter: None, message: None, ages: Ages::Calendar }
     }
 
     /// Adds a section unless it has no rows; a long one shows its first rows only, as drawing thousands is slow.
@@ -251,28 +282,51 @@ impl<'a> Builder<'a> {
     }
 
     fn push_with_more(&mut self, title: &str, rows: Vec<Row>, note: Option<String>, more: Option<String>) {
-        let start = self.rows.len();
-        self.rows.extend(rows);
-        self.sections.push(Section { title: title.to_owned(), rows: start..self.rows.len(), note, more });
+        self.push_section(Section { note, more, ..Section::new(title, Level::Top) }, rows);
     }
 
-    /// Ctrl+Shift+T: before typing, a section per project with its checkouts; typing ranks every checkout and branch
-    /// of every project, the best first, as `project.name` so that typing the project finds them all.
+    fn push_section(&mut self, section: Section, rows: Vec<Row>) {
+        let start = self.rows.len();
+        self.rows.extend(rows);
+        self.sections.push(Section { rows: start..self.rows.len(), ..section });
+    }
+
+    /// Ctrl+Shift+T: per project a head, its Worktrees and its Branches without a worktree, the same before and while
+    /// typing; typing filters and ranks inside each group, matching `project.name` so that typing the project finds
+    /// all of its rows.
     fn new_terminal(&mut self, query: &str, sources: &Sources) {
-        let places = new_terminal_places(sources);
-        if Query::parse(query).is_empty() {
-            for place in places {
-                let branches = place.branches.len();
-                let more = (branches > 0).then(|| format!("… {branches} branches; type to search them"));
-                self.push_with_more(&place.name, place.checkouts.into_iter().map(plain).collect(), None, more);
-            }
-            return;
+        let typing = Typing::of(query);
+        let (mut matched, mut all) = (0, 0);
+        for place in new_terminal_places(sources) {
+            all += place.checkouts.len() + place.branches.len();
+            matched += self.terminal_project(&place, query, typing);
         }
-        let items: Vec<(String, Item)> = places.into_iter().flat_map(|place| place.checkouts.into_iter().chain(place.branches).map(move |item| (place.name.clone(), item))).collect();
-        let found = matched_in_projects(&items, query, NEW_TERMINAL_MATCHES);
-        self.counter = Some(format!("{}/{}", found.total, items.len()));
-        self.more = found.total.saturating_sub(NEW_TERMINAL_MATCHES);
-        self.push("New terminal in", found.rows, None);
+        self.ages = Ages::Short;
+        if typing == Typing::Typed {
+            self.counter = Some(format!("{matched}/{all}"));
+        }
+    }
+
+    /// One project's sections; returns how many of its rows matched.
+    fn terminal_project(&mut self, place: &TerminalPlaces, query: &str, typing: Typing) -> usize {
+        let checkouts = matched_in_project(&place.checkouts, &place.name, query, usize::MAX);
+        let branches = matched_in_project(&place.branches, &place.name, query, typing.branch_limit());
+        let hits = checkouts.total + branches.total;
+        let total = place.checkouts.len() + place.branches.len();
+        let head = Section { note: Some(place.folder.clone()), count: (typing == Typing::Typed).then(|| format!("{hits} / {total}")), ..Section::new(&place.name, Level::Project) };
+        if typing == Typing::Typed && hits == 0 {
+            self.push_section(Section { empty: Some("No match".to_owned()), ..head }, Vec::new());
+            return 0;
+        }
+        if place.git == Git::None {
+            self.push_section(head, checkouts.rows);
+            return hits;
+        }
+        self.push_section(head, Vec::new());
+        let worktrees = Section { count: typing.count(checkouts.total, place.checkouts.len()), empty: Some("None match".to_owned()), ..Section::new("Worktrees", Level::Group) };
+        self.push_section(worktrees, checkouts.rows);
+        self.push_section(branches_section(place, &branches, typing), branches.rows);
+        hits
     }
 
     /// Files, always shown while searching, with the counter and what is still loading.
@@ -299,7 +353,7 @@ impl<'a> Builder<'a> {
         for (index, row) in self.rows.iter_mut().enumerate().take(NUMBERED) {
             row.number = u8::try_from(index + 1).ok();
         }
-        List { sections: self.sections, rows: self.rows, more: self.more, counter: self.counter, message: self.message }
+        List { sections: self.sections, rows: self.rows, more: self.more, counter: self.counter, message: self.message, ages: self.ages }
     }
 }
 
@@ -346,24 +400,83 @@ fn matched<'a>(items: impl Iterator<Item = (&'a Item, u8)>, text: &str, order: O
     Matched { rows, total }
 }
 
-/// [`matched`] for items of named projects, best first: each is matched as "project.title detail", and the project's
-/// part highlights nothing.
-fn matched_in_projects(items: &[(String, Item)], text: &str, limit: usize) -> Matched {
+/// [`matched`] for one project's items, best first: each is matched as "project.title detail remote", and the
+/// project's part highlights nothing. All of them in order for no text.
+fn matched_in_project(items: &[Item], project: &str, text: &str, limit: usize) -> Matched {
     let query = Query::parse(text);
+    if query.is_empty() {
+        let rows = items.iter().take(limit).map(|item| terminal_row(item, &[])).collect();
+        return Matched { rows, total: items.len() };
+    }
+    let prefix = project.chars().count() + 1;
     let mut hits: Vec<(i32, &Item, Vec<usize>)> = items
         .iter()
-        .filter_map(|(project, item)| {
-            let hay = format!("{project}.{} {}", item.title, item.detail);
+        .filter_map(|item| {
+            let hay = format!("{project}.{} {} {}", item.title, item.detail, remote_of(item).unwrap_or_default());
             let hit = query.matches(&hay, &lowered(&hay), None)?;
-            let prefix = project.chars().count() + 1;
             let positions = hit.positions.iter().filter_map(|at| at.checked_sub(prefix)).collect();
             Some((hit.score, item, positions))
         })
         .collect();
     hits.sort_by_key(|(score, ..)| std::cmp::Reverse(*score));
     let total = hits.len();
-    let rows = hits.into_iter().take(limit).map(|(_, item, positions)| hit_row_of(item, 0, &positions)).collect();
+    let rows = hits.into_iter().take(limit).map(|(_, item, positions)| terminal_row(item, &positions)).collect();
     Matched { rows, total }
+}
+
+/// A New terminal row, indented under its group; a remote-only branch tagged with its remote.
+fn terminal_row(item: &Item, positions: &[usize]) -> Row {
+    let tag = remote_of(item).map_or(Tag::None, |remote| Tag::Remote(remote.to_owned()));
+    Row { tag, depth: 1, ..hit_row_of(item, 0, positions) }
+}
+
+fn remote_of(item: &Item) -> Option<&str> {
+    match &item.target {
+        Target::NewWorktreeTerminal { remote, .. } => remote.as_deref(),
+        _ => None,
+    }
+}
+
+/// The Branches group: the newest before typing, the best while typing, and what is left out.
+fn branches_section(place: &TerminalPlaces, branches: &Matched, typing: Typing) -> Section {
+    let left = branches.total - branches.rows.len();
+    let more = (left > 0).then(|| match typing {
+        Typing::Empty => format!("… {left} more branches; type to filter"),
+        Typing::Typed => format!("… {left} more; type more to narrow"),
+    });
+    let empty = if place.branches.is_empty() { "None without a worktree" } else { "None match" };
+    Section { count: typing.count(branches.total, place.branches.len()), empty: Some(empty.to_owned()), more, ..Section::new("Branches · new worktree", Level::Group) }
+}
+
+/// Whether the New terminal query has text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Typing {
+    Empty,
+    Typed,
+}
+
+impl Typing {
+    fn of(query: &str) -> Typing {
+        if Query::parse(query).is_empty() {
+            return Typing::Empty;
+        }
+        Typing::Typed
+    }
+
+    fn branch_limit(self) -> usize {
+        match self {
+            Typing::Empty => NEW_TERMINAL_BRANCHES,
+            Typing::Typed => NEW_TERMINAL_MATCHES,
+        }
+    }
+
+    /// A header's count: the total before typing, `matched / total` while typing.
+    fn count(self, matched: usize, total: usize) -> Option<String> {
+        match self {
+            Typing::Empty => Some(total.to_string()),
+            Typing::Typed => Some(format!("{matched} / {total}")),
+        }
+    }
 }
 
 fn hit_row_of(item: &Item, depth: u8, positions: &[usize]) -> Row {
@@ -453,12 +566,31 @@ fn pick_rows(state: &HubState, sources: &Sources, states: &dyn StateIn) -> Vec<R
 /// first), then its branches without a worktree, newest first.
 struct TerminalPlaces {
     name: String,
+    /// the main checkout's folder, `~` for the home folder
+    folder: String,
+    git: Git,
     checkouts: Vec<Item>,
     branches: Vec<Item>,
 }
 
+/// Whether a project is a git repository or a plain folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Git {
+    Repository,
+    None,
+}
+
 fn new_terminal_places(sources: &Sources) -> Vec<TerminalPlaces> {
-    sources.shown_projects().map(|project| TerminalPlaces { name: project.name.clone(), checkouts: checkout_places(project, sources), branches: branch_places(project, sources) }).collect()
+    sources
+        .shown_projects()
+        .map(|project| TerminalPlaces {
+            name: project.name.clone(),
+            folder: project.worktrees.first().map(|main| crate::paths::tilde_home(&main.checkout.path)).unwrap_or_default(),
+            git: if project.git { Git::Repository } else { Git::None },
+            checkouts: checkout_places(project, sources),
+            branches: branch_places(project, sources),
+        })
+        .collect()
 }
 
 fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
@@ -467,36 +599,29 @@ fn checkout_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
     };
     let running = |worktree: &WorktreeInfo| (worktree.running > 0).then(|| format!("{} running", worktree.running));
     let (title, detail, icon) = match project.git {
-        true => (main.label.clone(), format!("{} · main checkout", project.name), icons::BRANCH),
-        false => (project.name.clone(), format!("{} · no git", project.name), icons::PROJECT_FOLDER),
+        true => (main.label.clone(), "main checkout", icons::BRANCH_MAIN),
+        false => (project.name.clone(), "no git", icons::PROJECT_FOLDER),
     };
-    let main_item = Item { detail, state: running(main), project: Some(project.id.clone()), ..Item::new(Target::NewTerminal(main.checkout.clone()), title, icon) };
-    let others = sources.by_recency(&project.id, None).into_iter().filter(|worktree| worktree.checkout != main.checkout).map(|worktree| {
-        let branch = worktree.branch.as_ref().filter(|branch| **branch != worktree.label);
-        Item {
-            detail: branch.map_or_else(|| project.name.clone(), |branch| format!("{} · {branch}", project.name)),
-            state: running(worktree),
-            project: Some(project.id.clone()),
-            age: worktree.last_used,
-            ..Item::new(Target::NewTerminal(worktree.checkout.clone()), worktree.label.clone(), icons::BRANCH)
-        }
+    let main_item = Item { detail: detail.to_owned(), state: running(main), project: Some(project.id.clone()), age: main.last_used, ..Item::new(Target::NewTerminal(main.checkout.clone()), title, icon) };
+    let others = sources.by_recency(&project.id, None).into_iter().filter(|worktree| worktree.checkout != main.checkout).map(|worktree| Item {
+        detail: worktree.branch.clone().filter(|branch| *branch != worktree.label).unwrap_or_default(),
+        state: running(worktree),
+        project: Some(project.id.clone()),
+        age: worktree.last_used,
+        ..Item::new(Target::NewTerminal(worktree.checkout.clone()), worktree.label.clone(), icons::BRANCH)
     });
     std::iter::once(main_item).chain(others).collect()
 }
 
 fn branch_places(project: &ProjectInfo, sources: &Sources) -> Vec<Item> {
-    let mine = sources.branches.iter().filter(|branch| branch.project == project.id);
-    mine.map(|branch| {
-        let target = Target::NewWorktreeTerminal { project: project.id.clone(), branch: branch.local.clone(), remote: branch.remote.clone() };
-        Item {
-            detail: format!("{} · {}", branch.remote.as_deref().unwrap_or("local"), project.name),
-            faded: branch.remote.is_some(),
-            project: Some(project.id.clone()),
-            age: Some(branch.when),
-            ..Item::new(target, branch.local.clone(), icons::BRANCH)
-        }
-    })
-    .collect()
+    let mut mine: Vec<&FreeBranch> = sources.branches.iter().filter(|branch| branch.project == project.id).collect();
+    mine.sort_by_key(|branch| std::cmp::Reverse(branch.when));
+    mine.into_iter()
+        .map(|branch| {
+            let target = Target::NewWorktreeTerminal { project: project.id.clone(), branch: branch.local.clone(), remote: branch.remote.clone() };
+            Item { faded: branch.remote.is_some(), project: Some(project.id.clone()), age: Some(branch.when), ..Item::new(target, branch.local.clone(), icons::BRANCH) }
+        })
+        .collect()
 }
 
 /// `#`: the branches without a worktree; Enter opens the New worktree card with one typed.

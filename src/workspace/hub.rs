@@ -1384,12 +1384,12 @@ fn action_items() -> Vec<Item> {
     actions.into_iter().map(|(action, title, detail, icon)| Item { detail: detail.to_owned(), ..Item::new(Target::Action(action), title, icon) }).collect()
 }
 
-/// The scroll container's child of row `row`: the message, the section headers and the more lines of the sections
-/// above come before it.
+/// The scroll container's child of row `row`: the message, the section headers and the more and empty lines of the
+/// sections above come before it.
 fn child_index(list: &List, row: usize) -> usize {
-    let headers = list.sections.iter().take_while(|section| section.rows.start <= row).count();
-    let mores = list.sections.iter().filter(|section| section.rows.end <= row && section.more.is_some()).count();
-    row + headers + mores + usize::from(list.message.is_some())
+    let above = list.sections.iter().take_while(|section| section.rows.start <= row);
+    let lines: usize = above.map(|section| 1 + usize::from(section.rows.end <= row && section.more.is_some()) + usize::from(section.rows.is_empty() && section.empty.is_some())).sum();
+    row + lines + usize::from(list.message.is_some())
 }
 
 /// `untitled-<n>`, the first `n` from 1 no scratch has.
@@ -1416,6 +1416,7 @@ fn file_panel(document: Document, reveal: &Reveal, cx: &mut App) -> gpui::Entity
 mod tests {
     use super::*;
     use crate::saved_tabs::{PanelState, SavedTab};
+    use crate::hub::rows::{Ages, Level, Section};
 
     fn shown(identity: TabIdentity, saved: Option<SavedTab>, checkout: Option<&str>, at: i64) -> Shown {
         Shown { identity, saved, checkout: checkout.map(PathBuf::from), title: format!("t{at}"), shown_at: at }
@@ -1442,17 +1443,37 @@ mod tests {
         assert_eq!(items.iter().map(|item| (item.target.clone(), item.greyed, item.path.clone())).collect::<Vec<_>>(), [(Target::Reopen(deleted), true, Some("gone.rs".to_owned()))]);
     }
 
+    fn section(rows: std::ops::Range<usize>, more: Option<&str>) -> Section {
+        Section { rows, more: more.map(str::to_owned), ..Section::new("p", Level::Top) }
+    }
+
+    fn list_of(sections: Vec<Section>) -> List {
+        List { sections, rows: Vec::new(), more: 0, counter: None, message: None, ages: Ages::Calendar }
+    }
+
     #[test]
     fn should_count_headers_and_more_lines_above_a_row() {
         // given
-        let section = |rows: std::ops::Range<usize>, more: Option<&str>| crate::hub::rows::Section { title: "p".to_owned(), rows, note: None, more: more.map(str::to_owned) };
-        let list = List { sections: vec![section(0..2, Some("… 3 more branches")), section(2..4, None)], rows: Vec::new(), more: 0, counter: None, message: None };
+        let list = list_of(vec![section(0..2, Some("… 3 more branches")), section(2..4, None)]);
 
         // when
         let (first, third) = (child_index(&list, 0), child_index(&list, 2));
 
         // then
         assert_eq!((first, third), (1, 5));
+    }
+
+    #[test]
+    fn should_count_the_empty_lines_of_sections_above_a_row() {
+        // given
+        let no_match = Section { empty: Some("No match".to_owned()), ..section(0..0, None) };
+        let list = list_of(vec![no_match, section(0..0, None), section(0..2, None)]);
+
+        // when
+        let first = child_index(&list, 0);
+
+        // then
+        assert_eq!(first, 4);
     }
 
     #[test]

@@ -401,40 +401,70 @@ Further ideas, not mocked:
 
 Starting work somewhere, often on a branch that has no worktree yet. Ctrl+Shift+T (window scope, so it works in a
 terminal too; Ctrl+N stays the shell's next-history) opens the hub as a temporary **New terminal** tab that only asks
-where the terminal goes. One list, filtered fzf-style as the hub's:
+where the terminal goes: a section per project with its worktrees. The list keeps one shape before and while typing
+(redesigned 2026-10-30): typing filters and ranks inside each section; sections never move, so the eye keeps its place.
+
+By default only worktrees (*not in the app yet*; the app shows branches always):
 
 ```
-atlassian        worktrees by last use, then the newest branches without one          38/38
-  dev                atlassian · main checkout
-  GEN-817-ive        atlassian                 ● 2 running   now
-  IDP-30-…           atlassian · IDP-30-Reserved-…            3 d
-  OHQ-330-bandwidth  local · atlassian                        now
-  GEN-747-monitor    origin · atlassian   (faded icon)        yesterday
-  … (5 branches)
-  … 25 more branches; type to search them
-forge-installer
-  main               forge-installer · main checkout
-  live-view          local · forge-installer
+⊙ gen                                                           [⑂ Branches 14]   2/6
+▸ atlassian  ~/Projects/atlassian                                              1 / 3
+    1  ⑂ GEN-817-ive                                  ● 2 running   now
+▸ forge-installer  ~/Projects/forge-installer                                  1 / 1
+    2  ⑂ main                main checkout                          3d
+▸ platform  ~/Projects/platform                                                0 / 1
+       No match
+key strip: … 14 branches match · Ctrl+Shift+T shows them
 ```
 
-- Before typing, a section per open project: its main checkout, its other worktrees most recently used first, then
-  its 5 newest branches without a worktree (newest commit first) and "… n more branches; type to search them". A
-  project without git has only its own row.
-- Typing ranks every project, worktree and branch together with the hub's fzf matcher (same syntax: `'exact ^start
-  end$ !not a | b`, over "name detail"), best first, one flat list of the 20 best ("… n more; type more to
-  narrow"). The counter at the right of the query row says matched/all, as the files counter does.
-- Branch rows say where the branch is: `local`, or the remote's name (`origin`) when only the remote has it; a
-  remote-only row has a faded icon. A remote branch whose name a local one has is left out (the worktree would check
-  out the local one). Typing `origin` narrows to remote-only branches.
+- **Branches without a worktree are hidden by default.** The **Branches** switch in the query row (its count: all
+  such branches, or those the query matches) or **Ctrl+Shift+T again** shows them, as Ctrl+E again switches the hub to
+  changed only; the choice stays for the next Ctrl+Shift+T until IVE restarts. While hidden, a query that matches
+  branches says so in the key strip: `14 branches match · Ctrl+Shift+T shows them`.
+- **No worktree matches at all**: the branches show by themselves (the switch drawn on, dashed; the strip says `No
+  worktree matches: showing branches`), so a branch name typed in full still lands on its branch. A query matching a
+  worktree again hides them.
+
+With branches shown (in the app since 2026-10-30), each project groups its Worktrees and its Branches:
+
+```
+▸ atlassian  ~/Projects/atlassian                                            9 / 38
+  Worktrees                                                                  2 / 4
+    1  ⑂ dev                 main checkout            ● 2 running
+    2  ⑂ GEN-817-ive                                  ● 1 running   now
+  Branches · new worktree                                                    7 / 34
+    3  ⑂+ OHQ-330-bandwidth                                         2h
+    4  ⑂+ GEN-747-monitor    [origin]  (faded icon)                 1d
+       … 2 more; type more to narrow
+▸ forge-installer  ~/Projects/forge-installer                                0 / 3
+       No match
+```
+
+- Header: the project's name and folder; while typing, matched / all at the right. Each group's header says the same
+  for the group (`2 / 4`), its total before typing.
+- Worktrees: the main checkout first (`main checkout`, its main-branch icon), then the others most recently used
+  first; a worktree's branch shows after its name when it differs. A project without git has only its own row.
+- Branches · new worktree: before typing the 5 newest (newest commit first) and "… n more branches; type to filter"; while
+  typing the 20 best of the project. The mock badges their icon with +; the app keeps the project's favicon there.
+- A project with no match keeps its header and one "No match" line; a group with no match says "None match".
+- Matching is the hub's fzf matcher (same syntax: `'exact ^start end$ !not a | b`) over "project.name detail", so
+  `atlassian.` narrows to one project; the project part highlights nothing. The counter at the right of the query
+  row says matched/all over every project.
+- Ages are one short format in a fixed right column: `now`, `12m`, `3h`, `4d`, `3w`, `5mo`, `2y`. The project's name is
+  said once by its header, not on every row.
+- A branch only on a remote has the remote's name as a chip after it (`origin`) and a faded icon; a local one has
+  neither. A remote branch whose name a local one has is left out (the worktree would check out the local one).
+  Typing `origin` narrows to remote-only branches.
 - Enter on a worktree: a terminal there. Enter on a branch: New worktree (a local branch tracking the remote first,
   when remote-only; no fetch, no fast-forward), then a terminal in it. Either way the tab shows the terminal and the
   tree shows its worktree expanded, the terminal under its Processes. A failure (folder exists, git error) stays in
   the hub as a note and opens nothing.
 - The preview says what Enter does: the processes already running there, or the worktree's folder and that it comes
   from `.ive.toml` or the default.
-- Keys: ↑↓ move, Enter, type to filter, Escape clears then goes back, Ctrl+E switches to the full hub. The query
+- Keys: ↑↓ move, Enter (in the mock its label follows the row: new worktree + terminal on a branch), Ctrl+Shift+T
+  show / hide branches, type to filter, Escape clears then goes back, Ctrl+E switches to the full hub. The query
   prefixes (`>`, `@`, `#`, `:`) do not apply here.
-- The mock also takes Alt+Shift+T (browsers keep Ctrl+Shift+T); `#tab=newterminal` opens it.
+- The mock also takes Alt+Shift+T (browsers keep Ctrl+Shift+T); `#tab=newterminal` opens it, `&br=1` with branches.
 
 ## Hidden worktrees
 

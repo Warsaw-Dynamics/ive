@@ -14,7 +14,7 @@ use super::corpus::Corpus;
 use super::files::Class;
 use super::model::{HubState, mode, Mode};
 use super::output::Taken;
-use super::rows::{List, Row, Tag};
+use super::rows::{Ages, Level, List, Row, Section, Tag};
 use super::search::Found;
 use super::sources::HubScope;
 use crate::age::Clock;
@@ -36,6 +36,13 @@ const ROW_HEIGHT: f32 = 24.;
 const STRIP_HEIGHT: f32 = 28.;
 /// the preview's share of the hub's width
 const PREVIEW_WIDTH: f32 = 0.44;
+/// a row's left padding, and what each depth adds
+const ROW_INSET: f32 = 12.;
+const DEPTH_INSET: f32 = 16.;
+/// the short ages' fixed column (New terminal)
+const SHORT_AGE_WIDTH: f32 = 32.;
+/// from a row's inset to its title: the number, the icon and the gaps
+const TITLE_INSET: f32 = 34.;
 /// the opacity of a faded row icon: a branch only a remote has
 const FADED_ICON: f32 = 0.45;
 
@@ -221,13 +228,16 @@ fn list_pane(id: TabId, hub: &HubTab, list: &List, workspace: &Workspace, theme:
         pane = pane.child(div().px_3().py_2().text_color(rgb(theme.muted)).child(message.clone()));
     }
     for section in &list.sections {
-        pane = pane.child(section_header(&section.title, section.note.as_deref(), theme));
+        pane = pane.child(section_header(section, theme));
+        if section.rows.is_empty() {
+            pane = pane.children(section.empty.as_ref().map(|empty| section_line(section.level, empty, theme)));
+        }
         for index in section.rows.clone() {
-            let look = RowLook { selected: index == selected, question: hub.state.pick.is_some() };
+            let look = RowLook { selected: index == selected, question: hub.state.pick.is_some(), ages: list.ages };
             pane = pane.child(row(id, index, &list.rows[index], look, workspace, theme, cx));
         }
         if let Some(more) = &section.more {
-            pane = pane.child(div().px_3().py_1().text_xs().text_color(rgb(theme.muted)).child(more.clone()));
+            pane = pane.child(section_line(section.level, more, theme));
         }
     }
     if list.more > 0 {
@@ -258,18 +268,33 @@ fn preview_pane(preview: &Preview, theme: Theme, cx: &App) -> Div {
     }
 }
 
-fn section_header(title: &str, note: Option<&str>, theme: Theme) -> Div {
-    div()
-        .flex()
-        .gap_2()
-        .px_3()
-        .pt_2()
-        .pb_1()
-        .text_xs()
-        .font_weight(FontWeight::SEMIBOLD)
-        .text_color(rgb(theme.muted))
-        .child(title.to_owned())
-        .children(note.map(|note| div().font_weight(FontWeight::NORMAL).child(note.to_owned())))
+/// A section's title and note; a project's head (New terminal) in the text colour with its folder icon, a group
+/// under it indented as its rows; the count at the right.
+fn section_header(section: &Section, theme: Theme) -> Div {
+    let header = div().flex().items_center().gap_2().pr_3().pb_1().text_xs().font_weight(FontWeight::SEMIBOLD);
+    let header = match section.level {
+        Level::Top => header.pl_3().pt_2().text_color(rgb(theme.muted)),
+        Level::Project => header
+            .pl_3()
+            .pt_3()
+            .text_color(rgb(theme.text))
+            .child(img(icons::embedded(theme.appearance, icons::PROJECT_FOLDER)).flex_none().size(px(14.))),
+        Level::Group => header.pl(px(ROW_INSET + DEPTH_INSET)).pt_1().text_color(rgb(theme.muted)),
+    };
+    header
+        .child(section.title.clone())
+        .children(section.note.clone().map(|note| div().min_w_0().overflow_hidden().whitespace_nowrap().font_weight(FontWeight::NORMAL).text_color(rgb(theme.muted)).child(note)))
+        .children(section.count.clone().map(|count| div().ml_auto().flex_none().font_weight(FontWeight::NORMAL).text_color(rgb(theme.muted)).child(count)))
+}
+
+/// A muted line of a section: what it leaves out, or that it has no rows; under a project or a group, at its rows'
+/// titles.
+fn section_line(level: Level, text: &str, theme: Theme) -> Div {
+    let inset = match level {
+        Level::Top => ROW_INSET,
+        Level::Project | Level::Group => ROW_INSET + DEPTH_INSET + TITLE_INSET,
+    };
+    div().pl(px(inset)).pr_3().py_1().text_xs().text_color(rgb(theme.muted)).child(text.to_owned())
 }
 
 /// How a row is drawn and named: selected, and whether it is one of the worktree question's.
@@ -277,6 +302,7 @@ fn section_header(title: &str, note: Option<&str>, theme: Theme) -> Div {
 struct RowLook {
     selected: bool,
     question: bool,
+    ages: Ages,
 }
 
 fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -305,7 +331,7 @@ fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace,
         .items_center()
         .gap(px(6.))
         .h(px(ROW_HEIGHT))
-        .pl(px(12. + f32::from(row.depth) * 16.))
+        .pl(px(ROW_INSET + f32::from(row.depth) * DEPTH_INSET))
         .pr_3()
         .cursor_pointer()
         .hover(|style| style.bg(rgb(theme.hover)))
@@ -313,12 +339,13 @@ fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace,
         .child(badged(img(icons::embedded(theme.appearance, item.icon)).flex_none().size(px(16.)).opacity(if item.faded { FADED_ICON } else { 1. }), hub_badge(row, look, workspace, theme), theme))
         // a long title gives way before the tags at the row's end
         .child(div().flex_shrink_1().min_w_0().overflow_hidden().whitespace_nowrap().text_color(rgb(title_colour)).child(highlighted(&item.title, &row.title_hits, theme)))
+        .children(remote_tag(&row.tag, theme))
         .child(div().flex_1().min_w_0().overflow_hidden().whitespace_nowrap().text_xs().text_color(rgb(theme.muted)).child(highlighted(&item.detail, &row.detail_hits, theme)))
         .children(item.mark.map(|mark| mark_label(mark, theme, cx)))
         .children(class_tag)
         .children(item.state.clone().map(|state| div().flex_none().text_xs().text_color(rgb(theme.muted)).child(state)))
         .children(worktree_tag(&row.tag, workspace, theme))
-        .children(item.age.map(|age| div().flex_none().text_xs().text_color(rgb(theme.muted)).child(Clock::system().age(age))))
+        .children(item.age.map(|age| age_label(age, look.ages, theme)))
         .on_click(open);
     if look.selected {
         line = line.bg(rgb(theme.selected));
@@ -326,12 +353,20 @@ fn row(id: TabId, index: usize, row: &Row, look: RowLook, workspace: &Workspace,
     line
 }
 
+fn age_label(age: i64, ages: Ages, theme: Theme) -> Div {
+    let label = div().flex_none().text_xs().text_color(rgb(theme.muted));
+    match ages {
+        Ages::Calendar => label.child(Clock::system().age(age)),
+        Ages::Short => label.w(px(SHORT_AGE_WIDTH)).text_right().child(Clock::system().short_age(age)),
+    }
+}
+
 /// A row's badge: its module's favicon, else its project's, in its worktree, or its project's main checkout when it
 /// is in several or none; ringed in the row's background.
 fn hub_badge(row: &Row, look: RowLook, workspace: &Workspace, theme: Theme) -> Option<Badge> {
     let checkout = match &row.tag {
         Tag::Worktree(checkout) => checkout.clone(),
-        Tag::None | Tag::Several(_) => {
+        Tag::None | Tag::Several(_) | Tag::Remote(_) => {
             let project = workspace.project(row.item.project.as_ref()?)?;
             project.checkout_ref(project.main_checkout())
         }
@@ -341,10 +376,19 @@ fn hub_badge(row: &Row, look: RowLook, workspace: &Workspace, theme: Theme) -> O
     owner.icon.map(|path| Badge { path, ring })
 }
 
+/// A remote-only branch's remote, after its name.
+fn remote_tag(row_tag: &Tag, theme: Theme) -> Option<Div> {
+    match row_tag {
+        Tag::Remote(remote) => Some(tag(remote.clone(), theme.muted, theme)),
+        Tag::None | Tag::Several(_) | Tag::Worktree(_) => None,
+    }
+}
+
 fn worktree_tag(row_tag: &Tag, workspace: &Workspace, theme: Theme) -> Option<Div> {
     match row_tag {
         Tag::None => None,
         Tag::Several(count) => Some(tag(format!("{count} worktrees"), theme.muted, theme)),
+        Tag::Remote(_) => None,
         Tag::Worktree(checkout) => {
             let colour = workspace.checkout(checkout).map_or(theme.muted, |found| checkout_colour(found, theme));
             Some(tag(workspace.checkout_label(checkout), colour, theme))

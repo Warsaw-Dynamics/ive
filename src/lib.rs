@@ -234,7 +234,7 @@ fn run(startup: Startup, background: bool) {
         #[cfg(target_os = "macos")]
         workspace::add_app_menu(cx);
         let saved = startup.saved.window.and_then(|window| window.usable_bounds(&window_state::screens(cx)));
-        let bounds = saved.unwrap_or_else(|| Bounds::centered(None, window_state::DEFAULT_SIZE, cx));
+        let bounds = saved.map_or_else(|| Bounds::centered(None, window_state::DEFAULT_SIZE, cx), |saved| window_state::opening_bounds(saved, cx));
         // a first start leaves the place to the window manager, which knows the monitor the user works on
         let options = gpui::WindowOptions { focus: !background, keep_position: saved.is_some(), ..window_controls::window_options(bounds) };
         let open = |window: &mut gpui::Window, cx: &mut App| {

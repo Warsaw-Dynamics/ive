@@ -1,6 +1,6 @@
 <!-- The hub (Ctrl+E; hub.js, a proposal): query row, then the list and a preview of its selected row, then the keys.
      The query keeps the keyboard; Ctrl+E again toggles "changed only", Escape goes back. Ctrl+Shift+T opens it asking
-     only where a new terminal goes (projects, worktrees, branches without a worktree). -->
+     only where a new terminal goes: per project, its worktrees and its branches without a worktree. -->
 <div class="hub" x-data="{ v: { sections: [], items: [] } }" x-effect="v = hubView()"
      @mouseup="$event.target.closest('button, .hub__row') === null && $refs.query.focus()">
   <div class="hub__bar">
@@ -36,6 +36,14 @@
         <button class="hub__scope" type="button" :class="{ 'hub__scope--on': hub.word }" @click="hub.word = !hub.word" title="Alt+W: whole words only">W</button>
       </span>
     </template>
+    <!-- New terminal: branches without a worktree, hidden unless switched on (Ctrl+Shift+T again) or no worktree matches -->
+    <template x-if="v.mode === 'terminal' && v.sections.length && v.sections[0].branches">
+      <button class="hub__scope hub__branches-toggle" type="button" :class="{ 'hub__scope--on': v.sections[0].branches.shown, 'hub__scope--auto': v.sections[0].branches.auto }" @click="toggleBranches(); $refs.query.focus()"
+              :title="v.sections[0].branches.auto ? 'No worktree matches, so the branches show; Ctrl+Shift+T keeps them on' : hub.withBranches ? 'Ctrl+Shift+T: hide the branches without a worktree' : 'Ctrl+Shift+T: show the branches without a worktree too'">
+        <img class="icon" :src="icon('branch.svg')" alt="" /><span>Branches</span>
+        <span class="hub__toggle-count" x-text="hub.query.trim() === '' ? v.sections[0].branches.total : v.sections[0].branches.matched"></span>
+      </button>
+    </template>
     <template x-if="v.mode === 'files' || v.mode === 'content'">
       <button class="hub__scope hub__excluded-toggle" type="button" :class="{ 'hub__scope--on': hub.withExcluded }" @click="toggleExcluded()"
               :title="hub.withExcluded ? 'Searching excluded and gitignored files too (Alt+I)' : 'Alt+I: search excluded and gitignored files too'">
@@ -49,8 +57,15 @@
     <div class="hub__list">
       <template x-for="section in v.sections" :key="section.key">
         <div class="hub__group">
-          <div class="hub__section"><span x-text="section.title"></span><span class="hub__hint" x-text="section.hint || ''"></span></div>
-          <template x-if="section.items.length === 0"><div class="hub__empty muted" x-text="section.empty"></div></template>
+          <!-- New terminal: a project's head (head), then its Worktrees and Branches (sub), each with what matched -->
+          <template x-if="section.title">
+            <div class="hub__section" :class="{ 'hub__section--head': section.head, 'hub__section--sub': section.sub }">
+              <template x-if="section.head"><img class="icon" :src="icon('project-folder.svg')" alt="" /></template>
+              <span x-text="section.title"></span><span class="hub__hint" x-text="section.hint || ''"></span>
+              <template x-if="section.count"><span class="hub__count" x-text="section.count"></span></template>
+            </div>
+          </template>
+          <template x-if="section.items.length === 0 && section.empty"><div class="hub__empty muted" :class="{ 'hub__empty--sub': section.sub }" x-text="section.empty"></div></template>
           <!-- the key holds the position: Alpine reuses a row by key and would keep its old highlight when rows reorder -->
           <template x-for="item in section.items" :key="item.id + '#' + item.index">
             <div>
@@ -61,6 +76,7 @@
               <span class="icon-stack" x-data="{ get owner() { return hubOwnerBadge(item); } }"><img class="icon" :src="icon(item.icon)" alt="" /><template x-if="item.badge"><img class="icon icon-stack__badge" :src="icon(item.badge)" alt="" /></template><template x-if="owner"><img class="icon-stack__owner" :src="owner.icon" alt="" /></template></span>
               <template x-if="item.mark"><span class="mark" :class="'mark--' + item.mark" x-text="item.mark"></span></template>
               <span class="hub__title"><template x-for="(s, i) in item.titleSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
+              <template x-if="item.tag"><span class="hub__tag" x-text="item.tag"></span></template>
               <span class="hub__detail"><template x-for="(s, i) in item.detailSpans" :key="i"><span :class="{ 'hub__hit': s.on }" x-text="s.t"></span></template></span>
               <template x-if="item.excluded">
                 <span class="hub__excluded" :title="item.excluded === 'ignored' ? 'gitignored' : 'in a folder named in config.excluded'" x-text="item.excluded"></span>
@@ -82,7 +98,7 @@
             </div>
           </template>
           <template x-if="section.more">
-            <div class="hub__more muted" x-text="'… ' + section.more.toLocaleString('en') + ' more' + (section.moreText ? ' ' + section.moreText : '; type more to narrow')"></div>
+            <div class="hub__more muted" :class="{ 'hub__more--sub': section.sub }" x-text="'… ' + section.more.toLocaleString('en') + ' more' + (section.moreText ? ' ' + section.moreText : '; type more to narrow')"></div>
           </template>
         </div>
       </template>

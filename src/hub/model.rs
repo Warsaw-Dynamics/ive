@@ -489,7 +489,7 @@ mod tests {
     use crate::hub::content::Matching;
     use crate::hub::corpus::{Corpus, ProjectInput, build};
     use crate::hub::files::{CheckoutFiles, Class};
-    use crate::hub::rows::{LINE_NEEDS_TEXT, LOADING_FILES, Tag, list};
+    use crate::hub::rows::{Ages, LINE_NEEDS_TEXT, LOADING_FILES, Tag, list};
     use crate::hub::search::{RENDERED, search};
     use crate::hub::sources::{BackTab, FreeBranch, Item, NoStates, Place, ProjectInfo, Sources, Target, WorktreeInfo};
     use crate::process::ProcessId;
@@ -1418,8 +1418,18 @@ mod tests {
         list.sections.iter().map(|section| section.more.as_deref()).collect()
     }
 
+    fn counts(list: &List) -> Vec<Option<&str>> {
+        list.sections.iter().map(|section| section.count.as_deref()).collect()
+    }
+
+    fn empties(list: &List) -> Vec<Option<&str>> {
+        list.sections.iter().map(|section| section.empty.as_deref()).collect()
+    }
+
+    const GROUPED: [&str; 4] = ["atlassian", "Worktrees", "Branches · new worktree", "notes"];
+
     #[test]
-    fn should_list_only_projects_checkouts_before_typing() {
+    fn should_group_each_projects_worktrees_and_newest_branches_before_typing() {
         // given
         let sources = with_branches(7);
 
@@ -1427,9 +1437,27 @@ mod tests {
         let list = shown(&new_terminal(), &sources);
 
         // then
-        assert_eq!(sections(&list), ["atlassian", "notes"]);
-        assert_eq!(titles(&list), ["dev", "GEN-817-ive", "old", "notes"]);
-        assert_eq!(more_lines(&list), [Some("… 7 branches; type to search them"), None]);
+        assert_eq!(sections(&list), GROUPED);
+        assert_eq!(titles(&list), ["dev", "GEN-817-ive", "old", "b1", "b2", "b3", "b4", "b5", "notes"]);
+        assert_eq!(counts(&list), [None, Some("3"), Some("7"), None]);
+        assert_eq!(more_lines(&list), [None, None, Some("… 2 more branches; type to filter"), None]);
+    }
+
+    #[test]
+    fn should_keep_the_groups_while_typing() {
+        // given
+        let mut state = new_terminal();
+        typed(&mut state, "817");
+
+        // when
+        let list = shown(&state, &with_branches(3));
+
+        // then
+        assert_eq!(sections(&list), GROUPED);
+        assert_eq!(titles(&list), ["GEN-817-ive"]);
+        assert_eq!(counts(&list), [Some("1 / 6"), Some("1 / 3"), Some("0 / 3"), Some("0 / 1")]);
+        assert_eq!(empties(&list), [None, Some("None match"), Some("None match"), Some("No match")]);
+        assert_eq!(list.counter.as_deref(), Some("1/7"));
     }
 
     #[test]
@@ -1447,48 +1475,36 @@ mod tests {
     }
 
     #[test]
-    fn should_describe_the_main_checkout_and_a_plain_folder() {
+    fn should_describe_the_main_checkout_and_a_plain_folder_without_the_project() {
         // when
         let list = shown(&new_terminal(), &sources());
 
         // then
         let details: Vec<&str> = list.rows.iter().map(|row| row.item.detail.as_str()).collect();
-        assert_eq!(details, ["atlassian · main checkout", "atlassian", "atlassian", "notes · no git"]);
+        assert_eq!(details, ["main checkout", "", "", "no git"]);
+        assert_eq!(list.ages, Ages::Short);
     }
 
     #[test]
-    fn should_mark_remote_only_branches() {
+    fn should_tag_remote_only_branches_with_their_remote() {
         // given
         let sources = Sources { branches: vec![branch("mine", None, 2), branch("theirs", Some("origin"), 1)], ..sources() };
         let mut state = new_terminal();
-        typed(&mut state, "atlassian.");
+        typed(&mut state, "origin");
 
         // when
-        let list = shown(&state, &sources);
+        let all = shown(&new_terminal(), &sources);
+        let found = shown(&state, &sources);
 
         // then
-        let branches = list.rows.iter().filter(|row| matches!(row.item.target, Target::NewWorktreeTerminal { .. }));
-        let rows: Vec<(&str, &str, bool)> = branches.map(|row| (row.item.title.as_str(), row.item.detail.as_str(), row.item.faded)).collect();
-        assert_eq!(rows, [("mine", "local · atlassian", false), ("theirs", "origin · atlassian", true)]);
+        let branches = all.rows.iter().filter(|row| matches!(row.item.target, Target::NewWorktreeTerminal { .. }));
+        let rows: Vec<(&str, bool, Tag)> = branches.map(|row| (row.item.title.as_str(), row.item.faded, row.tag.clone())).collect();
+        assert_eq!(rows, [("mine", false, Tag::None), ("theirs", true, Tag::Remote("origin".to_owned()))]);
+        assert_eq!(titles(&found), ["theirs"]);
     }
 
     #[test]
-    fn should_rank_new_terminal_rows_when_typing() {
-        // given
-        let mut state = new_terminal();
-        typed(&mut state, "817");
-
-        // when
-        let list = shown(&state, &with_branches(3));
-
-        // then
-        assert_eq!(sections(&list), ["New terminal in"]);
-        assert_eq!(titles(&list), ["GEN-817-ive"]);
-        assert_eq!(list.counter.as_deref(), Some("1/7"));
-    }
-
-    #[test]
-    fn should_show_the_twenty_best_matches() {
+    fn should_show_a_projects_twenty_best_branches() {
         // given
         let mut state = new_terminal();
         typed(&mut state, "b");
@@ -1497,7 +1513,9 @@ mod tests {
         let list = shown(&state, &with_branches(30));
 
         // then
-        assert_eq!((list.rows.len(), list.more), (20, 10));
+        let branches = list.rows.iter().filter(|row| matches!(row.item.target, Target::NewWorktreeTerminal { .. })).count();
+        assert_eq!((branches, list.more), (20, 0));
+        assert_eq!(more_lines(&list)[2], Some("… 10 more; type more to narrow"));
     }
 
     #[test]

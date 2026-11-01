@@ -13,7 +13,7 @@
   var CONTENT_LEAD = 8;
   var RECENT = 12;
   var RECENT_WHILE_SEARCHING = 5;
-  // New terminal: a project's newest branches without a worktree listed before typing; the best matches while typing
+  // New terminal: a project's newest branches without a worktree listed before typing; its best matches while typing
   var NEW_TERMINAL_BRANCHES = 5;
   var NEW_TERMINAL_MATCHES = 20;
   // fzf's algo.go constants (scoreMatch, scoreGapStart, scoreGapExtension, bonus*), path scheme: '/' is a boundary.
@@ -211,6 +211,19 @@
     return out;
   }
 
+  // New terminal's ages, one format in a fixed column: now, 12m, 3h, 4d, 3w, 5mo, 2y.
+  function shortAge(date) {
+    var minutes = Math.floor((window.IVE_SCALE.today - date) / 60000);
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return minutes + 'm';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h';
+    var days = Math.floor(hours / 24);
+    if (days < 14) return days + 'd';
+    if (days < 60) return Math.floor(days / 7) + 'w';
+    return days < 365 ? Math.floor(days / 30) + 'mo' : Math.floor(days / 365) + 'y';
+  }
+
   // `file.rs:12` opens at line 12: the line is cut off before matching.
   function splitLine(query) {
     var m = /^(.*\S):(\d+)$/.exec(query.trim());
@@ -247,7 +260,7 @@
         // opened with Ctrl+Shift+T, the hub only asks where a new terminal goes.
         // content: Ctrl+Shift+F, the query searches the files' lines (regex: Alt+R, word: Alt+W); paths: the files and
         // folders Find in Files was picked on ({ co, path }), else the scope.
-        hub: { query: '', selected: 0, scope: 'all', withExcluded: false, changedOnly: false, back: null, pick: null, loaded: 0, note: '', newTerminal: false,
+        hub: { query: '', selected: 0, scope: 'all', withExcluded: false, withBranches: false, changedOnly: false, back: null, pick: null, loaded: 0, note: '', newTerminal: false,
           content: false, regex: false, word: false, paths: [] },
         // Every tab shown, newest last: { key, tab, at }. Closed tabs stay, so the hub reopens them.
         history: [],
@@ -298,8 +311,12 @@
         if (current && current.kind === 'hub' && this.hub.newTerminal === false) { this.hub.changedOnly = !this.hub.changedOnly; this.hub.selected = 0; return; }
         this.showHub(false);
       },
-      // Ctrl+Shift+T: the hub asking where a new terminal goes.
-      openNewTerminalHub: function () { this.showHub(true); },
+      // Ctrl+Shift+T: the hub asking where a new terminal goes; in it, shows or hides the branches without a worktree.
+      openNewTerminalHub: function () {
+        var current = this.currentTab();
+        if (current && current.kind === 'hub' && this.hub.newTerminal && this.hub.pick === null) { this.toggleBranches(); return; }
+        this.showHub(true);
+      },
       showHub: function (newTerminal) {
         var current = this.currentTab();
         if (current === null || current.kind !== 'hub') this.hub.back = current ? current.key : null;
@@ -457,7 +474,7 @@
         var items = [];
         sections.forEach(function (s) { s.items.forEach(function (item) { item.index = items.length; items.push(item); }); });
         var stats = searchMemo.value && mode === 'files' && groups.length ? searchMemo.value : null;
-        return { mode: mode, line: split.line, sections: sections.filter(function (s) { return s.items.length || s.empty; }), items: items, stats: stats };
+        return { mode: mode, line: split.line, sections: sections.filter(function (s) { return s.items.length || s.empty || s.head; }), items: items, stats: stats };
       },
       hub_files: function (groups, split) {
         if (groups.length === 0) {
@@ -606,54 +623,102 @@
         });
         return [{ key: 'scope', title: 'Search in', hint: 'projects, their worktrees most recently used first', items: this.hubMatching(items, groups), empty: 'No project or worktree matches' }];
       },
-      // Ctrl+Shift+T — where a new terminal goes: each open project (its main checkout), its worktrees most recently
-      // used first, then its newest branches without a worktree; typing ranks all of them fzf-style, the best first.
-      // A remote branch whose name a local one has is left out (the worktree would check out the local one). Enter on
-      // a branch adds its worktree first.
+      // Ctrl+Shift+T — where a new terminal goes: a section per open project with its worktrees (main checkout first,
+      // the others most recently used first). Branches without a worktree are left out unless shown (Ctrl+Shift+T
+      // again, or the Branches switch), or while typing matches no worktree at all; then each project groups its
+      // Worktrees and its Branches (newest first). Typing only filters and ranks inside each group, so groups never
+      // move; a group with no match stays as one line. A remote branch whose name a local one has is left out (the
+      // worktree would check out the local one). Enter on a branch adds its worktree first.
       hub_terminal: function (groups) {
-        var items = this.newTerminalTargets();
-        var counter = function (n) { return n.toLocaleString('en') + '/' + items.length.toLocaleString('en'); };
-        if (groups.length) {
-          var found = this.hubMatching(items, groups);
-          return [{ key: 'terminal', title: 'New terminal in', hint: 'best matches first', items: found.slice(0, NEW_TERMINAL_MATCHES), counter: counter(found.length),
-            more: Math.max(0, found.length - NEW_TERMINAL_MATCHES), empty: 'No project, worktree or branch matches' }];
-        }
-        // before typing: a section per project, its newest branches only; the rest typing reaches
-        return this.treeProjects().map(function (p) {
-          var mine = items.filter(function (item) { return item.project === p.name; });
-          var branches = mine.filter(function (item) { return item.branch; });
-          return { key: 'terminal:' + p.name, title: p.name, hint: branches.length ? 'worktrees by last use, then the newest branches without one' : '',
-            items: mine.filter(function (item) { return item.branch !== true; }).concat(branches.slice(0, NEW_TERMINAL_BRANCHES)), counter: counter(items.length),
-            more: Math.max(0, branches.length - NEW_TERMINAL_BRANCHES), moreText: 'branches; type to search them' };
-        });
-      },
-      // Every place a new terminal can go: projects, worktrees, branches without a worktree (project: the project's name).
-      newTerminalTargets: function () {
         var self = this;
-        var running = function (ids) { return self.consoles.filter(function (c) { return ids.includes(c.co) && self.isLive(c); }).length; };
-        var items = [];
-        this.treeProjects().forEach(function (p) {
-          var main = p.checkouts[0];
-          var ids = self.checkoutIds(p.name);
-          var n = running([main.id]);
-          items.push(self.hubItem({ id: 'nt:p:' + p.name, icon: p.git ? 'branch.svg' : 'project-folder.svg', title: p.git ? main.label : p.name,
-            detail: p.name + (p.git ? ' · main checkout' : ' · no git'), project: p.name,
-            state: n ? '● ' + n + ' running' : null, open: function () { self.newTerminalIn(main); }, preview: function () { return self.newTerminalPreview(main); } }));
-          self.byRecency(ids.slice(1)).forEach(function (id) {
-            var co = self.checkout(id);
-            var used = self.worktreeLastUsed(id);
-            var k = running([id]);
-            items.push(self.hubItem({ id: 'nt:w:' + id, icon: 'branch.svg', title: co.label, detail: p.name + (co.branch && co.branch !== co.label ? ' · ' + co.branch : ''),
-              project: p.name, age: used === null ? 'never' : self.age(used), state: k ? '● ' + k + ' running' : null,
-              open: function () { self.newTerminalIn(co); }, preview: function () { return self.newTerminalPreview(co); } }));
-          });
-          p.branches.forEach(function (b) {
-            items.push(self.hubItem({ id: 'nt:b:' + p.name + ':' + b.name, icon: 'branch.svg', title: b.name, detail: (b.remote || 'local') + ' · ' + p.name,
-              project: p.name, weak: b.remote !== null, branch: true, age: self.age(b.modified),
-              open: function () { self.newTerminalOnBranch(p, b); }, preview: function () { return self.newWorktreePreview(p, b); } }));
-          });
+        var typed = groups.length > 0;
+        var places = this.treeProjects().map(function (p) {
+          var targets = self.newTerminalTargets(p);
+          return { p: p, targets: targets, worktrees: self.hubMatchingIn(targets.worktrees, groups, p.name), branches: self.hubMatchingIn(targets.branches, groups, p.name) };
         });
-        return items;
+        var sum = function (f) { return places.reduce(function (n, x) { return n + f(x); }, 0); };
+        var worktreeHits = sum(function (x) { return x.worktrees.length; });
+        var branchHits = sum(function (x) { return x.branches.length; });
+        var auto = this.hub.withBranches === false && typed && worktreeHits === 0 && branchHits > 0;
+        var withBranches = this.hub.withBranches || auto;
+        var sections = [];
+        places.forEach(function (x) { sections.push.apply(sections, withBranches ? self.terminalGrouped(x, typed) : self.terminalWorktrees(x, typed)); });
+        if (sections.length) {
+          var all = sum(function (x) { return x.targets.worktrees.length + (withBranches ? x.targets.branches.length : 0); });
+          sections[0].counter = typed ? (worktreeHits + (withBranches ? branchHits : 0)) + '/' + all : '';
+          sections[0].branches = { shown: withBranches, auto: auto, matched: branchHits, total: sum(function (x) { return x.targets.branches.length; }) };
+        }
+        return sections;
+      },
+      // Branches hidden: a project's head, its worktrees under it.
+      terminalWorktrees: function (x, typed) {
+        var total = x.targets.worktrees.length;
+        return [{ key: 'terminal:' + x.p.name, head: true, title: x.p.name, hint: x.p.path, items: x.worktrees,
+          count: typed ? x.worktrees.length + ' / ' + total : '', empty: 'No match' }];
+      },
+      // Branches shown: a project's head, then its Worktrees and its Branches groups.
+      terminalGrouped: function (x, typed) {
+        var p = x.p;
+        var t = x.targets;
+        var fraction = function (shown, total) { return typed ? shown + ' / ' + total : String(total); };
+        var limit = typed ? NEW_TERMINAL_MATCHES : NEW_TERMINAL_BRANCHES;
+        var hits = x.worktrees.length + x.branches.length;
+        var head = { key: 'terminal:' + p.name, head: true, title: p.name, hint: p.path, items: [],
+          count: typed ? fraction(hits, t.worktrees.length + t.branches.length) : '', empty: typed && hits === 0 ? 'No match' : null };
+        if (typed && hits === 0) return [head];
+        if (p.git === false) return [Object.assign(head, { items: x.worktrees })];
+        return [head,
+          { key: 'terminal:' + p.name + ':worktrees', sub: true, title: 'Worktrees', items: x.worktrees, count: fraction(x.worktrees.length, t.worktrees.length), empty: 'None match' },
+          { key: 'terminal:' + p.name + ':branches', sub: true, title: 'Branches · new worktree', items: x.branches.slice(0, limit),
+            count: fraction(x.branches.length, t.branches.length), empty: t.branches.length ? 'None match' : 'None without a worktree',
+            more: Math.max(0, x.branches.length - limit), moreText: typed ? null : 'branches; type to filter' }];
+      },
+      // New terminal's branch state: { shown, auto (no worktree matched), matched, total }, or null outside it.
+      newTerminalBranches: function () {
+        var view = this.hubView();
+        return view.mode === 'terminal' && view.sections.length ? view.sections[0].branches : null;
+      },
+      toggleBranches: function () {
+        this.hub.withBranches = !this.hub.withBranches;
+        this.hub.selected = 0;
+      },
+      // A project's places for a new terminal: { worktrees: the main checkout, then the others by last use;
+      // branches: those without a worktree }.
+      newTerminalTargets: function (p) {
+        var self = this;
+        var running = function (id) { return self.consoles.filter(function (c) { return c.co === id && self.isLive(c); }).length; };
+        var place = function (co, fields) {
+          var n = running(co.id);
+          var used = self.worktreeLastUsed(co.id);
+          return self.hubItem(Object.assign({ id: 'nt:w:' + co.id, icon: 'branch.svg', title: co.label, project: p.name, indent: true,
+            detail: co.branch && co.branch !== co.label ? co.branch : '', state: n ? '● ' + n + ' running' : null, age: used === null ? '' : shortAge(used),
+            open: function () { self.newTerminalIn(co); }, preview: function () { return self.newTerminalPreview(co); } }, fields));
+        };
+        var main = p.checkouts[0];
+        var first = p.git ? place(main, { icon: 'branch-main.svg', detail: 'main checkout' }) : place(main, { icon: 'project-folder.svg', title: p.name, detail: 'no git' });
+        var others = this.byRecency(this.checkoutIds(p.name).slice(1)).map(function (id) { return place(self.checkout(id), {}); });
+        var branches = p.branches.slice().sort(function (a, b) { return b.modified - a.modified; }).map(function (b) {
+          return self.hubItem({ id: 'nt:b:' + p.name + ':' + b.name, icon: 'branch.svg', badge: 'add.svg', title: b.name, tag: b.remote, project: p.name,
+            indent: true, weak: b.remote !== null, age: shortAge(b.modified),
+            open: function () { self.newTerminalOnBranch(p, b); }, preview: function () { return self.newWorktreePreview(p, b); } });
+        });
+        return { worktrees: [first].concat(others), branches: branches };
+      },
+      // hubMatching for one project's items: matched as "project.title detail", so `ive.` narrows to IVE's; the
+      // project's part highlights nothing.
+      hubMatchingIn: function (items, groups, project) {
+        if (groups.length === 0) return items;
+        var from = project.length + 1;
+        return items.map(function (item) {
+          var text = project + '.' + item.title + ' ' + (item.detail || '') + (item.tag ? ' ' + item.tag : '');
+          var hit = match(text, text.toLowerCase(), groups);
+          if (hit === null) return null;
+          var end = from + item.title.length;
+          item.score = hit.score;
+          item.titleSpans = spans(text, hit.positions, from, end);
+          item.detailSpans = spans(text, hit.positions, end + 1, end + 1 + item.detail.length);
+          return item;
+        }).filter(Boolean).sort(function (a, b) { return b.score - a.score; });
       },
       // A terminal in `co`, its worktree shown expanded in the tree.
       newTerminalIn: function (co) {
@@ -973,6 +1038,11 @@
       hubSelectedIndex: function () { return this.hub.pick === null ? this.hub.selected : this.hub.pick.selected; },
       hubSelected: function (view) { return view.items[Math.min(this.hubSelectedIndex(), view.items.length - 1)] || null; },
       hubSelect: function (index) { if (this.hub.pick === null) this.hub.selected = index; else this.hub.pick.selected = index; },
+      // New terminal's Enter: a terminal in the selected worktree, or a branch's new worktree first.
+      hubEnterLabel: function () {
+        var item = this.hubSelected(this.hubView());
+        return item && item.id.startsWith('nt:b:') ? 'new worktree + terminal' : 'new terminal there';
+      },
       hubPreview: function () {
         var item = this.hubSelected(this.hubView());
         return item ? item.preview() : null;
@@ -994,8 +1064,16 @@
       },
       // "+ 381,877 excluded" while they are left out, so the user knows there is more to search
       hubHiddenNote: function () {
+        var branches = this.newTerminalBranches();
+        if (branches) return this.branchesNote(branches);
         var stats = this.hubView().stats;
         return stats && stats.hidden ? stats.hidden.toLocaleString('en') + ' excluded not searched' : '';
+      },
+      // What New terminal says of the branches without a worktree it leaves out, or shows on its own.
+      branchesNote: function (branches) {
+        if (branches.auto) return 'No worktree matches: showing branches';
+        if (branches.shown || branches.matched === 0 || this.hub.query.trim() === '') return '';
+        return branches.matched + (branches.matched === 1 ? ' branch matches' : ' branches match') + ' · Ctrl+Shift+T shows them';
       },
       toggleExcluded: function () {
         this.hub.withExcluded = !this.hub.withExcluded;
@@ -1077,7 +1155,7 @@
         if (mode === 'pick') return [['↑↓', 'move'], ['Enter', 'open here'], ['type', 'filter'], ['Esc', 'back to the list']];
         if (mode === 'scope') return [['↑↓', 'move'], ['Enter', 'search there'], ['Tab', 'search there'], ['Esc', 'clear']];
         if (mode === 'line') return [['Enter', 'go to the line'], ['Esc', 'clear']];
-        if (mode === 'terminal') return [['↑↓', 'move'], ['Enter', 'new terminal there'], ['type', 'filter'], ['Esc', this.hub.query === '' ? 'back' : 'clear'], ['Ctrl+E', 'hub']];
+        if (mode === 'terminal') return [['↑↓', 'move'], ['Enter', this.hubEnterLabel()], ['Ctrl+Shift+T', this.hub.withBranches ? 'hide branches' : 'show branches'], ['type', 'filter'], ['Esc', this.hub.query === '' ? 'back' : 'clear'], ['Ctrl+E', 'hub']];
         if (mode === 'content') {
           return [['↑↓', 'move'], ['Enter', 'open at the line'], ['Shift+Enter', 'behind'], ['Alt+Enter', 'to terminal'], ['Ctrl+Y', 'copy'],
             ['Alt+R', this.hub.regex ? 'regex on' : 'regex'], ['Alt+W', this.hub.word ? 'words on' : 'words'], ['Alt+I', this.hub.withExcluded ? 'excluded on' : 'excluded'],

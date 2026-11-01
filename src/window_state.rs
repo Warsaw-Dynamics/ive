@@ -4,6 +4,8 @@
 use gpui::{App, Bounds, Pixels, Size, Window, point, px, size};
 use serde::{Deserialize, Serialize};
 
+use crate::frame;
+
 /// Sizes outside these, or a window off every screen, are not something IVE saved: it opens centred instead.
 const MIN_SIZE: f32 = 100.;
 const MAX_SIZE: f32 = 16384.;
@@ -83,7 +85,12 @@ impl WindowPlace {
         self.current
     }
 
+    /// Notes where the window is; the first time it is visible, also applies the saved mode (see `shown`): a
+    /// Wayland window is visible from the start, so no change of visibility reports it.
     pub fn observe(&mut self, window: &Window) {
+        if window.is_visible() {
+            self.shown(window);
+        }
         let mode = match (window.is_fullscreen(), window.is_maximized()) {
             (true, _) => WindowMode::Fullscreen,
             (false, true) => WindowMode::Maximized,
@@ -105,6 +112,15 @@ impl WindowPlace {
         }
         self.current = Some(SavedWindow::new(restore, mode));
     }
+}
+
+/// The bounds to open a window with to get `saved` back: gpui on Wayland opens a window of `bounds` with the
+/// client-side frame's band inside them, while IVE saves the bounds without it.
+pub fn opening_bounds(saved: Bounds<Pixels>, cx: &App) -> Bounds<Pixels> {
+    if cx.compositor_name() == "Wayland" {
+        return frame::untiled_outer_bounds(saved);
+    }
+    saved
 }
 
 pub fn screens(cx: &App) -> Vec<Bounds<Pixels>> {

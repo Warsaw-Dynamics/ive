@@ -78,6 +78,7 @@
           add('scope', this.hub.scope === 'all' ? null : this.hub.scope);
           add('changed', this.hub.changedOnly ? '1' : null);
           add('nt', this.hub.newTerminal ? '1' : null);
+          add('br', this.hub.withBranches ? '1' : null);
         }
         // keys hold '/', '@' and ':', which are fine in a hash; keep them readable
         return p.toString().replace(/%2F/g, '/').replace(/%40/g, '@').replace(/%3A/g, ':').replace(/%7E/g, '~').replace(/%2C/g, ',');
@@ -133,6 +134,7 @@
         if (p.has('q')) this.hub.query = p.get('q');
         this.hub.changedOnly = p.get('changed') === '1';
         this.hub.withExcluded = p.get('excl') === '1';
+        this.hub.withBranches = p.get('br') === '1';
         this.hub.scope = p.get('scope') || 'all';
       },
       // Opens the tab `key` names, if what it shows still exists.

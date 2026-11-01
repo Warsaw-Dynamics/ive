@@ -7,6 +7,12 @@ const HOUR: i64 = 60 * MINUTE;
 const DAY: i64 = 24 * HOUR;
 /// Older than this many days before today, an age shows as the date.
 const COUNTED_DAYS: i64 = 6;
+const WEEK: i64 = 7 * DAY;
+const MONTH: i64 = 30 * DAY;
+const YEAR: i64 = 365 * DAY;
+/// A short age counts days below this, then weeks below `WEEKS_UP_TO`.
+const DAYS_UP_TO: i64 = 14 * DAY;
+const WEEKS_UP_TO: i64 = 60 * DAY;
 
 /// A moment as git stores it: seconds since the epoch and the author's offset from UTC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +69,21 @@ impl Clock {
             1 => "yesterday".to_owned(),
             days @ 2..=COUNTED_DAYS => format!("{days} d"),
             _ => date(When { seconds, offset_minutes: (self.offset / MINUTE) as i32 }),
+        }
+    }
+
+    /// The time since `seconds` in its largest whole unit, for a fixed column: `now`, `12m`, `3h`, `4d`, `3w`, `5mo`,
+    /// `2y`; the future is `now`.
+    pub fn short_age(self, seconds: i64) -> String {
+        let elapsed = self.now.saturating_sub(seconds).max(0);
+        match elapsed {
+            0..MINUTE => "now".to_owned(),
+            MINUTE..HOUR => format!("{}m", elapsed / MINUTE),
+            HOUR..DAY => format!("{}h", elapsed / HOUR),
+            DAY..DAYS_UP_TO => format!("{}d", elapsed / DAY),
+            DAYS_UP_TO..WEEKS_UP_TO => format!("{}w", elapsed / WEEK),
+            WEEKS_UP_TO..YEAR => format!("{}mo", elapsed / MONTH),
+            _ => format!("{}y", elapsed / YEAR),
         }
     }
 }
@@ -171,6 +192,18 @@ mod tests {
 
         // then
         assert_eq!(ages, ["now", "5 min", "3 h", "yesterday", "2 d", "6 d", "2026-10-09"]);
+    }
+
+    #[test]
+    fn should_write_short_ages_in_their_largest_whole_unit() {
+        // given
+        let times = [NOW - 30, NOW - 12 * MINUTE, NOW - 3 * HOUR, NOW - 4 * DAY, NOW - 13 * DAY, NOW - 3 * WEEK, NOW - 5 * MONTH, NOW - 2 * YEAR, NOW + DAY];
+
+        // when
+        let ages = times.map(|time| utc().short_age(time));
+
+        // then
+        assert_eq!(ages, ["now", "12m", "3h", "4d", "13d", "3w", "5mo", "2y", "now"]);
     }
 
     #[test]
