@@ -267,6 +267,7 @@ pub(super) fn unit_action(name: &str) -> Result<Action, String> {
         "Redo" => Builtin::Redo,
         "ToggleDiffLayout" => Builtin::ToggleDiffLayout,
         "ToggleMarkdownView" => Builtin::ToggleMarkdownView,
+        "ToggleSoftWrap" => Builtin::ToggleSoftWrap,
         "ScrollLineUp" => Builtin::ScrollLineUp,
         "ScrollLineDown" => Builtin::ScrollLineDown,
         "ScrollPageUp" => Builtin::ScrollPageUp,

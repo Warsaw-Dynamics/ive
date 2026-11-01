@@ -6,10 +6,10 @@ use std::collections::HashMap;
 use rune::{Any, ContextError, Module, Value};
 
 /// Actions without an argument: in WezTerm's Lua these are plain strings, and so they are here.
-const UNIT_ACTIONS: [&str; 76] = [
+const UNIT_ACTIONS: [&str; 77] = [
     "Nop", "DisableDefaultAssignment", "OpenSettings", "OpenTerminal", "ActivateTab", "CloseTab", "KeepTab", "StopProgram", "KillProgram",
     "CloseOtherTabs", "CloseTabsToTheLeft", "CloseTabsToTheRight", "ToggleChangesLayout", "OpenTerminalIn", "ActivateRow", "ActivateRowToKeep",
-    "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "ClearRowSelection", "CopyFiles", "PasteFiles", "DeleteFiles", "RenameFile", "SelectAll", "Cut", "Undo", "Redo", "ToggleDiffLayout", "ToggleMarkdownView",
+    "ToggleRow", "ToggleRowSelection", "ExtendRowSelection", "ClearRowSelection", "CopyFiles", "PasteFiles", "DeleteFiles", "RenameFile", "SelectAll", "Cut", "Undo", "Redo", "ToggleDiffLayout", "ToggleMarkdownView", "ToggleSoftWrap",
     "ScrollLineUp", "ScrollLineDown", "ScrollPageUp", "ScrollPageDown", "ScrollToTop", "ScrollToBottom",
     "Find", "FindNext", "FindPrevious",
     "OpenHub", "HubDown", "HubUp", "HubPageDown", "HubPageUp", "HubOpen", "HubOpenBehind", "HubTypePath", "HubCopyPath",

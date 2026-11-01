@@ -72,6 +72,7 @@ mod signals;
 #[path = "signals_windows.rs"]
 mod signals;
 mod sidebar;
+mod soft_wrap;
 mod state;
 mod tab_preview;
 mod tab_window;
@@ -231,6 +232,7 @@ fn run(startup: Startup, background: bool) {
         theme::apply(cx.window_appearance(), cx);
         text_input::bind_keys(cx);
         codeview_host::install(cx);
+        cx.set_global(soft_wrap::SoftWraps::restored(&startup.saved.soft_wrapped));
         #[cfg(target_os = "macos")]
         workspace::add_app_menu(cx);
         let saved = startup.saved.window.and_then(|window| window.usable_bounds(&window_state::screens(cx)));

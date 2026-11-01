@@ -79,6 +79,7 @@ impl Workspace {
         self.tabs.replace(id, tab);
         self.save_on_state_change(id, cx);
         self.open_diff_on_request(id, window, cx);
+        self.open_gutter_menu_on_request(id, window, cx);
         if let SavedTab::Settings { page } = &saved {
             self.show_settings_page(settings_page_named(page), cx);
         }

@@ -15,6 +15,7 @@ use crate::profile;
 use crate::project::ProjectId;
 use crate::saved_tabs::{SavedTab, SavedTabs};
 use crate::sidebar::folders::FolderKind;
+use crate::soft_wrap::MAX_SOFT_WRAPPED;
 use crate::window_state::SavedWindow;
 
 pub const VERSION: u32 = 2;
@@ -62,11 +63,14 @@ pub struct SavedState {
     /// where each hosted terminal is listed, which its session's labels cannot follow
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub terminals: Vec<SavedTerminal>,
+    /// the files whose long lines wrap, the one switched on last at the end
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub soft_wrapped: Vec<PathBuf>,
 }
 
 impl Default for SavedState {
     fn default() -> Self {
-        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new(), terminals: Vec::new() }
+        Self { version: VERSION, shown_folders: None, hidden_projects: Vec::new(), projects: Vec::new(), recent: Vec::new(), tabs: None, window: None, history: Vec::new(), worktree_use: Vec::new(), terminals: Vec::new(), soft_wrapped: Vec::new() }
     }
 }
 
@@ -190,6 +194,9 @@ impl SavedState {
         if self.terminals.len() > MAX_TERMINALS {
             return Err(format!("{} terminals, the limit is {MAX_TERMINALS}", self.terminals.len()));
         }
+        if self.soft_wrapped.len() > MAX_SOFT_WRAPPED {
+            return Err(format!("{} soft-wrapped files, the limit is {MAX_SOFT_WRAPPED}", self.soft_wrapped.len()));
+        }
         for terminal in &self.terminals {
             ProjectId::parse(&terminal.project)?;
         }
@@ -230,7 +237,8 @@ impl SavedState {
         let shown = shown.chain(self.history.iter().flat_map(|shown| &shown.checkout));
         let used = self.worktree_use.iter().map(|used| &used.checkout);
         let terminals = self.terminals.iter().flat_map(|terminal| std::iter::once(&terminal.checkout).chain(&terminal.pinned));
-        match paths.chain(checkouts).chain(shown).chain(used).chain(terminals).find(|path| path.is_relative()) {
+        let wrapped = self.soft_wrapped.iter();
+        match paths.chain(checkouts).chain(shown).chain(used).chain(terminals).chain(wrapped).find(|path| path.is_relative()) {
             Some(relative) => Err(format!("path {} is not absolute", relative.display())),
             None => Ok(()),
         }
@@ -395,6 +403,7 @@ mod tests {
             history: Vec::new(),
             worktree_use: Vec::new(),
             terminals: Vec::new(),
+            soft_wrapped: Vec::new(),
         }
     }
 
@@ -411,6 +420,36 @@ mod tests {
         // then
         assert_eq!((loaded.state, loaded.problem), (sample(), None));
         assert!(fs::read_to_string(&path).unwrap().starts_with("version = 2\n"));
+    }
+
+    #[test]
+    fn should_round_trip_soft_wrapped_files() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        let state = SavedState { soft_wrapped: vec![absolute("/r/README.md"), absolute("/r/notes.txt")], ..sample() };
+
+        // when
+        save(&state, &path).unwrap();
+        let loaded = load(&path);
+
+        // then
+        assert_eq!((loaded.state, loaded.problem), (state, None));
+    }
+
+    #[test]
+    fn should_set_aside_a_relative_soft_wrapped_file() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.toml");
+        save(&SavedState { soft_wrapped: vec![PathBuf::from("README.md")], ..sample() }, &path).unwrap();
+
+        // when
+        let loaded = load(&path);
+
+        // then
+        assert_eq!(loaded.state, SavedState::default());
+        assert!(loaded.problem.is_some_and(|problem| problem.contains("README.md")), "the problem names the path");
     }
 
     #[test]

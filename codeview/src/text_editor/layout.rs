@@ -29,24 +29,25 @@ pub struct Area {
 /// The lines of `area`, coloured by `highlights` (byte offsets of the text, sorted and disjoint).
 pub fn visible_lines(model: &EditorModel, area: Area, highlights: &[Highlight]) -> Vec<VisibleLine> {
     let Area { rows, columns } = area;
-    let selection = model.selection();
     let rows = rows.start.min(model.line_count())..rows.end.min(model.line_count());
-    rows.map(|line| {
-        let (start, stored) = model.stored_line(line);
-        let all = shown(&stored);
-        let visible = all.chars().skip(columns.start).take(columns.len());
-        let text: String = visible.map(|c| if c.is_control() { ' ' } else { c }).collect();
-        let starts = shown_char_starts(content(&stored)).skip(columns.start).map(|at| start + at as u64);
-        VisibleLine {
-            line,
-            first_column: columns.start,
-            colours: colours(&text, starts, highlights),
-            text,
-            selected: selection.as_ref().and_then(|selection| selected_columns(selection, line, all.chars().count())),
-            marks: Vec::new(),
-        }
-    })
-    .collect()
+    rows.flat_map(|line| line_spans(model, line, std::slice::from_ref(&columns), highlights)).collect()
+}
+
+/// Columns `spans` of line `line`, each as [`visible_lines`] shows a line, reading the line once: the rows of a
+/// wrapped line.
+pub fn line_spans(model: &EditorModel, line: usize, spans: &[Range<usize>], highlights: &[Highlight]) -> Vec<VisibleLine> {
+    let selection = model.selection();
+    let (start, stored) = model.stored_line(line);
+    let all: Vec<char> = shown(&stored).chars().collect();
+    let char_starts: Vec<u64> = shown_char_starts(content(&stored)).map(|at| start + at as u64).collect();
+    let selected = selection.as_ref().and_then(|selection| selected_columns(selection, line, all.len()));
+    let span = |columns: &Range<usize>| {
+        let shown = all.get(columns.start.min(all.len())..columns.end.min(all.len())).unwrap_or_default();
+        let text: String = shown.iter().map(|c| if c.is_control() { ' ' } else { *c }).collect();
+        let starts = char_starts.iter().skip(columns.start).copied();
+        VisibleLine { line, first_column: columns.start, colours: colours(&text, starts, highlights), text, selected: selected.clone(), marks: Vec::new() }
+    };
+    spans.iter().map(span).collect()
 }
 
 /// Runs of `text` in one colour key; `starts` has the text offset each of its characters is stored at.
@@ -99,28 +100,64 @@ fn selected_columns(selection: &Range<Position>, line: usize, line_chars: usize)
 }
 
 /// Where the text was painted, in window pixels: the top-left of the text area (right of the gutter), the cell
-/// size, and the scroll position.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// size, and where the lines went.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Geometry {
     pub origin_x: f32,
     pub origin_y: f32,
     pub line_height: f32,
     pub char_width: f32,
-    pub top: f64,
-    pub left: f64,
+    pub placement: Placement,
+}
+
+/// Where the lines went: one row each, scrolled as a whole, or broken into the rows listed.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Placement {
+    Lines { top: f64, left: f64 },
+    /// the rows painted, top to bottom, and one past each edge so a drag there reaches the rows out of view
+    Rows(std::rc::Rc<[RowSpan]>),
+}
+
+/// A row of a wrapped line on screen: its first column, the last the caret may take on it, and its top in rows
+/// from the viewport's.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RowSpan {
+    pub line: usize,
+    pub start: usize,
+    pub last_column: usize,
+    pub y: f64,
 }
 
 impl Geometry {
     /// The line under the point and the column boundary nearest to it, clamped to the text.
     pub fn position_at(&self, x: f32, y: f32, model: &EditorModel) -> Position {
-        let line = f64::from((y - self.origin_y) / self.line_height) + self.top;
-        let column = (f64::from(x - self.origin_x) + self.left) / f64::from(self.char_width);
-        model.clamp(Position::new(line.max(0.).floor() as usize, column.max(0.).round() as usize))
+        let row = f64::from((y - self.origin_y) / self.line_height);
+        let column = f64::from(x - self.origin_x) / f64::from(self.char_width);
+        match &self.placement {
+            Placement::Lines { top, left } => {
+                let column = column + left / f64::from(self.char_width);
+                model.clamp(Position::new((row + top).max(0.).floor() as usize, column.max(0.).round() as usize))
+            }
+            Placement::Rows(rows) => {
+                let Some(span) = rows.iter().rev().find(|span| span.y <= row).or(rows.first()) else {
+                    return model.clamp(Position::default());
+                };
+                let column = (span.start + column.max(0.).round() as usize).min(span.last_column);
+                model.clamp(Position::new(span.line, column))
+            }
+        }
     }
 
     pub fn point_of(&self, position: Position) -> (f32, f32) {
-        let x = f64::from(self.origin_x) + position.column as f64 * f64::from(self.char_width) - self.left;
-        let y = f64::from(self.origin_y) + (position.line as f64 - self.top) * f64::from(self.line_height);
+        let (column, row) = match &self.placement {
+            Placement::Lines { top, left } => (position.column as f64 - left / f64::from(self.char_width), position.line as f64 - top),
+            Placement::Rows(rows) => {
+                let holds = |span: &&RowSpan| span.line == position.line && span.start <= position.column;
+                rows.iter().rev().find(holds).map_or((0., 0.), |span| ((position.column - span.start) as f64, span.y))
+            }
+        };
+        let x = f64::from(self.origin_x) + column * f64::from(self.char_width);
+        let y = f64::from(self.origin_y) + row * f64::from(self.line_height);
         (x as f32, y as f32)
     }
 }
@@ -244,7 +281,7 @@ mod tests {
         // given
         let model = model("abcd\nxy");
         // the first row shows the bottom half of line 0; the text is scrolled 15 px to the left
-        let geometry = Geometry { origin_x: 100., origin_y: 50., line_height: 20., char_width: 10., top: 0.5, left: 15. };
+        let geometry = Geometry { origin_x: 100., origin_y: 50., line_height: 20., char_width: 10., placement: Placement::Lines { top: 0.5, left: 15. } };
 
         // when
         let points = [(100., 50.), (126., 55.), (300., 75.), (0., 500.)].map(|(x, y)| geometry.position_at(x, y, &model));
@@ -256,12 +293,59 @@ mod tests {
     #[test]
     fn should_place_a_position_on_screen() {
         // given
-        let geometry = Geometry { origin_x: 100., origin_y: 50., line_height: 20., char_width: 10., top: 0.5, left: 15. };
+        let geometry = Geometry { origin_x: 100., origin_y: 50., line_height: 20., char_width: 10., placement: Placement::Lines { top: 0.5, left: 15. } };
 
         // when
         let point = geometry.point_of(Position::new(1, 3));
 
         // then
         assert_eq!(point, (115., 60.));
+    }
+
+    fn wrapped(rows: Vec<RowSpan>) -> Geometry {
+        Geometry { origin_x: 100., origin_y: 50., line_height: 20., char_width: 10., placement: Placement::Rows(rows.into()) }
+    }
+
+    #[test]
+    fn should_map_points_on_wrapped_rows_to_their_columns() {
+        // given
+        let model = model("abcdefgh\nxy");
+        // line 0 in rows of three, its first row half scrolled out, line 1 below
+        let spans = [(0, 0, 2, -0.5), (0, 3, 5, 0.5), (0, 6, 8, 1.5), (1, 0, 2, 2.5)];
+        let geometry = wrapped(spans.map(|(line, start, last_column, y)| RowSpan { line, start, last_column, y }).to_vec());
+
+        // when
+        let points = [(100., 50.), (126., 75.), (300., 95.), (100., 10.), (100., 500.)].map(|(x, y)| geometry.position_at(x, y, &model));
+
+        // then
+        assert_eq!(points, [Position::new(0, 0), Position::new(0, 5), Position::new(0, 8), Position::new(0, 0), Position::new(1, 0)]);
+    }
+
+    #[test]
+    fn should_place_a_position_on_its_wrapped_row() {
+        // given
+        let geometry = wrapped(vec![RowSpan { line: 0, start: 0, last_column: 2, y: 0. }, RowSpan { line: 0, start: 3, last_column: 5, y: 1. }]);
+
+        // when
+        let point = geometry.point_of(Position::new(0, 4));
+
+        // then
+        assert_eq!(point, (110., 70.));
+    }
+
+    #[test]
+    fn should_slice_each_span_of_a_line_with_its_selection() {
+        // given
+        let mut model = model("abcdefgh");
+        model.set_caret(Position::new(0, 2), Selecting::Move);
+        model.set_caret(Position::new(0, 5), Selecting::Extend);
+
+        // when
+        let spans = line_spans(&model, 0, &[0..3, 3..6, 6..9], &[]);
+
+        // then
+        let texts: Vec<(&str, usize)> = spans.iter().map(|span| (span.text.as_str(), span.first_column)).collect();
+        assert_eq!(texts, [("abc", 0), ("def", 3), ("gh", 6)]);
+        assert!(spans.iter().all(|span| span.selected == Some(2..5)));
     }
 }

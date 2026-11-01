@@ -194,6 +194,8 @@ pub enum Builtin {
     ToggleDiffLayout,
     /// a Markdown file or scratch between Text and Rendered
     ToggleMarkdownView,
+    /// a file's or scratch's long lines between one row each and broken into rows the viewport wide; kept per file
+    ToggleSoftWrap,
     /// a reading view (Rendered) a line, a page, or to an end
     ScrollLineUp,
     ScrollLineDown,
@@ -290,6 +292,7 @@ impl Builtin {
                 scope == Scope::Tree
             }
             Self::SelectAll | Self::Cut | Self::Undo | Self::Redo | Self::ToggleDiffLayout | Self::ToggleMarkdownView => scope == Scope::Editor,
+            Self::ToggleSoftWrap => matches!(scope, Scope::Editor | Scope::Window | Scope::Tab),
             Self::Find | Self::FindNext | Self::FindPrevious => scope == Scope::Editor,
             Self::ScrollLineUp | Self::ScrollLineDown | Self::ScrollPageUp | Self::ScrollPageDown | Self::ScrollToTop | Self::ScrollToBottom => {
                 scope == Scope::Reader
@@ -348,7 +351,14 @@ impl Builtin {
     pub fn is_tab_command(&self) -> bool {
         matches!(
             self,
-            Self::KeepTab | Self::StopProgram | Self::KillProgram | Self::CloseTab | Self::CloseOtherTabs | Self::CloseTabsToTheLeft | Self::CloseTabsToTheRight
+            Self::KeepTab
+                | Self::StopProgram
+                | Self::KillProgram
+                | Self::CloseTab
+                | Self::CloseOtherTabs
+                | Self::CloseTabsToTheLeft
+                | Self::CloseTabsToTheRight
+                | Self::ToggleSoftWrap
         )
     }
 

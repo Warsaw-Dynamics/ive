@@ -16,13 +16,15 @@ use crate::diff::{FileDiff, Headers};
 use crate::document::{DisplayLine, Source};
 use crate::host::Command;
 use crate::syntax::{self, Cancel, Language, PARSE_BUDGET, ParseError, Syntax};
-use crate::text_editor::SizeLimit;
+use crate::text_editor::{SizeLimit, SoftWrap};
 
 /// What the host tells a panel; the panel answers with events, if at all.
 pub enum Cast {
     Open(Content),
     /// a Markdown text shows `view`; before any content, the view a Markdown text opens in unless a restore says
     SetMarkdownView(MarkdownView),
+    /// an edited text's long lines break into rows, or stop; kept for the texts opened later
+    SetSoftWrap(SoftWrap),
     /// held until the content is known, then clamped to it and applied
     Restore(PanelState),
     /// a diff reloaded: keeps the scroll and the collapsed files; ignored while the new side is edited, whose rows
@@ -181,6 +183,10 @@ pub enum Event {
     /// saved any more) and the host closes, or opens the text again where the tab stays
     DiscardRequested,
     OpenAt { path: PathBuf, line: usize },
+    /// the user switched soft wrap of the edited text (the key), not [`Cast::SetSoftWrap`]
+    SoftWrapToggled(SoftWrap),
+    /// a right click on the edited text's line numbers: the host opens its menu for them at the pointer
+    GutterMenu,
     /// the user asked for the edited file's uncommitted diff at its line `line` (from 1), from a change's popup; the
     /// host knows the file. Unsaved edits were sent to be saved just before.
     OpenDiff { line: usize },

@@ -9,6 +9,7 @@ use gpui::{App, Context};
 
 use super::Workspace;
 use crate::tabs::TabId;
+use crate::soft_wrap::SoftWraps;
 use crate::state::{SavedState, StateError, VERSION, Writer};
 
 const SAVE_DELAY: Duration = Duration::from_millis(500);
@@ -117,6 +118,7 @@ impl Workspace {
             history: self.history.saved(),
             worktree_use: self.worktree_use.saved(),
             terminals: self.saved_terminals(),
+            soft_wrapped: cx.try_global::<SoftWraps>().map(|wraps| wraps.paths().to_vec()).unwrap_or_default(),
         }
     }
 
@@ -150,7 +152,7 @@ impl Workspace {
             return;
         };
         cx.subscribe(&panel, |workspace, _panel, event: &Event, cx| {
-            if let Event::StateChanged = event {
+            if let Event::StateChanged | Event::SoftWrapToggled(_) = event {
                 workspace.schedule_save(cx);
             }
         })

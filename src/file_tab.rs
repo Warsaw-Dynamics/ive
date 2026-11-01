@@ -50,6 +50,7 @@ impl FileTab {
         let panel = cx.new(Panel::new);
         codeview_host::serve(&panel, path.display().to_string(), cx);
         codeview_host::remember_markdown_view(&panel, cx);
+        crate::soft_wrap::follow(&panel, path.clone(), cx);
         let file = cx.new(|cx| EditedFile::new(opened, Shown { panel: panel.clone(), shows: Shows::File }, cx));
         Self { path, panel, file }
     }
@@ -432,8 +433,8 @@ impl EditedFile {
             }
             // the workspace closes the tab on a discard
             Event::Edited { .. } | Event::DiscardRequested => {}
-            // parsing is `codeview_host::serve`'s; the workspace saves scroll and caret on StateChanged and opens the
-            // diff on OpenDiff
+            // parsing is `codeview_host::serve`'s, the wrapped files `soft_wrap::follow`'s; the workspace saves on
+            // StateChanged and SoftWrapToggled and opens the diff on OpenDiff, the gutter's menu on GutterMenu
             Event::Refused(_)
             | Event::StateChanged
             | Event::LayoutToggled(_)
@@ -442,7 +443,9 @@ impl EditedFile {
             | Event::NeedTexts(_)
             | Event::NeedChangeDiff(_)
             | Event::OpenAt { .. }
-            | Event::OpenDiff { .. } => {}
+            | Event::OpenDiff { .. }
+            | Event::SoftWrapToggled(_)
+            | Event::GutterMenu => {}
         }
         self.notice_holding(cx);
     }

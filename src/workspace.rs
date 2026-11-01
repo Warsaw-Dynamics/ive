@@ -501,6 +501,7 @@ impl Workspace {
         let id = if temporary { self.tabs.open_temporary(tab) } else { self.tabs.open(tab) };
         self.save_on_state_change(id, cx);
         self.open_diff_on_request(id, window, cx);
+        self.open_gutter_menu_on_request(id, window, cx);
         self.went_to_tab(id, cx);
         self.tab_shown(window, cx);
         id

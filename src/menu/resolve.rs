@@ -52,6 +52,8 @@ pub enum Choice {
 pub enum Applies {
     Hidden,
     Shown { enabled: bool },
+    /// shown, enabled, under this label unless the item declares its own: a switch saying what choosing it does
+    Labelled(&'static str),
     /// a submenu of these
     Choices(Vec<Choice>),
 }
@@ -128,6 +130,7 @@ pub fn label(builtin: Builtin) -> &'static str {
         Builtin::OpenTerminal => "New Terminal",
         Builtin::OpenTerminalIn => "New Terminal In…",
         Builtin::ToggleChangesLayout => "Toggle Changes Layout",
+        Builtin::ToggleSoftWrap => "Soft Wrap",
         _ => "",
     }
 }
@@ -161,6 +164,7 @@ impl Resolver<'_> {
                 match (self.applies)(*builtin) {
                     Applies::Hidden => None,
                     Applies::Shown { enabled } => Some(Line::Item { id, label, action: LineAction::Script(*action), state, enabled }),
+                    Applies::Labelled(shown) => Some(Line::Item { id, label: text(declared, shown), action: LineAction::Script(*action), state, enabled: true }),
                     Applies::Choices(choices) => Some(Line::Submenu { lines: choice_lines(*builtin, choices, &id), id, label, state }),
                 }
             }

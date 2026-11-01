@@ -389,6 +389,11 @@ impl Panel {
             self.notice_state(cx);
             return cx.notify();
         }
+        if let KeyOutcome::Command(Command::ToggleSoftWrap) = Host::key_outcome(event, KeyScope::Editor, cx) {
+            cx.stop_propagation();
+            self.toggle_soft_wrap(cx);
+            return cx.notify();
+        }
         if let KeyOutcome::Command(command) = Host::key_outcome(event, KeyScope::Editor, cx)
             && command.is_find()
         {

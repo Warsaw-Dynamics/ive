@@ -27,6 +27,8 @@ pub struct LineScroll {
     viewport_lines: Cell<Option<f64>>,
     viewport_width: Cell<f64>,
     content_width: Cell<f64>,
+    /// the lowest top while lines are wrapped, which only the view can count; `None`: the line count's
+    wrapped_max_top: Cell<Option<f64>>,
 }
 
 impl LineScroll {
@@ -38,6 +40,7 @@ impl LineScroll {
             viewport_lines: Cell::new(None),
             viewport_width: Cell::new(0.),
             content_width: Cell::new(0.),
+            wrapped_max_top: Cell::new(None),
         }
     }
 
@@ -95,8 +98,18 @@ impl LineScroll {
         self.scroll_to(Axis::Vertical, self.top.get());
     }
 
+    /// The lowest top of wrapped lines, counted by the view each frame, or `None` once they are not wrapped; keeps
+    /// the position valid.
+    pub fn set_wrapped_max_top(&self, max_top: Option<f64>) {
+        self.wrapped_max_top.set(max_top);
+        self.scroll_to(Axis::Vertical, self.top.get());
+    }
+
     /// Before the first layout the viewport is unknown, so any line may still end up on top.
     fn max_top(&self) -> f64 {
+        if let Some(max_top) = self.wrapped_max_top.get() {
+            return max_top;
+        }
         let line_count = self.line_count.get() as f64;
         match self.viewport_lines.get() {
             Some(lines) => (line_count - lines).max(0.),
@@ -364,5 +377,21 @@ mod tests {
 
         // then
         assert_eq!(scroll.left(), 0.);
+    }
+
+    #[test]
+    fn should_stop_wrapped_lines_where_the_view_counted() {
+        // given
+        let scroll = laid_out(100, 40.);
+        scroll.set_wrapped_max_top(Some(80.5));
+
+        // when
+        scroll.scroll_to(Axis::Vertical, 90.);
+        let wrapped = scroll.top();
+        scroll.set_wrapped_max_top(None);
+        scroll.scroll_to(Axis::Vertical, 90.);
+
+        // then
+        assert_eq!((wrapped, scroll.top()), (80.5, 60.));
     }
 }

@@ -7,6 +7,8 @@ pub(crate) mod keys;
 mod layout;
 pub(crate) mod model;
 mod view;
+mod wrap;
 
 pub use model::{Motion, Selecting, SizeLimit, Unit};
 pub use view::{Setup, TextEditor, TextEditorEvent};
+pub use wrap::SoftWrap;

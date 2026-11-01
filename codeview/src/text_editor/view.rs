@@ -1,6 +1,6 @@
 //! The text editor entity: draws the visible lines on a canvas, takes keys, mouse and input-method text.
 
-use std::cell::Cell;
+use std::cell::RefCell;
 use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -17,8 +17,9 @@ use super::change_popup::{Anchor, ChangeAction, ChangePopup, CommitShown, Commit
 use crate::line_field::{FieldState, LineField, LineFieldEvent};
 use super::colours::Colours;
 use super::keys::command;
-use super::layout::{Area, Geometry, VisibleLine, mark_columns, visible_lines};
-use super::model::{EditError, EditKind, EditorModel, INDENT, Position, Selecting, SizeLimit};
+use super::layout::{Area, Geometry, Placement, RowSpan, VisibleLine, line_spans, mark_columns, visible_lines};
+use super::model::{EditError, EditKind, EditorModel, INDENT, Motion, Position, Selecting, SizeLimit};
+use super::wrap::{Row, RowCache, RowPlace, SoftWrap, Wrapped};
 use crate::changes::{BaseChange, ChangeBase, ChangeDiffJob, ChangeHunk, ChangeHunks, ChangeMarkers, Marker, Toward};
 use crate::colors::{ResolvedScheme, TextAttributes};
 use crate::find::FindText;
@@ -28,7 +29,7 @@ use crate::panel::{Edit, LineSource, ParseJob};
 use crate::piece_table::{PieceTable, WrongBase};
 use crate::host::{ClickListener, ClipboardTarget, Command, Host, KeyOutcome, KeyScope};
 use crate::position::{CaretPosition, ScrollPosition};
-use crate::scrollbar::{ScrollState, Tick, horizontal_scrollbar, vertical_scrollbar_with_ticks};
+use crate::scrollbar::{Axis, ScrollState, Scrollable, Tick, horizontal_scrollbar, vertical_scrollbar_with_ticks, wheel_axes};
 use crate::style::ViewStyle;
 use crate::syntax::{Highlight, Language, Syntax};
 
@@ -40,6 +41,8 @@ const CARET_MARGIN_CHARS: f64 = 2.;
 const CHANGE_BAR_WIDTH: f32 = 3.;
 const DELETED_MARKER_HEIGHT: f32 = 8.;
 const COMMIT_PLACEHOLDER: &str = "Commit this change";
+/// Columns left free right of wrapped rows: for the caret after a full row, a space hanging past it, the scrollbar.
+const WRAP_MARGIN_CHARS: usize = 2;
 
 pub enum TextEditorEvent {
     /// the text changed
@@ -52,6 +55,8 @@ pub enum TextEditorEvent {
     NeedChanges,
     /// the user asked to commit the change shown, alone: see [`crate::panel::Event::CommitChange`]
     CommitChange { head_id: String, block: Range<usize>, text: Vec<u8>, message: String },
+    /// a right click on the line numbers: the host's menu for them opens at the pointer
+    GutterMenu,
 }
 
 /// What an editor is opened with: a scratch's size limit (files have none), and the language colouring the text.
@@ -74,7 +79,12 @@ pub struct TextEditor {
     scroll: Rc<LineScroll>,
     scrollbars: ScrollState,
     /// where the last frame painted the text, for the mouse and the input method
-    geometry: Rc<Cell<Option<Geometry>>>,
+    geometry: Rc<RefCell<Option<Geometry>>>,
+    soft_wrap: SoftWrap,
+    /// the columns of the last frame's wrapped rows; `None` while lines are not wrapped
+    wrap_width: Option<usize>,
+    /// the rows of wrapped lines, kept while the text and the width stay
+    rows: RowCache,
     /// a left-button drag that started in the editor goes on
     dragging: bool,
     reveal_caret: bool,
@@ -116,11 +126,25 @@ impl TextEditor {
             focus_out: FocusWatch::Unwatched,
             focus_handle: cx.focus_handle(),
             geometry: Rc::default(),
+            soft_wrap: SoftWrap::Off,
+            wrap_width: None,
+            rows: RowCache::default(),
             dragging: false,
             reveal_caret: false,
             find_marks: None,
             find_snapshot: std::cell::RefCell::default(),
         }
+    }
+
+    pub fn soft_wrap(&self) -> SoftWrap {
+        self.soft_wrap
+    }
+
+    /// Breaks lines longer than the viewport into rows, or stops; the caret stays in view.
+    pub fn set_soft_wrap(&mut self, soft_wrap: SoftWrap, cx: &mut Context<Self>) {
+        self.soft_wrap = soft_wrap;
+        self.reveal_caret = true;
+        cx.notify();
     }
 
     /// The text as of its revision, copied out for a search off the UI thread.
@@ -252,8 +276,9 @@ impl TextEditor {
     pub fn reset(&mut self, table: PieceTable, setup: Setup, cx: &mut Context<Self>) {
         let caret = self.model.caret();
         self.model = EditorModel::new(table, setup.limit);
-        // the new text counts its revisions from the start again: a copy kept for find is of the old one
+        // the new text counts its revisions from the start again: a copy kept for find, and rows, are of the old one
         *self.find_snapshot.borrow_mut() = None;
+        self.rows.clear();
         self.model.set_caret(caret, Selecting::Move);
         self.colours = Colours::new(setup.language);
         self.markers.reset();
@@ -543,7 +568,10 @@ impl TextEditor {
     pub fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         // a refused edit was already reported through TextEditorEvent::Refused
         let _ = match command {
-            Command::Move(motion, selecting) => self.navigate(|model| model.move_caret(motion, selecting), cx),
+            Command::Move(motion, selecting) => match (self.wrap_width, rows_moved(motion)) {
+                (Some(width), Some(rows)) => self.move_by_rows(rows, width, selecting, cx),
+                _ => self.navigate(|model| model.move_caret(motion, selecting), cx),
+            },
             Command::SelectAll => self.navigate(EditorModel::select_all, cx),
             Command::Copy(target) => self.copy(target, cx),
             Command::Cut => self.cut(cx),
@@ -574,8 +602,18 @@ impl TextEditor {
             | Command::FindNext
             | Command::FindPrevious
             | Command::ToggleMarkdownView
+            | Command::ToggleSoftWrap
             | Command::Scroll(_) => Ok(()),
         };
+    }
+
+    /// Up, Down, Page Up and Page Down on wrapped lines: `rows` rows, keeping the caret's column in its row.
+    fn move_by_rows(&mut self, rows: isize, width: usize, selecting: Selecting, cx: &mut Context<Self>) -> Result<(), EditError> {
+        let wrapped = Wrapped { model: &self.model, width, cache: &self.rows };
+        let caret = self.model.caret();
+        let goal = self.model.goal_column().unwrap_or_else(|| wrapped.column_in_row(caret));
+        let target = wrapped.step(caret, rows, goal);
+        self.navigate(|model| model.move_vertically(target, goal, selecting), cx)
     }
 
     fn copy(&mut self, target: ClipboardTarget, cx: &mut Context<Self>) -> Result<(), EditError> {
@@ -602,8 +640,17 @@ impl TextEditor {
     }
 
     fn position_at(&self, position: Point<Pixels>) -> Option<Position> {
-        let geometry = self.geometry.get()?;
-        Some(geometry.position_at(f32::from(position.x), f32::from(position.y), &self.model))
+        let geometry = self.geometry.borrow();
+        Some(geometry.as_ref()?.position_at(f32::from(position.x), f32::from(position.y), &self.model))
+    }
+
+    /// A right click on the line numbers asks for their menu.
+    fn on_right_mouse_down(&mut self, event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        let on_gutter = self.geometry.borrow().as_ref().is_some_and(|geometry| f32::from(event.position.x) < geometry.origin_x);
+        if on_gutter {
+            cx.stop_propagation();
+            cx.emit(TextEditorEvent::GutterMenu);
+        }
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -667,7 +714,10 @@ impl TextEditor {
 
     /// Scrolls; the popup closes once its change is out of view.
     fn on_scroll_wheel(&mut self, event: &ScrollWheelEvent, line_height: Pixels, window: &mut Window, cx: &mut Context<Self>) {
-        self.scroll.scroll_by_wheel(event, line_height, window);
+        match self.wrap_width {
+            Some(width) => self.scroll_rows_by_wheel(event, line_height, width, window),
+            None => self.scroll.scroll_by_wheel(event, line_height, window),
+        }
         let Some(block) = self.change_in_popup() else {
             return;
         };
@@ -677,8 +727,22 @@ impl TextEditor {
         self.close_change_popup(cx);
     }
 
+    /// Wrapped lines scroll by rows, which may be fewer or more than a line; there is no sideways scrolling.
+    fn scroll_rows_by_wheel(&self, event: &ScrollWheelEvent, line_height: Pixels, width: usize, window: &mut Window) {
+        let delta = event.delta.pixel_delta(line_height);
+        let (_, dy) = wheel_axes(f32::from(delta.x), f32::from(delta.y), event.modifiers.shift);
+        let wrapped = Wrapped { model: &self.model, width, cache: &self.rows };
+        let top = wrapped.advance(wrapped.place_of_top(self.scroll.top()), -f64::from(dy / f32::from(line_height)));
+        self.scroll.scroll_to(Axis::Vertical, wrapped.top_of(top));
+        window.refresh();
+    }
+
     /// Whether any of lines `lines` is in view; for no lines, the top of the line they would start.
     fn shows_lines(&self, lines: &Range<usize>) -> bool {
+        if let Some(width) = self.wrap_width {
+            let wrapped = Wrapped { model: &self.model, width, cache: &self.rows };
+            return wrapped.shows_lines(self.scroll.top(), lines, self.scroll.viewport_lines());
+        }
         let (top, bottom) = (self.scroll.top(), self.scroll.top() + self.scroll.viewport_lines());
         let end = lines.end.max(lines.start + 1);
         end as f64 > top && (lines.start as f64) < bottom
@@ -688,6 +752,37 @@ impl TextEditor {
     fn frame(&mut self, metrics: Metrics, style: ViewStyle, window: &Window) -> Frame {
         let char_width = f64::from(f32::from(metrics.char_width));
         self.scroll.set_line_count(self.model.line_count());
+        self.wrap_width = self.wrap_columns(char_width);
+        let shown = match self.wrap_width {
+            Some(width) => self.wrapped_rows(width, char_width),
+            None => self.line_rows(metrics),
+        };
+        Frame {
+            changes: self.markers.shown(shown.lines.clone()).cloned().collect(),
+            rows: shown.rows,
+            caret: shown.caret.filter(|_| self.focus_handle.is_focused(window)),
+            tops: shown.tops,
+            placement: shown.placement,
+            metrics,
+            style,
+            focus: self.focus_handle.clone(),
+            geometry: self.geometry.clone(),
+        }
+    }
+
+    /// The columns of wrapped rows; `None` while lines are not wrapped, or before the first layout gave a width.
+    fn wrap_columns(&self, char_width: f64) -> Option<usize> {
+        let width = self.scroll.viewport_width();
+        if self.soft_wrap == SoftWrap::Off || width <= 0. {
+            return None;
+        }
+        Some(((width / char_width).floor() as usize).saturating_sub(WRAP_MARGIN_CHARS).max(1))
+    }
+
+    /// One row per line, scrolled sideways as a whole.
+    fn line_rows(&mut self, metrics: Metrics) -> Shown {
+        let char_width = f64::from(f32::from(metrics.char_width));
+        self.scroll.set_wrapped_max_top(None);
         if self.reveal_caret {
             self.scroll.reveal_line(self.model.caret().line);
         }
@@ -700,24 +795,70 @@ impl TextEditor {
             self.reveal_caret = false;
             self.scroll.reveal_x(char_width * self.model.caret().column as f64, char_width * CARET_MARGIN_CHARS);
         }
-        let first_column = (self.scroll.left() / char_width).floor() as usize;
+        let (top, left) = (self.scroll.top(), self.scroll.left());
+        let first_column = (left / char_width).floor() as usize;
         let columns = first_column..first_column + visible_columns(self.scroll.viewport_width(), char_width) + 1;
         let highlights = self.highlights_of(rows.clone());
         let mut lines = visible_lines(&self.model, Area { rows: rows.clone(), columns }, &highlights);
         if let Some(marks) = &self.find_marks {
             lines.iter_mut().for_each(|line| line.marks = mark_columns(&self.model, line, marks));
         }
-        Frame {
-            changes: self.markers.shown(rows.clone()).cloned().collect(),
-            lines,
-            caret: self.focus_handle.is_focused(window).then(|| self.model.caret()),
-            top: self.scroll.top(),
-            left: self.scroll.left(),
-            metrics,
-            style,
-            focus: self.focus_handle.clone(),
-            geometry: self.geometry.clone(),
+        let caret = self.model.caret();
+        Shown {
+            rows: lines.into_iter().map(|text| FrameRow { y: text.line as f64 - top, left, numbered: true, text }).collect(),
+            lines: rows,
+            caret: Some(CaretAt { x: char_width * caret.column as f64 - left, y: caret.line as f64 - top }),
+            tops: LineTops::Scrolled { top },
+            placement: Placement::Lines { top, left },
         }
+    }
+
+    /// Lines broken into rows `width` columns wide, scrolled by rows, never sideways; a row more above and below
+    /// the viewport is laid out for a drag past its edges.
+    fn wrapped_rows(&mut self, width: usize, char_width: f64) -> Shown {
+        self.scroll.set_content_width(0.);
+        let viewport = self.scroll.viewport_lines();
+        let reveal = std::mem::take(&mut self.reveal_caret);
+        let wrapped = Wrapped { model: &self.model, width, cache: &self.rows };
+        self.scroll.set_wrapped_max_top(Some(wrapped.max_top(viewport)));
+        if let Some(top) = wrapped.reveal(self.scroll.top(), self.model.caret(), viewport).filter(|_| reveal) {
+            self.scroll.scroll_to(Axis::Vertical, top);
+        }
+        let top = wrapped.place_of_top(self.scroll.top());
+        let first = RowPlace::new(top.line, top.row.floor());
+        let above = wrapped.advance(first, -1.);
+        let first_y = first.row - top.row - if above == first { 0. } else { 1. };
+        let rows = wrapped.rows_from(above, viewport.ceil() as usize + 3);
+        let lines = rows.first().map_or(0, |row| row.line)..rows.last().map_or(0, |row| row.line + 1);
+        let highlights = self.highlights_of(lines.clone());
+        let painted = self.painted_rows(&rows, first_y, char_width, &highlights);
+        let tops = LineTops::of_rows(&rows, first_y, |line| wrapped.rows(line).count());
+        let caret = self.model.caret();
+        let caret_y = tops.line_y(caret.line) + wrapped.place_of(caret).row;
+        let spans = rows.iter().enumerate().map(|(at, row)| RowSpan { line: row.line, start: row.columns.start, last_column: row.last_column, y: first_y + at as f64 });
+        Shown {
+            rows: painted,
+            lines,
+            caret: Some(CaretAt { x: char_width * wrapped.column_in_row(caret) as f64, y: caret_y }),
+            tops,
+            placement: Placement::Rows(spans.collect()),
+        }
+    }
+
+    /// `rows` as painted, the first `first_y` rows from the viewport's top, each line read once.
+    fn painted_rows(&self, rows: &[Row], first_y: f64, char_width: f64, highlights: &[Highlight]) -> Vec<FrameRow> {
+        let mut painted = Vec::with_capacity(rows.len());
+        for line_rows in rows.chunk_by(|one, other| one.line == other.line) {
+            let spans: Vec<Range<usize>> = line_rows.iter().map(|row| row.columns.clone()).collect();
+            for (row, mut text) in line_rows.iter().zip(line_spans(&self.model, line_rows[0].line, &spans, highlights)) {
+                if let Some(marks) = &self.find_marks {
+                    text.marks = mark_columns(&self.model, &text, marks);
+                }
+                let y = first_y + painted.len() as f64;
+                painted.push(FrameRow { y, left: char_width * row.columns.start as f64, numbered: row.row == 0, text: within_row(text, row) });
+            }
+        }
+        painted
     }
 }
 
@@ -763,6 +904,10 @@ impl Render for TextEditor {
         }
         let popup = self.popup_element(&frame, cx);
         let line_height = metrics.line_height;
+        // MCP's way to the gutter's menu, which a right click on the line numbers opens
+        let editor = cx.weak_entity();
+        let gutter_menu = move |_: &ClickEvent, _: &mut Window, cx: &mut App| drop(editor.update(cx, |_, cx| cx.emit(TextEditorEvent::GutterMenu)));
+        drop(Host::click_target("gutter-menu".to_owned(), gutter_menu, cx));
         div()
             .id("text-editor")
             .track_focus(&self.focus_handle)
@@ -773,6 +918,7 @@ impl Render for TextEditor {
             .cursor(CursorStyle::IBeam)
             .on_key_down(cx.listener(Self::on_key_down))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
+            .on_mouse_down(MouseButton::Right, cx.listener(Self::on_right_mouse_down))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             // a drag that ends outside the editor still ends the selection
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
@@ -846,17 +992,95 @@ fn popup_actions(editor: WeakEntity<TextEditor>, message: &Entity<LineField>, co
 /// Everything one frame paints, gathered in render so painting reads no editor state, and where painting reports
 /// the text's place for the mouse and the input method.
 struct Frame {
-    lines: Vec<VisibleLine>,
+    rows: Vec<FrameRow>,
     /// the change markers on the lines shown
     changes: Vec<ChangeHunk>,
     /// `None` while the editor is not focused
-    caret: Option<Position>,
-    top: f64,
-    left: f64,
+    caret: Option<CaretAt>,
+    tops: LineTops,
+    placement: Placement,
     metrics: Metrics,
     style: ViewStyle,
     focus: FocusHandle,
-    geometry: Rc<Cell<Option<Geometry>>>,
+    geometry: Rc<RefCell<Option<Geometry>>>,
+}
+
+/// What a frame shows, before it is painted.
+struct Shown {
+    rows: Vec<FrameRow>,
+    /// the lines the rows are of
+    lines: Range<usize>,
+    caret: Option<CaretAt>,
+    tops: LineTops,
+    placement: Placement,
+}
+
+/// A row on screen: `y` rows below the viewport's top, its column 0 `left` pixels left of the text area; its line's
+/// number shows on its line's first row.
+struct FrameRow {
+    text: VisibleLine,
+    y: f64,
+    left: f64,
+    numbered: bool,
+}
+
+/// Where the caret is drawn: pixels right of the text area's left edge, rows below the viewport's top.
+#[derive(Clone, Copy)]
+struct CaretAt {
+    x: f64,
+    y: f64,
+}
+
+/// Where each line's first row is, in rows below the viewport's top.
+enum LineTops {
+    /// a line per row, line `top` (with its fraction) at the top
+    Scrolled { top: f64 },
+    /// the lines shown with the top of their first row and their row count, a first row above the viewport for a
+    /// line scrolled into
+    Wrapped(Vec<(usize, f64, usize)>),
+}
+
+impl LineTops {
+    fn of_rows(rows: &[Row], first_y: f64, count: impl Fn(usize) -> usize) -> Self {
+        let tops = rows.iter().enumerate().filter(|(at, row)| *at == 0 || row.row == 0).map(|(at, row)| (row.line, first_y + at as f64 - row.row as f64, count(row.line)));
+        Self::Wrapped(tops.collect())
+    }
+
+    /// The top of line `line`'s first row; above or below the lines shown, as if each had one row.
+    fn line_y(&self, line: usize) -> f64 {
+        let tops = match self {
+            Self::Scrolled { top } => return line as f64 - top,
+            Self::Wrapped(tops) => tops,
+        };
+        let at = tops.partition_point(|(shown, _, _)| *shown < line);
+        match (tops.get(at), tops.first(), tops.last()) {
+            (Some((shown, y, _)), _, _) if *shown == line => *y,
+            (Some(_), Some((first, y, _)), _) if at == 0 => y - (first - line) as f64,
+            (_, _, Some((last, y, rows))) if line > *last => y + *rows as f64 + (line - last - 1) as f64,
+            _ => 0.,
+        }
+    }
+}
+
+/// `text`, one row of a wrapped line, with its selection and matches cut to the row's columns: a row before the
+/// line's last ends before the next row's first column, the last one goes on past the line's end for its break.
+fn within_row(text: VisibleLine, row: &Row) -> VisibleLine {
+    let end = if row.is_last { usize::MAX } else { row.columns.end };
+    let cut = |columns: &Range<usize>| Some(columns.start.max(row.columns.start)..columns.end.min(end)).filter(|cut| !cut.is_empty());
+    let marks = text.marks.iter().filter_map(|(columns, mark)| Some((cut(columns)?, *mark))).collect();
+    let selected = text.selected.as_ref().and_then(cut);
+    VisibleLine { selected, marks, ..text }
+}
+
+/// How many rows Up, Down, Page Up and Page Down move; `None` for the other motions.
+fn rows_moved(motion: Motion) -> Option<isize> {
+    match motion {
+        Motion::Up => Some(-1),
+        Motion::Down => Some(1),
+        Motion::PageUp(rows) => Some(-(rows as isize)),
+        Motion::PageDown(rows) => Some(rows as isize),
+        _ => None,
+    }
 }
 
 impl Frame {
@@ -872,8 +1096,7 @@ impl Frame {
             origin_y: f32::from(text_area.origin.y),
             line_height: f32::from(self.metrics.line_height),
             char_width: f32::from(self.metrics.char_width),
-            top: self.top,
-            left: self.left,
+            placement: self.placement.clone(),
         }
     }
 
@@ -883,11 +1106,16 @@ impl Frame {
     }
 
     fn line_top(&self, origin_y: Pixels, line: usize) -> Pixels {
-        origin_y + self.metrics.line_height * (line as f64 - self.top) as f32
+        self.row_top(origin_y, self.tops.line_y(line))
     }
 
-    fn column_x(&self, origin_x: Pixels, column: usize) -> Pixels {
-        origin_x + self.metrics.char_width * column as f32 - px(self.left as f32)
+    fn row_top(&self, origin_y: Pixels, y: f64) -> Pixels {
+        origin_y + self.metrics.line_height * y as f32
+    }
+
+    /// Where column `column` of a row whose column 0 is `left` pixels left of `origin_x` is.
+    fn column_x(&self, origin_x: Pixels, column: usize, left: f64) -> Pixels {
+        origin_x + self.metrics.char_width * column as f32 - px(left as f32)
     }
 
     /// `len` bytes in the editor's font, looking as `attributes` say; in the text colour where they set none.
@@ -915,7 +1143,7 @@ fn text_canvas(frame: Frame, editor: Entity<TextEditor>) -> impl IntoElement {
     canvas(
         |_bounds, _window, _cx| {},
         move |bounds, (), window, cx| {
-            frame.geometry.set(Some(frame.geometry(frame.text_area(bounds))));
+            *frame.geometry.borrow_mut() = Some(frame.geometry(frame.text_area(bounds)));
             window.handle_input(&frame.focus, ElementInputHandler::new(bounds, editor.clone()), cx);
             // an element's own mouse-move listener hears only moves over it
             window.on_mouse_event(move |event: &MouseMoveEvent, phase, _window, cx| {
@@ -933,18 +1161,21 @@ fn text_canvas(frame: Frame, editor: Entity<TextEditor>) -> impl IntoElement {
 fn paint_frame(frame: &Frame, bounds: Bounds<Pixels>, window: &mut Window, cx: &mut App) {
     let text_area = frame.text_area(bounds);
     let mask = Some(ContentMask { bounds: text_area });
-    for line in &frame.lines {
-        let top = frame.line_top(bounds.origin.y, line.line);
-        let number = format!("{:>width$}", line.line + 1, width = frame.metrics.number_chars);
-        let origin = point(bounds.origin.x + frame.metrics.char_width, top);
-        let runs = vec![frame.run(number.len(), TextAttributes { foreground: Some(frame.style.muted), ..TextAttributes::default() })];
-        paint_text(frame, Glyphs { text: number, origin, runs }, window, cx);
-        window.with_content_mask(mask, |window| paint_line(frame, line, point(text_area.origin.x, top), window, cx));
+    // the row laid out above the viewport, for a drag, is not painted
+    for row in frame.rows.iter().filter(|row| row.y > -1.) {
+        let top = frame.row_top(bounds.origin.y, row.y);
+        if row.numbered {
+            let number = format!("{:>width$}", row.text.line + 1, width = frame.metrics.number_chars);
+            let origin = point(bounds.origin.x + frame.metrics.char_width, top);
+            let runs = vec![frame.run(number.len(), TextAttributes { foreground: Some(frame.style.muted), ..TextAttributes::default() })];
+            paint_text(frame, Glyphs { text: number, origin, runs }, window, cx);
+        }
+        window.with_content_mask(mask, |window| paint_line(frame, row, point(text_area.origin.x, top), window, cx));
     }
     let gutter = Bounds::new(bounds.origin, size(frame.metrics.gutter_width(), bounds.size.height));
     window.with_content_mask(Some(ContentMask { bounds: gutter }), |window| paint_changes(frame, bounds.origin, window));
     if let Some(caret) = frame.caret {
-        let at = point(frame.column_x(text_area.origin.x, caret.column), frame.line_top(text_area.origin.y, caret.line));
+        let at = point(text_area.origin.x + px(caret.x as f32), frame.row_top(text_area.origin.y, caret.y));
         let quad = fill(Bounds::new(at, size(px(frame.style.editor_caret_width), frame.metrics.line_height)), rgb(frame.style.text));
         window.with_content_mask(mask, |window| window.paint_quad(quad));
     }
@@ -1007,10 +1238,11 @@ fn change_targets(frame: &Frame, editor: WeakEntity<TextEditor>, cx: &App) -> Ve
     frame.changes.iter().map(element).collect()
 }
 
-fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: &mut Window, cx: &mut App) {
+fn paint_line(frame: &Frame, row: &FrameRow, origin: Point<Pixels>, window: &mut Window, cx: &mut App) {
+    let (line, left) = (&row.text, row.left);
     let columns_box = |columns: &Range<usize>| {
-        let from = point(frame.column_x(origin.x, columns.start), origin.y);
-        Bounds::from_corners(from, point(frame.column_x(origin.x, columns.end), origin.y + frame.metrics.line_height))
+        let from = point(frame.column_x(origin.x, columns.start, left), origin.y);
+        Bounds::from_corners(from, point(frame.column_x(origin.x, columns.end, left), origin.y + frame.metrics.line_height))
     };
     let marked = |mark: Mark| line.marks.iter().filter(move |(_, kind)| *kind == mark).map(|(columns, _)| columns);
     // the matches under the selection, the current one over it
@@ -1026,7 +1258,7 @@ fn paint_line(frame: &Frame, line: &VisibleLine, origin: Point<Pixels>, window: 
     if line.text.is_empty() {
         return;
     }
-    let origin = point(frame.column_x(origin.x, line.first_column), origin.y);
+    let origin = point(frame.column_x(origin.x, line.first_column, left), origin.y);
     let runs = coloured_runs(frame, line, cx.global::<ResolvedScheme>());
     paint_text(frame, Glyphs { text: line.text.clone(), origin, runs }, window, cx);
 }
@@ -1100,7 +1332,7 @@ impl EntityInputHandler for TextEditor {
     }
 
     fn bounds_for_range(&mut self, range: Range<usize>, _element_bounds: Bounds<Pixels>, _window: &mut Window, _cx: &mut Context<Self>) -> Option<Bounds<Pixels>> {
-        let geometry = self.geometry.get()?;
+        let geometry = self.geometry.borrow().clone()?;
         let (x, y) = geometry.point_of(self.model.position_utf16(range.start));
         Some(Bounds::new(point(px(x), px(y)), size(px(geometry.char_width), px(geometry.line_height))))
     }

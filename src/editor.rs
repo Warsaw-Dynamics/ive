@@ -259,6 +259,15 @@ impl Tab {
 
     /// What `state.toml` keeps to open this tab again; `None` for a tab that is not saved: a failed one, or a
     /// terminal that ends with IVE.
+    /// The panel of a file or scratch tab, which edits its text (a scratch's only while it is not read-only).
+    pub fn edited_panel(&self, cx: &App) -> Option<Entity<Panel>> {
+        match self {
+            Self::Document(file) => Some(file.panel.clone()),
+            Self::Scratch(scratch) => scratch.editing_panel(cx),
+            _ => None,
+        }
+    }
+
     /// The panel whose scroll and layout the saved tab keeps, for a file, diff or commit tab (a scratch saves its
     /// own).
     pub fn saved_panel(&self, cx: &App) -> Option<Entity<Panel>> {

@@ -96,6 +96,7 @@ fn command_of(builtin: Builtin) -> Option<Command> {
         Builtin::Redo => Command::Redo,
         Builtin::ToggleDiffLayout => Command::ToggleLayout,
         Builtin::ToggleMarkdownView => Command::ToggleMarkdownView,
+        Builtin::ToggleSoftWrap => Command::ToggleSoftWrap,
         Builtin::ScrollLineUp => Command::Scroll(ScrollBy::LineUp),
         Builtin::ScrollLineDown => Command::Scroll(ScrollBy::LineDown),
         Builtin::ScrollPageUp => Command::Scroll(ScrollBy::PageUp),

@@ -38,6 +38,8 @@ pub enum Command {
     FindPrevious,
     /// a Markdown text between Text and Rendered
     ToggleMarkdownView,
+    /// an edited text's long lines between one row each and broken into rows the viewport wide
+    ToggleSoftWrap,
     /// a reading view (Rendered) scrolls
     Scroll(ScrollBy),
 }
@@ -59,10 +61,10 @@ impl Command {
         matches!(self, Self::Find | Self::FindNext | Self::FindPrevious)
     }
 
-    /// Whether the panel runs it: the find box's commands and the Markdown switch, which the views around the text
-    /// let through.
+    /// Whether the panel runs it: the find box's commands and the Markdown and soft wrap switches, which the views
+    /// around the text let through.
     pub fn runs_in_panel(self) -> bool {
-        self.is_find() || self == Self::ToggleMarkdownView
+        self.is_find() || matches!(self, Self::ToggleMarkdownView | Self::ToggleSoftWrap)
     }
 }
 

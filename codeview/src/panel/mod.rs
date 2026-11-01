@@ -16,6 +16,8 @@ mod markdown;
 mod markdown_tests;
 mod protocol;
 mod saving;
+#[cfg(test)]
+mod soft_wrap_tests;
 mod state;
 
 use std::ops::Range;
@@ -43,7 +45,7 @@ use crate::position::ScrollPosition;
 use crate::host::Command;
 use crate::syntax::{Language, Syntax};
 use crate::piece_table::PieceTable;
-use crate::text_editor::{Setup, TextEditor, TextEditorEvent};
+use crate::text_editor::{Setup, SoftWrap, TextEditor, TextEditorEvent};
 use commit_report::CommitReport;
 use find::Finder;
 use markdown::Markdown;
@@ -77,6 +79,8 @@ pub struct Panel {
     finder: Finder,
     /// a Markdown text's view, and its Rendered document
     markdown: Markdown,
+    /// whether an edited text's long lines break into rows, kept for the editor of the next text
+    soft_wrap: SoftWrap,
 }
 
 #[derive(Clone)]
@@ -118,6 +122,7 @@ impl Panel {
             _body_events: Vec::new(),
             finder: Finder::new(cx),
             markdown: Markdown::new(),
+            soft_wrap: SoftWrap::Off,
         }
     }
 
@@ -131,6 +136,8 @@ impl Panel {
             Cast::Open(content) => self.open(content, cx),
             Cast::SetMarkdownView(view) => self.set_markdown_view(view, cx),
             Cast::Command(Command::ToggleMarkdownView) => self.toggle_markdown_view(cx),
+            Cast::SetSoftWrap(soft_wrap) => self.set_soft_wrap(soft_wrap, cx),
+            Cast::Command(Command::ToggleSoftWrap) => self.toggle_soft_wrap(cx),
             Cast::Restore(state) => self.restore(state, cx),
             Cast::SetFiles(files) => self.set_files(files, cx),
             Cast::Parsed { target, revision, syntax } => self.parsed(target, revision, syntax, cx),
@@ -174,6 +181,30 @@ impl Panel {
 
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// Whether the edited text's long lines break into rows; `None` when no text is edited, which does not wrap.
+    pub fn edited_soft_wrap(&self) -> Option<SoftWrap> {
+        match self.body {
+            Body::Edit(_) => Some(self.soft_wrap),
+            Body::Empty | Body::View(_) | Body::Diff(_) => None,
+        }
+    }
+
+    /// Long lines of the edited text, and of texts opened later, break into rows, or stop.
+    fn set_soft_wrap(&mut self, soft_wrap: SoftWrap, cx: &mut Context<Self>) {
+        self.soft_wrap = soft_wrap;
+        self.with_editor(cx, |editor, cx| editor.set_soft_wrap(soft_wrap, cx));
+    }
+
+    /// Switches soft wrap of an edited text, and tells the host; other texts do not wrap.
+    pub(crate) fn toggle_soft_wrap(&mut self, cx: &mut Context<Self>) {
+        let Body::Edit(_) = self.body else {
+            return;
+        };
+        let soft_wrap = self.soft_wrap.toggled();
+        self.set_soft_wrap(soft_wrap, cx);
+        cx.emit(Event::SoftWrapToggled(soft_wrap));
     }
 
     /// Edits not saved yet: in flight, waiting for the pause, or kept after a failed save.
@@ -311,7 +342,12 @@ impl Panel {
 
     /// Edit mode reads `source` through a piece table: only the lines it shows or edits.
     fn build_edit(&mut self, source: Arc<dyn LineSource>, setup: Setup, cx: &mut Context<Self>) {
-        let editor = cx.new(|cx| TextEditor::new(PieceTable::new(source), setup, cx));
+        let soft_wrap = self.soft_wrap;
+        let editor = cx.new(|cx| {
+            let mut editor = TextEditor::new(PieceTable::new(source), setup, cx);
+            editor.set_soft_wrap(soft_wrap, cx);
+            editor
+        });
         self._body_events.push(cx.subscribe(&editor, Self::on_editor_event));
         self.revision = editor.read(cx).revision();
         self.body = Body::Edit(editor);
@@ -403,6 +439,7 @@ impl Panel {
                 self.diff_changes_later(cx);
             }
             TextEditorEvent::NeedChanges => self.diff_changes_now(cx),
+            TextEditorEvent::GutterMenu => cx.emit(Event::GutterMenu),
             TextEditorEvent::Refused(reason) => cx.emit(Event::Refused(reason.clone())),
             TextEditorEvent::CommitChange { head_id, block, text, message } => {
                 let (head_id, block, text, message) = (head_id.clone(), block.clone(), text.clone(), message.clone());

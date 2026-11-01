@@ -241,6 +241,7 @@ impl ScratchView {
                 let editor = cx.new(Panel::new);
                 codeview_host::serve(&editor, target.store.path(&target.scratch.name).display().to_string(), cx);
                 codeview_host::remember_markdown_view(&editor, cx);
+                crate::soft_wrap::follow(&editor, target.store.path(&target.scratch.name), cx);
                 subscriptions.push(cx.subscribe(&editor, |view, _editor, event: &Event, cx| view.on_panel_event(event, cx)));
                 editor.update(cx, |editor, cx| editor.handle(Cast::Open(edited(&target.scratch.name, &text, ending)), cx));
                 let save = SaveState::new(editor.read(cx).revision(), stamp);
@@ -284,16 +285,22 @@ impl ScratchView {
                 self.bar.take_if(|bar| bar.is_passing());
             }
             Event::Refused(reason) => self.bar = Some(Bar::Refused(reason.clone())),
-            // caret and scroll are saved with the open tabs
-            Event::StateChanged => return self.schedule_workspace_save(cx),
+            // caret and scroll are saved with the open tabs, the wrapped files with the state
+            Event::StateChanged | Event::SoftWrapToggled(_) => return self.schedule_workspace_save(cx),
             Event::SaveRequested(request) => self.write_request(request.clone(), mode_of(request.kind), cx),
             // the tab stays open after closing without saving: the edits given up are neither shown nor written
             Event::ReloadRequested | Event::DiscardRequested => self.reload(cx),
             // a scratch has no change markers: it gets no base to compare with
             Event::NeedChangeBase | Event::NeedChangeDiff(_) | Event::CommitChange { .. } => return,
             // parsing is `codeview_host::serve`'s
-            // the Markdown view is remembered by `codeview_host`
-            Event::NeedParse(_) | Event::LayoutToggled(_) | Event::MarkdownViewToggled(_) | Event::NeedTexts(_) | Event::OpenAt { .. } | Event::OpenDiff { .. } => {
+            // the Markdown view is remembered by `codeview_host`, the gutter's menu opened by the workspace
+            Event::NeedParse(_)
+            | Event::LayoutToggled(_)
+            | Event::MarkdownViewToggled(_)
+            | Event::NeedTexts(_)
+            | Event::OpenAt { .. }
+            | Event::OpenDiff { .. }
+            | Event::GutterMenu => {
                 return;
             }
         }

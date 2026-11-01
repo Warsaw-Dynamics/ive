@@ -297,6 +297,17 @@ impl EditorModel {
         self.goal_column = Some(goal);
     }
 
+    /// The column Up and Down aim for, kept since the last of them; on wrapped lines, the column in the row.
+    pub fn goal_column(&self) -> Option<usize> {
+        self.goal_column
+    }
+
+    /// Moves the caret up or down to `target`, found by the view, keeping `goal` as the column Up and Down aim for.
+    pub fn move_vertically(&mut self, target: Position, goal: usize, selecting: Selecting) {
+        self.set_caret(target, selecting);
+        self.goal_column = Some(goal);
+    }
+
     /// The byte offset of `position` within its stored line.
     pub fn byte_in_line(&self, position: Position) -> usize {
         stored_byte_of(&self.table.line(position.line), position.column)

@@ -346,6 +346,7 @@ impl Workspace {
         let tab = Tab::of_file(&path, cx).unwrap_or_else(|error| Tab::Failed { title: crate::project::folder_name(&path), failure: crate::failure::Failure::new(error) });
         self.tabs.replace(id, tab);
         self.save_on_state_change(id, cx);
+        self.open_gutter_menu_on_request(id, window, cx);
         self.tab_shown(window, cx);
     }
 }

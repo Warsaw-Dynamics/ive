@@ -4,7 +4,10 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use gpui::{Context, KeyDownEvent, Pixels, Point, Window};
+use codeview::host::Command;
+use codeview::panel::{Cast, Event};
+use codeview::text_editor::SoftWrap;
+use gpui::{App, Context, KeyDownEvent, Pixels, Point, Window};
 use serde_json::json;
 
 use super::Workspace;
@@ -26,6 +29,8 @@ use crate::tabs::{Beside, TabId};
 
 /// The menu MCP's `tab-menu:<tab>` and `tree-menu:<row>` targets open.
 pub const DEFAULT_MENU: &str = "main";
+/// The tab menu a right click on a file's or scratch's line numbers opens.
+pub const GUTTER_MENU: &str = "gutter";
 /// A line that moved under a still pointer this recently is not chosen by a press.
 const MOVED_GUARD: Duration = Duration::from_millis(300);
 
@@ -133,6 +138,15 @@ pub fn row_applies(builtin: Builtin, pressed: &TreeKey, live: impl Fn(RunId) -> 
         _ => return None,
     };
     Some(applies)
+}
+
+/// Soft wrap's line, for a text that wraps as `soft_wrap` says: what choosing it does; none for a text not edited.
+pub fn soft_wrap_applies(soft_wrap: Option<SoftWrap>) -> Applies {
+    match soft_wrap {
+        Some(SoftWrap::Off) => Applies::Labelled("Enable Soft Wrap"),
+        Some(SoftWrap::On) => Applies::Labelled("Disable Soft Wrap"),
+        None => Applies::Hidden,
+    }
 }
 
 /// Today's names of the tab actions' lines, kept for MCP besides the label paths.
@@ -279,7 +293,12 @@ impl Workspace {
     fn open_menu(&mut self, kind: MenuKind, name: &str, on: MenuOn, subject: Subject, window: &mut Window, cx: &mut Context<Self>) {
         self.read_clipboard_files(cx);
         let items = cx.try_global::<Menus>().and_then(|menus| menus.get(kind, name)).map(<[_]>::to_vec).unwrap_or_default();
-        let resolved = resolve::resolve(&items, &subject, &|builtin| self.applies(builtin, &on, &subject));
+        let soft_wrap = self.menu_soft_wrap(&on, cx);
+        let applies = |builtin| match builtin {
+            Builtin::ToggleSoftWrap => soft_wrap_applies(soft_wrap),
+            _ => self.applies(builtin, &on, &subject),
+        };
+        let resolved = resolve::resolve(&items, &subject, &applies);
         if resolved.lines.is_empty() {
             return;
         }
@@ -525,9 +544,39 @@ impl Workspace {
         }
     }
 
+    /// Whether the text a menu opened on wraps: the text of its tab, while edited.
+    fn menu_soft_wrap(&self, on: &MenuOn, cx: &App) -> Option<SoftWrap> {
+        let MenuOn::Tab(tab) = on else {
+            return None;
+        };
+        self.tabs.get(*tab)?.edited_panel(cx)?.read(cx).edited_soft_wrap()
+    }
+
+    /// Opens the gutter menu of tab `id` when its panel asks (a right click on the line numbers); the subscription
+    /// ends with the panel.
+    pub(super) fn open_gutter_menu_on_request(&self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(panel) = self.tabs.get(id).and_then(|tab| tab.edited_panel(cx)) else {
+            return;
+        };
+        cx.subscribe_in(&panel, window, move |workspace, _panel, event: &Event, window, cx| {
+            if let Event::GutterMenu = event {
+                workspace.open_tab_menu(id, GUTTER_MENU, window, cx);
+            }
+        })
+        .detach();
+    }
+
+    /// Switches soft wrap of the text tab `tab` edits; other tabs have none.
+    fn toggle_soft_wrap(&self, tab: TabId, cx: &mut Context<Self>) {
+        if let Some(panel) = self.tabs.get(tab).and_then(|tab| tab.edited_panel(cx)) {
+            panel.update(cx, |panel, cx| panel.handle(Cast::Command(Command::ToggleSoftWrap), cx));
+        }
+    }
+
     /// Runs tab action `command` (see [`Builtin::is_tab_command`]) on tab `tab`.
     pub fn run_tab_command(&mut self, command: Builtin, tab: TabId, window: &mut Window, cx: &mut Context<Self>) {
         let beside = match command {
+            Builtin::ToggleSoftWrap => return self.toggle_soft_wrap(tab, cx),
             Builtin::KeepTab => return self.keep_tab(tab, cx),
             Builtin::CloseTab => return self.close_tab(tab, window, cx),
             Builtin::StopProgram => return self.stop_tab(tab, ProgramEnding::Stop, window, cx),
@@ -595,6 +644,22 @@ mod tests {
                 Line::Separator => "-".to_owned(),
             })
             .collect()
+    }
+
+    #[test]
+    fn should_name_soft_wrap_by_what_choosing_it_does_and_leave_it_out_without_an_edited_text() {
+        // given
+        let menu = [item(Builtin::ToggleSoftWrap)];
+        let shown = |soft_wrap: Option<SoftWrap>| -> Vec<String> {
+            let lines = resolve(&menu, &Subject::empty(), &|_| soft_wrap_applies(soft_wrap)).lines;
+            lines.iter().filter_map(|line| if let Line::Item { label, .. } = line { Some(label.clone()) } else { None }).collect()
+        };
+
+        // when
+        let labels = [None, Some(SoftWrap::Off), Some(SoftWrap::On)].map(shown);
+
+        // then
+        assert_eq!(labels, [vec![], vec!["Enable Soft Wrap".to_owned()], vec!["Disable Soft Wrap".to_owned()]]);
     }
 
     #[test]

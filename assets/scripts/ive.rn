@@ -38,6 +38,8 @@ pub fn init(config) {
                   act::SendPathsToTerminal, act::FindInFiles, copy_path, open_in,
                   #{ label: "Git", items: [act::GitShowDiff, act::GitCompareWithBase, act::GitHistory] }, "Separator",
                   act::CloseTab, act::CloseOtherTabs, act::CloseTabsToTheLeft, act::CloseTabsToTheRight],
+        // a right click on a file's or scratch's line numbers opens this one on its tab
+        gutter: [act::ToggleSoftWrap],
     };
     config.tree_menus = #{
         // New Terminal on a Processes folder, Stop on a process or a running run
@@ -133,6 +135,8 @@ pub fn init(config) {
         #{ key: "F3", mods: "SHIFT", action: act::FindPrevious, scope: "editor" },
         // a Markdown file or scratch between its text and the document formatted; not Ctrl+Shift+V, the terminal's paste
         #{ key: "m", mods: "SECONDARY|SHIFT", action: act::ToggleMarkdownView, scope: "editor" },
+        // a file's or scratch's long lines broken into rows the tab wide, or not; kept per file
+        #{ key: "z", mods: "ALT", action: act::ToggleSoftWrap, scope: "editor" },
         // reading a Markdown file or scratch Rendered: the "reader" scope, which also takes the editor scope's keys
         #{ key: "PageDown", action: act::ScrollPageDown, scope: "reader" },
         #{ key: "PageUp", action: act::ScrollPageUp, scope: "reader" },
