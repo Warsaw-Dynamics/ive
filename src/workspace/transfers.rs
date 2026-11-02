@@ -100,19 +100,29 @@ fn distinct_checkouts(sources: &[Source]) -> usize {
 impl Workspace {
     /// What dropping the files of a drag of `pressed` on the row of `row` would do, for the drag's chip.
     pub(crate) fn files_drop_hint(&self, pressed: &TreeKey, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> DropHint {
-        match self.files_drop(pressed, row, modifiers, cx) {
+        let configured = cx.try_global::<DropModifiers>().copied().unwrap_or_default();
+        self.paths_drop_hint(&self.dragged_paths(pressed), row, configured.forced(modifiers), cx)
+    }
+
+    /// What dropping files from outside IVE (a file manager) on the row of `row` would do: always a copy.
+    pub(crate) fn external_drop_hint(&self, paths: &[PathBuf], row: &TreeKey, cx: &Context<Self>) -> DropHint {
+        self.paths_drop_hint(paths, row, Some(Verb::Copy), cx)
+    }
+
+    fn paths_drop_hint(&self, paths: &[PathBuf], row: &TreeKey, forced: Option<Verb>, cx: &Context<Self>) -> DropHint {
+        match self.files_drop(paths, row, forced, cx) {
             Some((verb, text, ..)) => DropHint { row: row.clone(), text, allowed: verb.is_some() },
             None => DropHint { row: row.clone(), text: "Drop on a folder, a worktree or a project".to_owned(), allowed: false },
         }
     }
 
-    /// The verb (`None`: refused), hint, sources and place of a drop on the row of `row`; `None` when the row takes
-    /// no files.
-    fn files_drop(&self, pressed: &TreeKey, row: &TreeKey, modifiers: &Modifiers, cx: &Context<Self>) -> Option<(Option<Verb>, String, Vec<Source>, DropPlace)> {
+    /// The verb (`None`: refused), hint, sources and place of dropping `paths` on the row of `row`, `forced` the verb
+    /// the modifiers or the drag's origin force; `None` when the row takes no files.
+    fn files_drop(&self, paths: &[PathBuf], row: &TreeKey, forced: Option<Verb>, cx: &Context<Self>) -> Option<(Option<Verb>, String, Vec<Source>, DropPlace)> {
         let place = self.files_target(row)?;
-        let sources = self.sources_of(&self.dragged_paths(pressed), &place.checkout);
+        let sources = self.sources_of(paths, &place.checkout);
         let configured = cx.try_global::<DropModifiers>().copied().unwrap_or_default();
-        let hint = Hint { forced: configured.forced(modifiers), copy_name: configured.copy_name(), place: place_name(&place, |checkout| self.checkout_label(checkout)) };
+        let hint = Hint { forced, copy_name: configured.copy_name(), place: place_name(&place, |checkout| self.checkout_label(checkout)) };
         let (verb, text) = files_hint(&sources, &place, &hint);
         Some((verb, text, sources, place))
     }
@@ -140,8 +150,18 @@ impl Workspace {
     /// Files dropped on the row of `onto`: refused as the hint said, asked about with the layout menu, or copied or
     /// moved.
     pub(crate) fn drop_files(&mut self, (pressed, onto): (&TreeKey, TreeKey), modifiers: &Modifiers, window: &mut Window, cx: &mut Context<Self>) {
+        let configured = cx.try_global::<DropModifiers>().copied().unwrap_or_default();
+        self.drop_paths((&self.dragged_paths(pressed), onto), configured.forced(modifiers), window, cx);
+    }
+
+    /// Files and folders dropped from outside IVE (a file manager) on the row of `onto`: copied there, never moved.
+    pub(crate) fn drop_external(&mut self, (paths, onto): (&[PathBuf], TreeKey), window: &mut Window, cx: &mut Context<Self>) {
+        self.drop_paths((paths, onto), Some(Verb::Copy), window, cx);
+    }
+
+    fn drop_paths(&mut self, (paths, onto): (&[PathBuf], TreeKey), forced: Option<Verb>, window: &mut Window, cx: &mut Context<Self>) {
         self.tree.drop_hint = None;
-        let Some((Some(verb), _, sources, target)) = self.files_drop(pressed, &onto, modifiers, cx) else {
+        let Some((Some(verb), _, sources, target)) = self.files_drop(paths, &onto, forced, cx) else {
             return cx.notify();
         };
         let operation = Operation { verb, sources, target, layout: Layout::Flat };

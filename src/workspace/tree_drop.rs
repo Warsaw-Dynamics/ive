@@ -34,6 +34,8 @@ pub fn row_named(rows: &[TreeRow], name: &str) -> Option<TreeKey> {
 pub(crate) enum Dragging {
     Files(TreeKey),
     Processes(TreeKey),
+    /// Files and folders from outside IVE, a file manager's.
+    External(Vec<std::path::PathBuf>),
 }
 
 impl Workspace {
@@ -42,6 +44,7 @@ impl Workspace {
         let hint = match &dragging {
             Dragging::Files(pressed) => self.files_drop_hint(pressed, &row, &window.modifiers(), cx),
             Dragging::Processes(pressed) => self.process_drop_hint(pressed, &row, &window.modifiers(), cx),
+            Dragging::External(paths) => self.external_drop_hint(paths, &row, cx),
         };
         if self.tree.drop_hint.as_ref() != Some(&hint) {
             self.tree.drop_hint = Some(hint);

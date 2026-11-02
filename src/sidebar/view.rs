@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, Entity, FocusHandle, KeyDownEvent, ListHorizontalSizingBehavior,
+    AnyElement, App, ClickEvent, Context, CursorStyle, Div, DragMoveEvent, ElementId, ExternalPaths, Entity, FocusHandle, KeyDownEvent, ListHorizontalSizingBehavior,
     MouseButton, MouseDownEvent, SharedString, Subscription, Stateful, StyleRefinement, WeakEntity, Window, WindowControlArea, deferred, div, prelude::*, px, rgb, rgba, uniform_list,
 };
 
@@ -450,7 +450,8 @@ fn dragged_processes(row: &TreeRow, key: &TreeKey, cx: &Context<Workspace>) -> O
 
 /// A row that tells the workspace what a drag over it would do, and takes the drop.
 fn drop_target(row: Stateful<Div>, key: TreeKey, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let (hovered, dropped, files_hovered, files_dropped) = (key.clone(), key.clone(), key.clone(), key);
+    let (hovered, dropped, files_hovered, files_dropped) = (key.clone(), key.clone(), key.clone(), key.clone());
+    let (external_hovered, external_dropped) = (key.clone(), key);
     row.on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<DraggedProcesses>, window, cx| {
         if event.bounds.contains(&event.event.position) {
             let pressed = event.drag(cx).pressed.clone();
@@ -468,6 +469,15 @@ fn drop_target(row: Stateful<Div>, key: TreeKey, cx: &mut Context<Workspace>) ->
     }))
     .on_drop(cx.listener(move |workspace, dragged: &DraggedFiles, window, cx| {
         workspace.drop_files((&dragged.pressed, files_dropped.clone()), &window.modifiers(), window, cx);
+    }))
+    .on_drag_move(cx.listener(move |workspace, event: &DragMoveEvent<ExternalPaths>, window, cx| {
+        if event.bounds.contains(&event.event.position) {
+            let paths = event.drag(cx).paths().to_vec();
+            workspace.hover_drop(Dragging::External(paths), external_hovered.clone(), window, cx);
+        }
+    }))
+    .on_drop(cx.listener(move |workspace, dropped: &ExternalPaths, window, cx| {
+        workspace.drop_external((dropped.paths(), external_dropped.clone()), window, cx);
     }))
 }
 

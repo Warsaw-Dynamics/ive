@@ -290,6 +290,9 @@ would do.
   all its files but git's own (`.git`, nested worktrees); a moved one carries a nested `.git` too, and a folder holding
   another open worktree is not moved. Pasted or Ctrl+dropped into its own folder, a file or folder goes beside
   itself as `name (2)`. At most 20 000 files and 4 GiB in one copy.
+- **From a file manager**: files and folders dropped on a tree row as above are always copied there, as many as
+  dragged; the row the drop would land on is highlighted. Dropped anywhere else in the window (the tab bar, the
+  editor), files open as tabs and folders as projects.
 - **Copy and Paste**: Ctrl+C (macOS Cmd+C) in the tree puts the picked files' absolute paths on the clipboard; Ctrl+V
   on a row copies the files and folders on the clipboard into its folder, keeping their folders when they come from
   one worktree. The tree menu has Copy and Paste too.
