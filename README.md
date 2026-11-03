@@ -764,13 +764,13 @@ Names are folder names, not paths: no `/`, at most 64 of them.
 ### Hidden files and folders
 
 A folder with two or more hidden entries shows them under one `@hidden` row. Entries whose names start with `.` are
-always hidden; `config.hidden` lists more, by name, files or folders. `init` gets IVE's default, `target`, so
-`init.rn` can add to it or take it out:
+always hidden; `config.hidden` lists more, by name, files or folders. `init` gets IVE's defaults, the excluded
+folders `target` and `node_modules`, so `init.rn` can add to them or take one out to show it among the other entries:
 
 ```rune
 pub fn init(config) {
-    config.hidden.push("node_modules");
-    config.hidden = config.hidden.iter().filter(|name| name != "target").collect::<Vec>();
+    config.hidden.push("dist");
+    config.hidden = config.hidden.iter().filter(|name| name != "node_modules").collect::<Vec>();
 }
 ```
 

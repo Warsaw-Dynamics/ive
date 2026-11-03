@@ -628,24 +628,24 @@ mod tests {
     }
 
     #[test]
-    fn should_hide_target_by_default() {
+    fn should_hide_the_excluded_folders_by_default() {
         // when
         let hidden = defaults().hidden;
 
         // then
-        assert!(hidden.hides("target"));
+        assert_eq!(hidden, crate::script::hidden::of(&["target", "node_modules"]));
     }
 
     #[test]
     fn should_let_init_add_hidden_names() {
         // given
-        let init = r#"pub fn init(config) { config.hidden.push("node_modules"); }"#;
+        let init = r#"pub fn init(config) { config.hidden.push("dist"); }"#;
 
         // when
         let hidden = load(init).1.unwrap().hidden;
 
         // then
-        assert_eq!(hidden, crate::script::hidden::of(&["target", "node_modules"]));
+        assert_eq!(hidden, crate::script::hidden::of(&["target", "node_modules", "dist"]));
     }
 
     #[test]
@@ -660,7 +660,7 @@ mod tests {
         let hidden = load(example).1.unwrap().hidden;
 
         // then
-        assert_eq!(hidden, crate::script::hidden::of(&["node_modules"]));
+        assert_eq!(hidden, crate::script::hidden::of(&["target", "dist"]));
     }
 
     #[test]
