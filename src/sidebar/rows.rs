@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use super::folders::{ChangeFolderRow, ChangeRow, ChangeSource, CheckoutGit, CommitRow, CommitsMoreRow, FolderKind, FolderRow, GitFolders, NoteRow};
+use super::folders::{ChangeFolderRow, ChangeRow, ChangeSource, CheckoutGit, CommitRow, CommitsMoreRow, FolderBadge, FolderKind, FolderRow, GitFolders, NoteRow};
 use super::states::{EntryState, entry_mark, entry_state};
 
 use crate::age::Clock;
@@ -86,6 +86,8 @@ pub struct CheckoutRow {
     pub checkout: CheckoutRef,
     pub label: String,
     pub expanded: bool,
+    /// shown while the row is hovered; none without `config.folder_switches.per_worktree`
+    pub badges: Vec<FolderBadge>,
     /// the main checkout, which cannot be hidden
     pub is_main: bool,
     /// its processes that wait for the user, while it is folded; 0 while open
@@ -127,6 +129,8 @@ pub struct TreeLook<'a> {
     pub git: &'a HashMap<PathBuf, CheckoutGit>,
     pub layout: FileLayout,
     pub clock: Clock,
+    /// whether worktree rows carry folder badges: `config.folder_switches.per_worktree`
+    pub folder_badges: bool,
 }
 
 /// "Show 10 more · N of M" under a paged list.
@@ -150,6 +154,10 @@ pub struct ProjectRow {
     pub waiting: usize,
     /// the last refresh failed with this; shown as a warning icon
     pub error: Option<String>,
+    /// a single checkout's folder badges, shown while the row is hovered
+    pub badges: Vec<FolderBadge>,
+    /// the checkout the badges are for: the project's only one, without a worktree level
+    pub only_checkout: Option<CheckoutRef>,
 }
 
 /// What follows the project name.
@@ -198,6 +206,10 @@ impl TreeRow {
 
     /// The names MCP's `click` reaches this row's actions by, whether the row is drawn or not.
     pub fn target_names(&self) -> Vec<String> {
+        let badges = match &self.item {
+            TreeItem::Project(ProjectRow { badges, .. }) | TreeItem::Checkout(CheckoutRow { badges, .. }) => badges.as_slice(),
+            _ => &[],
+        };
         let verbs: &[&str] = match &self.item {
             TreeItem::Project(row) if row.tag == Some(ProjectTag::Missing) => &["close-project"],
             TreeItem::Project(_) => &["project", "toggle", "close-project"],
@@ -219,7 +231,8 @@ impl TreeRow {
             TreeItem::Entry(_) => &["entry"],
             TreeItem::More(_) => &["more", "all"],
         };
-        verbs.iter().map(|verb| target_name(verb, &self.target)).collect()
+        let own = verbs.iter().map(|verb| target_name(verb, &self.target));
+        own.chain(badges.iter().map(|badge| target_name("badge", &badge.target))).collect()
     }
 }
 
@@ -247,7 +260,12 @@ struct Sources<'a, V> {
 }
 
 fn push_project<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, tree: &Sources<V>) {
-    let item = TreeItem::Project(project_row(open, tree.processes));
+    let only_checkout = match open.has_worktree_level() || !open.loaded || open.missing {
+        true => None,
+        false => Some(open.project.checkout_ref(open.project.main_checkout())),
+    };
+    let badges = only_checkout.as_ref().map_or_else(Vec::new, |checkout| badges(open, checkout, &checkout_target(open, open.project.main_checkout()), tree));
+    let item = TreeItem::Project(ProjectRow { badges, only_checkout, ..project_row(open, tree.processes) });
     rows.push(TreeRow { depth: 0, item, target: open.project.id.to_string() });
     if open.shows_children() {
         push_children(rows, open, tree);
@@ -275,7 +293,8 @@ fn push_checkouts<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, tree: &Sources
         let target = checkout_target(open, checkout);
         // an open checkout's rows show its waiting processes
         let waiting = if expanded { 0 } else { tree.processes.waiting_in(&[checkout.path.as_path()]) };
-        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, is_main: checkout.is_main, waiting });
+        let badges = badges(open, &checkout_ref, &target, tree);
+        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, badges, is_main: checkout.is_main, waiting });
         rows.push(TreeRow { depth: 1, item, target });
         if expanded {
             push_checkout_content(rows, open, &checkout_ref, 2, tree);
@@ -292,7 +311,15 @@ fn git_folders<'a>(open: &'a OpenProject, checkout: &'a CheckoutRef, target: &'a
         ProjectKind::Plain => Some(&*NO_GIT),
         ProjectKind::Git => look.git.get(&checkout.path),
     };
-    GitFolders { checkout, target, folders: open.folders(&checkout.path), git, layout: look.layout, clock: look.clock }
+    GitFolders { checkout, target, folders: open.folders(&checkout.path), every: open.every_folder(), git, layout: look.layout, clock: look.clock }
+}
+
+/// A checkout row's folder badges; none while `config.folder_switches.per_worktree` is off.
+fn badges<V>(open: &OpenProject, checkout: &CheckoutRef, target: &str, tree: &Sources<V>) -> Vec<FolderBadge> {
+    if tree.look.folder_badges {
+        return git_folders(open, checkout, target, tree.look).badges(processes_count(checkout, tree));
+    }
+    Vec::new()
 }
 
 /// What Processes lists: terminals and Claude Code, and the runs.
@@ -428,6 +455,8 @@ fn project_row<V>(open: &OpenProject, processes: &Processes<V>) -> ProjectRow {
         running: processes.in_project(&project.id).iter().filter(|process| process.is_live()).count(),
         waiting: if open.expanded { 0 } else { processes.waiting_in(&project.checkouts.iter().map(|checkout| checkout.path.as_path()).collect::<Vec<_>>()) },
         error: project.refresh_error.clone(),
+        badges: Vec::new(),
+        only_checkout: None,
     }
 }
 
@@ -444,7 +473,7 @@ pub fn initials(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::{BTreeSet, HashSet};
     use std::fs;
     use std::path::Path;
 
@@ -479,7 +508,7 @@ mod tests {
     fn no_look() -> TreeLook<'static> {
         static NONE: std::sync::LazyLock<HashMap<PathBuf, TreeStatus>> = std::sync::LazyLock::new(HashMap::new);
         static NO_DATA: std::sync::LazyLock<HashMap<PathBuf, CheckoutGit>> = std::sync::LazyLock::new(HashMap::new);
-        TreeLook { statuses: &NONE, excluded: &[], open_folders: &crate::script::open_folders::ALL_OPEN, git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0) }
+        TreeLook { statuses: &NONE, excluded: &[], open_folders: &crate::script::open_folders::ALL_OPEN, git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0), folder_badges: false }
     }
 
     /// Two days after the epoch: the tests' commits are a day old.
@@ -1118,6 +1147,44 @@ mod tests {
             (FolderKind::Commits, Some(2), true),
             (FolderKind::Files, None, true),
         ]);
+    }
+
+    #[test]
+    fn should_leave_folder_badges_out_without_per_worktree() {
+        // given
+        let project = single();
+
+        // when
+        let rows = build(std::slice::from_ref(&project), &Processes::<()>::default(), &FakeRuns::default(), &no_look());
+
+        // then
+        let TreeItem::Project(row) = &rows[0].item else { panic!("a project row first: {:?}", rows[0]) };
+        assert!(row.badges.is_empty());
+        assert!(!rows[0].target_names().iter().any(|name| name.starts_with("badge:")));
+    }
+
+    #[test]
+    fn should_mark_folder_badges_set_apart_from_every_worktree() {
+        // given
+        let mut project = single();
+        project.set_every_folder(&BTreeSet::from([FolderKind::Processes, FolderKind::Uncommitted, FolderKind::Files]));
+        project.folders_mut(Path::new("/forge")).toggle_shown(FolderKind::Commits);
+        let look = TreeLook { folder_badges: true, ..no_look() };
+
+        // when
+        let rows = build(std::slice::from_ref(&project), &Processes::<()>::default(), &FakeRuns::default(), &look);
+
+        // then
+        let TreeItem::Project(row) = &rows[0].item else { panic!("a project row first: {:?}", rows[0]) };
+        let apart: Vec<(FolderKind, bool, bool)> = row.badges.iter().map(|badge| (badge.state.kind, badge.state.shown, badge.apart)).collect();
+        assert_eq!(apart, [
+            (FolderKind::Processes, true, false),
+            (FolderKind::Uncommitted, true, false),
+            (FolderKind::SinceBase, false, false),
+            (FolderKind::Commits, true, true),
+            (FolderKind::Files, true, false),
+        ]);
+        assert!(rows[0].target_names().contains(&"badge:forge/dev/commits".to_owned()));
     }
 
     #[test]

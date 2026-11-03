@@ -728,7 +728,8 @@ impl Workspace {
         let excluded = cx.try_global::<crate::script::excluded::Excluded>().map_or(&[][..], |excluded| excluded.names());
         let layout = cx.global::<SettingsStore>().current().git_files.layout;
         let open_folders = cx.try_global::<crate::script::open_folders::OpenFolders>().unwrap_or(&crate::script::open_folders::ALL_OPEN);
-        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system() };
+        let folder_badges = cx.try_global::<crate::script::folder_switches::FolderSwitches>().is_some_and(|switches| switches.per_worktree);
+        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system(), folder_badges };
         let shown = crate::project_list::shown(&self.projects, &self.hidden_projects);
         self.tree.rows = rows::build(shown, &self.processes, &*self, &look);
         self.read_tree_statuses(cx);

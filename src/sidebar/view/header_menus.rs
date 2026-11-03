@@ -19,10 +19,10 @@ use crate::theme::Theme;
 use crate::tooltip;
 use crate::workspace::{Workspace, icon};
 
-/// What the folders menu shows: every worktree's folders, the changed files' layout, the keys of its rows, and the
-/// worktrees set apart (`<project> · <worktree>`).
+/// What the folders menu shows: every worktree's folders (`None` while `config.folder_switches.every_worktree` is
+/// off), the changed files' layout, the keys of its rows, and the worktrees set apart (`<project> · <worktree>`).
 pub struct FoldersMenu {
-    pub every: BTreeSet<FolderKind>,
+    pub every: Option<BTreeSet<FolderKind>>,
     pub layout: FileLayout,
     pub keys: Vec<(FolderKind, Option<String>)>,
     pub layout_key: Option<String>,
@@ -32,16 +32,7 @@ pub struct FoldersMenu {
 /// Under the whole header: a tick per folder (switches it in every worktree), the Flat | Tree switch of changed
 /// files, and Reset while some worktrees are set apart. Each row shows its key on its right; a press outside closes it.
 pub(super) fn folders_menu(menu: &FoldersMenu, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    let rows = menu.keys.iter().map(|(kind, key)| {
-        let (kind, on) = (*kind, menu.every.contains(kind));
-        let switch = target(format!("every-folder:{}", kind.name()), cx.listener(move |workspace, _event, _window, cx| workspace.show_folder_everywhere(kind, !on, cx)), cx);
-        menu_item(("every-folder", kind as usize), theme)
-            .child(tick(on, theme))
-            .child(icon(theme, kind.icon()))
-            .child(div().flex_1().child(kind.title()))
-            .children(key.clone().map(|key| key_hint(key, theme)))
-            .on_click(switch)
-    });
+    let every = menu.every.as_ref().map(|every| every_worktree_rows(menu, every, theme, cx));
     let reset = (!menu.set_apart.is_empty()).then(|| {
         let count = menu.set_apart.len();
         let label = format!("Reset {count} {} set apart", if count == 1 { "worktree" } else { "worktrees" });
@@ -52,12 +43,25 @@ pub(super) fn folders_menu(menu: &FoldersMenu, theme: Theme, cx: &mut Context<Wo
     let panel = menu_panel("folders-menu", theme)
         .left(theme.sizes.tree.menu_offset.px())
         .right(theme.sizes.tree.menu_offset.px())
-        .child(menu_section("In every worktree", theme))
-        .children(rows)
-        .child(separator(theme))
+        .children(every)
         .child(layout_row(menu, theme, cx))
         .children(reset);
     closing_outside(panel, cx)
+}
+
+/// The folders menu's section `In every worktree`: a tick per folder, then a separator.
+fn every_worktree_rows(menu: &FoldersMenu, every: &BTreeSet<FolderKind>, theme: Theme, cx: &mut Context<Workspace>) -> Div {
+    let rows = menu.keys.iter().map(|(kind, key)| {
+        let (kind, on) = (*kind, every.contains(kind));
+        let switch = target(format!("every-folder:{}", kind.name()), cx.listener(move |workspace, _event, _window, cx| workspace.show_folder_everywhere(kind, !on, cx)), cx);
+        menu_item(("every-folder", kind as usize), theme)
+            .child(tick(on, theme))
+            .child(icon(theme, kind.icon()))
+            .child(div().flex_1().child(kind.title()))
+            .children(key.clone().map(|key| key_hint(key, theme)))
+            .on_click(switch)
+    });
+    div().child(menu_section("In every worktree", theme)).children(rows).child(separator(theme))
 }
 
 /// What the title's picker shows and lists: the open projects, in tree order.

@@ -15,6 +15,7 @@ use super::Workspace;
 use crate::editor::Tab;
 use crate::script::excluded::Excluded;
 use crate::script::open_folders::OpenFolders;
+use crate::script::folder_switches::FolderSwitches;
 use crate::script::keymap::Place;
 use crate::script::keymap::{Action, Builtin, MouseTrigger, Scope};
 use crate::script::state::{ScriptState, bound_action, bound_mouse, invoke};
@@ -142,13 +143,15 @@ impl Workspace {
             return self.menu_answered(request, answer, window, cx);
         }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
                 let open_changed = cx.try_global::<OpenFolders>() != Some(open_folders);
                 cx.set_global(open_folders.clone());
-                if apply_excluded(excluded.clone(), cx) || open_changed {
+                let switches_changed = cx.try_global::<FolderSwitches>() != Some(folder_switches);
+                cx.set_global(*folder_switches);
+                if apply_excluded(excluded.clone(), cx) || open_changed || switches_changed {
                     self.tree_changed(cx);
                 }
                 self.apply_hidden(hidden.clone(), cx);
@@ -405,6 +408,7 @@ mod tests {
             open_folders: Default::default(),
             drop_modifiers: Default::default(),
             delete: Default::default(),
+            folder_switches: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }

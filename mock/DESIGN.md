@@ -241,8 +241,10 @@ no chip and no `@` (`@hidden` keeps its). In this order:
 | Commits | commits since the base, newest first: the first 10, then `Load 20 more · 10 of 32` adds 20 each click | by the folders menu |
 | Files | every file, as above | always |
 
-- **No badges** (removed 2026-10-22): the worktree row has none; the header's folders menu and Ctrl+Alt+1 to 5 switch
-  folders, in every worktree at once. A switched-on git folder with nothing in it keeps its row, muted (icon faded), without a
+- **Badges only on request** (removed 2026-10-22, back 2026-11-03 behind `config.folder_switches.per_worktree`, off by
+  default): by default the worktree row has none; the header's folders menu and Ctrl+Alt+1 to 5 switch folders, in
+  every worktree at once. With `per_worktree`, a worktree row's hover shows a badge per folder (icon, count, a dot
+  when set apart); a click switches it in that worktree, Alt+click in every worktree (while `every_worktree` is on). A switched-on git folder with nothing in it keeps its row, muted (icon faded), without a
   chevron, `· 0` after its name (`· no base` for Since base and Commits of a branch without a base) and why in its
   tooltip (`No commits since dev`). An empty Processes has no chevron; its + still starts a terminal. The folder still
   folds on its own, per worktree.

@@ -1,6 +1,7 @@
 //! The git data of the tree's worktree folders (Uncommitted, Since base, Commits), per checkout: read on the
-//! background executor the first time one of its git folders is shown, read again after its files or its git dir
-//! changed (and every 2 s) while a git folder of it is shown, and forgotten otherwise.
+//! background executor the first time its row is hovered (for its folder badges) or one of its git folders is shown,
+//! read again after its files or its git dir changed (and every 2 s) while a git folder of it is shown or its row is
+//! hovered, and forgotten otherwise.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -18,6 +19,7 @@ use crate::git::worktree_data::{SinceData, WorktreeData, load_worktree};
 use crate::overview::diff_tab::{DiffRequest, DiffSource, DiffTabSpec};
 use crate::overview::file_list::FileOrder;
 use crate::project::{CheckoutRef, ProjectKind};
+use crate::script::folder_switches::switches_every_worktree;
 use crate::script::open_folders::{OpenFolders, ALL_OPEN};
 use crate::settings::SettingsStore;
 use crate::sidebar::folders::{ChangeSource, CheckoutGit, FolderKind};
@@ -35,6 +37,8 @@ pub(super) struct TreeGit {
     failed: HashSet<PathBuf>,
     /// commits whose files are being read
     reading: HashSet<(PathBuf, Sha)>,
+    /// the checkout row under the pointer, whose folder badges count
+    hovered: Option<PathBuf>,
     /// the last since data of each known checkout, which the next read reuses while HEAD and the fork point stay
     since: HashMap<PathBuf, SinceData>,
 }
@@ -57,17 +61,20 @@ impl TreeGit {
         }
     }
 
-    /// What file events miss (changes in folders the tree has collapsed): `showing` is read again on the next tick.
+    /// What file events miss (changes in folders the tree has collapsed): `showing` and the hovered checkout are
+    /// read again on the next tick.
     fn poll(&mut self, showing: &[PathBuf]) {
-        for checkout in showing {
+        let hovered = self.hovered.clone();
+        for checkout in showing.iter().chain(&hovered) {
             self.mark_dirty(checkout);
         }
     }
 
-    /// The changed checkouts to read again: those `has_git_folder` shows; the others' data is forgotten, so showing
-    /// a git folder of theirs reads it.
+    /// The changed checkouts to read again: those `has_git_folder` shows and the hovered one; the others' data is
+    /// forgotten, so showing a git folder of theirs or hovering their row reads it.
     fn take_due(&mut self, has_git_folder: impl Fn(&Path) -> bool) -> Vec<PathBuf> {
-        let wanted = |checkout: &PathBuf| has_git_folder(checkout);
+        let hovered = self.hovered.clone();
+        let wanted = |checkout: &PathBuf| has_git_folder(checkout) || hovered.as_ref() == Some(checkout);
         // one read per checkout at a time: a change during a read is read on a later tick
         let reading: HashSet<PathBuf> = self.dirty.intersection(&self.asked).cloned().collect();
         let (due, stale): (Vec<PathBuf>, Vec<PathBuf>) = self.dirty.drain().filter(|checkout| !reading.contains(checkout)).partition(wanted);
@@ -201,15 +208,46 @@ impl Workspace {
         self.tree_git.mark_dirty(checkout);
     }
 
-    /// The folders menu's tick, or its `act::ToggleFolderEverywhere` key: shows `kind` in every worktree, or hides it.
+    /// The pointer entered a checkout's row: its badges' counts are read, and kept fresh while it stays.
+    pub(crate) fn hover_checkout(&mut self, checkout: &CheckoutRef, cx: &mut Context<Self>) {
+        self.tree_git.hovered = Some(checkout.path.clone());
+        self.want_tree_git(checkout, cx);
+    }
+
+    /// The pointer left a checkout's row; another row's enter may have come first.
+    pub(crate) fn leave_checkout(&mut self, checkout: &CheckoutRef) {
+        if self.tree_git.hovered.as_ref() == Some(&checkout.path) {
+            self.tree_git.hovered = None;
+        }
+    }
+
+    /// A folder badge: shows or hides its folder in this checkout alone.
+    pub(crate) fn toggle_folder_shown(&mut self, checkout: &CheckoutRef, kind: FolderKind, cx: &mut Context<Self>) {
+        let Some(open) = self.open_project_mut(&checkout.project) else {
+            return;
+        };
+        open.folders_mut(&checkout.path).toggle_shown(kind);
+        if GIT_FOLDERS.contains(&kind) {
+            self.want_tree_git(checkout, cx);
+        }
+        self.tree_changed(cx);
+        self.schedule_save(cx);
+    }
+
+    /// The folders menu's tick, its `act::ToggleFolderEverywhere` key, or Alt+click on a badge: shows `kind` in every
+    /// worktree, or hides it.
     pub(crate) fn toggle_folder_everywhere(&mut self, kind: FolderKind, cx: &mut Context<Self>) {
         let on = !self.shown_folders.contains(&kind);
         self.show_folder_everywhere(kind, on, cx);
     }
 
     /// Shows `kind` in every worktree of every open project, or hides it, and in worktrees opened later; a git
-    /// folder switched on reads the git data of the checkouts the tree shows.
+    /// folder switched on reads the git data of the checkouts the tree shows. Nothing while
+    /// `config.folder_switches.every_worktree` is off.
     pub(crate) fn show_folder_everywhere(&mut self, kind: FolderKind, on: bool, cx: &mut Context<Self>) {
+        if !switches_every_worktree(cx) {
+            return;
+        }
         match on {
             true => self.shown_folders.insert(kind),
             false => self.shown_folders.remove(&kind),
@@ -232,7 +270,8 @@ impl Workspace {
         let keymap = crate::script::state::keymap(cx);
         let (keys, layout_key) = keymap.map_or_else(|| (FolderKind::ALL.map(|kind| (kind, None)).to_vec(), None), crate::sidebar::view::menu_keys);
         let layout = cx.global::<SettingsStore>().current().git_files.layout;
-        crate::sidebar::view::FoldersMenu { every: self.shown_folders.clone(), layout, keys, layout_key, set_apart: self.folders_set_apart() }
+        let every = if switches_every_worktree(cx) { Some(self.shown_folders.clone()) } else { None };
+        crate::sidebar::view::FoldersMenu { every, layout, keys, layout_key, set_apart: self.folders_set_apart() }
     }
 
     /// The folders menu's Flat | Tree switch.

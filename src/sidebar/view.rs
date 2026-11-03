@@ -33,6 +33,7 @@ use crate::paging::more_row;
 use crate::progress_bar::progress_bar;
 use crate::scrollbar::{ListScroll, ScrollState, horizontal_scrollbar, vertical_scrollbar, widest_row};
 use crate::process::RunId;
+use crate::project::CheckoutRef;
 use crate::run::values_tab::ShowRun;
 use crate::state::RecentProject;
 use crate::theme::Theme;
@@ -227,7 +228,7 @@ fn render_header(sidebar: &Sidebar<'_>, theme: Theme, cx: &mut Context<Workspace
         .tooltip(tooltip::text_tooltip("Open project"))
         .on_click(target("open-project".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(HeaderMenu::OpenProject, window, cx)), cx));
     let folders = header_button_press(header_button("folders-menu", icons::PROJECT_FOLDER, theme), cx)
-        .tooltip(tooltip::text_tooltip("Folders in every worktree"))
+        .tooltip(tooltip::text_tooltip("Worktree folders"))
         .on_click(target("folders-menu".to_owned(), cx.listener(|workspace, _event, window, cx| workspace.toggle_menu(HeaderMenu::Folders, window, cx)), cx));
     let folders_menu = sidebar.folders.as_ref().map(|menu| deferred(header_menus::folders_menu(menu, theme, cx)).with_priority(1));
     let projects_menu = sidebar.projects.as_ref().map(|menu| deferred(header_menus::projects_menu(menu, theme, cx)).with_priority(1));
@@ -665,6 +666,10 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         row_action(action, &line)
     });
     let rail = line.mark.rail.map(|colour| worktree_rail(colour, line.indent, theme));
+    // left of Hide, which shows over the row's end on hover
+    let after = if hide.is_some() { px(action_width(theme) + 2.) } else { px(0.) };
+    let badges = (!row.badges.is_empty()).then(|| folder_view::folder_badges(&row.badges, &row.checkout, &line, after, cx));
+    let hover = (!row.badges.is_empty()).then(|| want_git(&row.checkout, cx));
     let line = line
         .div
         .children(rail)
@@ -672,8 +677,35 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .child(branch_icon(&line.mark, theme))
         .child(row.label.clone())
         .children(waiting_tag(row.waiting, theme))
+        .children(badges)
         .children(hide);
-    bind_row(line, mouse, cx)
+    bind_row(with_hover(line, hover), mouse, cx)
+}
+
+/// A row action's width: its icon and padding.
+fn action_width(theme: Theme) -> f32 {
+    theme.sizes.icon.0 + 2. * theme.sizes.tree.action_padding.0
+}
+
+fn with_hover(line: Stateful<Div>, hover: Option<impl Fn(&bool, &mut Window, &mut App) + 'static>) -> Stateful<Div> {
+    match hover {
+        Some(hover) => line.on_hover(hover),
+        None => line,
+    }
+}
+
+/// Pointing at a checkout's row reads its git data for the badges' counts, and keeps it fresh until the pointer leaves.
+fn want_git(checkout: &CheckoutRef, cx: &mut Context<Workspace>) -> impl Fn(&bool, &mut Window, &mut App) + 'static {
+    let (checkout, workspace) = (checkout.clone(), cx.entity().downgrade());
+    move |hovered, _window, cx| {
+        let entered = *hovered;
+        workspace
+            .update(cx, |workspace, cx| match entered {
+                true => workspace.hover_checkout(&checkout, cx),
+                false => workspace.leave_checkout(&checkout),
+            })
+            .ok();
+    }
 }
 
 fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -886,6 +918,9 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
         }
         None => badge(&project.initials, badge_fill, badge_text, theme).into_any_element(),
     };
+    // left of Close project, which shows over the row's end on hover
+    let folder_badges = project.only_checkout.as_ref().filter(|_| !project.badges.is_empty()).map(|checkout| folder_view::folder_badges(&project.badges, checkout, &line, px(action_width(theme) + 2.), cx));
+    let hover = project.only_checkout.as_ref().filter(|_| !project.badges.is_empty()).map(|checkout| want_git(checkout, cx));
     let line = line
         .div
         .children(chevron)
@@ -895,7 +930,9 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
         .children(running)
         .children(waiting_tag(project.waiting, theme))
         .children(warning)
+        .children(folder_badges)
         .child(close);
+    let line = with_hover(line, hover);
     if present {
         let show: Listener = Rc::new(target(project_target.clone(), cx.listener(move |workspace, _event, window, cx| {
             workspace.show_project_overview(&shown, window, cx);

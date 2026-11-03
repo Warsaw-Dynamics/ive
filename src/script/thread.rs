@@ -47,6 +47,7 @@ pub enum ScriptEvent {
         open_folders: OpenFolders,
         drop_modifiers: crate::transfer::DropModifiers,
         delete: super::delete_mode::DeleteMode,
+        folder_switches: super::folder_switches::FolderSwitches,
         has_init: bool,
         /// the user themes to pick from, by name
         themes: Vec<String>,
@@ -258,6 +259,7 @@ impl Runner {
             open_folders: loaded.open_folders.clone(),
             drop_modifiers: loaded.drop_modifiers,
             delete: loaded.delete,
+            folder_switches: loaded.folder_switches,
             has_init: loaded.has_init,
             themes: self.dir.as_deref().map(user::names).unwrap_or_default(),
         };

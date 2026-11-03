@@ -20,6 +20,7 @@ use super::excluded::{self, Excluded};
 use super::hidden::{self, Hidden};
 use super::open_folders::{self, OpenFolders};
 use super::delete_mode::{self, DeleteMode};
+use super::folder_switches::{self, FolderSwitches};
 use super::drop_modifiers;
 use super::quit_countdown::{self, QuitCountdown};
 use crate::transfer::DropModifiers;
@@ -50,6 +51,7 @@ pub struct Loaded {
     pub open_folders: OpenFolders,
     pub drop_modifiers: DropModifiers,
     pub delete: DeleteMode,
+    pub folder_switches: FolderSwitches,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -101,6 +103,7 @@ impl Engine {
             open_folders: rune::Value::from(()),
             drop_modifiers: rune::Value::from(()),
             delete: rune::Value::from(()),
+            folder_switches: rune::Value::from(()),
         };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
@@ -115,6 +118,7 @@ impl Engine {
             open_folders: rune::Value::from(()),
             drop_modifiers: rune::Value::from(()),
             delete: rune::Value::from(()),
+            folder_switches: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -131,6 +135,7 @@ impl Engine {
                 open_folders: checked.open_folders,
                 drop_modifiers: checked.drop_modifiers,
                 delete: checked.delete,
+                folder_switches: checked.folder_switches,
                 functions: bound,
                 has_init: false,
             });
@@ -151,6 +156,7 @@ impl Engine {
             open_folders: checked.open_folders,
             drop_modifiers: checked.drop_modifiers,
             delete: checked.delete,
+            folder_switches: checked.folder_switches,
             functions: bound,
             has_init: true,
         })
@@ -206,6 +212,7 @@ struct Checked {
     open_folders: OpenFolders,
     drop_modifiers: DropModifiers,
     delete: DeleteMode,
+    folder_switches: FolderSwitches,
 }
 
 /// The theme, excluded folders, hidden names, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
@@ -226,7 +233,8 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &m
     let open_folders = open_folders::parse(&carried.open_folders).map_err(named)?;
     let drop_modifiers = drop_modifiers::parse(&carried.drop_modifiers).map_err(named)?;
     let delete = delete_mode::parse(&carried.delete).map_err(named)?;
-    Ok(Checked { theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete })
+    let folder_switches = folder_switches::parse(&carried.folder_switches).map_err(named)?;
+    Ok(Checked { theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -591,6 +599,27 @@ mod tests {
         // then
         let kinds = FolderKind::ALL.map(|kind| open.is_open(kind));
         assert_eq!(kinds, [true, true, true, true, false]);
+    }
+
+    #[test]
+    fn should_switch_folders_in_every_worktree_alone_by_default() {
+        // when
+        let switches = defaults().folder_switches;
+
+        // then
+        assert_eq!(switches, FolderSwitches { every_worktree: true, per_worktree: false });
+    }
+
+    #[test]
+    fn should_take_the_folder_switches_from_init() {
+        // given
+        let init = "pub fn init(config) { config.folder_switches.per_worktree = true; config.folder_switches.every_worktree = false; }";
+
+        // when
+        let switches = load(init).1.unwrap().folder_switches;
+
+        // then
+        assert_eq!(switches, FolderSwitches { every_worktree: false, per_worktree: true });
     }
 
     #[test]

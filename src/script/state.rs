@@ -168,6 +168,7 @@ mod tests {
             open_folders: Default::default(),
             drop_modifiers: Default::default(),
             delete: Default::default(),
+            folder_switches: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }
@@ -244,9 +245,9 @@ mod tests {
         // given
         let (_dir, mut state) = new_state();
         let event = match loaded(send_binding("f5")) {
-            ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, has_init, .. } => {
+            ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, has_init, .. } => {
                 let themes = vec!["a".to_owned(), "b".to_owned()];
-                ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, has_init, themes }
+                ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, has_init, themes }
             }
             event => event,
         };

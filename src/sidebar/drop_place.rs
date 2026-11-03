@@ -81,7 +81,7 @@ mod tests {
     }
 
     fn project() -> TreeItem {
-        TreeItem::Project(ProjectRow { id: ProjectId::new("p"), name: "p".to_owned(), initials: "P".to_owned(), expanded: true, tag: None, running: 0, waiting: 0, error: None })
+        TreeItem::Project(ProjectRow { id: ProjectId::new("p"), name: "p".to_owned(), initials: "P".to_owned(), expanded: true, tag: None, running: 0, waiting: 0, error: None, badges: Vec::new(), only_checkout: None })
     }
 
     fn place(checkout_path: &str, folder: &str) -> Option<DropPlace> {
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn should_drop_files_on_worktree_and_files_folder_into_its_root() {
         // given
-        let worktree = TreeItem::Checkout(CheckoutRow { checkout: checkout("/p/wt"), label: "wt".to_owned(), expanded: true, is_main: false, waiting: 0 });
+        let worktree = TreeItem::Checkout(CheckoutRow { checkout: checkout("/p/wt"), label: "wt".to_owned(), expanded: true, badges: Vec::new(), is_main: false, waiting: 0 });
 
         // when
         let placed = [files_place(&worktree, main_of), files_place(&folder(FolderKind::Files), main_of)];

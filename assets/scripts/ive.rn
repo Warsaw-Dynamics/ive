@@ -64,6 +64,12 @@ pub fn init(config) {
     // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
     config.quit_countdown = 10;
 
+    // where a worktree's folders (Processes, Uncommitted, Since base, Commits, Files) are switched on and off.
+    // every_worktree: the ticks of the folders menu in the sidebar header, act::ToggleFolderEverywhere and Alt+click
+    // on a badge switch a folder in every worktree. per_worktree: a worktree's row shows a badge per folder on hover,
+    // whose click switches it in that worktree alone
+    config.folder_switches = #{ every_worktree: true, per_worktree: false };
+
     // a worktree's folders in the tree that start open, the others folded: "processes", "uncommitted",
     // "since-base", "commits", "files"; IVE remembers each folder you fold or unfold
     config.open_folders = ["processes", "uncommitted", "since-base", "commits"];

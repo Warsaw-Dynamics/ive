@@ -111,6 +111,11 @@ impl CheckoutFolders {
         self.shown == *every && self.folds.is_empty() && git_default
     }
 
+    /// Whether this checkout shows `kind` where every worktree does not, or the other way round.
+    pub fn is_apart(&self, kind: FolderKind, every: &BTreeSet<FolderKind>) -> bool {
+        self.shown.contains(&kind) != every.contains(&kind)
+    }
+
     pub fn is_set_apart(&self, every: &BTreeSet<FolderKind>) -> bool {
         self.shown != *every
     }
@@ -124,7 +129,6 @@ impl CheckoutFolders {
         self.folds.get(&kind).map_or_else(|| open.is_open(kind), |folded| !folded)
     }
 
-    #[cfg(test)]
     pub fn toggle_shown(&mut self, kind: FolderKind) {
         if self.shown.remove(&kind) {
             return;
@@ -280,6 +284,16 @@ pub struct FolderState {
     pub shown: bool,
 }
 
+/// A badge on a checkout's row (`config.folder_switches.per_worktree`): switches its folder in that checkout.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FolderBadge {
+    pub state: FolderState,
+    /// shown here and not in every worktree, or the other way round
+    pub apart: bool,
+    /// `<checkout target>/<kind>`
+    pub target: String,
+}
+
 /// A worktree folder's row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderRow {
@@ -362,6 +376,8 @@ pub struct GitFolders<'a> {
     /// the checkout's click target name
     pub target: &'a str,
     pub folders: &'a CheckoutFolders,
+    /// the folders every worktree shows
+    pub every: &'a BTreeSet<FolderKind>,
     /// `None` until read
     pub git: Option<&'a CheckoutGit>,
     pub layout: FileLayout,
@@ -375,6 +391,16 @@ impl GitFolders<'_> {
         let badge = |kind: FolderKind, count: Option<usize>| FolderState { kind, count, shown: self.folders.is_shown(kind) };
         let git = [FolderKind::Uncommitted, FolderKind::SinceBase, FolderKind::Commits].map(|kind| badge(kind, self.git.and_then(|git| count_of(git, kind))));
         std::iter::once(badge(FolderKind::Processes, Some(processes))).chain(git).chain([badge(FolderKind::Files, None)]).collect()
+    }
+
+    /// A badge per folder, in [`Self::states`]' order, each marked where it differs from every worktree's.
+    pub fn badges(&self, processes: usize) -> Vec<FolderBadge> {
+        let badge = |state: FolderState| FolderBadge {
+            apart: self.folders.is_apart(state.kind, self.every),
+            target: format!("{}/{}", self.target, state.kind.name()),
+            state,
+        };
+        self.states(processes).into_iter().map(badge).collect()
     }
 
     /// Why git folder `kind` lists nothing; `None` while it lists something or is not read.

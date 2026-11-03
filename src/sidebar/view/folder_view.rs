@@ -2,16 +2,18 @@
 
 use std::rc::Rc;
 
-use gpui::{Context, Div, Stateful, div, prelude::*, rgb};
+use gpui::{App, ClickEvent, Context, Div, Pixels, Stateful, div, prelude::*, px, rgb};
 
 use super::{RowAction, RowLine, RowMouse, RunActionsIn, Shown, bind_row, chevron, count_badge, dot_note, keep_shown, row_action, row_actions, run_actions, run_label, secondary, shared};
 use crate::click_targets::{Listener, target};
 use crate::clipboard;
 use crate::icons;
 use crate::overview::git_ui::mark_label;
+use crate::project::CheckoutRef;
+use crate::script::folder_switches::switches_every_worktree;
 use crate::script::keymap::ClipboardTarget;
-use crate::sidebar::folders::{ChangeFolderRow, ChangeRow, CommitRow, CommitsMoreRow, FolderKind, FolderRow, NoteRow};
-use crate::sidebar::rows::RunRow;
+use crate::sidebar::folders::{ChangeFolderRow, ChangeRow, CommitRow, CommitsMoreRow, FolderBadge, FolderKind, FolderRow, NoteRow};
+use crate::sidebar::rows::{RunRow, target_name};
 use crate::theme::Theme;
 use crate::tooltip;
 use crate::workspace::{Workspace, icon};
@@ -186,4 +188,85 @@ fn link_actions(run: &RunRow, line: &RowLine, cx: &mut Context<Workspace>) -> Ve
         RowAction { id: "open-link", icon: icons::WEB, tip: "Open in the browser".to_owned(), on_click: Box::new(open) },
         RowAction { id: "copy-link", icon: icons::COPY, tip: "Copy the link".to_owned(), on_click: Box::new(copy) },
     ]
+}
+
+/// `Commits (5) · this worktree only`, then what a click (and, with `every_worktree`, an Alt+click) does.
+fn badge_tip(badge: &FolderBadge, cx: &App) -> String {
+    let state = &badge.state;
+    let count = state.count.map_or_else(String::new, |count| format!(" ({count})"));
+    let apart = if badge.apart { " · this worktree only" } else { "" };
+    let clicks = if switches_every_worktree(cx) { "Click: this worktree · Alt+click: every worktree" } else { "Click: this worktree" };
+    format!("{}{count}{apart}\n{clicks}", state.kind.title())
+}
+
+/// The mark of a badge set apart from every worktree's: a 4 px accent dot at its top right.
+fn apart_dot(theme: Theme) -> Div {
+    div().absolute().top(px(1.)).right(px(1.)).size(px(4.)).rounded_full().bg(rgb(theme.accent))
+}
+
+/// A badge's click: its folder in `checkout` alone; with Alt (Option on macOS), while `every_worktree` is on, in every
+/// worktree.
+fn toggle_badge(badge: &FolderBadge, checkout: &CheckoutRef, cx: &mut Context<Workspace>) -> impl Fn(&ClickEvent, &mut gpui::Window, &mut App) + 'static {
+    let (kind, checkout) = (badge.state.kind, checkout.clone());
+    target(target_name("badge", &badge.target), cx.listener(move |workspace, event: &ClickEvent, _window, cx| {
+        match event.modifiers().alt && switches_every_worktree(cx) {
+            true => workspace.toggle_folder_everywhere(kind, cx),
+            false => workspace.toggle_folder_shown(&checkout, kind, cx),
+        }
+    }), cx)
+}
+
+/// One badge: its folder's icon and count, highlighted while the folder shows.
+fn folder_badge(badge: &FolderBadge, checkout: &CheckoutRef, theme: Theme, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    let sizes = &theme.sizes.tree;
+    let toggle = toggle_badge(badge, checkout, cx);
+    let state = &badge.state;
+    let (fill, text) = if state.shown { (Some(theme.border), theme.text) } else { (None, secondary(theme)) };
+    div()
+        .id(("folder-badge", state.kind as usize))
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(sizes.tag_gap.px())
+        .px(sizes.count_padding_x.px())
+        .rounded(sizes.count_radius.px())
+        .text_size(sizes.count_text_size.px())
+        .text_color(rgb(text))
+        .map(|button| match fill {
+            Some(fill) => button.bg(rgb(fill)),
+            None => button,
+        })
+        .hover(|style| style.bg(rgb(theme.border)))
+        .relative()
+        .children(badge.apart.then(|| apart_dot(theme)))
+        .child(icon(theme, state.kind.icon()))
+        .children(state.count.map(|count| count.to_string()))
+        .tooltip(tooltip::text_tooltip(badge_tip(badge, cx)))
+        .on_click(move |event, window, cx| {
+            cx.stop_propagation();
+            toggle(event, window, cx);
+        })
+}
+
+/// The badges at the end of a checkout's row (or a single checkout's project row), shown while the row is hovered,
+/// pinned like row actions to the panel's visible right edge, `after` short of it, over a long name.
+pub(super) fn folder_badges(badges: &[FolderBadge], checkout: &CheckoutRef, line: &RowLine, after: Pixels, cx: &mut Context<Workspace>) -> Div {
+    let theme = line.theme;
+    let sizes = &theme.sizes.tree;
+    let height = theme.sizes.icon.0 + 2. * sizes.action_padding.0;
+    let buttons: Vec<Stateful<Div>> = badges.iter().map(|badge| folder_badge(badge, checkout, theme, cx)).collect();
+    div()
+        .absolute()
+        .top(px((sizes.row_height.0 - height) / 2.))
+        .right(sizes.padding_right.px() + after)
+        .h(px(height))
+        .rounded(sizes.action_radius.px())
+        .bg(rgb(theme.hover))
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap_0p5()
+        .invisible()
+        .group_hover(line.group.clone(), |style| style.visible())
+        .children(buttons)
 }
