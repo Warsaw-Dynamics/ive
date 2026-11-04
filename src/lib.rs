@@ -57,6 +57,7 @@ mod progress_bar;
 mod rename;
 mod retry;
 mod run;
+mod schedule;
 mod project;
 mod project_list;
 mod prompt;

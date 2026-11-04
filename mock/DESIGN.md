@@ -635,6 +635,71 @@ another tab just closes). Neither asks first.
 - **Not done.** Dragging to pick (Ctrl+middle drag): the rows already drag to reorder, and Shift+click covers ranges.
   Picking on the tab row itself.
 
+## Scheduled commands (in the app since 2026-11-04)
+
+An agent schedules a command for later over MCP: a follow-up once CI finished, a review was answered, a deploy
+landed. IVE never runs one by itself: when one comes due it lands in the **Scheduled commands** tab, and the user
+ticks what runs. Mock: `schedule.js`, `components/checkouts/scheduled-tab.html`, Settings › Scheduled;
+`checkouts.html#tab=scheduled` opens the tab as IVE would start with four missed commands; the Mock menu's
+"Scheduled commands" has "Two come due" (while running; send IVE to the background first for the desktop
+notification) and "Missed while closed".
+
+- **MCP** (`schedule_command`, `list_scheduled`, `cancel_scheduled`):
+  - `schedule_command` takes `name` (the terminal's title), `description` (why, what to check), `at` (RFC 3339 with
+    an offset) or `in` (`"2h"`, `"30m"`), and optionally `repeat` (5-field cron, `"0 7 * * 1-5"`).
+  - It also takes `project` (the main checkout's path), `branch`, `worktree` (a path; default: the `.ive.toml`
+    folder's `<branch, / as ->`), `source_branch` (where a missing branch starts) and `command`. `directory` can
+    stand for project and worktree (the agent's own cwd), resolved as `open_terminal` does.
+  - It answers `{ id, at }`, with `at` in UTC and local time, so an agent sees what its time meant.
+  - The same `name` in the same project replaces the pending one, so a retrying agent does not schedule twice.
+  - `list_scheduled` returns pending, due and the last 7 days' history (state, process id, error), so an agent can
+    check that its follow-up ran.
+- **Kept** in `~/.config/ive/<profile>/schedule.toml` (0600, written whole and renamed), per profile like the rest.
+- **Coming due**: IVE checks the wall clock every minute (a sleep would drift across suspend and clock changes).
+  - A due command goes to the tab and nothing runs. The tab opens behind the shown one with the attention dot
+    (`N commands are due`). In the background, one desktop notification says how many are due and names them;
+    a click shows the tab.
+  - Missed while IVE was closed: due when it starts ("IVE was closed then"), and the tab is shown.
+  - A repeating command that is still due when its next time passes stays one row, with "missed N more times".
+- **The tab**, one per window, with `schedule.svg` (the Tasks plugin's New UI stopwatch). Each row has:
+  - a checkbox (off at first), the name, `↻ <repeat>` and when it was due;
+  - the description;
+  - where it runs (`project · ⎇ branch` and the checkout path), or what Run does first;
+  - the **whole command**, wrapped and never cut, on the terminal colours;
+  - when it was scheduled.
+  - All ticks every row that can run. **Run selected** starts each ticked command in a new terminal (always a new
+    one), titled with the name; the row moves under **Started**, and a click there shows the terminal. **Skip
+    selected**: this time does not run; a repeating command goes on to its next time. Unticked rows stay due.
+- **Where it runs**, resolved when Run is pressed:
+  1. the checkout with that branch: a worktree, or the main checkout (never checked out anew);
+  2. the branch exists, local or on `origin`, but has no worktree: a new worktree in the `.ive.toml` folder;
+  3. no such branch: `git fetch origin`, a new branch from `origin/<source_branch>`, then its worktree;
+  4. no source branch given, or none on `origin`: the row cannot run;
+  5. the project's folder is gone: the row cannot run (red text, its checkbox off). **Remove** puts it in the
+     history as failed. A desktop notification says so when it comes due with IVE in the background.
+  - A project that exists but is not open opens first, as `open_project`. A hidden worktree is shown again.
+- **Settings › Scheduled**:
+  - Due (with Review, which shows the tab);
+  - Coming: name, repeat, where, when, the description, the command on one line, and **Cancel** (a repeating
+    one with every later time);
+  - Last 7 days: started (a click shows its terminal while it lives), skipped, failed (with why), cancelled;
+  - "Saved to …schedule.toml".
+- **The terminal** gets `IVE_SCHEDULE_ID`, `IVE_SCHEDULE_NAME` and `IVE_SCHEDULE_DESCRIPTION`. An agent's follow-up
+  is usually `claude --resume <session> "<what to check>"`: the same conversation goes on.
+- **Bounds**: 100 pending at most; `at` within a year; name 80 characters, description 2000, command 8000;
+  `repeat` no more often than every 15 minutes. A request outside them is refused, with the value that broke it.
+- **Always run this one** (a repeating command's row): ticked when it runs, it keeps that exact command as allowed.
+  - Its later times start unasked, behind the shown tab. Its terminal calls for the user as a program in it would:
+    the dot and the bell, and while IVE is in the background a desktop notification whose click shows it.
+  - The history marks it `started, unasked`.
+  - An agent replacing the command (same name) drops the permission: the next time comes to the tab again. So does
+    a target that cannot run (a lost project).
+  - Settings › Scheduled shows `runs unasked` on it, and **Ask again** takes the permission back.
+  - Kept in `schedule.toml` as the allowed command's text, compared whole.
+- **In the app** (spec `docs/superpowers/specs/2026-11-04-scheduled-commands-design.md`): the cron shows as written
+  (`↻ 0 7 * * 1-5`), not in words. The terminal's first title is the name, until the shell sets its own.
+- **Open points**: whether the tree should mark a worktree with something coming; the cron in words.
+
 ## Removed during the design (do not implement)
 
 Layouts 1–3 (git on rows, git folder, git tab) · title bar and its run widget · terminal icon

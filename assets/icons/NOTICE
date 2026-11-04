@@ -12,6 +12,9 @@ Brand logos among them (Docker, Terraform, GraphQL, Groovy, Jupyter, Microsoft W
 Swift, C#, Bazel) are trademarks of their respective owners. The Apache 2.0 license grants
 no trademark rights (section 6); review their use before distributing IVE publicly.
 
+schedule.svg (dark/ and light/) is copied unmodified from the IntelliJ Tasks plugin's New UI icons
+(plugins/tasks/tasks-core/resources/icons/expui/toolWindowTimer.svg), under the same licence.
+
 terminal.svg, warning.svg, locate.svg, arrow-up.svg, arrow-down.svg and rollback.svg (dark/ and light/) are not
 from the IntelliJ set: they were drawn for IVE in the same style.
 

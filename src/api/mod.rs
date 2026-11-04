@@ -64,6 +64,27 @@ pub enum Request {
     NextFrame,
     /// the main window as last drawn, a PNG in base64
     Screenshot,
+    /// a command for later, in a project and branch
+    ScheduleCommand(ScheduleArgs),
+    /// pending and due scheduled commands, and the last days' history
+    ListScheduled,
+    CancelScheduled { id: u64 },
+}
+
+/// `schedule_command`'s arguments as the agent gave them; the workspace checks and resolves them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScheduleArgs {
+    pub name: String,
+    pub description: Option<String>,
+    pub command: String,
+    pub at: Option<String>,
+    pub delay: Option<String>,
+    pub repeat: Option<String>,
+    pub project: Option<String>,
+    pub directory: Option<String>,
+    pub branch: Option<String>,
+    pub worktree: Option<String>,
+    pub source_branch: Option<String>,
 }
 
 /// Input for whatever is on screen or has the keyboard.

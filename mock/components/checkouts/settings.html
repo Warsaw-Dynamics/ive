@@ -1,7 +1,7 @@
 <!-- settings_page/mod.rs: the nav (200 px, scrolls), then the page and "Saved to …". -->
 <div class="settings-page">
   <nav class="settings-nav">
-    <template x-for="item in ['Appearance', 'Scripts', 'Third-Party Software']" :key="item">
+    <template x-for="item in ['Appearance', 'Scripts', 'Scheduled', 'Third-Party Software']" :key="item">
       <button class="settings-nav__item" type="button" :class="{ 'settings-nav__item--on': settingsPage === item }" @click="settingsPage = item" x-text="item"></button>
     </template>
   </nav>
@@ -58,6 +58,65 @@
       </div>
     </template>
 
+    <!-- A proposal (DESIGN.md "Scheduled commands"): what agents scheduled over MCP. Due ones first (Review shows the
+         Scheduled commands tab), then the coming ones (Cancel), then what became of them in the last 7 days. -->
+    <template x-if="settingsPage === 'Scheduled'">
+      <div class="settings-body__page sched-settings">
+        <h2 class="settings-body__title">Scheduled</h2>
+        <div class="muted">Commands agents scheduled over MCP (<code>schedule_command</code>). When one comes due IVE opens the
+          Scheduled commands tab; nothing runs until you tick it there. Missed while IVE was closed: due when it starts.</div>
+        <template x-if="dueSchedules().length">
+          <div>
+            <div class="sched-settings__head">
+              <span class="scripts__title" x-text="'Due (' + dueSchedules().length + ')'"></span>
+              <button class="settings-body__link" type="button" @click="openScheduledTab('show')">Review</button>
+            </div>
+            <template x-for="s in dueSchedules()" :key="s.id">
+              <div class="sched-settings__row">
+                <div class="sched-settings__main">
+                  <span class="sched__name" x-text="s.name"></span>
+                  <span class="muted" x-text="scheduleWhere(s) + ' · due ' + scheduleWhen(s.when)"></span>
+                </div>
+                <code class="sched-settings__cmd" x-text="s.command" :title="s.command"></code>
+              </div>
+            </template>
+          </div>
+        </template>
+        <div class="sched-settings__head"><span class="scripts__title" x-text="'Coming (' + pendingSchedules().length + ')'"></span></div>
+        <template x-if="pendingSchedules().length === 0"><div class="muted">Nothing scheduled.</div></template>
+        <template x-for="s in pendingSchedules()" :key="s.id">
+          <div class="sched-settings__row">
+            <div class="sched-settings__main">
+              <span class="sched__name" x-text="s.name"></span>
+              <template x-if="s.repeat"><span class="sched__chip" x-text="'↻ ' + s.repeat.text"></span></template>
+              <span class="muted" x-text="scheduleWhere(s) + ' · ' + scheduleClock(s.when) + ' (' + scheduleWhen(s.when) + ')'"></span>
+              <template x-if="runsUnasked(s)">
+                <span class="sched__chip sched__chip--unasked" title="Allowed for this exact command: it starts without the Scheduled commands tab">runs unasked</span>
+              </template>
+              <template x-if="runsUnasked(s)">
+                <button class="settings-body__link" type="button" @click="askAgain(s)">Ask again</button>
+              </template>
+              <button class="settings-body__link sched-settings__action" type="button" @click="cancelSchedule(s)"
+                      :title="s.repeat ? 'Cancels this and every later time' : ''">Cancel</button>
+            </div>
+            <template x-if="s.description"><div class="sched__desc" x-text="s.description"></div></template>
+            <code class="sched-settings__cmd" x-text="s.command" :title="s.command"></code>
+          </div>
+        </template>
+        <div class="sched-settings__head"><span class="scripts__title">Last 7 days</span></div>
+        <template x-if="scheduleHistory().length === 0"><div class="muted">Nothing yet.</div></template>
+        <div class="rows">
+          <template x-for="s in scheduleHistory()" :key="s.id">
+            <div class="rows__row" :class="{ 'rows__row--click': s.process !== null }" @click="showScheduledProcess(s)" :title="s.error || s.command">
+              <span class="sched-settings__state" :class="'sched-settings__state--' + s.state" x-text="scheduleStateText(s) + (s.unasked ? ', unasked' : '')"></span>
+              <span class="rows__grow" x-text="s.name + ' · ' + scheduleWhere(s) + (s.error ? ' · ' + s.error : '')"></span>
+              <span class="rows__age" x-text="scheduleWhen(s.done)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
     <!-- third_party.rs: the list; a row opens its licence -->
     <template x-if="settingsPage === 'Third-Party Software'">
       <div class="settings-body__page">
@@ -69,6 +128,6 @@
         </div>
       </div>
     </template>
-    <div class="settings-body__saved">Saved to /home/me/.config/ive/default/settings.toml</div>
+    <div class="settings-body__saved" x-text="settingsPage === 'Scheduled' ? 'Saved to ' + scheduleConfigFile() : 'Saved to /home/me/.config/ive/default/settings.toml'"></div>
   </div>
 </div>

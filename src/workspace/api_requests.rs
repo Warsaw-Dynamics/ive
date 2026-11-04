@@ -204,6 +204,9 @@ impl Workspace {
                 self.drop_rows(super::tree_drop::RowsDrop { rows, onto, force }, window, cx)
             }
             Request::ListRunConfigs { folder } => self.list_run_configs(&self.resolve(&folder)),
+            Request::ScheduleCommand(args) => self.schedule_command(args, cx),
+            Request::ListScheduled => Ok(self.list_scheduled()),
+            Request::CancelScheduled { id } => self.cancel_scheduled(id, cx).map(|()| json!("ok")),
 
             Request::NextFrame | Request::WindowInput(_) | Request::OpenProject { .. } | Request::RunConfig { .. } | Request::Screenshot => {
                 Err("this request is answered before it reaches the workspace".to_owned())
@@ -392,7 +395,7 @@ impl Workspace {
     }
 
     /// A path as the tools take it: absolute, or relative to the current checkout.
-    fn resolve(&self, path: &Path) -> PathBuf {
+    pub(super) fn resolve(&self, path: &Path) -> PathBuf {
         match self.current_checkout() {
             Some(checkout) if path.is_relative() => checkout.path.join(path),
             _ => path.to_path_buf(),

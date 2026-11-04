@@ -649,3 +649,49 @@ button.card:hover { border-color: var(--accent); }
 .md td code { white-space: nowrap; }
 .md th, .md td { padding: 4px 12px; border: 1px solid var(--border); text-align: left; }
 .md th { font-weight: 600; background: color-mix(in srgb, var(--hover) 45%, transparent); }
+
+/* Scheduled commands (a proposal, DESIGN.md "Scheduled commands"): the tab of due commands, and Settings › Scheduled. */
+.sched { font-size: 13px; }
+.sched__title { margin-top: 14px; font-size: 14px; font-weight: 600; }
+.sched__hint { margin-top: 2px; font-size: 12px; }
+.sched__bar { display: flex; align-items: center; margin: 12px 0 4px; }
+.sched__all { margin-left: 8px; }
+.sched__row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px; border-top: 1px solid var(--border); }
+.sched__row:last-of-type { border-bottom: 1px solid var(--border); }
+.sched__row--on { background: var(--hover); }
+.sched__row--failed .sched__body { opacity: 0.8; }
+.sched__tick { margin: 2px 0 0 0; }
+.sched__tick input:disabled + .checkbox__tick { opacity: 0.4; cursor: not-allowed; }
+.sched__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sched__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sched__name { font-weight: 600; }
+.sched__chip { padding: 0 6px; border-radius: 4px; background: var(--sidebar); border: 1px solid var(--border); font-size: 11px; }
+.sched__due { font-size: 12px; }
+.sched__desc { color: var(--text); }
+.sched__where { display: flex; align-items: center; gap: 4px; font-size: 12px; flex-wrap: wrap; }
+.sched__error { color: var(--error, #f75464); }
+/* the whole command, wrapped, never cut: what the user agrees to run */
+.sched__command {
+  margin: 2px 0 0; padding: 6px 8px; border-radius: 6px; background: var(--term-bg); color: var(--term-fg);
+  border: 1px solid var(--border); font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all;
+}
+.sched__meta { font-size: 11px; }
+.sched__remove { margin-top: 2px; font-size: 12px; }
+.sched__buttons { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.sched__buttons .button:disabled, .sched__buttons .toggle:disabled { opacity: 0.5; cursor: default; }
+.sched__started { margin-top: 20px; }
+.sched__section { font-size: 12px; margin-bottom: 4px; }
+.sched__startedrow { width: 100%; text-align: left; }
+.sched__footer { margin-top: 24px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.sched-settings { font-size: 13px; }
+.sched-settings__head { display: flex; align-items: center; gap: 12px; margin: 18px 0 6px; }
+.sched-settings__row { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-top: 1px solid var(--border); }
+.sched-settings__main { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sched-settings__action { margin-left: auto; }
+.sched-settings__cmd { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.sched-settings__state { width: 112px; flex: none; font-size: 12px; }
+.sched-settings__state--started { color: var(--term-green); }
+.sched-settings__state--failed { color: var(--error, #f75464); }
+.sched-settings__state--skipped, .sched-settings__state--cancelled { color: var(--muted); }
+.sched__always { margin: 4px 0 0; align-self: flex-start; }
+.sched__chip--unasked { color: var(--attention, #e0bb65); border-color: currentColor; }

@@ -46,6 +46,12 @@ impl Workspace {
         self.after_settings_change(saved, cx);
     }
 
+    /// Settings, opened or shown, on `page`.
+    pub fn open_settings_page(&mut self, page: SettingsPage, window: &mut Window, cx: &mut Context<Self>) {
+        self.open_settings(window, cx);
+        self.show_settings_page(page, cx);
+    }
+
     pub fn show_settings_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {
         if let Some(view) = self.settings_view() {
             view.show_page(page);

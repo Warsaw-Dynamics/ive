@@ -44,7 +44,8 @@ screenshot shows the whole window. list_targets names what click can press on sc
 (tree rows, overview sections and cards, git views and their rows, scratch rows and buttons, prompt buttons); \
 window_keys and window_text type into whatever has the keyboard (click new-worktree first to type a branch). \
 show_process brings back the tab of a process, by its id from list_projects. Run configurations (.run.toml in a \
-folder): list_run_configs lists them, run_config runs one. The hub (Ctrl+Shift+E, open_hub) lists recent tabs, changes \
+folder): list_run_configs lists them, run_config runs one. schedule_command schedules a command for later (the user \
+picks it when due), list_scheduled and cancel_scheduled manage them. The hub (Ctrl+Shift+E, open_hub) lists recent tabs, changes \
 and processes and searches every file: window_text types its query, window_keys its keys, click hub-row:<n>.";
 
 /// Starts the MCP server on `127.0.0.1:port` (0: any free port) and returns the port it listens on; requests need
@@ -185,6 +186,39 @@ struct RunConfigArgs {
     folder: String,
     #[schemars(description = "the configuration's key, as [run.<key>] or [serve.<key>] names it")]
     key: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ScheduleCommandArgs {
+    #[schemars(description = "short name, one line, at most 80 characters; the terminal's first title. The same name in the same project replaces a pending or due command")]
+    name: String,
+    #[schemars(description = "why, and what to check then; at most 2000 characters")]
+    description: Option<String>,
+    #[schemars(description = "typed into a new terminal's shell, then Enter, e.g. claude --resume <session> \"CI should be done: read the result and fix failures\"")]
+    command: String,
+    #[schemars(description = "when: RFC 3339 with an offset, e.g. 2026-11-04T16:00:00+01:00. Give at or in (or neither with repeat)")]
+    at: Option<String>,
+    #[serde(rename = "in")]
+    #[schemars(rename = "in", description = "when, as a delay from now: 90s, 30m, 2h, 1d or a sum such as 1h30m")]
+    delay: Option<String>,
+    #[schemars(description = "repeat on a 5-field cron in local time, e.g. \"0 7 * * 1-5\"; not more often than every 15 minutes")]
+    repeat: Option<String>,
+    #[schemars(description = "absolute path of the project's folder (any folder in the git repository); with branch")]
+    project: Option<String>,
+    #[schemars(description = "instead of project: a folder in an open project; its checkout's project and branch (branch overrides it)")]
+    directory: Option<String>,
+    #[schemars(description = "the branch to run on; its checkout is used, or a worktree is made for it")]
+    branch: Option<String>,
+    #[schemars(description = "where a new worktree for branch goes, absolute or relative to the main checkout; default: the .ive.toml worktrees folder")]
+    worktree: Option<String>,
+    #[schemars(description = "where branch starts when it does not exist yet: origin/<source_branch> after a fetch")]
+    source_branch: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ScheduledIdArgs {
+    #[schemars(description = "scheduled command id from schedule_command or list_scheduled")]
+    id: u64,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -520,6 +554,46 @@ a live one is shown instead. Answers with its process id, or with the variables 
 (missing), which only the user enters, in IVE.")]
     async fn run_config(&self, Parameters(args): Parameters<RunConfigArgs>) -> Result<CallToolResult, ErrorData> {
         Ok(self.ask(Request::RunConfig { folder: PathBuf::from(args.folder), key: args.key }).await)
+    }
+
+    #[tool(description = "Schedule a command for later, to follow up on your work (CI done, a review answered): at a time \
+(at, in) or repeating (repeat), in a project and branch. When it comes due IVE runs nothing by itself: the user reads \
+it in the Scheduled commands tab and picks what runs, in a new terminal in that branch's checkout (a worktree is made \
+when missing, the branch started from source_branch when new). Missed while IVE was closed: due when it starts. \
+Answers {id, at, at_local, replaced}.")]
+    async fn schedule_command(&self, Parameters(args): Parameters<ScheduleCommandArgs>) -> Result<CallToolResult, ErrorData> {
+        let texts = [("command", &args.command), ("name", &args.name)];
+        let paths = [("project", &args.project), ("directory", &args.directory), ("worktree", &args.worktree)];
+        let refused = texts.iter().find_map(|(what, text)| too_long(what, text, MAX_TEXT_BYTES));
+        let refused = refused.or_else(|| paths.iter().find_map(|(what, path)| path.as_deref().and_then(|path| too_long(what, path, MAX_PATH_BYTES))));
+        if let Some(refused) = refused {
+            return Ok(refused);
+        }
+        let args = api::ScheduleArgs {
+            name: args.name,
+            description: args.description,
+            command: args.command,
+            at: args.at,
+            delay: args.delay,
+            repeat: args.repeat,
+            project: args.project,
+            directory: args.directory,
+            branch: args.branch,
+            worktree: args.worktree,
+            source_branch: args.source_branch,
+        };
+        Ok(self.ask(Request::ScheduleCommand(args)).await)
+    }
+
+    #[tool(description = "Scheduled commands: pending and due ones (scheduled), then what started, was skipped, failed \
+or was cancelled in the last 7 days (history), each with its state, time, target, runs_unasked and process id.")]
+    async fn list_scheduled(&self) -> Result<CallToolResult, ErrorData> {
+        Ok(self.ask(Request::ListScheduled).await)
+    }
+
+    #[tool(description = "Cancel a pending or due scheduled command by id (a repeating one with every later time).")]
+    async fn cancel_scheduled(&self, Parameters(args): Parameters<ScheduledIdArgs>) -> Result<CallToolResult, ErrorData> {
+        Ok(self.ask(Request::CancelScheduled { id: args.id }).await)
     }
 
     #[tool(description = "List what click can press now, by name. Sidebar: open-project, recent:<id>, open-folder, \

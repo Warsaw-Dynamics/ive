@@ -63,6 +63,7 @@ mod waits;
 mod scratches;
 mod scripts;
 mod settings_actions;
+pub(crate) mod schedules;
 mod menu;
 mod owners;
 mod path_actions;
@@ -196,6 +197,8 @@ pub struct Workspace {
     _notice_clicks: Task<()>,
     /// which IVE window has the keyboard, as the activation observers last told
     active_window: crate::attention::ActiveWindow<AnyWindowHandle>,
+    /// commands agents scheduled for later, and what the Scheduled commands tab shows of them
+    schedules: schedules::Schedules,
 }
 
 /// The hub's keys, seen before its query field's own bindings (Enter, Backspace) take them.
@@ -288,6 +291,10 @@ impl Workspace {
         let scripts = scripts::ScriptWatch::start(startup.scripts, script::default_dir(), &mut watches.paths, window, cx);
         let (clicked, notice_clicks) = futures::channel::mpsc::unbounded();
         let desktop_notices = crate::desktop_notice::DesktopNotices::new(clicked);
+        let (schedules, schedule_problem) = schedules::Schedules::load();
+        if let Some(problem) = schedule_problem {
+            crate::notices::notify(cx, problem);
+        }
         let mut workspace = Self {
             projects: Vec::new(),
             recent: startup.saved.recent.clone(),
@@ -356,6 +363,7 @@ impl Workspace {
             desktop_notices,
             _notice_clicks: attention::show_clicked(notice_clicks, window, cx),
             active_window: crate::attention::ActiveWindow::default(),
+            schedules,
         };
         workspace.active_window.observe(window.window_handle(), window_focus(window));
         // a closing window goes through the quit prompt; IVE quits from there. On macOS the × hides the window
@@ -394,6 +402,10 @@ impl Workspace {
             tracing::info_span!("restore_tabs").in_scope(|| workspace.restore_tabs(tabs, &sessions, window, cx));
         }
         tracing::info_span!("launch").in_scope(|| workspace.start(startup.launch, window, cx));
+        // another IVE of the profile runs the clock; this one only schedules
+        if let tab_state::TabOwnership::Owner = workspace.tab_ownership {
+            workspace.start_schedule_clock(window, cx);
+        }
         workspace.update_title(window);
         workspace
     }
@@ -686,7 +698,7 @@ impl Workspace {
             Tab::ProjectOverview(overview) => Some(TreeKey::Project(overview.project.clone())),
             Tab::Commit(tab) => Some(TreeKey::Project(tab.project.clone())),
             Tab::GitLog(tab) => Some(TreeKey::Project(tab.project.clone())),
-            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) | Tab::Conflicts(_) => None,
+            Tab::Diff(_) | Tab::Settings { .. } | Tab::Failed { .. } | Tab::Scratch(_) | Tab::Unloaded(_) | Tab::Hub(_) | Tab::Conflicts(_) | Tab::Scheduled => None,
         }
     }
 

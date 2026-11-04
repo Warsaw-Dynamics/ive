@@ -24,11 +24,35 @@ pub fn worktree_dir(main_dir: &Path, folder: &Path, branch: &BranchName) -> Path
 /// failure undoes what was written.
 pub fn add_worktree(main_dir: &Path, branch: &BranchName) -> Result<PathBuf, GitError> {
     let folder = worktrees_folder(main_dir).map_err(|error| refused(main_dir, error))?;
-    let dir = worktree_dir(main_dir, &folder, branch);
+    add_worktree_at(main_dir, branch, &worktree_dir(main_dir, &folder, branch))
+}
+
+/// As [`add_worktree`], in folder `dir`.
+pub fn add_worktree_at(main_dir: &Path, branch: &BranchName, dir: &Path) -> Result<PathBuf, GitError> {
+    let fail = failed(OPERATION, main_dir);
+    let (repo, place) = prepare(main_dir, dir)?;
+    let created = local_branch(&repo, branch).map_err(&fail)?;
+    finish(&repo, place, branch.local_name(), created).map_err(|error| fail_or_refused(main_dir, error))
+}
+
+/// A new local branch `branch` at commit `start`, checked out in a worktree in folder `dir`; the branch goes again
+/// when the worktree fails.
+pub fn add_worktree_from(main_dir: &Path, branch: &str, start: git2::Oid, dir: &Path) -> Result<PathBuf, GitError> {
+    let fail = failed(OPERATION, main_dir);
+    let (repo, place) = prepare(main_dir, dir)?;
+    if repo.find_branch(branch, BranchType::Local).is_ok() {
+        return Err(refused(main_dir, format!("branch {branch} exists already")));
+    }
+    let commit = repo.find_commit(start).map_err(&fail)?;
+    repo.branch(branch, &commit, false).map_err(&fail)?;
+    finish(&repo, place, branch, LocalBranch::Created(branch.to_owned())).map_err(|error| fail_or_refused(main_dir, error))
+}
+
+/// The repository and where the worktree goes; refused when the folder exists.
+fn prepare(main_dir: &Path, dir: &Path) -> Result<(Repository, Place), GitError> {
     if dir.exists() {
         return Err(refused(main_dir, format!("{} already exists", dir.display())));
     }
-    let fail = failed(OPERATION, main_dir);
     let repo = repo::open(main_dir)?;
     let folder = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
     let name = free_name(&repo, &folder).ok_or_else(|| refused(main_dir, format!("no free worktree name like {folder}")))?;
@@ -36,13 +60,29 @@ pub fn add_worktree(main_dir: &Path, branch: &BranchName) -> Result<PathBuf, Git
     if let Some(parent) = dir.parent() {
         fs::create_dir_all(parent).map_err(|error| refused(main_dir, format!("cannot create {}: {error}", parent.display())))?;
     }
-    let created = local_branch(&repo, branch).map_err(&fail)?;
-    let place = Place { name, dir };
-    match add(&repo, &place, branch.local_name()) {
-        Ok(()) => dunce::canonicalize(&place.dir).map_err(|error| refused(main_dir, format!("cannot read {}: {error}", place.dir.display()))),
+    Ok((repo, Place { name, dir: dir.to_path_buf() }))
+}
+
+/// Why [`finish`] failed: git's error, or reading the new folder.
+enum Unfinished {
+    Git(git2::Error),
+    Read(String),
+}
+
+fn fail_or_refused(main_dir: &Path, error: Unfinished) -> GitError {
+    match error {
+        Unfinished::Git(error) => failed(OPERATION, main_dir)(error),
+        Unfinished::Read(message) => refused(main_dir, message),
+    }
+}
+
+/// Adds the worktree of local branch `branch` at `place`; on failure undoes it and the branch when it was `created`.
+fn finish(repo: &Repository, place: Place, branch: &str, created: LocalBranch) -> Result<PathBuf, Unfinished> {
+    match add(repo, &place, branch) {
+        Ok(()) => dunce::canonicalize(&place.dir).map_err(|error| Unfinished::Read(format!("cannot read {}: {error}", place.dir.display()))),
         Err(error) => {
-            undo(&repo, &place, created);
-            Err(fail(error))
+            undo(repo, &place, created);
+            Err(Unfinished::Git(error))
         }
     }
 }
@@ -173,6 +213,38 @@ mod tests {
         let opened = Repository::open(&dir).expect("open worktree");
         assert_eq!(dir, repo.path().join(".worktree/topic"));
         assert_eq!((opened.head().expect("HEAD").shorthand().ok(), dir.join("f.txt").is_file()), (Some("topic"), true));
+    }
+
+    #[test]
+    fn should_add_a_new_branch_from_a_commit_in_a_given_folder() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("f.txt", "f\n");
+        let start = repo.commit("root");
+        let dir = repo.path().join("elsewhere/new");
+
+        // when
+        let added = add_worktree_from(repo.path(), "new-topic", start, &dir).expect("worktree");
+
+        // then
+        let opened = Repository::open(&added).expect("open worktree");
+        assert_eq!(added, dunce::canonicalize(&dir).unwrap());
+        assert_eq!(opened.head().expect("HEAD").shorthand().ok(), Some("new-topic"));
+    }
+
+    #[test]
+    fn should_refuse_a_new_branch_that_exists() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("f.txt", "f\n");
+        let start = repo.commit("root");
+        repo.branch("topic");
+
+        // when
+        let refused = add_worktree_from(repo.path(), "topic", start, &repo.path().join("wt/topic"));
+
+        // then
+        assert!(refused.unwrap_err().message.contains("exists already"));
     }
 
     #[test]

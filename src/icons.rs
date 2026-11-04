@@ -47,6 +47,8 @@ pub const FOLDER_RUN: &str = "folder-run.svg";
 pub const FILE_HTML: &str = "file-html.svg";
 /// IntelliJ's scratch clock, drawn over a file icon
 pub const SCRATCH_BADGE: &str = "scratch.svg";
+/// the Scheduled commands tab: the Tasks plugin's New UI stopwatch
+pub const SCHEDULE: &str = "schedule.svg";
 pub const WARNING: &str = "warning.svg";
 pub const WINDOW_MINIMIZE: &str = "window-minimize.svg";
 pub const WINDOW_MAXIMIZE: &str = "window-maximize.svg";

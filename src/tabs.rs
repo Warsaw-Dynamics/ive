@@ -66,7 +66,6 @@ impl<T> Tabs<T> {
         id
     }
 
-    #[cfg(test)]
     /// Opens `item` right of the shown tab without showing it, permanent: the shown tab, temporary or not, stays.
     /// Tabs opened behind one after another keep their order.
     pub fn open_behind(&mut self, item: T) -> TabId {

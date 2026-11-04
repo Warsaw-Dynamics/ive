@@ -179,6 +179,9 @@
   <template x-for="tab in (currentTab() && currentTab().kind === 'conflicts' ? [currentTab()] : [])" :key="tab.key">
     <div class="fill" x-include="components/checkouts/conflicts-tab.html"></div>
   </template>
+  <template x-for="tab in (currentTab() && currentTab().kind === 'scheduled' ? [currentTab()] : [])" :key="tab.key">
+    <div class="fill" x-include="components/checkouts/scheduled-tab.html"></div>
+  </template>
   <template x-for="tab in (currentTab() && currentTab().kind === 'hub' ? [currentTab()] : [])" :key="tab.key">
     <div class="fill" x-include="components/checkouts/hub.html"></div>
   </template>

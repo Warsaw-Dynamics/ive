@@ -1,5 +1,6 @@
-//! Desktop notifications for processes that call for the user while IVE is in the background: the freedesktop
-//! notification server through `notify-send` (a click shows the process) and `gdbus` (to withdraw one), macOS's
+//! Desktop notifications for processes that call for the user while IVE is in the background, and for scheduled
+//! commands that came due: the freedesktop notification server through `notify-send` (a click shows the process,
+//! or the Scheduled commands tab) and `gdbus` (to withdraw one), macOS's
 //! notification centre through `osascript` (no click, not withdrawn). Elsewhere, none.
 
 use std::collections::HashMap;
@@ -10,21 +11,29 @@ use futures::channel::mpsc::UnboundedSender;
 
 use crate::process::ProcessId;
 
-/// The desktop notification shown for each process, and where a click on one goes.
+/// What a desktop notification is about: one per key is shown, a newer one replaces it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NoticeKey {
+    Process(ProcessId),
+    /// scheduled commands that came due; a click shows the Scheduled commands tab
+    Scheduled,
+}
+
+/// The desktop notification shown for each key, and where a click on one goes.
 pub struct DesktopNotices {
-    /// each process's notification, its server id once `notify-send` printed it
-    sent: HashMap<ProcessId, Arc<Shown>>,
-    clicks: UnboundedSender<ProcessId>,
+    /// each key's notification, its server id once `notify-send` printed it
+    sent: HashMap<NoticeKey, Arc<Shown>>,
+    clicks: UnboundedSender<NoticeKey>,
 }
 
 impl DesktopNotices {
-    pub fn new(clicks: UnboundedSender<ProcessId>) -> Self {
+    pub fn new(clicks: UnboundedSender<NoticeKey>) -> Self {
         Self { sent: HashMap::new(), clicks }
     }
 
-    /// Shows `body` titled `title` for process `id`, in place of the one it had: replaced on the server when its id
+    /// Shows `body` titled `title` for `id`, in place of the one it had: replaced on the server when its id
     /// is known, else taken back once it is.
-    pub fn send(&mut self, id: ProcessId, title: &str, body: &str) {
+    pub fn send(&mut self, id: NoticeKey, title: &str, body: &str) {
         let shown = Arc::new(Shown::new(platform::close));
         let replace = match self.sent.insert(id, shown.clone()) {
             Some(before) => before.id.get().copied().or_else(|| {
@@ -33,11 +42,11 @@ impl DesktopNotices {
             }),
             None => None,
         };
-        platform::send(Notice { process: id, title: title.to_owned(), body: body.to_owned(), replace, shown, clicks: self.clicks.clone() });
+        platform::send(Notice { key: id, title: title.to_owned(), body: body.to_owned(), replace, shown, clicks: self.clicks.clone() });
     }
 
-    /// Takes process `id`'s notification off the desktop, now or once its id is known.
-    pub fn withdraw(&mut self, id: ProcessId) {
+    /// Takes `id`'s notification off the desktop, now or once its id is known.
+    pub fn withdraw(&mut self, id: NoticeKey) {
         if let Some(shown) = self.sent.remove(&id) {
             shown.withdraw();
         }
@@ -83,13 +92,13 @@ impl Shown {
 /// One notification to show, and where its id and click go; only freedesktop servers read them all.
 #[cfg_attr(not(all(unix, not(target_os = "macos"))), allow(dead_code))]
 struct Notice {
-    process: ProcessId,
+    key: NoticeKey,
     title: String,
     body: String,
     /// the server's id of the notification this one replaces
     replace: Option<u32>,
     shown: Arc<Shown>,
-    clicks: UnboundedSender<ProcessId>,
+    clicks: UnboundedSender<NoticeKey>,
 }
 
 /// What `notify-send --print-id --action=default=Show` printed on one line.
@@ -192,7 +201,7 @@ mod platform {
         match printed {
             Printed::Id(id) => notice.shown.learn(id),
             Printed::Clicked => {
-                let _ = notice.clicks.unbounded_send(notice.process);
+                let _ = notice.clicks.unbounded_send(notice.key);
             }
             Printed::Other => {}
         }

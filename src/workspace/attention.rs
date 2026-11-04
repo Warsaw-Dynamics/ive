@@ -9,13 +9,19 @@ use gpui::{AnyWindowHandle, Context, Task, Window};
 use super::Workspace;
 use crate::attention::{Sight, TabAt, WindowFocus, counts, sight};
 use crate::sidebar::view::HeaderMenu;
+use crate::desktop_notice::NoticeKey;
 use crate::process::ProcessId;
 
-/// Shows the process of each desktop notification the user clicks, bringing the main window to the front.
-pub(super) fn show_clicked(mut clicks: UnboundedReceiver<ProcessId>, window: &mut Window, cx: &mut Context<Workspace>) -> Task<()> {
+/// Shows what each desktop notification the user clicks is about (a process, or the Scheduled commands tab),
+/// bringing the main window to the front.
+pub(super) fn show_clicked(mut clicks: UnboundedReceiver<NoticeKey>, window: &mut Window, cx: &mut Context<Workspace>) -> Task<()> {
     cx.spawn_in(window, async move |this, cx| {
-        while let Some(id) = clicks.next().await {
-            if this.update_in(cx, |workspace, window, cx| workspace.show_waiting(id, window, cx)).is_err() {
+        while let Some(key) = clicks.next().await {
+            let shown = this.update_in(cx, |workspace, window, cx| match key {
+                NoticeKey::Process(id) => workspace.show_waiting(id, window, cx),
+                NoticeKey::Scheduled => workspace.show_scheduled_from_notice(window, cx),
+            });
+            if shown.is_err() {
                 return;
             }
         }
@@ -45,6 +51,17 @@ impl Workspace {
         }
     }
 
+    /// Process `id` calls for the user saying `text`, as a program in it would, unless they see it.
+    pub(super) fn call_for_user(&mut self, id: ProcessId, text: String, cx: &mut Context<Self>) {
+        let (sight, focus) = self.sight_of(id);
+        if !counts(sight, focus) {
+            return;
+        }
+        self.processes.raise(id, text.clone(), SystemTime::now());
+        self.notify_desktop(id, &text);
+        self.waiting_changed(cx);
+    }
+
     /// With no IVE window active, a desktop notification `<title> — <worktree>` saying `text`.
     fn notify_desktop(&mut self, id: ProcessId, text: &str) {
         if self.active_window.is_any() {
@@ -58,12 +75,12 @@ impl Workspace {
             Some(checkout) => crate::terminal::one_line(&format!("{} — {}", process.title(), self.checkout_label(checkout))),
             None => crate::terminal::one_line(&process.title()),
         };
-        self.desktop_notices.send(id, &title, text);
+        self.desktop_notices.send(NoticeKey::Process(id), &title, text);
     }
 
     /// Takes process `id`'s desktop notification away, as it ends.
     pub(super) fn withdraw_notice(&mut self, id: ProcessId) {
-        self.desktop_notices.withdraw(id);
+        self.desktop_notices.withdraw(NoticeKey::Process(id));
     }
 
     /// The waiting processes the user now sees, their tab shown in an active window, stop waiting.
@@ -76,7 +93,7 @@ impl Workspace {
             self.desktop_notices.withdraw_all();
         }
         for id in &seen {
-            self.desktop_notices.withdraw(*id);
+            self.desktop_notices.withdraw(NoticeKey::Process(*id));
         }
         let cleared = seen.into_iter().filter(|id| self.processes.clear_attention(*id)).count();
         if cleared > 0 {

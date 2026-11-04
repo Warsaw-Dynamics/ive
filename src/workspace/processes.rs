@@ -107,6 +107,27 @@ impl Workspace {
         self.open_tab(tab, window, cx)
     }
 
+    /// A scheduled command's terminal: a shell in `checkout` with `env` added, opened behind the shown tab and titled
+    /// `title` until its program sets another, with `command` typed into it; its process, or why it did not start.
+    pub(super) fn open_terminal_behind(&mut self, checkout: CheckoutRef, start: BehindStart, window: &mut Window, cx: &mut Context<Self>) -> Result<ProcessId, String> {
+        let directory = checkout.path.clone();
+        let launch = Launch { env: start.env, ..Launch::shell() };
+        let source = match &self.hosted {
+            Some(terminals) => Source::Hosted { terminals, launch, labels: session_labels(Some(&checkout)) },
+            None => Source::InProcess(launch),
+        };
+        let id = self.processes.start(Some(checkout), |id| TerminalView::open(id, &directory, source, window, cx)).map_err(|error| error.to_string())?;
+        // a new terminal takes the keyboard; the shown tab keeps it
+        self.focus_active_tab(window, cx);
+        self.processes.set_title(id, start.title);
+        let tab = self.tabs.open_behind(Tab::Process(id));
+        self.tree_changed(cx);
+        // the shell reads it once started; the PTY holds it until then
+        self.send_text_to_process(tab, &format!("{}\r", start.command))?;
+        cx.notify();
+        Ok(id)
+    }
+
     /// Reattaches every hosted terminal still running, oldest first, under the checkout `records` saved for it, else
     /// under its labels' checkout when its project is open (its main checkout when the checkout's folder is gone),
     /// else as a home terminal; a saved pin comes back with it. Each gets a tab when no tabs were saved (a first start);
@@ -526,6 +547,13 @@ async fn wait_gone(targets: &crate::process_stop::Targets, limit: Duration, cx: 
         cx.background_executor().timer(STOP_POLL).await;
     }
     !targets.alive()
+}
+
+/// What [`Workspace::open_terminal_behind`] starts.
+pub(super) struct BehindStart {
+    pub env: Vec<(String, String)>,
+    pub title: String,
+    pub command: String,
 }
 
 #[cfg(test)]

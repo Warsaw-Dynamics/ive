@@ -201,10 +201,13 @@ fn file_tab(path: &Path, panel: PanelState, cx: &mut App) -> Tab {
     }
 }
 
-/// Appearance, Scripts, Updates or Third-Party Software by its name; Appearance for a name no page has.
+/// Appearance, Scripts, Scheduled, Updates or Third-Party Software by its name; Appearance for a name no page has.
 fn settings_page_named(name: &str) -> SettingsPage {
     if name == "Scripts" {
         return SettingsPage::Scripts;
+    }
+    if name == crate::settings_page::SCHEDULED_TITLE {
+        return SettingsPage::Scheduled;
     }
     if name == UPDATES_TITLE {
         return SettingsPage::Updates;

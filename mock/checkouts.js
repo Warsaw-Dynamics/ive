@@ -703,7 +703,7 @@
             self.seeShown();
           });
           // back in front, IVE withdraws its desktop notifications: the tab row's bell lists what still waits
-          this.$watch('windowFocused', function (focused) { if (focused) self.desktopNotices = []; self.seeShown(); });
+          this.$watch('windowFocused', function (focused) { if (focused) { self.desktopNotices = []; self.scheduleNotice = null; } self.seeShown(); });
           this.toggled.push('p:forge-installer', 'p:platform', 'p:notes', 'w:atlassian@dev', 'w:atlassian@IDP-30-Reserved-subdomain-returns-404', 'w:atlassian@GEN-811-paas-infrastructure-reference');
           var agent = this.addConsole('atlassian@GEN-817-ive', 'agent', AGENT_LINES.slice());
           this.addConsole('atlassian@GEN-817-ive', 'shell', []);
@@ -763,6 +763,8 @@
             runconfigs1k: function (self) { self.openRunConfigs(self.project('platform').checkouts[0]); },
             // a proposal (dnd.js): a flat copy into dev with three conflicts
             conflicts: function (self) { self.mockConflicts(); },
+            // a proposal (schedule.js): IVE started with four commands it missed
+            scheduled: function (self) { self.mockScheduleStartup(); },
             newterminal: function (self) { self.openNewTerminalHub(); self.hub.query = p.get('q') || ''; self.hub.withBranches = p.get('br') === '1'; },
             hub: function (self) { self.openHub(); self.hub.query = p.get('q') || ''; self.hub.changedOnly = p.get('changed') === '1'; self.hub.scope = p.get('scope') || 'all'; }
           };
@@ -1093,7 +1095,7 @@
         // editor.rs Tab::icon_name
         tabIcon: function (tab) {
           if (tab.kind === 'console') return this.consoleIcon(this.consoleOf(tab));
-          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg', conflicts: 'warning.svg' };
+          var icons = { projectPage: 'project-folder.svg', vars: 'run-config.svg', runConfigs: 'run-config.svg', diff: 'changes.svg', commit: 'commit.svg', gitLog: 'history.svg', settings: 'settings.svg', hub: 'locate.svg', conflicts: 'warning.svg', scheduled: 'schedule.svg' };
           return icons[tab.kind] || this.fileIcon(tab.title);
         },
         tabTitle: function (tab) {
@@ -1271,6 +1273,7 @@
         waitingLabel: function (n) { return n ? '● ' + n + ' waiting' : null; },
         // What a process tab's program said, or null.
         tabAttention: function (tab) {
+          if (tab.kind === 'scheduled') return this.scheduledAttention(tab);
           var c = tab.kind === 'console' ? this.consoleOf(tab) : null;
           return c !== null && c.attention !== null ? c.attention.text : null;
         },
@@ -2120,7 +2123,7 @@
           if (source === 'branch') return co.base + ' … ' + co.label + ' + uncommitted';
           return 'commit ' + source + ' · ' + co.commits.find(function (c) { return c.sha === source; }).message;
         }
-      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods, window.IVE_DND.state(), window.IVE_DND.methods, window.IVE_IDENT.state(), window.IVE_IDENT.methods);
+      }, window.IVE_HUB.state(), window.IVE_HUB.methods, window.IVE_FIND.methods, window.IVE_ROUTE.state(), window.IVE_ROUTE.methods, window.IVE_MENUS.state(), window.IVE_MENUS.methods, window.IVE_DND.state(), window.IVE_DND.methods, window.IVE_IDENT.state(), window.IVE_IDENT.methods, window.IVE_SCHEDULE.state(), window.IVE_SCHEDULE.methods);
     });
   });
 })();

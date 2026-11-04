@@ -18,6 +18,7 @@
     <script type="module" src="./menus.js"></script>
     <script type="module" src="./dnd.js"></script>
     <script type="module" src="./ident.js"></script>
+    <script type="module" src="./schedule.js"></script>
     <script type="module" src="./checkouts.js"></script>
     <script src="./include.js"></script>
   </head>
@@ -38,6 +39,13 @@
               <span class="os-notice__app">IVE · desktop notification (mock)</span>
               <span class="os-notice__title" x-text="n.c.title + ' — ' + label(n.c.co)"></span>
               <span class="os-notice__text" x-text="n.text"></span>
+            </button>
+          </template>
+          <template x-if="scheduleNotice">
+            <button class="os-notice" type="button" @click="showScheduleNotice()">
+              <span class="os-notice__app">IVE · desktop notification (mock)</span>
+              <span class="os-notice__title" x-text="scheduleNotice.title"></span>
+              <span class="os-notice__text" x-text="scheduleNotice.text"></span>
             </button>
           </template>
         </div>

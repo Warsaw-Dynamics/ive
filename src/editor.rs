@@ -79,6 +79,8 @@ pub enum Tab {
     Unloaded(SavedTab),
     /// Ctrl+Shift+E: recent tabs, changes, processes and every file; at most one
     Hub(Box<HubTab>),
+    /// scheduled commands that came due, to pick and run; at most one, never saved
+    Scheduled,
 }
 
 impl Tab {
@@ -96,6 +98,10 @@ impl Tab {
 
     pub fn is_hub(&self) -> bool {
         matches!(self, Self::Hub(_) | Self::Unloaded(SavedTab::Hub))
+    }
+
+    pub fn is_scheduled(&self) -> bool {
+        matches!(self, Self::Scheduled)
     }
 
     pub fn is_settings(&self) -> bool {
@@ -177,6 +183,7 @@ impl Tab {
             Self::Conflicts(_) => "conflicts",
             Self::Unloaded(saved) => saved.kind(),
             Self::Hub(_) => "hub",
+            Self::Scheduled => "scheduled",
         }
     }
 
@@ -200,6 +207,7 @@ impl Tab {
             Self::RunValues(tab) => tab.title(),
             Self::RunConfigs(_) => "Run configurations".to_owned(),
             Self::Conflicts(tab) => tab.title(),
+            Self::Scheduled => "Scheduled commands".to_owned(),
             Self::Unloaded(saved) => saved.title(),
             Self::Hub(hub) if hub.state.new_terminal => "New terminal".to_owned(),
             Self::Hub(_) => "Hub".to_owned(),
@@ -234,6 +242,7 @@ impl Tab {
     fn attention(&self, workspace: &Workspace) -> Option<String> {
         match self {
             Self::Process(id) => workspace.processes().get(*id).and_then(|process| process.attention()).map(|attention| attention.text.clone()),
+            Self::Scheduled => workspace.scheduled_attention(),
             _ => None,
         }
     }
@@ -254,6 +263,7 @@ impl Tab {
             Self::Conflicts(_) => icons::WARNING,
             Self::Unloaded(saved) => saved_icon(saved),
             Self::Hub(_) => icons::LOCATE,
+            Self::Scheduled => icons::SCHEDULE,
         }
     }
 
@@ -300,7 +310,7 @@ impl Tab {
             Self::Diff(tab) => SavedTab::Diff { checkout: tab.checkout.path.clone(), request: tab.request.saved(), panel: tab.panel_state(cx) },
             Self::Settings(view) => SavedTab::Settings { page: view.page_name().to_owned() },
             Self::Hub(_) => SavedTab::Hub,
-            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
+            Self::Failed { .. } | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) | Self::Scheduled => return None,
             Self::Unloaded(saved) => saved.clone(),
         };
         Some(tab)
@@ -321,7 +331,7 @@ impl Tab {
             Self::GitLog(GitLogTab { of: LogOf::Path { .. }, .. }) => return None,
             Self::GitLog(tab) => TabIdentity::GitLog(tab.project.as_str().to_owned()),
             Self::Settings(_) => TabIdentity::Settings,
-            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) | Self::Conflicts(_) => return None,
+            Self::Failed { .. } | Self::Hub(_) | Self::RunConfigs(_) | Self::Conflicts(_) | Self::Scheduled => return None,
             Self::Scratch(scratch) => TabIdentity::Scratch { project: scratch.project().as_str().to_owned(), name: scratch.name().to_owned() },
             Self::RunValues(tab) => TabIdentity::RunValues {
                 checkout: tab.request.checkout.path.clone(),
@@ -347,7 +357,7 @@ impl Tab {
             Self::GitLog(tab) => project_checkout(workspace, &tab.project),
             // where it runs
             Self::Scratch(scratch) => workspace.scratch_checkout(scratch.project()),
-            Self::Settings(_) | Self::Failed { .. } | Self::Hub(_) => None,
+            Self::Settings(_) | Self::Failed { .. } | Self::Hub(_) | Self::Scheduled => None,
             Self::RunValues(tab) => Some(tab.request.checkout.clone()),
             Self::RunConfigs(tab) => Some(tab.checkout.clone()),
             Self::Conflicts(tab) => Some(tab.plan.operation.target.checkout.clone()),
@@ -376,7 +386,8 @@ impl Tab {
             | Self::RunConfigs(_)
             | Self::Conflicts(_)
             | Self::Unloaded(_)
-            | Self::Hub(_) => Vec::new(),
+            | Self::Hub(_)
+            | Self::Scheduled => Vec::new(),
         }
     }
 
@@ -398,7 +409,8 @@ impl Tab {
             | Self::RunConfigs(_)
             | Self::Conflicts(_)
             | Self::Unloaded(_)
-            | Self::Hub(_) => None,
+            | Self::Hub(_)
+            | Self::Scheduled => None,
         }
     }
 
@@ -422,7 +434,8 @@ impl Tab {
             | Self::RunConfigs(_)
             | Self::Conflicts(_)
             | Self::Unloaded(_)
-            | Self::Hub(_) => None,
+            | Self::Hub(_)
+            | Self::Scheduled => None,
         }
     }
 
@@ -469,7 +482,8 @@ impl Tab {
             | Self::RunConfigs(_)
             | Self::Conflicts(_)
             | Self::Unloaded(_)
-            | Self::Hub(_) => {}
+            | Self::Hub(_)
+            | Self::Scheduled => {}
         }
     }
 
@@ -509,7 +523,7 @@ impl Tab {
             _ => self.title(workspace),
         };
         let owner = match self {
-            Self::ProjectOverview(_) | Self::Diff(_) | Self::Settings(_) | Self::Failed { .. } | Self::Unloaded(_) | Self::Hub(_) => None,
+            Self::ProjectOverview(_) | Self::Diff(_) | Self::Settings(_) | Self::Failed { .. } | Self::Unloaded(_) | Self::Hub(_) | Self::Scheduled => None,
             Self::Document(_) | Self::Image(_) | Self::Process(_) | Self::RunValues(_) | Self::RunConfigs(_) | Self::Conflicts(_) => {
                 self.checkout(workspace).map(|checkout| workspace.checkout_label(&checkout))
             }
@@ -548,7 +562,8 @@ impl Tab {
             | Self::Failed { .. }
             | Self::RunConfigs(_)
             | Self::Conflicts(_)
-            | Self::Unloaded(_) => None,
+            | Self::Unloaded(_)
+            | Self::Scheduled => None,
         }
     }
 
@@ -575,7 +590,10 @@ impl Tab {
             Self::Diff(tab) => tab.body.clone().into_any_element(),
             Self::Commit(tab) => tab.body.clone().into_any_element(),
             Self::GitLog(tab) => tab.body.clone().into_any_element(),
-            Self::Settings(view) => settings_page::render(settings_page::Page { view, update_status: workspace.update_status() }, theme, cx).into_any_element(),
+            Self::Settings(view) => {
+                let page = settings_page::Page { view, update_status: workspace.update_status(), scheduled: workspace.schedules().view() };
+                settings_page::render(page, theme, cx).into_any_element()
+            }
             Self::Failed { title, failure } => div().id("failure").flex_1().min_h_0().overflow_y_scroll().child(failure.render(&id.value().to_string(), title, cx)).into_any_element(),
             Self::Scratch(scratch) => scratch.view().clone().into_any_element(),
             Self::RunValues(tab) => run_values::render_values_tab(id, tab, cx),
@@ -583,6 +601,7 @@ impl Tab {
             Self::Conflicts(tab) => render_conflicts_tab(id, tab, workspace, cx),
             Self::Unloaded(_) => centered_message("Loading…", theme.muted).into_any_element(),
             Self::Hub(hub) => workspace.render_hub_tab(id, hub, cx),
+            Self::Scheduled => crate::schedule::tab::render_tab(workspace.schedules().view(), theme, cx),
         }
     }
 }

@@ -1,0 +1,75 @@
+<!-- A proposal (DESIGN.md "Scheduled commands"): the commands whose time came. Nothing runs until the user ticks it and
+     presses Run selected. Each row shows the whole command (never cut), where it runs and what Run does first (fetch,
+     a new branch, a new worktree), or why it cannot run; its checkbox is off then and Remove takes it away. -->
+<div class="page sched">
+  <div class="sched__title" x-text="dueSchedules().length ? (dueSchedules().length === 1 ? 'A scheduled command is due' : dueSchedules().length + ' scheduled commands are due') : 'Nothing is due'"></div>
+  <div class="sched__hint muted">Scheduled over MCP. Nothing runs until you tick it and press Run selected · each runs in a new terminal</div>
+
+  <template x-if="dueSchedules().length">
+    <div>
+      <div class="sched__bar">
+        <label class="checkbox sched__all">
+          <input type="checkbox" :checked="areAllSelected()" @change="selectAllSchedules($event.target.checked)" />
+          <span class="checkbox__tick"></span><span>All</span>
+        </label>
+      </div>
+      <template x-for="s in dueSchedules()" :key="s.id">
+        <div class="sched__row" :class="{ 'sched__row--failed': isRunnable(s) === false, 'sched__row--on': s.selected }">
+          <label class="checkbox sched__tick" :title="isRunnable(s) ? '' : 'Cannot run: ' + schedulePlan(s).error">
+            <input type="checkbox" :disabled="isRunnable(s) === false" x-model="s.selected" />
+            <span class="checkbox__tick"></span>
+          </label>
+          <div class="sched__body">
+            <div class="sched__head">
+              <span class="sched__name" x-text="s.name"></span>
+              <template x-if="s.repeat"><span class="sched__chip" x-text="'↻ ' + s.repeat.text"></span></template>
+              <span class="muted sched__due" x-text="scheduleDueLine(s)"></span>
+            </div>
+            <template x-if="s.description"><div class="sched__desc" x-text="s.description"></div></template>
+            <div class="sched__where">
+              <img class="icon" :src="icon('branch.svg')" alt="" />
+              <span x-text="scheduleWhere(s)"></span>
+              <span :class="isRunnable(s) ? 'muted' : 'sched__error'" x-text="'· ' + scheduleWhereLine(s)"></span>
+            </div>
+            <pre class="sched__command" x-text="s.command"></pre>
+            <div class="muted sched__meta" x-text="'scheduled ' + scheduleWhen(s.created) + ' · ' + scheduleClock(s.created)"></div>
+            <template x-if="s.repeat && isRunnable(s)">
+              <label class="checkbox sched__always" title="Its later times start without this tab while the command stays exactly this; Settings › Scheduled › Ask again undoes it">
+                <input type="checkbox" x-model="s.always" @change="s.always && (s.selected = true)" />
+                <span class="checkbox__tick"></span><span>Always run this one</span>
+              </label>
+            </template>
+          </div>
+          <template x-if="isRunnable(s) === false">
+            <button class="toggle sched__remove" type="button" @click="removeFailedSchedule(s)">Remove</button>
+          </template>
+        </div>
+      </template>
+      <div class="sched__buttons">
+        <button class="button button--small" type="button" :disabled="selectedSchedules().length === 0" @click="runSelectedSchedules()"
+                x-text="selectedSchedules().length ? 'Run selected (' + selectedSchedules().length + ')' : 'Run selected'"></button>
+        <button class="toggle" type="button" :disabled="selectedSchedules().length === 0" @click="skipSelectedSchedules()"
+                title="This time does not run; a repeating command waits for its next time">Skip selected</button>
+        <span class="muted">Unticked ones stay due: this tab or Settings › Scheduled</span>
+      </div>
+    </div>
+  </template>
+
+  <template x-if="startedHere().length">
+    <div class="sched__started">
+      <div class="sched__section muted">Started</div>
+      <template x-for="s in startedHere()" :key="s.id">
+        <button class="rows__row rows__row--click sched__startedrow" type="button" @click="showScheduledProcess(s)">
+          <img class="icon" :src="icon(/^claude\b/.test(s.command) ? 'agent.svg' : 'terminal.svg')" alt="" />
+          <span class="rows__grow" x-text="s.name + ' · ' + scheduleWhere(s)"></span>
+          <span class="rows__age">show terminal</span>
+        </button>
+      </template>
+    </div>
+  </template>
+
+  <div class="sched__footer muted">
+    <span x-text="pendingSchedules().length + ' more scheduled'"></span> ·
+    <button class="settings-body__link" type="button" @click="settingsPage = 'Scheduled'; openSettings()">Settings › Scheduled</button>
+  </div>
+</div>

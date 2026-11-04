@@ -63,6 +63,10 @@ the IVE mock config is a static server; `lib/.run.toml` is broken on purpose (a 
 folder). A click on a worktree's Processes row opens its `Run configurations` tab (temporary, a proposal): every
 configuration in the worktree (the only place a configuration that never ran shows, with ▷ Run), Flat (by name) or Tree (by folder), with a filter and each run's state and actions.
 The tree's right edge drags to resize it.
+Scheduled commands (a proposal, `schedule.js`, DESIGN.md "Scheduled commands"): what agents scheduled over MCP
+comes due into a `Scheduled commands` tab, where the user reads each whole command and ticks what runs (Run selected,
+Skip selected); Settings › Scheduled lists due, coming and the last 7 days. `#tab=scheduled` opens the tab as after
+a start with four missed commands; the Mock menu makes two come due.
 Drag and drop (in the app, `dnd.js`, DESIGN.md "Drag and drop, copy and paste"): Ctrl+click and Shift+click pick tree rows;
 files and folders drag onto any folder, worktree or project (same worktree moves, elsewhere copies; Ctrl copies, Shift moves);
 terminals and Claude Code drag onto a worktree or project to move there (Ctrl+drop starts a copy; runs stay); Ctrl+C / Ctrl+V copy and paste keeping folders. A copy that

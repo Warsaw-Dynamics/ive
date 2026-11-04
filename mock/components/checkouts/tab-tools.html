@@ -46,6 +46,10 @@
       <button class="menu__item" type="button" @click="mockAttention('bell')" title="BEL"><span class="menu__grow">Bell</span></button>
       <button class="menu__item" type="button" @click="mockAttention('done')" title="OSC 9;4 busy, then 9;4;0"><span class="menu__grow">Progress ended</span></button>
       <button class="menu__item" type="button" @click="windowFocused = windowFocused === false"><span class="menu__grow" x-text="windowFocused ? 'Send IVE to background' : 'Bring IVE to front'"></span></button>
+      <!-- DESIGN.md "Scheduled commands": an agent's scheduled commands come due -->
+      <div class="menu__section">Scheduled commands</div>
+      <button class="menu__item" type="button" @click="mockScheduleDue()" title="Two commands come due while IVE runs: the tab opens behind the shown one"><span class="menu__grow">Two come due</span></button>
+      <button class="menu__item" type="button" @click="mockScheduleStartup()" title="IVE starts with four it missed: in place, a new worktree, a new branch, a lost project"><span class="menu__grow">Missed while closed</span></button>
       <div class="menu__separator"></div>
       <a class="menu__item" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file"><span class="menu__grow">← Single-project mock</span></a>
     </div>

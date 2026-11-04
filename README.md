@@ -276,6 +276,25 @@ With no IVE window active, a call also sends a desktop notification (`notify-sen
 process; `osascript` on macOS; none on Windows yet). IVE takes them back when it comes to the front. The first time sending one fails, it
 says so in `ive.log`. A call made while IVE was closed is not kept.
 
+### Scheduled commands
+
+An agent can schedule a command for later over MCP (`schedule_command`), to follow up on its work: CI finished, a
+review answered. Usually `claude --resume <session> "<what to check>"`. It gives a time (`at`, `in`) or a cron
+(`repeat`, local time), and a project and branch (or a `directory`).
+
+IVE never runs a scheduled command unasked the first time:
+- When one comes due, it waits in the **Scheduled commands** tab, which opens behind the shown one with a dot.
+  With IVE in the background, a desktop notification says what is due.
+- Each row shows the whole command, where it runs, and what Run does first: fetch `origin`, start the branch from
+  `source_branch`, add a worktree. Tick what runs, then **Run selected**. Each one starts in a new terminal behind
+  the shown tab, with `IVE_SCHEDULE_ID`, `IVE_SCHEDULE_NAME` and `IVE_SCHEDULE_DESCRIPTION` set.
+- Commands missed while IVE was closed are due when it starts.
+- A repeating command run with **Always run this one** starts unasked from then on, while its command stays exactly
+  the same. Its terminal calls for you as a waiting process does.
+
+**Settings › Scheduled** lists what is due, what is coming (Cancel, Ask again) and the last 7 days. The schedule
+is kept in `~/.config/ive/<profile>/schedule.toml`, readable by you only.
+
 ### Drag and drop, copy and paste
 
 Ctrl+click (macOS Cmd+click) picks tree rows one by one, Shift+click from the last one picked; files, folders and
@@ -923,6 +942,8 @@ before IVE served MCP, or with `--no-mcp`, go without them.
 | `list_projects` | open projects with their checkouts (label, branch, changes, ahead, behind; `null` until read) and processes (id, tab id, kind `terminal`, `claude-code` or `run`, title; `attention` while it waits for the user; a run also its `folder`, `config` and `live`) |
 | `list_run_configs` | a folder's `.run.toml` read now: each configuration's key, name, kind (`run`, `serve`), command (secrets as `${name}`), live state and process id; or the file's error |
 | `run_config` | runs a configuration (`folder`, `key`) as Run in the tree does; answers `{ process }`, or `{ missing: [names] }` without asking for them |
+| `schedule_command` | a command for later (see "Scheduled commands"): `name`, `description`, `command`; `at` (RFC 3339), `in` (`2h`) or `repeat` (cron); `project` and `branch`, or `directory`; `worktree`, `source_branch`. The same name in the same project replaces it. Answers `{ id, at, at_local, replaced }` |
+| `list_scheduled`, `cancel_scheduled` | pending and due commands, then the last 7 days (state, time, target, `runs_unasked`, process); cancel one by `id` |
 | `list_targets` | what `click` can press now, by name: every tree row and its actions (also rows scrolled out of view), overview sections and cards, Settings, prompt buttons (see the names below) |
 | `click` | click a target from `list_targets`, as the mouse would; a tree, Worktrees or Scratches row out of view is scrolled to first; answers once the window has drawn the result |
 | `drop_rows` | drag tree rows onto another row and drop them, as the mouse would: `rows` and `onto` by their names after `tree-menu:` (`entry:/r/src/a.rs`, `process:3`, `toggle:/r/.claude/worktrees/x`); the first row is the pressed one, the others are picked with it; `force`: `copy` or `move`, as if `config.drop_modifiers`' key were held. Returns the drop's hint (`Copy 2 items to dev · lib`), or why it was refused. Files from folders of one worktree open the layout menu: answer it with `click` on `tree-menu:keep-folders`, `tree-menu:flat` or `tree-menu:cancel` |
@@ -989,6 +1010,8 @@ Click targets (`<id>` a project id, `<label>` a checkout label, `<n>` a process 
 | scratch tab (shown) | `run-scratch`, and its "changed on disk" / "deleted on disk" bar: `scratch-reload`, `scratch-overwrite`, `scratch-save-again`, `scratch-close` |
 | file or scratch tab (shown) whose save found the file changed on disk | `save-reload` (drop the edits, show the file), `save-overwrite` (write the edits over it; not for files over 8 MiB); neither while a save is being written. While a close or quit waits for edits that could not be saved (the save failed, or a conflict is unanswered), also `save-discard` (Close without saving: the edits are lost, the tab closes, quitting or closing the project goes on) |
 | prompt | `prompt:<button label>`; the quit prompt's are `prompt:Keep running`, `prompt:Stop all`, `prompt:Cancel` |
+| Scheduled commands tab (`<id>` from `list_scheduled`) | `scheduled-all`, `scheduled-pick:<id>`, `scheduled-always:<id>`, `scheduled-remove:<id>` (a row that cannot run), `scheduled-run`, `scheduled-skip`, `scheduled-started:<process>`, `scheduled-settings` |
+| Settings › Scheduled | `settings-page:Scheduled`, `scheduled-review`, `scheduled-cancel:<id>`, `scheduled-ask-again:<id>`, `scheduled-history:<id>` (a started one's terminal) |
 | window | `window:close` (the ×; with terminals running it shows the quit prompt) |
 
 `<sha>` is the short sha (7 characters), `<path>` a path in the repository. Every action in the window is reachable
