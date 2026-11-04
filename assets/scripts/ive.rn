@@ -61,6 +61,20 @@ pub fn init(config) {
     // once, after a question
     config.delete = "trash";
 
+    // a checkout's row in the tree, after its icon, built from its data: project, project_dir, path, folder, label
+    // (the branch for the main checkout, the folder for a worktree), branch, main, head and base (branch, head and
+    // base are () when there is none). It returns a text, or a list of parts, each a text or
+    // #{ text, style: "name" | "grey" | "pill", icon: "branch" | "folder" | "project", tip }. This is IVE's own: the
+    // label, and a worktree's branch after it in grey when its folder is named otherwise
+    config.worktree_row = |row| {
+        if row.main || !(row.branch is String) || row.branch == row.label {
+            return [row.label];
+        }
+        let name = #{ text: row.label, tip: `${row.label} on branch ${row.branch}` };
+        let branch = #{ text: row.branch, style: "grey" };
+        [name, branch]
+    };
+
     // seconds the quit prompt counts down before IVE quits and leaves the running processes running, 1 to 60
     config.quit_countdown = 10;
 

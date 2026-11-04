@@ -605,6 +605,23 @@ async fn restart(context) {
   another tab is shown; a new tab takes its place in the row.
 - `config.delete` (`"trash"`): what Delete in the tree does with files and folders, `"trash"` (to the system trash)
   or `"permanent"` (removed at once, after a question).
+- `config.worktree_row` (`ive.rn`'s: the label, and a worktree's branch after it in grey when its folder is named
+  otherwise): a function that builds a checkout's row in the tree, after its icon, from the checkout's data:
+  `project`, `project_dir`, `path`, `folder`, `label` (what IVE names it: the branch for the main checkout, the
+  folder for a worktree), `branch`, `main`, `head` (short sha) and `base`; `branch`, `head` and `base` are `()` when
+  there is none. It returns a text, or 1 to 8 parts, each a text or `#{ text, style, icon, tip }`: `style` `"name"`
+  (the default), `"grey"` or `"pill"`; `icon` `"branch"`, `"folder"` or `"project"`; `tip` a tooltip; texts up to
+  200 characters. It runs once per checkout when the scripts load and again only when that checkout's data changes
+  (a new worktree, another branch, a commit), on the script thread, each call stopped after 1M instructions; a row it
+  fails on keeps IVE's own look and the script log says why. `config.worktree_row = ();` leaves the rows to IVE.
+
+  ```rune
+  config.worktree_row = |row| {
+      if row.main || !(row.branch is String) || row.branch == row.folder { return [row.label]; }
+      let branch = #{ text: row.branch, style: "pill", icon: "branch" };
+      [row.folder, branch]
+  };
+  ```
 - `config.quit_countdown` (`10`): the seconds the quit prompt counts down before IVE quits and leaves the running
   processes running, 1 to 60.
 - `config.open_folders` (`["processes", "uncommitted", "since-base", "commits"]`): a worktree's folders in the project tree

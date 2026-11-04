@@ -31,7 +31,11 @@
     <template x-if="row.node.icon && treeFavicon(row.node) === null">
       <span class="icon-stack"><img class="icon" :src="icon(row.node.icon)" alt="" /><template x-if="row.node.attention"><span class="attention-dot"></span></template></span>
     </template>
-    <span class="tree__label" :class="{ 'tree__label--strong': row.node.strong, 'tree__label--special': row.node.special, 'tree__label--weak': row.node.weak, 'tree__label--struck': row.node.struck, 'tree__label--link': row.node.link }" x-text="row.node.label"></span>
+    <span class="tree__label" :class="{ 'tree__label--strong': row.node.strong, 'tree__label--special': row.node.special, 'tree__label--weak': row.node.weak, 'tree__label--struck': row.node.struck, 'tree__label--link': row.node.link, 'tree__label--muted': row.node.muted }" x-text="row.node.label"></span>
+    <!-- a worktree's branch (or folder) beside its name when they differ: checkouts.js withOtherBranch -->
+    <template x-if="row.node.aside">
+      <span class="tree__aside"><template x-if="row.node.asideIcon"><img class="icon" :src="icon(row.node.asideIcon)" alt="" /></template><span x-text="row.node.aside"></span></span>
+    </template>
     <template x-if="row.node.mark"><span class="mark" :class="'mark--' + row.node.mark" x-text="row.node.mark"></span></template>
     <template x-if="row.node.warning"><img class="icon" :src="icon('warning.svg')" alt="" /></template>
     <template x-if="row.node.attention">

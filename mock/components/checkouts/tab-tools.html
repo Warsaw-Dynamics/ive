@@ -50,6 +50,19 @@
       <div class="menu__section">Scheduled commands</div>
       <button class="menu__item" type="button" @click="mockScheduleDue()" title="Two commands come due while IVE runs: the tab opens behind the shown one"><span class="menu__grow">Two come due</span></button>
       <button class="menu__item" type="button" @click="mockScheduleStartup()" title="IVE starts with four it missed: in place, a new worktree, a new branch, a lost project"><span class="menu__grow">Missed while closed</span></button>
+      <!-- DESIGN.md "Branch of a worktree named otherwise": IDP-30-reserved-subdomain and GEN-811-paas-reference -->
+      <div class="menu__section">Branch on a worktree row</div>
+      <template x-for="l in [
+          { key: 'after', name: 'After the name, grey', tip: 'IVE now: the branch after the folder name, small and grey' },
+          { key: 'pill', name: 'Pill', tip: 'A branch chip, as a single-checkout project shows its branch' },
+          { key: 'swap', name: 'Branch first, folder grey', tip: 'The branch is the name; the folder follows it, grey, with a folder icon' },
+          { key: 'mark', name: '≠ mark, branch in the tooltip', tip: 'Only a ≠ after the name; hover for the branch' },
+          { key: 'child', name: 'First row inside', tip: 'An open worktree starts with a grey branch row' },
+          { key: 'off', name: 'Off (tooltip only)', tip: 'The folder name alone' }]" :key="l.key">
+        <button class="menu__item" type="button" :title="l.tip" @click="branchLook = l.key">
+          <span class="menu__tick" x-text="branchLook === l.key ? '✓' : ''"></span><span class="menu__grow" x-text="l.name"></span>
+        </button>
+      </template>
       <div class="menu__separator"></div>
       <a class="menu__item" href="index.html" title="The single-project mock: welcome screen, 10M lines, binary file"><span class="menu__grow">← Single-project mock</span></a>
     </div>

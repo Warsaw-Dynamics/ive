@@ -28,6 +28,7 @@ use crate::click_targets::{Listener, target};
 use crate::icons;
 use crate::mouse_binding;
 use crate::script::keymap::{Action, Builtin, Scope};
+use crate::script::worktree_row::{PartIcon, PartStyle, RowLook, RowPart};
 use crate::script::state::{bound_mouse, invoke};
 use crate::paging::more_row;
 use crate::progress_bar::progress_bar;
@@ -197,7 +198,7 @@ fn take_keys(sidebar_focus: FocusHandle) -> impl Fn(&MouseDownEvent, &mut Window
 fn row_width(row: &TreeRow) -> usize {
     let (slots, text) = match &row.item {
         TreeItem::Project(project) => (2, project.name.chars().count() + 12 + said_width(&waiting_text(project.waiting))),
-        TreeItem::Checkout(checkout) => (2, checkout.label.chars().count() + said_width(&waiting_text(checkout.waiting))),
+        TreeItem::Checkout(checkout) => (2, checkout.look.text().chars().count() + said_width(&waiting_text(checkout.waiting))),
         TreeItem::Folder(folder) => {
             let nothing = folder.nothing.as_ref().map_or(0, |nothing| nothing.mark.chars().count());
             (2, folder.kind.title().chars().count() + 4 + nothing + said_width(&waiting_text(folder.waiting)))
@@ -675,7 +676,7 @@ fn checkout_row(line: RowLine, row: &CheckoutRow, cx: &mut Context<Workspace>) -
         .children(rail)
         .child(chevron(row.expanded, theme, shared(&toggle)))
         .child(branch_icon(&line.mark, theme))
-        .child(row.label.clone())
+        .children(checkout_parts(&row.look, theme))
         .children(waiting_tag(row.waiting, theme))
         .children(badges)
         .children(hide);
@@ -706,6 +707,51 @@ fn want_git(checkout: &CheckoutRef, cx: &mut Context<Workspace>) -> impl Fn(&boo
             })
             .ok();
     }
+}
+
+/// A checkout row's parts after its icon, as `config.worktree_row` built them, or IVE's own.
+fn checkout_parts(look: &RowLook, theme: Theme) -> Vec<AnyElement> {
+    look.parts.iter().enumerate().map(|(index, part)| checkout_part(index, part, theme)).collect()
+}
+
+fn checkout_part(index: usize, part: &RowPart, theme: Theme) -> AnyElement {
+    let styled = match part.style {
+        PartStyle::Name => div().flex_none().flex().items_center().gap(theme.sizes.tree.tag_gap.px()),
+        PartStyle::Grey => grey_tag(theme),
+        PartStyle::Pill => pill(theme),
+    };
+    let drawn = styled.children(part.icon.map(|glyph| icon(theme, part_icon(glyph)))).child(part.text.clone());
+    match &part.tip {
+        Some(tip) => drawn.id(("worktree-part", index)).tooltip(tooltip::text_tooltip(tip.clone())).into_any_element(),
+        None => drawn.into_any_element(),
+    }
+}
+
+fn part_icon(glyph: PartIcon) -> &'static str {
+    match glyph {
+        PartIcon::Branch => icons::BRANCH,
+        PartIcon::Folder => icons::FOLDER,
+        PartIcon::Project => icons::PROJECT_FOLDER,
+    }
+}
+
+/// Text after a row's name in the tag size and the secondary grey, as a project's `● n running`.
+fn grey_tag(theme: Theme) -> Div {
+    div().flex_none().flex().items_center().gap(theme.sizes.tree.tag_gap.px()).text_size(theme.sizes.tree.tag_text_size.px()).text_color(rgb(secondary(theme)))
+}
+
+/// A chip, as a single-checkout project shows its branch on.
+fn pill(theme: Theme) -> Div {
+    let sizes = &theme.sizes.tree;
+    div()
+        .flex_none()
+        .flex()
+        .items_center()
+        .gap(sizes.tag_gap.px())
+        .px(sizes.tag_padding_x.px())
+        .rounded(sizes.tag_radius.px())
+        .bg(rgb(theme.hover))
+        .text_size(sizes.tag_text_size.px())
 }
 
 fn process_row(line: RowLine, row: &ProcessRow, cx: &mut Context<Workspace>) -> Stateful<Div> {
@@ -876,16 +922,7 @@ fn project_row(line: RowLine, project: &ProjectRow, cx: &mut Context<Workspace>)
     let sizes = &theme.sizes.tree;
     let tag_text = sizes.tag_text_size.px();
     let tag = project.tag.as_ref().map(|tag| match tag {
-        ProjectTag::Branch(branch) => div()
-            .flex()
-            .items_center()
-            .gap(sizes.tag_gap.px())
-            .px(sizes.tag_padding_x.px())
-            .rounded(sizes.tag_radius.px())
-            .bg(rgb(theme.hover))
-            .text_size(tag_text)
-            .child(icon(theme, icons::BRANCH))
-            .child(branch.clone()),
+        ProjectTag::Branch(branch) => pill(theme).child(icon(theme, icons::BRANCH)).child(branch.clone()),
         ProjectTag::NoGit => div().text_size(tag_text).text_color(rgb(secondary(theme))).child("no git"),
         ProjectTag::Missing => div().text_size(tag_text).text_color(rgb(theme.error)).child("missing"),
     });

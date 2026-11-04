@@ -14,6 +14,7 @@ mod http_module;
 pub mod keymap;
 pub mod delete_mode;
 pub mod folder_switches;
+pub mod worktree_row;
 pub mod quit_countdown;
 pub mod drop_modifiers;
 pub mod log;

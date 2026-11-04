@@ -52,7 +52,7 @@ impl ScriptState {
                 self.load = LoadStatus::Failed { message, errors };
             }
             // the workspace shows the log, or hands the answer to the open menu; nothing to keep
-            ScriptEvent::RunFailed | ScriptEvent::Tested { .. } => {}
+            ScriptEvent::RunFailed | ScriptEvent::Tested { .. } | ScriptEvent::RowsBuilt { .. } => {}
         }
     }
 
@@ -70,6 +70,12 @@ impl ScriptState {
         let command = ScriptCommand::Test { generation, function, context, request, timeout: TEST_TIMEOUT };
         // the script thread is gone only when it could not start; the menu's item then stays pending until it closes
         let _ = self.commands.unbounded_send(command);
+    }
+
+    /// Asks the script thread to build `rows` with `config.worktree_row`; they come back as `ScriptEvent::RowsBuilt`.
+    pub fn build_rows(&self, function: super::worktree_row::RowFunction, rows: Vec<super::worktree_row::RowInput>) {
+        // the script thread is gone only when it could not start; the rows then keep IVE's own look
+        let _ = self.commands.unbounded_send(ScriptCommand::BuildRows { function, rows });
     }
 
     /// Asks the script thread to run a bound function on `context` (the shown tab when `None`).
@@ -147,7 +153,6 @@ mod tests {
     use super::*;
     use crate::script::keymap::{Action, Binding, Scope, Trigger};
     use crate::script::temporary_tabs::{TabMarker, TemporaryTabs};
-    use crate::theme::Fonts;
 
     fn send_binding(key: &str) -> Keymap {
         let binding = Binding { trigger: Trigger::Key(Keystroke::parse(key).unwrap()), scope: Scope::Window, action: Action::Send("x".to_owned()) };
@@ -158,7 +163,7 @@ mod tests {
         let temporary_tabs = TemporaryTabs { enabled: true, kinds: Vec::new(), marker: TabMarker::Italic };
         ScriptEvent::Loaded {
             keymap,
-            fonts: Fonts::default(),
+            fonts: Box::default(),
             theme: Box::new(crate::theme_config::defaults()),
             excluded: Default::default(),
             hidden: Default::default(),
@@ -169,6 +174,7 @@ mod tests {
             drop_modifiers: Default::default(),
             delete: Default::default(),
             folder_switches: Default::default(),
+            worktree_row: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }
@@ -245,9 +251,9 @@ mod tests {
         // given
         let (_dir, mut state) = new_state();
         let event = match loaded(send_binding("f5")) {
-            ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, has_init, .. } => {
+            ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, worktree_row, has_init, .. } => {
                 let themes = vec!["a".to_owned(), "b".to_owned()];
-                ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, has_init, themes }
+                ScriptEvent::Loaded { keymap, fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, worktree_row, has_init, themes }
             }
             event => event,
         };

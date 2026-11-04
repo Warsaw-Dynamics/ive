@@ -113,6 +113,8 @@ pub struct Workspace {
     main_window: AnyWindowHandle,
     tree: Tree,
     tree_statuses: tree_status::TreeStatuses,
+    /// the checkout rows `config.worktree_row` built
+    checkout_looks: crate::sidebar::checkout_looks::CheckoutLooks,
     tree_git: tree_git::TreeGit,
     /// the Open project menu of the sidebar header
     header_menu: Option<sidebar_view::HeaderMenu>,
@@ -310,6 +312,7 @@ impl Workspace {
             main_window: window.window_handle(),
             tree: Tree::new(),
             tree_statuses: tree_status::TreeStatuses::default(),
+            checkout_looks: Default::default(),
             tree_git: tree_git::TreeGit::default(),
             header_menu: None,
             header_menu_at_press: None,
@@ -741,9 +744,15 @@ impl Workspace {
         let layout = cx.global::<SettingsStore>().current().git_files.layout;
         let open_folders = cx.try_global::<crate::script::open_folders::OpenFolders>().unwrap_or(&crate::script::open_folders::ALL_OPEN);
         let folder_badges = cx.try_global::<crate::script::folder_switches::FolderSwitches>().is_some_and(|switches| switches.per_worktree);
-        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system(), folder_badges };
+        let current = rows::checkout_inputs(crate::project_list::shown(&self.projects, &self.hidden_projects));
+        let ask = self.checkout_looks.take_unasked(current);
+        let checkouts = self.checkout_looks.built();
+        let look = rows::TreeLook { statuses: self.tree_statuses.known(), excluded, open_folders, git: self.tree_git(), layout, clock: crate::age::Clock::system(), folder_badges, checkouts };
         let shown = crate::project_list::shown(&self.projects, &self.hidden_projects);
         self.tree.rows = rows::build(shown, &self.processes, &*self, &look);
+        if let (Some((function, rows)), Some(scripts)) = (ask, cx.try_global::<crate::script::state::ScriptState>()) {
+            scripts.build_rows(function, rows);
+        }
         self.read_tree_statuses(cx);
         self.sync_watches();
         cx.notify();

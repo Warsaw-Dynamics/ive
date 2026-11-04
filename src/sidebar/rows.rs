@@ -14,7 +14,8 @@ use crate::overview::file_list::FileLayout;
 use crate::open_project::{OpenProject, PagedList};
 use crate::process::{ProcessId, ProcessKind, Processes, RunId};
 use crate::terminal::Progress;
-use crate::project::{Checkout, CheckoutRef, ProjectId, ProjectKind};
+use crate::project::{Checkout, CheckoutRef, Project, ProjectId, ProjectKind};
+use crate::script::worktree_row::{RowInput, RowLook, default_look};
 use crate::script::open_folders::OpenFolders;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +93,8 @@ pub struct CheckoutRow {
     pub is_main: bool,
     /// its processes that wait for the user, while it is folded; 0 while open
     pub waiting: usize,
+    /// how the row reads after its icon: `config.worktree_row`'s, or IVE's own
+    pub look: RowLook,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,7 +124,8 @@ pub struct EntryRow {
 /// What file rows are drawn by besides their names: each shown checkout's git status (by checkout path; none
 /// until it was read), and the folder names excluded besides gitignored folders; which folders the user left alone
 /// are open; and what the git folders list:
-/// each checkout's git data (none until read), the Flat/Tree layout, and the clock commit ages count from.
+/// each checkout's git data (none until read), the Flat/Tree layout, and the clock commit ages count from; and the
+/// checkout rows `config.worktree_row` built, by what they were built from.
 pub struct TreeLook<'a> {
     pub statuses: &'a HashMap<PathBuf, TreeStatus>,
     pub excluded: &'a [String],
@@ -131,6 +135,7 @@ pub struct TreeLook<'a> {
     pub clock: Clock,
     /// whether worktree rows carry folder badges: `config.folder_switches.per_worktree`
     pub folder_badges: bool,
+    pub checkouts: &'a HashMap<RowInput, RowLook>,
 }
 
 /// "Show 10 more · N of M" under a paged list.
@@ -294,13 +299,37 @@ fn push_checkouts<V>(rows: &mut Vec<TreeRow>, open: &OpenProject, tree: &Sources
         // an open checkout's rows show its waiting processes
         let waiting = if expanded { 0 } else { tree.processes.waiting_in(&[checkout.path.as_path()]) };
         let badges = badges(open, &checkout_ref, &target, tree);
-        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, badges, is_main: checkout.is_main, waiting });
+        let input = row_input(project, checkout);
+        let look = tree.look.checkouts.get(&input).cloned().unwrap_or_else(|| default_look(&input));
+        let item = TreeItem::Checkout(CheckoutRow { checkout: checkout_ref.clone(), label: checkout.label.clone(), expanded, badges, is_main: checkout.is_main, waiting, look });
         rows.push(TreeRow { depth: 1, item, target });
         if expanded {
             push_checkout_content(rows, open, &checkout_ref, 2, tree);
         }
     }
     push_more(rows, open, list, total, 1);
+}
+
+/// What `config.worktree_row` builds `checkout`'s row from.
+pub fn row_input(project: &Project, checkout: &Checkout) -> RowInput {
+    let text = |path: &Path| path.to_string_lossy().into_owned();
+    RowInput {
+        project: project.name.clone(),
+        project_dir: text(&project.root),
+        path: text(&checkout.path),
+        folder: checkout.path.file_name().map_or_else(|| text(&checkout.path), |name| name.to_string_lossy().into_owned()),
+        label: checkout.label.clone(),
+        branch: checkout.branch.clone(),
+        main: checkout.is_main,
+        head: checkout.head.as_ref().map(|sha| sha.chars().take(7).collect()),
+        base: checkout.status.as_ref().and_then(|status| status.base.clone()),
+    }
+}
+
+/// What `config.worktree_row` builds the checkout rows of `projects` from: those drawn with a worktree level.
+pub fn checkout_inputs<'a>(projects: impl IntoIterator<Item = &'a OpenProject>) -> Vec<RowInput> {
+    let leveled = projects.into_iter().filter(|open| open.has_worktree_level());
+    leveled.flat_map(|open| open.project.checkouts.iter().map(|checkout| row_input(&open.project, checkout))).collect()
 }
 
 /// A plain folder's git folders list nothing.
@@ -508,7 +537,8 @@ mod tests {
     fn no_look() -> TreeLook<'static> {
         static NONE: std::sync::LazyLock<HashMap<PathBuf, TreeStatus>> = std::sync::LazyLock::new(HashMap::new);
         static NO_DATA: std::sync::LazyLock<HashMap<PathBuf, CheckoutGit>> = std::sync::LazyLock::new(HashMap::new);
-        TreeLook { statuses: &NONE, excluded: &[], open_folders: &crate::script::open_folders::ALL_OPEN, git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0), folder_badges: false }
+        static NO_LOOKS: std::sync::LazyLock<HashMap<RowInput, RowLook>> = std::sync::LazyLock::new(HashMap::new);
+        TreeLook { statuses: &NONE, excluded: &[], open_folders: &crate::script::open_folders::ALL_OPEN, git: &NO_DATA, layout: FileLayout::Flat, clock: Clock::new(DAY_2, 0), folder_badges: false, checkouts: &NO_LOOKS }
     }
 
     /// Two days after the epoch: the tests' commits are a day old.
@@ -701,6 +731,26 @@ mod tests {
         let hides = |row: &TreeRow| row.target_names().iter().any(|name| name.starts_with("hide-worktree:"));
         let checkouts: Vec<bool> = rows.iter().filter(|row| matches!(row.item, TreeItem::Checkout(_))).map(hides).collect();
         assert_eq!(checkouts, [false, true]);
+    }
+
+    #[test]
+    fn should_draw_a_worktree_row_as_ive_does_until_its_script_built_it() {
+        // given
+        let root = Path::new("/p");
+        let checkouts = vec![checkout(root, true, "dev"), checkout(&root.join("same"), false, "same"), checkout(&root.join("wt"), false, "GEN-1-feature")];
+        let mut project = OpenProject::placeholder(ProjectId::new("p"), root.to_path_buf());
+        project.apply(1, Ok(ProjectScan { root: root.to_path_buf(), kind: ProjectKind::Git, checkouts, error: None, git_dir: None }));
+        project.toggle();
+
+        // when
+        let rows = build(&[project], &Processes::<()>::default(), &FakeRuns::default(), &no_look());
+
+        // then
+        let texts: Vec<String> = rows.iter().filter_map(|row| match &row.item {
+            TreeItem::Checkout(checkout) => Some(checkout.look.text()),
+            _ => None,
+        }).collect();
+        assert_eq!(texts, ["dev", "same", "wt GEN-1-feature"]);
     }
 
     #[test]

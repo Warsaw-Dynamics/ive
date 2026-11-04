@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn should_drop_files_on_worktree_and_files_folder_into_its_root() {
         // given
-        let worktree = TreeItem::Checkout(CheckoutRow { checkout: checkout("/p/wt"), label: "wt".to_owned(), expanded: true, badges: Vec::new(), is_main: false, waiting: 0 });
+        let worktree = TreeItem::Checkout(CheckoutRow { checkout: checkout("/p/wt"), label: "wt".to_owned(), expanded: true, badges: Vec::new(), is_main: false, waiting: 0, look: crate::script::worktree_row::RowLook { parts: Vec::new() } });
 
         // when
         let placed = [files_place(&worktree, main_of), files_place(&folder(FolderKind::Files), main_of)];

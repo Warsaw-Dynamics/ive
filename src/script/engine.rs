@@ -21,6 +21,7 @@ use super::hidden::{self, Hidden};
 use super::open_folders::{self, OpenFolders};
 use super::delete_mode::{self, DeleteMode};
 use super::folder_switches::{self, FolderSwitches};
+use super::worktree_row;
 use super::drop_modifiers;
 use super::quit_countdown::{self, QuitCountdown};
 use crate::transfer::DropModifiers;
@@ -52,6 +53,8 @@ pub struct Loaded {
     pub drop_modifiers: DropModifiers,
     pub delete: DeleteMode,
     pub folder_switches: FolderSwitches,
+    /// `config.worktree_row`; none leaves the checkout rows to IVE
+    pub worktree_row: Option<Function>,
     pub functions: Vec<Function>,
     /// whether there was an `init.rn`; without it the keymap is `ive.rn`'s alone
     pub has_init: bool,
@@ -104,6 +107,7 @@ impl Engine {
             drop_modifiers: rune::Value::from(()),
             delete: rune::Value::from(()),
             folder_switches: rune::Value::from(()),
+            worktree_row: rune::Value::from(()),
         };
         let (defaults, default_fonts, default_carried) = self.run(&ive_rn, &mut functions, start)?;
         let default_fonts = default_fonts.over(Fonts::default());
@@ -119,6 +123,7 @@ impl Engine {
             drop_modifiers: rune::Value::from(()),
             delete: rune::Value::from(()),
             folder_switches: rune::Value::from(()),
+            worktree_row: rune::Value::from(()),
         };
         let init = dir.map(|dir| dir.join(INIT)).filter(|path| path.exists());
         let Some(path) = init else {
@@ -136,6 +141,7 @@ impl Engine {
                 drop_modifiers: checked.drop_modifiers,
                 delete: checked.delete,
                 folder_switches: checked.folder_switches,
+                worktree_row: checked.worktree_row,
                 functions: bound,
                 has_init: false,
             });
@@ -157,6 +163,7 @@ impl Engine {
             drop_modifiers: checked.drop_modifiers,
             delete: checked.delete,
             folder_switches: checked.folder_switches,
+            worktree_row: checked.worktree_row,
             functions: bound,
             has_init: true,
         })
@@ -213,6 +220,7 @@ struct Checked {
     drop_modifiers: DropModifiers,
     delete: DeleteMode,
     folder_switches: FolderSwitches,
+    worktree_row: Option<Function>,
 }
 
 /// The theme, excluded folders, hidden names, temporary tabs and menus `file` left, checked: keys of `temporary_tabs` and menus
@@ -234,7 +242,8 @@ fn checked(carried: &Carried, defaults: &Carried, keymap: &Keymap, functions: &m
     let drop_modifiers = drop_modifiers::parse(&carried.drop_modifiers).map_err(named)?;
     let delete = delete_mode::parse(&carried.delete).map_err(named)?;
     let folder_switches = folder_switches::parse(&carried.folder_switches).map_err(named)?;
-    Ok(Checked { theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches })
+    let worktree_row = worktree_row::bind(&carried.worktree_row).map_err(named)?;
+    Ok(Checked { theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, worktree_row })
 }
 
 /// Where a run-time error happened, as `file:line:column` like a compile error; `name` when Rune does not know.
@@ -532,6 +541,71 @@ mod tests {
         // then
         assert_eq!(modifiers.copy, Modifiers { alt: true, ..Modifiers::default() });
         assert_eq!(modifiers.moving, Modifiers { control: true, shift: true, ..Modifiers::default() });
+    }
+
+    /// What `loaded`'s `config.worktree_row` makes of `input`.
+    fn worktree_row(loaded: &Loaded, input: &worktree_row::RowInput) -> Result<worktree_row::RowLook, String> {
+        let function = loaded.worktree_row.as_ref().unwrap();
+        let context = serde_json::from_value::<rune::Value>(serde_json::to_value(input).unwrap()).unwrap();
+        let returned = function.call::<rune::Value>((context,)).into_result().map_err(|error| error.to_string())?;
+        worktree_row::parse(&serde_json::to_value(&returned).unwrap())
+    }
+
+    fn row_input(label: &str, branch: Option<&str>, main: bool) -> worktree_row::RowInput {
+        worktree_row::RowInput {
+            project: "p".to_owned(),
+            project_dir: "/p".to_owned(),
+            path: format!("/p/{label}"),
+            folder: label.to_owned(),
+            label: label.to_owned(),
+            branch: branch.map(str::to_owned),
+            main,
+            head: Some("cb0c39e".to_owned()),
+            base: None,
+        }
+    }
+
+    #[test]
+    fn should_draw_worktree_rows_in_ive_rn_as_ive_does_without_a_script() {
+        // given
+        let loaded = defaults();
+        let inputs = [row_input("dev", Some("dev"), true), row_input("same", Some("same"), false), row_input("wt", Some("GEN-1"), false), row_input("detached", None, false)];
+
+        // when
+        let looks = inputs.clone().map(|input| worktree_row(&loaded, &input));
+
+        // then
+        assert_eq!(looks, inputs.map(|input| Ok(worktree_row::default_look(&input))));
+    }
+
+    #[test]
+    fn should_take_worktree_row_from_init() {
+        // given
+        let init = r#"pub fn init(config) { config.worktree_row = |row| [row.branch, #{ text: row.folder, style: "grey", icon: "folder" }]; }"#;
+
+        // when
+        let look = worktree_row(&load(init).1.unwrap(), &row_input("wt", Some("GEN-1"), false));
+
+        // then
+        assert_eq!(look.map(|look| look.text()), Ok("GEN-1 wt".to_owned()));
+    }
+
+    #[test]
+    fn should_leave_worktree_rows_to_ive_when_init_unsets_the_function() {
+        // when
+        let loaded = load("pub fn init(config) { config.worktree_row = (); }").1.unwrap();
+
+        // then
+        assert!(loaded.worktree_row.is_none());
+    }
+
+    #[test]
+    fn should_refuse_a_worktree_row_that_is_not_a_function() {
+        // when
+        let refused = load(r#"pub fn init(config) { config.worktree_row = "pill"; }"#).1.err();
+
+        // then
+        assert_eq!(refused.as_deref(), Some("init.rn: worktree_row must be a function, like |row| [row.label]"));
     }
 
     #[test]

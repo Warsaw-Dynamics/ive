@@ -142,8 +142,14 @@ impl Workspace {
         if let ScriptEvent::Tested { request, answer } = event {
             return self.menu_answered(request, answer, window, cx);
         }
+        if let ScriptEvent::RowsBuilt { generation, looks } = event {
+            if self.checkout_looks.take_built(generation, looks) {
+                self.tree_changed(cx);
+            }
+            return;
+        }
         let fonts_missing = match &event {
-            ScriptEvent::Loaded { fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, .. } => {
+            ScriptEvent::Loaded { fonts, theme, excluded, hidden, temporary_tabs, menus, quit_countdown, open_folders, drop_modifiers, delete, folder_switches, worktree_row, .. } => {
                 // its items may name functions of the load before
                 self.close_context_menu(window, cx);
                 apply_theme(theme.as_ref().clone(), cx);
@@ -160,7 +166,10 @@ impl Workspace {
                 cx.set_global(*quit_countdown);
                 cx.set_global(*drop_modifiers);
                 cx.set_global(*delete);
-                apply_fonts(fonts.clone(), cx)
+                if self.checkout_looks.use_function(*worktree_row) {
+                    self.tree_changed(cx);
+                }
+                apply_fonts(fonts.as_ref().clone(), cx)
             }
             _ => false,
         };
@@ -398,7 +407,7 @@ mod tests {
     fn loaded(keymap: crate::script::keymap::Keymap) -> crate::script::ScriptEvent {
         crate::script::ScriptEvent::Loaded {
             keymap,
-            fonts: Fonts::default(),
+            fonts: Box::default(),
             theme: Box::new(crate::theme_config::defaults()),
             excluded: Default::default(),
             hidden: Default::default(),
@@ -409,6 +418,7 @@ mod tests {
             drop_modifiers: Default::default(),
             delete: Default::default(),
             folder_switches: Default::default(),
+            worktree_row: Default::default(),
             has_init: true,
             themes: Vec::new(),
         }

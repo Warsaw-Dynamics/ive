@@ -25,6 +25,7 @@ use super::fingerprint::fingerprint;
 use super::keymap::Keymap;
 use super::menus::Menus;
 use super::temporary_tabs::TemporaryTabs;
+use super::worktree_row::{self, RowFunction, RowInput, RowLook};
 use crate::theme::Fonts;
 use crate::settings::ThemeChoice;
 use crate::theme_config::{self, ThemeSpec, user};
@@ -37,7 +38,7 @@ pub enum ScriptEvent {
     /// `ive.rn` and `init.rn` (when `has_init`) loaded; these bindings and fonts replace the previous ones
     Loaded {
         keymap: Keymap,
-        fonts: Fonts,
+        fonts: Box<Fonts>,
         theme: Box<ThemeSpec>,
         excluded: Excluded,
         hidden: super::hidden::Hidden,
@@ -48,6 +49,7 @@ pub enum ScriptEvent {
         drop_modifiers: crate::transfer::DropModifiers,
         delete: super::delete_mode::DeleteMode,
         folder_switches: super::folder_switches::FolderSwitches,
+        worktree_row: Option<super::worktree_row::RowFunction>,
         has_init: bool,
         /// the user themes to pick from, by name
         themes: Vec<String>,
@@ -58,6 +60,8 @@ pub enum ScriptEvent {
     RunFailed,
     /// the menu condition asked as `request` answered
     Tested { request: u64, answer: bool },
+    /// what `config.worktree_row` of load `generation` made of each row asked; `None` where it failed (the log says why)
+    RowsBuilt { generation: u64, looks: Vec<(RowInput, Option<RowLook>)> },
 }
 
 /// What the gpui thread asks of the script thread.
@@ -73,6 +77,8 @@ pub enum ScriptCommand {
     /// a menu opened on `context`: does the condition function `function` of load `generation` hold? Answered as
     /// [`ScriptEvent::Tested`], false when it errs or takes longer than `timeout`
     Test { generation: u64, function: usize, context: serde_json::Value, request: u64, timeout: Duration },
+    /// checkouts' tree rows to build with `config.worktree_row`, answered as [`ScriptEvent::RowsBuilt`]
+    BuildRows { function: RowFunction, rows: Vec<RowInput> },
 }
 
 /// The gpui thread's ends of the script thread's channels, and the log it writes.
@@ -174,6 +180,7 @@ impl Runner {
                 }
                 ScriptCommand::Invoke { generation, function, context } => self.invoke(generation, function, context),
                 ScriptCommand::Test { generation, function, context, request, timeout } => self.test(Asked { generation, function, request, timeout }, context),
+                ScriptCommand::BuildRows { function, rows } => self.build_rows(function, rows),
             }
         }
     }
@@ -249,7 +256,7 @@ impl Runner {
         }
         let event = ScriptEvent::Loaded {
             keymap: loaded.keymap.clone(),
-            fonts: loaded.fonts.clone(),
+            fonts: Box::new(loaded.fonts.clone()),
             theme: Box::new(loaded.theme.clone()),
             excluded: loaded.excluded.clone(),
             hidden: loaded.hidden.clone(),
@@ -260,6 +267,7 @@ impl Runner {
             drop_modifiers: loaded.drop_modifiers,
             delete: loaded.delete,
             folder_switches: loaded.folder_switches,
+            worktree_row: loaded.worktree_row.as_ref().map(|_| RowFunction { generation: self.loads }),
             has_init: loaded.has_init,
             themes: self.dir.as_deref().map(user::names).unwrap_or_default(),
         };
@@ -332,6 +340,22 @@ impl Runner {
         });
     }
 
+    /// Builds each row with `config.worktree_row` and sends them; a row it fails on is logged and left to IVE. Rows
+    /// asked of an older load are dropped: the workspace asks again once the new load arrives.
+    fn build_rows(&self, bound: RowFunction, rows: Vec<RowInput>) {
+        let function = self.current.as_ref().filter(|(current, _)| *current == bound.generation).and_then(|(_, loaded)| loaded.worktree_row.as_ref());
+        let Some(function) = function else {
+            return;
+        };
+        let looks = rows.into_iter().map(|row| {
+            let look = call_row(function, &row).inspect_err(|error| self.log.append(&format!("worktree_row on {}: {error}", row.path))).ok();
+            (row, look)
+        });
+        let looks = looks.collect();
+        self.drain_output();
+        self.send(ScriptEvent::RowsBuilt { generation: bound.generation, looks });
+    }
+
     fn drain_output(&self) {
         for line in self.engine.drain_output() {
             self.log.append(&line);
@@ -390,6 +414,25 @@ async fn call_test(function: &Function, context: serde_json::Value) -> Result<bo
         Ok(Err(error)) => Err(describe(error)),
         Err(_) => Ok(rune::from_value::<bool>(returned).unwrap_or(false)),
     }
+}
+
+/// Instructions `config.worktree_row` may run per row: it runs for every checkout on the script thread, so a slow one
+/// must not hold the others up.
+const ROW_BUDGET: usize = 1_000_000;
+
+/// What `function` makes of `row`, at once: it is called for a tree row and may not await.
+fn call_row(function: &Function, row: &RowInput) -> Result<RowLook, String> {
+    let json = serde_json::to_value(row).map_err(|error| format!("cannot pass the row on: {error}"))?;
+    let context = serde_json::from_value::<Value>(json).map_err(|error| format!("cannot pass the row on: {error}"))?;
+    let returned = budget::with(ROW_BUDGET, || function.call::<Value>((context,))).call().into_result().map_err(|error| {
+        let error = error.to_string();
+        if is_out_of_budget(&error) {
+            return format!("ran over {ROW_BUDGET} instructions and was stopped; does it loop forever?");
+        }
+        error
+    })?;
+    let json = serde_json::to_value(&returned).map_err(|error| format!("returned what is not data: {error}"))?;
+    worktree_row::parse(&json)
 }
 
 fn run_error(error: VmError) -> String {
@@ -541,6 +584,60 @@ mod tests {
                 _ => continue,
             }
         }
+    }
+
+    fn row_input(folder: &str, branch: Option<&str>) -> RowInput {
+        RowInput {
+            project: "p".to_owned(),
+            project_dir: "/p".to_owned(),
+            path: format!("/p/{folder}"),
+            folder: folder.to_owned(),
+            label: folder.to_owned(),
+            branch: branch.map(str::to_owned),
+            main: false,
+            head: None,
+            base: None,
+        }
+    }
+
+    /// The rows load 1's `config.worktree_row` builds of `rows`, as texts; `None` for one it failed on.
+    fn build_rows(scripts: &mut Scripts, rows: Vec<RowInput>) -> Vec<Option<String>> {
+        scripts.commands.unbounded_send(ScriptCommand::BuildRows { function: RowFunction { generation: 1 }, rows }).unwrap();
+        loop {
+            match next_event(scripts, WAIT).expect("no rows") {
+                ScriptEvent::RowsBuilt { looks, .. } => return looks.into_iter().map(|(_, look)| look.map(|look| look.text())).collect(),
+                _ => continue,
+            }
+        }
+    }
+
+    #[test]
+    fn should_build_worktree_rows_with_the_function_from_init() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let init = r#"pub fn init(config) { config.worktree_row = |row| [row.folder, `on ${row.branch}`]; }"#;
+        let (mut scripts, _, _) = start_with(dir.path(), init, answer_terminal);
+
+        // when
+        let built = build_rows(&mut scripts, vec![row_input("wt", Some("GEN-1"))]);
+
+        // then
+        assert_eq!(built, [Some("wt on GEN-1".to_owned())]);
+    }
+
+    #[test]
+    fn should_log_a_worktree_row_the_function_fails_on_and_build_the_others() {
+        // given
+        let dir = tempfile::tempdir().unwrap();
+        let init = r#"pub fn init(config) { config.worktree_row = |row| if row.folder == "bad" { 3 } else { row.folder }; }"#;
+        let (mut scripts, _, log) = start_with(dir.path(), init, answer_terminal);
+
+        // when
+        let built = build_rows(&mut scripts, vec![row_input("bad", None), row_input("good", None)]);
+
+        // then
+        assert_eq!(built, [None, Some("good".to_owned())]);
+        assert!(logged(&log, "worktree_row on /p/bad").ends_with("worktree_row on /p/bad: worktree_row must return a text or a list of parts, not 3"));
     }
 
     fn when_test(body: &str) -> String {

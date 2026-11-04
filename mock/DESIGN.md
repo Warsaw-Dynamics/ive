@@ -477,6 +477,32 @@ checkout cannot be hidden. Hide is on the worktree's tree row (on hover) and on 
 main checkout are hidden the project drops its worktree level, as with a single checkout. Kept per profile (in the app:
 saved state); the mock starts with GEN-811 hidden and does not keep changes on refresh.
 
+## Branch of a worktree named otherwise
+
+A worktree's tree row is named after its folder; most are named after their branch too, but not all:
+`IDP-30-reserved-subdomain` is on `IDP-30-Reserved-subdomain-returns-404`, Claude Code's
+`.claude/worktrees/navigation` on `worktree-navigation`. The row then says the branch too, so the tree is not
+lying about what is checked out. The main checkout is left out: its row's name is its branch already. A detached
+worktree says nothing extra (yet). The tooltip names folder, branch and path in every look.
+
+In the app (2026-11-03): **After the name, grey**, `IDP-30-reserved-subdomain  IDP-30-Reserved-subdomain-returns-404`,
+in the tag size and the secondary grey, as a project's `● n running`. The row is built by a script,
+`config.worktree_row` (README), from the checkout's data: `ive.rn`'s builds this look, and `init.rn` can build any
+other from texts, grey texts, pills, icons and tooltips (all the looks below but First row inside). It runs once per
+checkout and again when the checkout's data changes, never while drawing. The looks are in the Mock menu, "Branch on
+a worktree row", to compare:
+
+- **Pill**: the branch on a chip with the branch icon, as a single-checkout project shows its branch. Loudest; reads
+  as a second name, and two pills (project + worktree) stack up.
+- **Branch first, folder grey**: the branch is the row's name, the folder follows with a folder icon. What the branch
+  icon promises, but the row no longer matches the path, the tab owner names or Copy Path.
+- **≠ mark**: only `≠` after the name, the branch in the tooltip. Quietest; says something differs, not what.
+- **First row inside**: an open worktree starts with a grey branch row. Costs a row per worktree and nothing when folded.
+- **Off**: folder name only, the branch in the tooltip.
+
+Open: when the branch only adds a known prefix (`worktree-<folder>`, Claude Code's naming) or differs in case, it could
+count as the same name and show nothing. A long branch widens the row; the tree scrolls sideways for it.
+
 ## Settings › Appearance and Scripts
 
 Synced with the Rust code on 2026-10-23 (`docs/superpowers/specs/2026-10-23-user-themes-design.md`). Settings has

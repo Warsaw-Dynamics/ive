@@ -630,6 +630,8 @@
         // A proposal (DESIGN.md "Attention"): whether IVE's window has the keyboard (the mock bar flips it), and the
         // desktop notifications IVE sent while it had not, one per process.
         windowFocused: true,
+        // Mock menu "Branch on a worktree row": after | pill | swap | mark | child | off (withOtherBranch)
+        branchLook: 'after',
         desktopNotices: [],
         attentionCount: 0,
         tabs: [],
@@ -1632,10 +1634,35 @@
         worktreeNode: function (co) {
           var self = this;
           // the main checkout's branch icon carries IntelliJ's favourite-branch star
-          return { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: co.main ? 'branch-main.svg' : 'branch.svg', open: true,
+          var node = { key: 'w:' + co.id, entry: { co: co.id, path: '', folder: true }, label: co.label, icon: co.main ? 'branch-main.svg' : 'branch.svg', open: true,
             waiting: this.waitingLabel(this.waitingIn([co.id])),
             children: this.checkoutChildren(co),
             action: co.main ? null : { icon: 'hide.svg', title: 'Hide worktree (the project page shows it again)', run: function () { self.hideWorktree(co); } } };
+          return this.withOtherBranch(node, co);
+        },
+        // rows.rs other_branch: a worktree's branch when its folder is named otherwise (the main checkout's label is
+        // its branch already); null when they match or HEAD is detached.
+        otherBranch: function (co) {
+          if (co.main || co.branch === null || co.branch === co.label) return null;
+          return co.branch;
+        },
+        // A proposal (DESIGN.md "Branch of a worktree named otherwise"): where the tree row says the branch, as the
+        // Mock menu's "Branch on a worktree row" picks. The tooltip names both in every look.
+        withOtherBranch: function (node, co) {
+          var branch = this.otherBranch(co);
+          if (branch === null) return node;
+          node.hint = co.label + ' on branch ' + branch + ' · ' + co.path;
+          switch (this.branchLook) {
+            case 'after': node.aside = branch; break;
+            case 'pill': node.pill = branch; break;
+            case 'swap': node.label = branch; node.aside = co.label; node.asideIcon = 'project-folder.svg'; break;
+            case 'mark': node.aside = '≠'; break;
+            case 'child':
+              node.children = [{ key: 'wb:' + co.id, label: branch, icon: 'branch.svg', slot: true, muted: true, hint: 'Branch ' + branch + ' (the folder is ' + co.label + ')' }]
+                .concat(node.children);
+              break;
+          }
+          return node;
         },
         // Project children: worktrees, or the single checkout's content.
         projectNode: function (project) {

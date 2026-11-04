@@ -115,6 +115,10 @@ code { font-family: var(--mono); }
 /* under the whole Projects header, 4 px in from the tree's edges */
 .menu--header { left: 4px; right: 4px; width: auto; }
 .tree__label--weak { color: var(--muted); background: color-mix(in srgb, var(--hover) 50%, transparent); }
+/* checkout_row other_branch_text: a worktree's branch after its folder name when they differ, as a tag (12 px, secondary) */
+.tree__aside { flex: none; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); }
+.tree__aside > .icon { flex: none; width: 12px; height: 12px; opacity: 0.7; }
+.tree__label--muted { color: var(--muted); font-size: 12px; }
 /* project_row: the single checkout's branch pill */
 .pill {
   flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 4px;

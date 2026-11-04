@@ -50,6 +50,9 @@ worktree, or a branch without one (local, or only on `origin` with a faded icon)
 the folder `.ive.toml` names. A Processes row's + (on hover) starts a terminal there.
 The project page's Worktrees section is a list (DESIGN.md "Hidden worktrees"): worktrees by last use,
 Hidden ones (Hide on a worktree's tree row or page row; out of the tree, hub and New terminal), branches without a worktree.
+A worktree whose folder is not named after its branch (`IDP-30-reserved-subdomain`) says the branch on its tree row
+(DESIGN.md "Branch of a worktree named otherwise"); the Mock menu's "Branch on a worktree row" switches between the
+proposed looks.
 Colours come from `src/theme.rs` (`mock.css`), sizes from the Rust file each block in `checkouts.css` names. Data is in `checkouts.js`, partials in `components/checkouts/`. `checkouts-data.js` generates scratches and
 branches with Faker (seeded): 600 scratches and 30 branches without a worktree; long lists show 10 rows, "Show 10
 more" and "Show all". Faker's English locale is vendored in `vendor/faker/` (MIT). Icons are the app's, from
