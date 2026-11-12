@@ -270,7 +270,7 @@ impl Workspace {
         self.watches.paths.renew_git_dir(dir);
         let project = self.projects.iter().find(|open| open.project.git_dir.as_deref() == Some(dir)).map(|open| open.project.id.clone());
         if let Some(id) = project {
-            self.refresh_project(&id, cx);
+            self.refresh_checkouts(&id, Statuses::GitChanged, cx);
             self.git_changed(&id, cx);
         }
     }

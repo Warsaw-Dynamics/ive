@@ -7,6 +7,7 @@ use std::path::Path;
 use ignore::WalkBuilder;
 
 use crate::git;
+use crate::git::status::Change;
 use crate::project::ProjectKind;
 
 /// What the hub does with a file by default.
@@ -27,14 +28,24 @@ pub struct CheckoutFiles {
     pub skipped: usize,
 }
 
+/// Where a checkout's file list comes from.
+#[derive(Debug, Clone, Copy)]
+pub enum Listed<'a> {
+    /// git's index and, of the checkout's status, the untracked files: the status is read once for the hub, not
+    /// a second time for the list
+    Git(&'a [Change]),
+    /// a walk of the folder
+    Plain,
+}
+
 /// git's index plus untracked files it does not ignore; for a folder without git, a walk honouring `.gitignore` and
 /// `.ignore` files, skipping `.git`. A path below a folder named in `excluded` is [`Class::Excluded`]. Reads the
 /// disk: run it on the background executor.
 #[tracing::instrument(level = "debug", name = "list_files", skip_all, fields(dir = %dir.display()))]
-pub fn read_checkout(dir: &Path, kind: ProjectKind, excluded: &[String]) -> Result<CheckoutFiles, String> {
-    let paths = match kind {
-        ProjectKind::Git => git::files::listed(dir).map_err(|error| error.to_string())?,
-        ProjectKind::Plain => walk(dir, true)?.into_iter().collect(),
+pub fn read_checkout(dir: &Path, listed: Listed<'_>, excluded: &[String]) -> Result<CheckoutFiles, String> {
+    let paths = match listed {
+        Listed::Git(changes) => git::files::listed(dir, changes).map_err(|error| error.to_string())?,
+        Listed::Plain => walk(dir, true)?.into_iter().collect(),
     };
     Ok(classified(paths, |path| match below_excluded(path, excluded) {
         true => Class::Excluded,
@@ -108,6 +119,12 @@ mod tests {
 
     const EXCLUDED: [String; 0] = [];
 
+    /// A git checkout's files, its status read first as the hub does.
+    fn read_git(dir: &Path, excluded: &[String]) -> Result<CheckoutFiles, String> {
+        let changes = git::status::changes(dir).map_err(|error| error.to_string())?;
+        read_checkout(dir, Listed::Git(&changes), excluded)
+    }
+
     fn searched(paths: &[&str]) -> Vec<(String, Class)> {
         paths.iter().map(|path| (path.to_string(), Class::Searched)).collect()
     }
@@ -128,7 +145,7 @@ mod tests {
         let repo = repo_with_ignored_output();
 
         // when
-        let files = read_checkout(repo.path(), ProjectKind::Git, &EXCLUDED).unwrap();
+        let files = read_git(repo.path(), &EXCLUDED).unwrap();
 
         // then
         assert_eq!(files.paths, searched(&[".gitignore", "a.rs", "b.rs"]));
@@ -143,7 +160,7 @@ mod tests {
         repo.commit("first");
 
         // when
-        let files = read_checkout(repo.path(), ProjectKind::Git, &["target".to_owned()]).unwrap();
+        let files = read_git(repo.path(), &["target".to_owned()]).unwrap();
 
         // then
         assert_eq!(files.paths, [("src/target.rs".to_owned(), Class::Searched), ("target/x.rs".to_owned(), Class::Excluded)]);
@@ -172,7 +189,7 @@ mod tests {
         }
 
         // when
-        let files = read_checkout(root, ProjectKind::Plain, &EXCLUDED).unwrap();
+        let files = read_checkout(root, Listed::Plain, &EXCLUDED).unwrap();
         let ignored = read_ignored(root, ProjectKind::Plain).unwrap();
 
         // then
@@ -193,7 +210,7 @@ mod tests {
         repo.write_bytes(std::path::Path::new(std::ffi::OsStr::from_bytes(b"\xff.txt")), b"x");
 
         // when
-        let files = read_checkout(repo.path(), ProjectKind::Git, &EXCLUDED).unwrap();
+        let files = read_git(repo.path(), &EXCLUDED).unwrap();
 
         // then
         assert_eq!(files.paths, searched(&["a.rs"]));
@@ -207,7 +224,7 @@ mod tests {
         let missing = dir.path().join("gone");
 
         // when
-        let error = read_checkout(&missing, ProjectKind::Git, &EXCLUDED).unwrap_err();
+        let error = read_git(&missing, &EXCLUDED).unwrap_err();
 
         // then
         assert!(error.contains(&missing.display().to_string()), "{error}");

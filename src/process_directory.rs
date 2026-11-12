@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The working directory of process `pid`; `None` once it is gone.
@@ -27,10 +28,24 @@ pub fn directory_of(pid: libc::pid_t) -> Option<PathBuf> {
 
 /// The working directory of process `pid`, read from its memory; `None` once it is gone, or when Windows refuses
 /// (a process of another user, or elevated).
-#[cfg(windows)]
+#[cfg(all(windows, test))]
 pub fn directory_of(pid: i32) -> Option<PathBuf> {
-    let kind = sysinfo::ProcessRefreshKind::new().with_cwd(sysinfo::UpdateKind::Always);
-    crate::windows_processes::read(u32::try_from(pid).ok()?, kind, |process| process.cwd().map(PathBuf::from)).flatten()
+    directories_of(&[pid]).remove(&pid)
+}
+
+/// The working directory of each of `pids` that has one to read, all in one read of the process list: on Windows
+/// each read lists every process.
+#[cfg(windows)]
+pub fn directories_of(pids: &[i32]) -> HashMap<i32, PathBuf> {
+    let asked: Vec<u32> = pids.iter().filter_map(|pid| u32::try_from(*pid).ok()).collect();
+    let directories = crate::windows_processes::directories_of(&asked);
+    directories.into_iter().filter_map(|(pid, directory)| Some((i32::try_from(pid).ok()?, directory))).collect()
+}
+
+/// The working directory of each of `pids` that has one to read.
+#[cfg(not(windows))]
+pub fn directories_of(pids: &[libc::pid_t]) -> HashMap<libc::pid_t, PathBuf> {
+    pids.iter().filter_map(|pid| Some((*pid, directory_of(*pid)?))).collect()
 }
 
 /// Elsewhere IVE does not read other processes' directories; only `OSC 7` reports count.

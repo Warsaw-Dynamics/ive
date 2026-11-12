@@ -1,5 +1,6 @@
 //! The file tree's git status per shown checkout: read on the background executor when a checkout's files are
-//! first shown, and again at most once a tick after its files or its git dir changed.
+//! first shown, and again at most once a tick after its files or its git dir changed (after its git dir alone, only
+//! when its HEAD or index changed).
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -15,6 +16,8 @@ use crate::git::status::{self, TreeStatus};
 pub(super) struct TreeStatuses {
     known: HashMap<PathBuf, TreeStatus>,
     dirty: HashSet<PathBuf>,
+    /// of `dirty`, those whose git dir changed and whose files did not
+    git_only: HashSet<PathBuf>,
     reading: HashSet<PathBuf>,
 }
 
@@ -23,8 +26,22 @@ impl TreeStatuses {
         &self.known
     }
 
+    /// The checkout's files changed.
     pub(super) fn mark_dirty(&mut self, checkout: PathBuf) {
+        self.git_only.remove(&checkout);
         self.dirty.insert(checkout);
+    }
+
+    /// The git dir of the checkout's repository changed.
+    pub(super) fn mark_git_dirty(&mut self, checkout: PathBuf) {
+        if self.dirty.insert(checkout.clone()) {
+            self.git_only.insert(checkout);
+        }
+    }
+
+    /// Whether `checkout`, just taken as due, is so for a change in its git dir alone; asked once per take.
+    fn take_git_only(&mut self, checkout: &Path) -> bool {
+        self.git_only.remove(checkout)
     }
 
     /// The checkouts of `shown` to read now: never read, or changed since their last read, and not being read; they
@@ -85,7 +102,7 @@ impl Workspace {
         let checkouts: Vec<PathBuf> = open.shown_checkouts().into_iter().map(|checkout| checkout.path.clone()).collect();
         for checkout in checkouts {
             self.tree_git_changed_at(&checkout);
-            self.tree_statuses.mark_dirty(checkout);
+            self.tree_statuses.mark_git_dirty(checkout);
         }
     }
 
@@ -95,7 +112,11 @@ impl Workspace {
         let since = self.status_since();
         for checkout in self.tree_statuses.take_due(&self.file_checkouts()) {
             let dir = checkout.clone();
-            let reading = cx.background_executor().spawn(async move { status::shared(&dir, since).ok().map(|read| Arc::unwrap_or_clone(read.tree)) });
+            let read: fn(&Path, std::time::Instant) -> Result<status::StatusRead, crate::git::repo::GitError> = match self.tree_statuses.take_git_only(&checkout) {
+                true => status::after_git_change,
+                false => status::shared,
+            };
+            let reading = cx.background_executor().spawn(async move { read(&dir, since).ok().map(|read| Arc::unwrap_or_clone(read.tree)) });
             cx.spawn(async move |this, cx| {
                 let read = reading.await;
                 this.update(cx, |workspace, cx| {
@@ -152,6 +173,26 @@ mod tests {
 
         // then
         assert_eq!((unchanged, changed), (Vec::new(), vec![path("a")]));
+    }
+
+    #[test]
+    fn should_tell_a_git_dir_change_from_a_change_of_files() {
+        // given
+        let mut statuses = TreeStatuses::default();
+        let shown = [path("a"), path("b")];
+        statuses.take_due(&shown);
+        statuses.finish(path("a"), Some(ignoring("x")));
+        statuses.finish(path("b"), Some(ignoring("x")));
+
+        // when
+        statuses.mark_git_dirty(path("a"));
+        statuses.mark_git_dirty(path("b"));
+        statuses.mark_dirty(path("b"));
+        let due = statuses.take_due(&shown);
+        let git_only = [statuses.take_git_only(&path("a")), statuses.take_git_only(&path("b"))];
+
+        // then
+        assert_eq!((due, git_only), (shown.to_vec(), [true, false]));
     }
 
     #[test]
