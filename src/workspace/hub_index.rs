@@ -10,7 +10,7 @@ use gpui::Context;
 use super::Workspace;
 use crate::git::{refs, status};
 use crate::hub::corpus::{self, Corpus, ProjectInput};
-use crate::hub::files::{self, CheckoutFiles};
+use crate::hub::files::{self, CheckoutFiles, Listed};
 use crate::hub::index::{Branch, DatedChange, Read};
 use crate::hub::model::Effect;
 use crate::open_project::OpenProject;
@@ -231,17 +231,21 @@ struct Wanted {
 /// checkout the branches without a worktree. Reads the disk and git.
 #[tracing::instrument(level = "debug", name = "index_checkout", skip_all, fields(dir = %dir.display()))]
 fn read_checkout(dir: &Path, wanted: &Wanted) -> Result<Read, String> {
-    let files = files::read_checkout(dir, wanted.kind, &wanted.excluded)?;
     let changes = match wanted.kind {
-        ProjectKind::Git => dated(dir, &status::shared(dir, wanted.since).map_err(|error| error.to_string())?.changes),
-        ProjectKind::Plain => Vec::new(),
+        ProjectKind::Git => status::shared(dir, wanted.since).map_err(|error| error.to_string())?.changes,
+        ProjectKind::Plain => Arc::default(),
     };
+    let listed = match wanted.kind {
+        ProjectKind::Git => Listed::Git(&changes),
+        ProjectKind::Plain => Listed::Plain,
+    };
+    let files = files::read_checkout(dir, listed, &wanted.excluded)?;
     let ignored = wanted.ignored.then(|| files::read_ignored(dir, wanted.kind)).transpose()?.map(Arc::new);
     let configs = run_files(dir, &files);
     let too_big = |file: &str| std::fs::metadata(dir.join(file)).map_or(true, |metadata| metadata.len() > MAX_FAVICON_BYTES);
     let favicons = Favicons::from_paths(files.paths.iter().map(|(path, _)| path.as_str())).without(too_big);
     let branches = wanted.branches.as_deref().map_or_else(Vec::new, |checked_out| branches_without_worktree(dir, checked_out));
-    Ok(Read { files: Arc::new(files), ignored, changes: Arc::new(changes), configs: Arc::new(configs), favicons: Arc::new(favicons), branches: Arc::new(branches) })
+    Ok(Read { files: Arc::new(files), ignored, changes: Arc::new(dated(dir, &changes)), configs: Arc::new(configs), favicons: Arc::new(favicons), branches: Arc::new(branches) })
 }
 
 /// `changes` with when each file in `dir` was last written.

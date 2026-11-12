@@ -50,6 +50,7 @@ pub fn read_checkouts(main: &Path, statuses: &Statuses, since: Instant) -> Resul
     let mut dirs = vec![(main.to_path_buf(), upstream_of(&repository, main_head.branch.as_deref()))];
     dirs.extend(linked_worktrees(&repository, main)?.into_iter().map(|dir| (dir, base.clone())));
     // a status takes ~130 ms on the atlassian monorepo; one after another they held up a project's first show
+    // (seconds each on Windows, where `status::shared` lets two run at once)
     let reading = Reading { main, statuses, since };
     let reads = in_parallel(&dirs, |(dir, base)| read_checkout(dir, base.clone(), &reading));
     let mut checkouts = Vec::with_capacity(reads.len());
@@ -123,7 +124,7 @@ struct Base {
 fn read_checkout(dir: &Path, base: Option<Base>, reading: &Reading<'_>) -> Result<Checkout, GitError> {
     let repository = repo::open(dir)?;
     let head = read_head(&repository, dir)?;
-    let status = reading.statuses.includes(dir).then(|| read_status(&repository, dir, head.oid, base, reading.since)).transpose()?;
+    let status = reading.statuses.includes(dir).then(|| read_status(&repository, dir, head.oid, base, reading)).transpose()?;
     Ok(Checkout {
         path: dir.to_path_buf(),
         label: checkout_label(dir, reading.main, head.branch.as_deref(), head.oid),
@@ -135,8 +136,12 @@ fn read_checkout(dir: &Path, base: Option<Base>, reading: &Reading<'_>) -> Resul
 }
 
 /// Change count and distance to the base: the slow part of a refresh (150 ms on the atlassian monorepo).
-fn read_status(repository: &Repository, dir: &Path, head: Option<Oid>, base: Option<Base>, since: Instant) -> Result<CheckoutStatus, GitError> {
-    let changes = status::shared(dir, since)?.changes.len();
+fn read_status(repository: &Repository, dir: &Path, head: Option<Oid>, base: Option<Base>, reading: &Reading<'_>) -> Result<CheckoutStatus, GitError> {
+    let read = match reading.statuses {
+        Statuses::GitChanged => status::after_git_change(dir, reading.since),
+        Statuses::All | Statuses::Only(_) => status::shared(dir, reading.since),
+    };
+    let changes = read?.changes.len();
     let (ahead, behind) = distance(repository, dir, head, base.as_ref())?;
     Ok(CheckoutStatus { changes, ahead, behind, base: base.map(|base| base.name) })
 }

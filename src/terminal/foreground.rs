@@ -200,8 +200,7 @@ fn ps_field(pid: Pid, field: &str) -> Option<String> {
 /// `comm` is the exe's name without `.exe`, as Linux names a process.
 #[cfg(windows)]
 fn command_of(pid: Pid) -> Option<ProgramCommand> {
-    let kind = sysinfo::ProcessRefreshKind::new().with_cmd(sysinfo::UpdateKind::Always);
-    crate::windows_processes::read(u32::try_from(pid).ok()?, kind, |process| {
+    crate::windows_processes::read_command(u32::try_from(pid).ok()?, |process| {
         let name = process.name().to_string_lossy();
         let argv0 = process.cmd().first().map(|arg| arg.to_string_lossy().into_owned());
         ProgramCommand { comm: name.strip_suffix(".exe").unwrap_or(&name).to_owned(), argv0: argv0.unwrap_or_default() }

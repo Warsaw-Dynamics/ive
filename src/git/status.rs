@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock, Mutex, OnceLock, PoisonError};
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Condvar, LazyLock, Mutex, OnceLock, PoisonError};
+use std::time::{Duration, Instant, SystemTime};
 
-use git2::{Index, Repository, Status, StatusEntry, StatusOptions};
+use git2::{Index, Oid, Repository, Status, StatusEntry, StatusOptions};
 
 use super::repo::{self, GitError};
 use super::types::{GitPath, Mark, failed};
@@ -204,13 +204,87 @@ struct SharedRead {
 
 static READS: LazyLock<Mutex<HashMap<PathBuf, SharedRead>>> = LazyLock::new(Mutex::default);
 
-/// `dir`'s status from a read that started at or after `since`, waiting for one in progress; otherwise reads it.
-/// The tree, its git folders, the hub and the project's row each want a checkout's status after the same change,
-/// and on the atlassian monorepo each read takes ~130 ms.
+/// Reads running at once. On Windows libgit2 takes seconds per read of a large checkout, most of it in the
+/// kernel, and a read per worktree at once kept every core busy; two finish hardly later.
+const MAX_READS: usize = 2;
+
+static RUNNING: (Mutex<usize>, Condvar) = (Mutex::new(0), Condvar::new());
+
+/// One of the [`MAX_READS`] reads allowed at once, given back when dropped.
+struct ReadSlot;
+
+impl ReadSlot {
+    /// Waits until fewer than [`MAX_READS`] reads run.
+    fn take() -> Self {
+        let (running, freed) = &RUNNING;
+        let mut running = freed.wait_while(running.lock().unwrap_or_else(PoisonError::into_inner), |running| *running >= MAX_READS).unwrap_or_else(PoisonError::into_inner);
+        *running += 1;
+        Self
+    }
+}
+
+impl Drop for ReadSlot {
+    fn drop(&mut self) {
+        let (running, freed) = &RUNNING;
+        *running.lock().unwrap_or_else(PoisonError::into_inner) -= 1;
+        freed.notify_one();
+    }
+}
+
+/// What git itself keeps of a checkout's status: the commit HEAD names, and when its index was written and how
+/// long it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GitStamp {
+    head: Option<Oid>,
+    index: Option<(SystemTime, u64)>,
+}
+
+/// `dir`'s stamp now; `None` when its repository cannot be opened.
+fn stamp_of(dir: &Path) -> Option<GitStamp> {
+    let repo = repo::open(dir).ok()?;
+    let head = repo.head().ok().and_then(|head| head.target());
+    let index = std::fs::metadata(repo.path().join("index")).ok().and_then(|index| Some((index.modified().ok()?, index.len())));
+    Some(GitStamp { head, index })
+}
+
+/// Each checkout's last read with the stamp it started at. A removed worktree's stays: one small entry.
+static KEPT: LazyLock<Mutex<HashMap<PathBuf, (GitStamp, StatusRead)>>> = LazyLock::new(Mutex::default);
+
+fn kept(dir: &Path, stamp: &GitStamp) -> Option<StatusRead> {
+    let kept = KEPT.lock().unwrap_or_else(PoisonError::into_inner);
+    kept.get(dir).filter(|(at, _)| at == stamp).map(|(_, read)| read.clone())
+}
+
+fn keep(dir: &Path, stamp: Option<GitStamp>, read: &Result<StatusRead, GitError>) {
+    if let (Some(stamp), Ok(read)) = (stamp, read) {
+        KEPT.lock().unwrap_or_else(PoisonError::into_inner).insert(dir.to_path_buf(), (stamp, read.clone()));
+    }
+}
+
+/// `dir`'s status after something changed in its repository's git dir: its last read while its HEAD and its index
+/// are as that read found them (another worktree's commit, a fetch, a `git status` that wrote nothing new), else as
+/// [`shared`]. Edits made since that read are not in a reused one; file events and polling read those.
+pub fn after_git_change(dir: &Path, since: Instant) -> Result<StatusRead, GitError> {
+    match stamp_of(dir).and_then(|stamp| kept(dir, &stamp)) {
+        Some(read) => Ok(read),
+        None => shared(dir, since),
+    }
+}
+
+/// `dir`'s status from a read that started at or after `since`, waiting for one in progress; otherwise reads it,
+/// [`MAX_READS`] at a time. The tree, its git folders, the hub and the project's row each want a checkout's status
+/// after the same change, and on the atlassian monorepo each read takes ~130 ms (seconds on Windows).
 pub fn shared(dir: &Path, since: Instant) -> Result<StatusRead, GitError> {
     let (result, mine) = claim(dir, since);
     if mine {
-        let read = std::panic::catch_unwind(|| read(dir));
+        let read = std::panic::catch_unwind(|| {
+            let _slot = ReadSlot::take();
+            // taken before the read: a change during it leaves the stamp behind, so the read is not reused
+            let stamp = stamp_of(dir);
+            let read = read(dir);
+            keep(dir, stamp, &read);
+            read
+        });
         let failed = || Err(GitError { operation: "read the changes".to_owned(), dir: dir.to_path_buf(), message: "the read panicked".to_owned() });
         // waiting readers get an error rather than waiting forever
         let _ = result.set(read.as_ref().map_or_else(|_| failed(), Clone::clone));
@@ -552,5 +626,24 @@ mod tests {
         // then
         assert_eq!(marks(&changes), [("U", "clash.txt".to_owned()), ("T", "link.txt".to_owned()), ("A", "new.txt".to_owned())]);
     }
-}
 
+    #[test]
+    fn should_reuse_the_last_read_after_a_git_change_until_head_or_the_index_change() {
+        // given
+        let repo = TestRepo::init();
+        repo.write("a.txt", "a
+");
+        repo.commit("first");
+        let first = shared(repo.path(), Instant::now()).unwrap().changes.len();
+
+        // when
+        repo.write("unseen.txt", "git has not seen it
+");
+        let reused = after_git_change(repo.path(), Instant::now()).unwrap().changes.len();
+        repo.stage("unseen.txt");
+        let read = after_git_change(repo.path(), Instant::now()).unwrap().changes.len();
+
+        // then
+        assert_eq!((first, reused, read), (0, 0, 1));
+    }
+}

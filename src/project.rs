@@ -227,6 +227,9 @@ impl Project {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statuses {
     All,
+    /// every checkout after a change in the git dir: one whose HEAD and index stayed keeps its last read
+    /// (see [`crate::git::status::after_git_change`])
+    GitChanged,
     /// these checkout folders only
     Only(BTreeSet<PathBuf>),
 }
@@ -234,7 +237,7 @@ pub enum Statuses {
 impl Statuses {
     pub fn includes(&self, checkout: &Path) -> bool {
         match self {
-            Self::All => true,
+            Self::All | Self::GitChanged => true,
             Self::Only(paths) => paths.contains(checkout),
         }
     }
@@ -246,6 +249,7 @@ impl Statuses {
                 paths.extend(more);
                 Self::Only(paths)
             }
+            (Self::GitChanged, Self::GitChanged) => Self::GitChanged,
             _ => Self::All,
         }
     }

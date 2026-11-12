@@ -10,7 +10,7 @@ use gpui::{App, Context, Task, Window};
 use super::Workspace;
 use crate::editor::Tab;
 use crate::process::{ProcessId, ProcessKind, RunLife, RunOrigin};
-use crate::process_directory::directory_of;
+use crate::process_directory::directories_of;
 use crate::project::{CheckoutRef, ProjectId};
 use crate::tabs::TabId;
 use crate::progress_bar;
@@ -467,11 +467,13 @@ fn observe_directories(
     probes: Vec<(ProcessId, crate::terminal::ForegroundProbe, Option<DirectoryReport>)>,
 ) -> Vec<(ProcessId, PathBuf)> {
     trackers.retain(|id, _| probes.iter().any(|(probed, _, _)| probed == id));
+    let leaders: Vec<_> = probes.iter().map(|(_, probe, _)| probe.leader()).collect();
+    let directories = directories_of(&leaders);
     probes
         .into_iter()
-        .filter_map(|(id, probe, report)| {
-            let leader = probe.leader();
-            let sample = Sample { leader, report, process_cwd: directory_of(leader) };
+        .zip(leaders)
+        .filter_map(|((id, _, report), leader)| {
+            let sample = Sample { leader, report, process_cwd: directories.get(&leader).cloned() };
             let directory = trackers.entry(id).or_default().observe(sample)?;
             Some((id, dunce::canonicalize(directory).ok()?))
         })
